@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:47:38Z",
+  "recorded_at": "2026-08-30T05:30:20Z",
   "recorded_by": "tools/future/freshness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -34,24 +34,24 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       },
       {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       }
      ],
-     "current_candidate_count": 48,
-     "current_semantic_fingerprint": "6b5c3be0ca30cd3ec9c7f98d611ec61cd7fdf4e0cefbb683dc183dcd253a7240",
-     "current_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+     "current_candidate_count": 49,
+     "current_semantic_fingerprint": "0b8de5da310a2dd957f5638c1ba6aca11fe72f1bda456c0d4f214a329f6f34e0",
+     "current_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
      "evidence_source": "live_headless",
      "historical_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
      "reason": "byte sha matches; semantic identity follows",
-     "recorded_candidate_count": 48,
-     "recorded_semantic_fingerprint": "6b5c3be0ca30cd3ec9c7f98d611ec61cd7fdf4e0cefbb683dc183dcd253a7240",
-     "recorded_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+     "recorded_candidate_count": 49,
+     "recorded_semantic_fingerprint": "0b8de5da310a2dd957f5638c1ba6aca11fe72f1bda456c0d4f214a329f6f34e0",
+     "recorded_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
      "rel": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
      "removed_candidate_ids": [],
      "resolved_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
@@ -82,18 +82,18 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       },
       {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       }
      ],
-     "current_candidate_count": 48,
-     "current_semantic_fingerprint": "6b5c3be0ca30cd3ec9c7f98d611ec61cd7fdf4e0cefbb683dc183dcd253a7240",
-     "current_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+     "current_candidate_count": 49,
+     "current_semantic_fingerprint": "0b8de5da310a2dd957f5638c1ba6aca11fe72f1bda456c0d4f214a329f6f34e0",
+     "current_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -116,60 +116,132 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "d4eee6dbf4323e1ca8aa4e0d1dd78164565d4a07a7c2e76c3ebf86be97569939"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/future/CANDIDATE_STAGED_PLAN.json",
        "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "e43dced2c2f5423db4582eca1561f13608763dc962676c84efed33e21d28335f"
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/future/CANDIDATE_STAGED_PLAN.json",
+       "sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3"
       }
      ],
      "current_candidate_count": null,
-     "current_semantic_fingerprint": "85dcfcc9d1a4010094790ec454847298bafccda41e1e46566e8761d5503de74c",
-     "current_sha256": "9e03d7c93a27f04c88ea630000d4ce8f59fc21c9dcf57cb8136d2607053bc8b3",
+     "current_semantic_fingerprint": "a02999b8f3827b0e6bb37969c88c3ad182bdbef4a51e5ea49c3287b245bd1f10",
+     "current_sha256": "d4eee6dbf4323e1ca8aa4e0d1dd78164565d4a07a7c2e76c3ebf86be97569939",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -206,18 +278,18 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       },
       {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       }
      ],
-     "current_candidate_count": 48,
-     "current_semantic_fingerprint": "6b5c3be0ca30cd3ec9c7f98d611ec61cd7fdf4e0cefbb683dc183dcd253a7240",
-     "current_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+     "current_candidate_count": 49,
+     "current_semantic_fingerprint": "0b8de5da310a2dd957f5638c1ba6aca11fe72f1bda456c0d4f214a329f6f34e0",
+     "current_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -390,18 +462,18 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       },
       {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       }
      ],
-     "current_candidate_count": 48,
-     "current_semantic_fingerprint": "6b5c3be0ca30cd3ec9c7f98d611ec61cd7fdf4e0cefbb683dc183dcd253a7240",
-     "current_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+     "current_candidate_count": 49,
+     "current_semantic_fingerprint": "0b8de5da310a2dd957f5638c1ba6aca11fe72f1bda456c0d4f214a329f6f34e0",
+     "current_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -557,24 +629,24 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       },
       {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-       "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687"
+       "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
       }
      ],
-     "current_candidate_count": 48,
-     "current_semantic_fingerprint": "6b5c3be0ca30cd3ec9c7f98d611ec61cd7fdf4e0cefbb683dc183dcd253a7240",
-     "current_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+     "current_candidate_count": 49,
+     "current_semantic_fingerprint": "0b8de5da310a2dd957f5638c1ba6aca11fe72f1bda456c0d4f214a329f6f34e0",
+     "current_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
      "evidence_source": "live_headless",
      "historical_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
      "reason": "byte sha matches; semantic identity follows",
-     "recorded_candidate_count": 48,
-     "recorded_semantic_fingerprint": "6b5c3be0ca30cd3ec9c7f98d611ec61cd7fdf4e0cefbb683dc183dcd253a7240",
-     "recorded_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+     "recorded_candidate_count": 49,
+     "recorded_semantic_fingerprint": "0b8de5da310a2dd957f5638c1ba6aca11fe72f1bda456c0d4f214a329f6f34e0",
+     "recorded_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
      "rel": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
      "removed_candidate_ids": [],
      "resolved_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
@@ -659,24 +731,24 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json",
-       "sha256": "6ecc0b422e1b82c75408dbe2893f40f9c072b585af1c4bc64b8af3f81eae4b72"
+       "sha256": "c5b77fb1e3a6a167e38911e9c6cd5c460c39043d32494ae5ebb1e3fe714b8915"
       },
       {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/ACCELERATOR_REPATRIATION_AUDIT.json",
-       "sha256": "6ecc0b422e1b82c75408dbe2893f40f9c072b585af1c4bc64b8af3f81eae4b72"
+       "sha256": "c5b77fb1e3a6a167e38911e9c6cd5c460c39043d32494ae5ebb1e3fe714b8915"
       }
      ],
      "current_candidate_count": null,
-     "current_semantic_fingerprint": "be8fc465b84eacec69108d1e26fed23dc78f187d785b343e151abe6f74647176",
-     "current_sha256": "6ecc0b422e1b82c75408dbe2893f40f9c072b585af1c4bc64b8af3f81eae4b72",
+     "current_semantic_fingerprint": "b4ad30b195cdda6a8d856d858e6dd7bb2ca804de6683c3dcb4d1b2a4e5931cd0",
+     "current_sha256": "c5b77fb1e3a6a167e38911e9c6cd5c460c39043d32494ae5ebb1e3fe714b8915",
      "evidence_source": "live_headless",
      "historical_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json",
      "reason": "byte sha matches; semantic identity follows",
      "recorded_candidate_count": null,
-     "recorded_semantic_fingerprint": "be8fc465b84eacec69108d1e26fed23dc78f187d785b343e151abe6f74647176",
-     "recorded_sha256": "6ecc0b422e1b82c75408dbe2893f40f9c072b585af1c4bc64b8af3f81eae4b72",
+     "recorded_semantic_fingerprint": "b4ad30b195cdda6a8d856d858e6dd7bb2ca804de6683c3dcb4d1b2a4e5931cd0",
+     "recorded_sha256": "c5b77fb1e3a6a167e38911e9c6cd5c460c39043d32494ae5ebb1e3fe714b8915",
      "rel": "receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json",
      "removed_candidate_ids": [],
      "resolved_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json",
@@ -732,55 +804,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
+       "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
        "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339"
       },
       {
@@ -820,55 +958,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
+       "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/ACCELERATOR_TRANSFER_VERIFIED.json",
        "sha256": "17b6bb49a211a9345701e17e0dfddb86c5950135d7e5a4096476177e2e77f4db"
       },
       {
@@ -908,55 +1112,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
+       "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/ACCELERATOR_FRONT_F_ODYSSEY_PASS.json",
        "sha256": "447247d2f48ce7d983a2d6de37b82cd9ae9b520f1415b439b659b0dd80ff4214"
       },
       {
@@ -1234,55 +1504,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
+       "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/FLASH_NOETIC_ROUTER_SELECTION.json",
        "sha256": "e74dbac855f29b08839fd645a3424ad01f7460fc2a09353db8408a0a0a1ff4c8"
       },
       {
@@ -1492,55 +1828,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
+       "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
        "sha256": "5d3b94f71cccb55a2eba0010f8431cd6e21efa3830aab627d7be2e583269df4f"
       },
       {
@@ -1648,55 +2050,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
+       "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
        "sha256": "35111d148cf966e72811f75f044d62387d58d49b79800438fee5c14aef2d97f8"
       },
       {
@@ -1736,55 +2204,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
+       "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/QWEN38_ACCELERATOR_TRANSFER_MAP.json",
        "sha256": "a6730ed5c74ae9ef92f2ede1c6f83597a1a330f45392af3ff6a914bc6e368538"
       },
       {
@@ -1892,55 +2426,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/HCLI_FPGA_PREBOARD.json",
+       "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/HCLI_FPGA_PREBOARD.json",
        "sha256": "e3967d8f4f514d23744438d2623f8cf3a5c353598a4299d72d9548437c482840"
       },
       {
@@ -2014,55 +2614,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
+       "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/ODYSSEY_TRANSFER_PROVEN.json",
        "sha256": "b1827e68aac976c87afd940858cd3ad949fb16715c709b8ca29d0f8e90b8797a"
       },
       {
@@ -2102,55 +2768,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
+       "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
        "sha256": "0e4e20dd5714660eea78122db71331874a1746799ddc6043d03680dcdabc0125"
       },
       {
@@ -2190,55 +2922,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
+       "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/ODYSSEY_LEARNING_CURVE.json",
        "sha256": "11cc13bb93164d2c992718d17a71e3809482ebcd20260a86b7bfbcf89ceb2e70"
       },
       {
@@ -2278,55 +3076,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
+       "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
        "sha256": "ba01d42d6e04952a56e5e56e1a36fcfbaddcab7cecc163efb9236bd8ebaf7015"
       },
       {
@@ -2366,55 +3230,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/DOCTOR_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/DOCTOR_TRANSFER.json",
+       "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/DOCTOR_TRANSFER.json",
        "sha256": "de73716bd0cad1b460ad867214bd2f91a7610fa11a0febb8b6df84cec50594ea"
       },
       {
@@ -2454,55 +3384,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
+       "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/DENSE_SUBBIT_TRANSFER.json",
        "sha256": "a8a6398caed0520147b1966167b6540ab6f50d072ad2bb5c11a9e6944ec7fb32"
       },
       {
@@ -2542,55 +3538,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
+       "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/HCLI_ACCELERATOR_REGRESSION.json",
        "sha256": "5ca781f025fab62831b9c03f9faf99f1810b49042a21c68315231c835dce9e78"
       },
       {
@@ -2630,55 +3692,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
+       "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
        "sha256": "e266b8a18167699b4700984c54e4b2f2b69f007596ca05b7c77635b0548faed9"
       },
       {
@@ -2718,55 +3846,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
+       "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/QWEN80_CROSS_EXPERT_STRUCTURE_NEGATIVE.json",
        "sha256": "f13e78c9f1568c66af5feec01017b02bb479d07a0fd42a36a461437e70348b05"
       },
       {
@@ -2921,24 +4115,24 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
-       "sha256": "c5d693a1ffcd52c55811ef771800e41caaa62063d61bc848fdf6f4e8ff362aea"
+       "sha256": "6c318342c0f934daa38b36383299f0e258d8cf4cf74f4be2c8235efc1f766e53"
       },
       {
        "evidence_source": "pinned_snapshot",
        "kind": "pinned_snapshot",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/ACCELERATOR_REPATRIATION_EFFECTS.json",
-       "sha256": "c5d693a1ffcd52c55811ef771800e41caaa62063d61bc848fdf6f4e8ff362aea"
+       "sha256": "6c318342c0f934daa38b36383299f0e258d8cf4cf74f4be2c8235efc1f766e53"
       }
      ],
      "current_candidate_count": null,
-     "current_semantic_fingerprint": "220db0c92e1eb5196f46f2fdc27c8c1a471d67ffdef0afa4880ce922d23be6d4",
-     "current_sha256": "c5d693a1ffcd52c55811ef771800e41caaa62063d61bc848fdf6f4e8ff362aea",
+     "current_semantic_fingerprint": "b31c426e4b7a6906be29b75f775336cb70f2a1bcf382364bdb358a96197c2913",
+     "current_sha256": "6c318342c0f934daa38b36383299f0e258d8cf4cf74f4be2c8235efc1f766e53",
      "evidence_source": "live_headless",
      "historical_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
      "reason": "byte sha matches; semantic identity follows",
      "recorded_candidate_count": null,
-     "recorded_semantic_fingerprint": "220db0c92e1eb5196f46f2fdc27c8c1a471d67ffdef0afa4880ce922d23be6d4",
-     "recorded_sha256": "c5d693a1ffcd52c55811ef771800e41caaa62063d61bc848fdf6f4e8ff362aea",
+     "recorded_semantic_fingerprint": "b31c426e4b7a6906be29b75f775336cb70f2a1bcf382364bdb358a96197c2913",
+     "recorded_sha256": "6c318342c0f934daa38b36383299f0e258d8cf4cf74f4be2c8235efc1f766e53",
      "rel": "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
      "removed_candidate_ids": [],
      "resolved_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
@@ -2994,55 +4188,121 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214204/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/detached-execution-20260830-012542/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/git-lock-durability-20260829-214218/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/dirty-measurement-20260830-012556/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/meta-downstream-ready-20260829-214232/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/evidence-dag-20260830-012608/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/moe-physical-execution-20260829-214247/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-nr-complete-20260830-012620/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/p6-primitive-projection-20260829-214259/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/flash-schools-20260830-012632/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
-       "path": "/Users/scammermike/.claude-grok/worktrees/propagation-engine-20260829-214314/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "path": "/Users/scammermike/.claude-grok/worktrees/frontiers-20260830-012645/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/odyssey-launch-20260830-012658/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/protected-window-20260830-012712/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/receipt-wakeup-20260830-012726/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-api-20260830-012741/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-identity-20260830-012755/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/resident-sandbox-20260830-012808/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/scar-scheduling-20260830-012823/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/succession-20260830-012836/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/super-resident-20260830-012850/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/tabula-20260830-012906/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+       "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/workgraph-20260830-012921/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
        "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597"
       },
       {
@@ -3064,6 +4324,40 @@
      "rel": "receipts/headless/ACCELERATOR_FRONT_G_P6.json",
      "removed_candidate_ids": [],
      "resolved_path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+     "semantic_field_changed_candidate_ids": [],
+     "semantic_match": true,
+     "status": "FRESH",
+     "status_changed_candidate_ids": []
+    },
+    {
+     "added_candidate_ids": [],
+     "byte_match": true,
+     "copies": [
+      {
+       "evidence_source": "live_headless",
+       "kind": "this_worktree",
+       "path": "/Users/scammermike/Downloads/hawking/CODEX_ACCELERATOR_HANDOFF.json",
+       "sha256": "2d37d971bf470bd236f0fffb80c7ccfb9420b30012a9bc236fa2460f9069e482"
+      },
+      {
+       "evidence_source": "pinned_snapshot",
+       "kind": "pinned_snapshot",
+       "path": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
+       "sha256": "2d37d971bf470bd236f0fffb80c7ccfb9420b30012a9bc236fa2460f9069e482"
+      }
+     ],
+     "current_candidate_count": null,
+     "current_semantic_fingerprint": "db920bc8d35923a9eeeec7ad8b3127b97a57cdc4a196dedb5de3330ee656a436",
+     "current_sha256": "2d37d971bf470bd236f0fffb80c7ccfb9420b30012a9bc236fa2460f9069e482",
+     "evidence_source": "live_headless",
+     "historical_path": "/Users/scammermike/Downloads/hawking/CODEX_ACCELERATOR_HANDOFF.json",
+     "reason": "byte sha matches; semantic identity follows",
+     "recorded_candidate_count": null,
+     "recorded_semantic_fingerprint": "db920bc8d35923a9eeeec7ad8b3127b97a57cdc4a196dedb5de3330ee656a436",
+     "recorded_sha256": "2d37d971bf470bd236f0fffb80c7ccfb9420b30012a9bc236fa2460f9069e482",
+     "rel": "CODEX_ACCELERATOR_HANDOFF.json",
+     "removed_candidate_ids": [],
+     "resolved_path": "/Users/scammermike/Downloads/hawking/CODEX_ACCELERATOR_HANDOFF.json",
      "semantic_field_changed_candidate_ids": [],
      "semantic_match": true,
      "status": "FRESH",
@@ -3100,7 +4394,7 @@
   "registry of derived -> source(s) -> producer; unregistered receipts/future/*.json are findings",
   "source resolution copes with live-present, live-absent, and pinned-snapshot copies and records which"
  ],
- "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
   "QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json and TOURNAMENT_READINESS.json record no source sha256/semantic fingerprint, so they classify UNKNOWN until those producers start writing the CANDIDATE_STAGED_PLAN.input pattern",
@@ -3274,7 +4568,7 @@
   }
  ],
  "schema": "hawking.future.freshness.v1",
- "seal_sha256": "cb0c7c3a55e82eb97706abb26ce87605353e3892e71a422909f253b96327ef02",
+ "seal_sha256": "76bb0771cc2d4e74c58f549fd32d262b3dac97442f94c472f93653f389f9ab4f",
  "unregistered": [
   "ABI_VERDICT_HARNESS.json",
   "ANE_PREBOARD.json",

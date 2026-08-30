@@ -3,19 +3,19 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:47:27Z",
+  "recorded_at": "2026-08-30T05:30:11Z",
   "recorded_by": "tools/future/evidence_snapshot.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "captured": [
   {
-   "bytes": 247254,
+   "bytes": 251800,
    "name": "ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+   "sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_mtime_epoch": 1788057999.624,
-   "source_mtime_utc": "2026-08-30T02:46:39Z",
+   "source_mtime_epoch": 1788065771.569,
+   "source_mtime_utc": "2026-08-30T04:56:11Z",
    "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
   },
   {
@@ -39,10 +39,10 @@
   {
    "bytes": 11344,
    "name": "ACCELERATOR_REPATRIATION_AUDIT.json",
-   "sha256": "6ecc0b422e1b82c75408dbe2893f40f9c072b585af1c4bc64b8af3f81eae4b72",
+   "sha256": "c5b77fb1e3a6a167e38911e9c6cd5c460c39043d32494ae5ebb1e3fe714b8915",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_REPATRIATION_AUDIT.json",
-   "source_mtime_epoch": 1788058010.349,
-   "source_mtime_utc": "2026-08-30T02:46:50Z",
+   "source_mtime_epoch": 1788065925.529,
+   "source_mtime_utc": "2026-08-30T04:58:45Z",
    "source_path": "receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json"
   },
   {
@@ -59,8 +59,8 @@
    "name": "ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
    "sha256": "f627ce102b1257d4f939827d22f069bcd5f31d6631899e84a16e511e51107339",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
-   "source_mtime_epoch": 1787984575.816,
-   "source_mtime_utc": "2026-08-29T06:22:55Z",
+   "source_mtime_epoch": 1788065139.404,
+   "source_mtime_utc": "2026-08-30T04:45:39Z",
    "source_path": "receipts/headless/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json"
   },
   {
@@ -388,12 +388,12 @@
    "source_path": "workspace/campaign/odyssey/NEGATIVE_SCIENCE.json"
   },
   {
-   "bytes": 50987,
+   "bytes": 51318,
    "name": "ACCELERATOR_REPATRIATION_EFFECTS.json",
-   "sha256": "c5d693a1ffcd52c55811ef771800e41caaa62063d61bc848fdf6f4e8ff362aea",
+   "sha256": "6c318342c0f934daa38b36383299f0e258d8cf4cf74f4be2c8235efc1f766e53",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_REPATRIATION_EFFECTS.json",
-   "source_mtime_epoch": 1788058007.221,
-   "source_mtime_utc": "2026-08-30T02:46:47Z",
+   "source_mtime_epoch": 1788065771.88,
+   "source_mtime_utc": "2026-08-30T04:56:11Z",
    "source_path": "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json"
   },
   {
@@ -413,13 +413,22 @@
    "source_mtime_epoch": 1787736939.313,
    "source_mtime_utc": "2026-08-26T09:35:39Z",
    "source_path": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
+  },
+  {
+   "bytes": 120752,
+   "name": "CODEX_ACCELERATOR_HANDOFF.json",
+   "sha256": "2d37d971bf470bd236f0fffb80c7ccfb9420b30012a9bc236fa2460f9069e482",
+   "snapshot_path": "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
+   "source_mtime_epoch": 1788066585.383,
+   "source_mtime_utc": "2026-08-30T05:09:45Z",
+   "source_path": "CODEX_ACCELERATOR_HANDOFF.json"
   }
  ],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "captured": 45,
+  "captured": 46,
   "missing": 2,
-  "wanted": 47
+  "wanted": 48
  },
  "missing": [
   "receipts/headless/FLASH_ROUTE_STABILITY.json",
@@ -430,6 +439,6 @@
  "purpose": "Pinned copy of the Codex receipts sidecar lanes read. Lanes run in sparse git worktrees where the live, uncommitted receipts are invisible; without this snapshot a lane would silently fall back to a fixture and its conclusions would be attached to nothing.",
  "read_only_guarantee": "Codex originals are opened read-only and never modified.",
  "schema": "hawking.future.evidence_snapshot.v1",
- "seal_sha256": "037a60ba919e875cd19b39ab22caf253f63f28431ce788e1ca1bcb3aed88c481",
+ "seal_sha256": "3df2bae6888d64e1350595f7f698f8b86a9e3954eb431786da474a0046838b9f",
  "version": 1
 }

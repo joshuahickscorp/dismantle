@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:51:21Z",
+  "recorded_at": "2026-08-30T04:54:42Z",
   "recorded_by": "tools/future/meta_ready.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -661,7 +661,7 @@
   }
  },
  "schema": "hawking.future.meta_ready.v1",
- "seal_sha256": "11c232626291bb676620888c3f7ed0b8b1501ee62a9cf5c351f6ce7ff67809b4",
+ "seal_sha256": "cbbeacd77154d76430e04128f85ae629446461929bac182d1ab1b5c6df55be6b",
  "simulate_arrival": {
   "admission": {
    "accepted": false,

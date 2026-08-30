@@ -78,17 +78,17 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:52:11Z",
+  "recorded_at": "2026-08-30T04:55:34Z",
   "recorded_by": "tools/future/workunit_species.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "blocked_flash_units": 32,
+  "blocked_flash_units": 33,
   "ready_qwen27_units": 13,
   "species": 10,
-  "work_units": 64
+  "work_units": 65
  },
  "gaps_closed": [
   "ten species with evidence parents, bounded authority, resource class, verifier, budget, stop condition",
@@ -216,7 +216,7 @@
   "tools.accelerator.physical_qualification.workunits_for_candidates": "emits READY physical candidates through WorkUnit.to_dict plus extras (candidate_id, model, diagnostic_command, protected_command, claim_boundary)"
  },
  "schema": "hawking.future.workunit_species.v1",
- "seal_sha256": "3e675ec86304e7d0e5f77bc0d21cbbc0318f2baf827ff947c1f6de39d7a5b00c",
+ "seal_sha256": "898adb14a917535b5195a10a4b71cf9bbc69da0a16aa71b73cf99e57f90d454b",
  "species": [
   {
    "bounded_authority": [
@@ -813,6 +813,7 @@
    "flash-attention-gate-fusion",
    "flash-compact-moe-bf16-vec4",
    "flash-compact-moe-epilogue",
+   "flash-device-mhc-state",
    "flash-encoder-label-elision",
    "flash-fullseq-catalog-cache",
    "flash-fullseq-ordered-encoder",
@@ -844,7 +845,7 @@
    "flash-source-bf16-simd"
   ],
   "by_species": {
-   "accelerator_candidate_qualification": 48,
+   "accelerator_candidate_qualification": 49,
    "architecture_transfer": 8,
    "fpga_simulation": 1,
    "fusion_simulation": 1,
@@ -856,15 +857,16 @@
    "odyssey_iii_adversarial_experiment": 1
   },
   "by_status": {
-   "blocked": 38,
+   "blocked": 39,
    "pending": 26
   },
-  "count": 64,
+  "count": 65,
   "identities": {
    "candidate_ids": [
     "flash-attention-gate-fusion",
     "flash-compact-moe-bf16-vec4",
     "flash-compact-moe-epilogue",
+    "flash-device-mhc-state",
     "flash-encoder-label-elision",
     "flash-fullseq-catalog-cache",
     "flash-fullseq-ordered-encoder",
@@ -930,6 +932,7 @@
     "accelerator.physical.flash-attention-gate-fusion",
     "accelerator.physical.flash-compact-moe-bf16-vec4",
     "accelerator.physical.flash-compact-moe-epilogue",
+    "accelerator.physical.flash-device-mhc-state",
     "accelerator.physical.flash-encoder-label-elision",
     "accelerator.physical.flash-fullseq-catalog-cache",
     "accelerator.physical.flash-fullseq-ordered-encoder",
@@ -1414,6 +1417,67 @@
    "status": "blocked",
    "verification": null,
    "verifier": "accelerator.physical.flash-compact-moe-epilogue",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency",
+   "candidate_id": "flash-device-mhc-state",
+   "candidate_status": "BLOCKED",
+   "claim_boundary": "WorkUnit is a proposal; receipt and protected capability gates remain authoritative",
+   "classification": "BLOCKED",
+   "content_hash": "d8a17b7d33f538d7484b2da04c555536d53eab573c0a4d0d9860c960ec636b27",
+   "dependencies": [
+    "accelerator.physical.flash-p7-mhc-pre-simdgroup"
+   ],
+   "description": "Qualify flash-device-mhc-state on Flash; region=Flash native token graph device-resident mHC state boundary; falsifier=source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+   "diagnostic_command": [
+    "python3",
+    "-m",
+    "hcli",
+    "agentos",
+    "flash-executable",
+    "--repo-root",
+    ".",
+    "--emit",
+    "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-device-mhc-state-plan.json"
+   ],
+   "effect_class": "REVERSIBLE",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "accelerator.physical.flash-device-mhc-state",
+   "model": "Flash",
+   "preferred_backend": "metal",
+   "protected_command": [
+    "python3",
+    "-m",
+    "hcli",
+    "agentos",
+    "flash-executable",
+    "--repo-root",
+    ".",
+    "--emit",
+    "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-device-mhc-state-plan.json"
+   ],
+   "provider": "accelerator_physical_queue",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": true,
+   "resource_class": "GPU_EXCLUSIVE",
+   "role": "accelerator_physical_qualification",
+   "running_at": null,
+   "source_receipt": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "species": "accelerator_candidate_qualification",
+   "status": "blocked",
+   "verification": null,
+   "verifier": "accelerator.physical.flash-device-mhc-state",
    "workspace": "repo-root"
   },
   {

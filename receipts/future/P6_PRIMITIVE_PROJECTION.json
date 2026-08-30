@@ -33,7 +33,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:51:23Z",
+  "recorded_at": "2026-08-30T04:54:44Z",
   "recorded_by": "tools.future.p6_projection.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -50,7 +50,7 @@
    "BLOCKED": 15
   },
   "p6_p7_candidates": 15,
-  "queue_candidates": 48,
+  "queue_candidates": 49,
   "spatially_meaningful": 13,
   "spatially_not_meaningful": 2,
   "unmapped": 0
@@ -79,9 +79,6 @@
   "front_g_p6": {
    "consulted": [
     "receipts/headless/ACCELERATOR_FRONT_G_P6.json",
-    "/Users/scammermike/.claude-grok/worktrees/abi-verdict-harness-20260829-214136/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
-    "/Users/scammermike/.claude-grok/worktrees/cuda-lowbit-research-20260829-214149/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
-    "/Users/scammermike/.claude-grok/worktrees/derived-freshness-20260829-214034/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
     "receipts/future/evidence/ACCELERATOR_FRONT_G_P6.json"
    ],
    "evidence_source": "live_headless",
@@ -94,7 +91,7 @@
     "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
    ],
    "evidence_source": "live_headless",
-   "n_candidates_in_queue": 48,
+   "n_candidates_in_queue": 49,
    "n_p6_p7": 15,
    "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "present": true
@@ -118,7 +115,7 @@
   "FPGA form cites fpga_engines functional references; no HDL, no backend."
  ],
  "gpu_authority": false,
- "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
  "negative_findings": [
   "No protected GPU lease: every hardware quantity remains UNKNOWN.",
   "No FPGA board, bitstream, or cycle-accurate model; FPGA forms are hypotheses.",
@@ -4961,7 +4958,7 @@
   "p6_projection_module_existed": false
  },
  "schema": "hawking.future.p6_projection.v1",
- "seal_sha256": "679b04e13eaafd81b4e81442c3dab002eccfbf28ddc50d8b2347a743094ec08b",
+ "seal_sha256": "5e642b5b4f978d2c4931b0d0b816e8e420c27551fe34493defcc440c884dcac1",
  "spatially_not_meaningful_ids": [
   "flash-p6-hash-single-command-buffer",
   "flash-p6-learned-reader-reuse"

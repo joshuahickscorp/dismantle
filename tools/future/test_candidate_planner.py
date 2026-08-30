@@ -409,7 +409,9 @@ def test_protected_batch_is_exact_and_fail_closed(live_queue):
     batch = doc["protected_batch"]
 
     assert batch["status"] == "WAITING_FOR_AUTHORITY"
-    assert batch["frontier_snapshot"]["queue_candidate_count"] == 48
+    assert batch["frontier_snapshot"]["queue_candidate_count"] == len(
+        live_queue["candidates"]
+    )
     assert batch["qwen_first_batch"]["count"] == 13
     assert batch["flash_return_batch"]["count"] == len(cp.PROTECTED_FLASH_RETURN_ORDER)
     assert batch["frontier_snapshot"]["flash_return_missing_ids"] == []

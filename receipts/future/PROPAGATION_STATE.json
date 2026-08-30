@@ -13,7 +13,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:09:50Z",
+  "recorded_at": "2026-08-30T05:30:18Z",
   "recorded_by": "tools/future/propagate.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -35,32 +35,118 @@
    "skipped_as_duplicate": 767
   },
   "lpc_dataset": {
-   "applied": 0,
-   "applied_records": [],
+   "applied": 1,
+   "applied_records": [
+    {
+     "absence_reasons": {
+      "active_bytes": "HARDWARE_AUTHORITY_REQUIRED",
+      "backend": "NOT_IN_SOURCE",
+      "capability": "AWAITING_PROTECTED_RECEIPT",
+      "complete_token_effect": "AWAITING_PROTECTED_RECEIPT",
+      "dispatches": "HARDWARE_AUTHORITY_REQUIRED",
+      "fusion": "NOT_IN_SOURCE",
+      "grouping": "NOT_IN_SOURCE",
+      "latency": "HARDWARE_AUTHORITY_REQUIRED",
+      "layout": "NOT_IN_SOURCE",
+      "machine_genome": "PARTIAL_IDENTITY",
+      "model": "NOT_IN_SOURCE",
+      "organ_fingerprint": "NOT_IN_SOURCE",
+      "persistent_resources": "NOT_IN_SOURCE",
+      "physical_graph_identity": "STATIC_PLAN_ONLY",
+      "representation": "NOT_IN_SOURCE",
+      "resident_bytes": "HARDWARE_AUTHORITY_REQUIRED",
+      "synchronization": "HARDWARE_AUTHORITY_REQUIRED",
+      "tile": "NOT_IN_SOURCE"
+     },
+     "bench_state": "UNKNOWN",
+     "complete": false,
+     "contamination_class": "STATIC_ONLY",
+     "evidence_class": "STATIC_ONLY",
+     "latency": null,
+     "model": null,
+     "organ_fingerprint": null,
+     "row_id": "lpc:propagate:3d4291b2cacf:450ab1f910",
+     "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+     "source_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
+     "status": "VALID"
+    }
+   ],
    "refusals": [],
    "refused": 0,
-   "skipped_as_duplicate": 808
+   "skipped_as_duplicate": 807
   },
   "negative_index": {
-   "applied": 0,
-   "applied_records": [],
+   "applied": 1,
+   "applied_records": [
+    {
+     "hypothesis_family": "candidate_statuses_2_contains_diagnostic_reject",
+     "level": "MODEL_SPECIFIC",
+     "organ": "unrecorded",
+     "parse_status": "PARSED",
+     "refuse_eligible": true,
+     "reopen_condition": "UNKNOWN",
+     "scar_id": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json#3d4291b2cacfe823",
+     "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+     "source_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
+     "verdict": "DIAGNOSTIC_REJECT"
+    }
+   ],
    "refusals": [],
    "refused": 0,
-   "skipped_as_duplicate": 41
+   "skipped_as_duplicate": 40
   },
   "odyssey2_law_store": {
-   "applied": 0,
-   "applied_records": [],
+   "applied": 1,
+   "applied_records": [
+    {
+     "action": "do not admit as a law; feed the negative index",
+     "evidence_strength": "ANECDOTE",
+     "kills": [
+      "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+      "any hypothesis that this artifact is promotion-grade PROTECTED_ABSOLUTE evidence"
+     ],
+     "kind": "scar_invalidation",
+     "law_id": null,
+     "level": "MODEL_SPECIFIC",
+     "reopen_condition": "UNKNOWN",
+     "scope": null,
+     "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+     "source_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
+    }
+   ],
    "refusals": [],
    "refused": 0,
-   "skipped_as_duplicate": 808
+   "skipped_as_duplicate": 807
   },
   "odyssey3_adversary": {
-   "applied": 0,
-   "applied_records": [],
+   "applied": 1,
+   "applied_records": [
+    {
+     "bench_state": "UNKNOWN",
+     "evidence_class": "STATIC_ONLY",
+     "law_id": "SCAR-TARGET-3d4291b2cacf-450ab1f910",
+     "n_attacks": 9,
+     "ranked_attack_ids": [
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::measurement_trap",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::causal_control",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::blind_holdout",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::law_scope",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::contamination_trap",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::representation_overfit",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::compiler_prior",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::negative_transfer",
+      "SCAR-TARGET-3d4291b2cacf-450ab1f910::goodhart"
+     ],
+     "scope": "MODEL_LOCAL",
+     "selected_attack_id": "SCAR-TARGET-3d4291b2cacf-450ab1f910::measurement_trap",
+     "selected_family": "measurement_trap",
+     "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+     "source_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
+    }
+   ],
    "refusals": [],
    "refused": 0,
-   "skipped_as_duplicate": 808
+   "skipped_as_duplicate": 807
   },
   "physical_graph": {
    "applied": 0,
@@ -70,18 +156,48 @@
    "skipped_as_duplicate": 1534
   },
   "tournament": {
-   "applied": 0,
-   "applied_records": [],
+   "applied": 1,
+   "applied_records": [
+    {
+     "can_run": false,
+     "kind": "readiness_consultation",
+     "note": "Ingest deltas do not complete either NX and do not grant a GPU lease. can_run is consulted, not flipped.",
+     "reasons": [
+      "FLASH_SINGULARITY.NX: status SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
+      "FLASH_SINGULARITY.NX: resident_promotion=False",
+      "FLASH_SINGULARITY.NX: accepted_multitoken_tps is null",
+      "FLASH_SINGULARITY.NX: complete_system_ebpw is null",
+      "FLASH_SINGULARITY.NX: no capability suite receipt",
+      "QWEN27_SINGULARITY.NX: QWEN27_SINGULARITY.NX document not found",
+      "QWEN27_SINGULARITY.NX: hcli/hawking-native.sealed-3.14.json is a resident profile (resident_identity='sealed-3.14'), not an NX genome"
+     ],
+     "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+     "source_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
+    }
+   ],
    "refusals": [],
    "refused": 0,
-   "skipped_as_duplicate": 808
+   "skipped_as_duplicate": 807
   },
   "workunit_species": {
-   "applied": 0,
-   "applied_records": [],
+   "applied": 1,
+   "applied_records": [
+    {
+     "effect_class": "READ_ONLY",
+     "id": "future.propagate.odyssey_iii_adversarial_experiment.3d4291b2cacf.450ab1f910",
+     "may_promote": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+     "source_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
+     "species": "odyssey_iii_adversarial_experiment",
+     "status": "pending",
+     "verifier": "future.odyssey_iii.adversary"
+    }
+   ],
    "refusals": [],
    "refused": 0,
-   "skipped_as_duplicate": 808
+   "skipped_as_duplicate": 807
   }
  },
  "dry_run": false,
@@ -106,7 +222,7 @@
   "--dry-run walks the same routing without persisting a durable ledger",
   "writes only receipts/future/PROPAGATION_STATE.json; never another module's receipt"
  ],
- "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
  "ledger": {
   "applied_keys": [
    "001271f00685cce45affac426a714a20bb1cababf0b6d0f8f14a84c11743aa65|hwir|stub:UNKNOWN:bc518818f6",
@@ -1555,6 +1671,12 @@
    "3cca42dee38b4cbac3d99516fd397cff7a3209dde6c937c8babbc12f6f03eb32|physical_graph|plan:UNKNOWN:e97243d086",
    "3cca42dee38b4cbac3d99516fd397cff7a3209dde6c937c8babbc12f6f03eb32|tournament|readiness:e97243d086",
    "3cca42dee38b4cbac3d99516fd397cff7a3209dde6c937c8babbc12f6f03eb32|workunit_species|future.propagate.odyssey_ii_transfer_experiment.3cca42dee38b.e97243d086",
+   "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb|lpc_dataset|lpc:propagate:3d4291b2cacf:450ab1f910",
+   "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb|negative_index|receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json#3d4291b2cacfe823",
+   "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb|odyssey2_law_store|scar:450ab1f910",
+   "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb|odyssey3_adversary|SCAR-TARGET-3d4291b2cacf-450ab1f910",
+   "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb|tournament|readiness:450ab1f910",
+   "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb|workunit_species|future.propagate.odyssey_iii_adversarial_experiment.3d4291b2cacf.450ab1f910",
    "3d7124e15d2387b67479ffa314707a3eda93c7568fd4393533bbe114b3f150e5|hwir|stub:UNKNOWN:e3440c0e92",
    "3d7124e15d2387b67479ffa314707a3eda93c7568fd4393533bbe114b3f150e5|lpc_dataset|lpc:propagate:3d7124e15d23:e3440c0e92",
    "3d7124e15d2387b67479ffa314707a3eda93c7568fd4393533bbe114b3f150e5|odyssey2_law_store|LAW-CAND-3d7124e15d23-e3440c0e92",
@@ -6505,8 +6627,8 @@
    "ffe91cf0458ac09b0f84d24ebc718310b3383d4925455d19636d519041ecb202|workunit_species|future.propagate.odyssey_ii_transfer_experiment.ffe91cf0458a.8f626598aa"
   ],
   "key_format": "source_sha256|consumer|record_id (record_id includes a source-path tag so identical bytes at different paths are distinct records)",
-  "n_keys": 6394,
-  "new_keys_this_run": 0,
+  "n_keys": 6400,
+  "new_keys_this_run": 6,
   "previous_n_keys": 6394
  },
  "n_deltas": 808,
@@ -6663,11 +6785,29 @@
     "promoting a DIAGNOSTIC_RELATIVE number derived from this artifact"
    ],
    "n_downstream_hits": 0,
-   "refuse_if_dead": null,
+   "refuse_if_dead": {
+    "claim_refuted": "candidate_statuses[2] contains DIAGNOSTIC_REJECT; any hypothesis that this artifact is promotion-grade PROTECTED_ABSOLUTE evidence",
+    "failure_mechanism": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+    "hypothesis_family": "candidate_statuses_2_contains_diagnostic_reject",
+    "level": "MODEL_SPECIFIC",
+    "match_score": 18,
+    "model": "unrecorded",
+    "models": [
+     "unrecorded"
+    ],
+    "organ": "unrecorded",
+    "original_id": "3d4291b2cacfe823",
+    "reason": "known-dead hypothesis; rediscovery is not free. Reopen only under the cited reopen_condition.",
+    "refused": true,
+    "reopen_condition": "UNKNOWN",
+    "scar_id": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json#3d4291b2cacfe823",
+    "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+    "verdict": "DIAGNOSTIC_REJECT"
+   },
    "reopen_condition": "UNKNOWN",
-   "scar_id": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json#b75ded26d2057a62",
+   "scar_id": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json#3d4291b2cacfe823",
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "b75ded26d2057a62776192c9c476c573f16617b999ae6c1876a5c873c661c501"
+   "source_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb"
   },
   {
    "hits": [],
@@ -7327,7 +7467,7 @@
   }
  ],
  "schema": "hawking.future.propagate.v1",
- "seal_sha256": "81cf4944d6828685f4d43a6106eb384c0fa73fcaaddec8e0ed7b5982ec0778aa",
+ "seal_sha256": "1786b325a5d267a1b98cb3a929ec48ae355057752988e551d77d13b1be285ccd",
  "seven_consumers": [
   "odyssey2_law_store",
   "odyssey3_adversary",
@@ -7338,9 +7478,9 @@
   "physical_graph"
  ],
  "totals": {
-  "applied": 0,
+  "applied": 6,
   "refused": 0,
-  "skipped_as_duplicate": 6382
+  "skipped_as_duplicate": 6376
  },
  "tournament_run_guard": {
   "exception": "TournamentNotReady",

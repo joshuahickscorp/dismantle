@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:47:29Z",
+  "recorded_at": "2026-08-30T04:50:20Z",
   "recorded_by": "tools/future/flash_nx_audit.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -69,6 +69,30 @@
     "protected_complete_token_measurement",
     "capability_suite_on_nx",
     "compact_expert_consumer"
+   ],
+   "status": "BLOCKED"
+  },
+  {
+   "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+   "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency",
+   "candidate_id": "flash-device-mhc-state",
+   "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+   "cluster": "DOMINANT",
+   "control_configuration": {
+    "mode": "source_oracle_or_scaffold",
+    "source_oracle_controls": {
+     "HAWKING_DSV4F_DEVICE_MHC": "0",
+     "HAWKING_DSV4F_MHC_NORM_SIMD": "0"
+    }
+   },
+   "extra_pieces": [],
+   "measurements_status": "NOT_MEASURED",
+   "requires": [
+    "serialized_source_independent_nx_artifact",
+    "physical_loader",
+    "whole_model_native_kernel_binding",
+    "protected_complete_token_measurement",
+    "capability_suite_on_nx"
    ],
    "status": "BLOCKED"
   },
@@ -758,7 +782,7 @@
    "flash-meta-sub1-coherent"
   ],
   "additional_count": 2,
-  "blocked_count": 31,
+  "blocked_count": 32,
   "candidates": [
    {
     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
@@ -820,6 +844,30 @@
      "protected_complete_token_measurement",
      "capability_suite_on_nx",
      "compact_expert_consumer"
+    ],
+    "status": "BLOCKED"
+   },
+   {
+    "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency",
+    "candidate_id": "flash-device-mhc-state",
+    "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+    "cluster": "DOMINANT",
+    "control_configuration": {
+     "mode": "source_oracle_or_scaffold",
+     "source_oracle_controls": {
+      "HAWKING_DSV4F_DEVICE_MHC": "0",
+      "HAWKING_DSV4F_MHC_NORM_SIMD": "0"
+     }
+    },
+    "extra_pieces": [],
+    "measurements_status": "NOT_MEASURED",
+    "requires": [
+     "serialized_source_independent_nx_artifact",
+     "physical_loader",
+     "whole_model_native_kernel_binding",
+     "protected_complete_token_measurement",
+     "capability_suite_on_nx"
     ],
     "status": "BLOCKED"
    },
@@ -1464,6 +1512,7 @@
   "dominant_candidates": [
    "flash-attention-gate-fusion",
    "flash-compact-moe-bf16-vec4",
+   "flash-device-mhc-state",
    "flash-encoder-label-elision",
    "flash-fullseq-catalog-cache",
    "flash-fullseq-ordered-encoder",
@@ -1492,7 +1541,7 @@
    "flash-shared-fp8-gate-up-swiglu-fused",
    "flash-source-bf16-simd"
   ],
-  "dominant_count": 29,
+  "dominant_count": 30,
   "dominant_dependency": "source-independent Flash NX with a protected complete-token measurement",
   "gpu_window_worth_the_most": {
    "cpu_prerequisites_that_must_exist_first": [
@@ -1505,10 +1554,11 @@
     "flash-compact-moe-epilogue",
     "flash-meta-sub1-coherent"
    ],
-   "unblocks_count": 29,
+   "unblocks_count": 30,
    "unblocks_to_qualifiable": [
     "flash-attention-gate-fusion",
     "flash-compact-moe-bf16-vec4",
+    "flash-device-mhc-state",
     "flash-encoder-label-elision",
     "flash-fullseq-catalog-cache",
     "flash-fullseq-ordered-encoder",
@@ -1563,6 +1613,7 @@
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
      "flash-compact-moe-epilogue",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -1623,6 +1674,7 @@
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
      "flash-compact-moe-epilogue",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -1677,6 +1729,7 @@
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
      "flash-compact-moe-epilogue",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -1736,6 +1789,7 @@
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
      "flash-compact-moe-epilogue",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -1768,6 +1822,7 @@
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -1822,6 +1877,7 @@
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
      "flash-compact-moe-epilogue",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -1854,6 +1910,7 @@
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -1940,7 +1997,7 @@
     ],
     "rank": 1,
     "state": "NOT_BUILT",
-    "still_required_by_count": 31,
+    "still_required_by_count": 32,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1953,7 +2010,7 @@
     ],
     "rank": 2,
     "state": "NOT_IMPLEMENTED",
-    "still_required_by_count": 31,
+    "still_required_by_count": 32,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1966,7 +2023,7 @@
     ],
     "rank": 3,
     "state": "PLAN_ONLY",
-    "still_required_by_count": 31,
+    "still_required_by_count": 32,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1979,11 +2036,12 @@
     ],
     "rank": 4,
     "state": "NOT_MEASURED",
-    "still_required_by_count": 31,
-    "unblocks_count": 29,
+    "still_required_by_count": 32,
+    "unblocks_count": 30,
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -2022,11 +2080,12 @@
     ],
     "rank": 5,
     "state": "NOT_RUN",
-    "still_required_by_count": 31,
-    "unblocks_count": 29,
+    "still_required_by_count": 32,
+    "unblocks_count": 30,
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
+     "flash-device-mhc-state",
      "flash-encoder-label-elision",
      "flash-fullseq-catalog-cache",
      "flash-fullseq-ordered-encoder",
@@ -2132,6 +2191,7 @@
  ],
  "frontier_vs_disk": {
   "added_since_frontier_wording": [
+   "flash-device-mhc-state",
    "flash-p6-act-quant-simdgroup",
    "flash-p6-batched-down-qat",
    "flash-p6-fused-down-shared-combine",
@@ -2152,8 +2212,8 @@
   ],
   "authority": "disk",
   "disk_additional": 2,
-  "disk_blocked_flash": 31,
-  "disk_dominant": 29,
+  "disk_blocked_flash": 32,
+  "disk_dominant": 30,
   "frontier_F001_wording": "12 of 14 BLOCKED Flash candidates"
  },
  "gaps_closed": [
@@ -2164,7 +2224,7 @@
   "designed-vs-built runtime audit for loader, kernel, catalog, and consumer",
   "verification-vs-production dense rematerialization split"
  ],
- "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
  "meta_measurement_state": {
   "capability": "NOT_MEASURED",
   "complete_token": "NOT_MEASURED",
@@ -2767,7 +2827,7 @@
   }
  ],
  "schema": "hawking.future.flash_nx_audit.v1",
- "seal_sha256": "8562b71d7074ec312f2e71ab4873cac8e3759b90d10a7261fab2c0651f05767d",
+ "seal_sha256": "69bb652431a5ec5b8052b40f353545c98c53158ff5635320cd965218b5493ce9",
  "seven_all_met": false,
  "seven_requirements": [
   {

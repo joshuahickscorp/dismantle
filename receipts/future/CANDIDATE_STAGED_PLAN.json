@@ -3,14 +3,14 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:47:34Z",
+  "recorded_at": "2026-08-30T04:56:11Z",
   "recorded_by": "tools/future/candidate_planner.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "dependency_graph": {
-  "conflict_edge_count": 521,
+  "conflict_edge_count": 537,
   "conflict_edges": [
    {
     "a": "flash-attention-gate-fusion",
@@ -531,6 +531,182 @@
    },
    {
     "a": "flash-compact-moe-epilogue",
+    "b": "qwen27-resident-untimed-decode",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-affine2-splitk4",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-affine2-splitk4-vec",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-attention-gate-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-ba-delta-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-commit-timing-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-deltanet-inproj-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-encoder-label-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-fast-profile",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-gqa-qkv-fusion",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-pipeline-cache-reuse",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-pipeline-id-resolution",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-pipeline-state-elision",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-q2f-splitk4",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-q2f-splitk4-vec",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
+    "b": "qwen27-q4-vecgroup-x64",
+    "kind": "inferred_conflict",
+    "reasons": [
+     {
+      "kind": "distinct_model_executables",
+      "mechanism": "different model identities cannot share one physical run; each executable is its own protected window"
+     }
+    ]
+   },
+   {
+    "a": "flash-device-mhc-state",
     "b": "qwen27-resident-untimed-decode",
     "kind": "inferred_conflict",
     "reasons": [
@@ -5768,7 +5944,7 @@
     ]
    }
   ],
-  "declared_edge_count": 29,
+  "declared_edge_count": 30,
   "declared_edges": [
    {
     "from": "flash-hc-staged-threadgroup",
@@ -5829,6 +6005,12 @@
     "kind": "declared_dependency",
     "mechanism": "flash-p6-routed-fp4-gate-up-swiglu-simd names flash-p6-routed-fp4-gate-up-swiglu-fused in dependencies; the parent is a precondition of the child",
     "to": "flash-p6-routed-fp4-gate-up-swiglu-simd"
+   },
+   {
+    "from": "flash-p7-mhc-pre-simdgroup",
+    "kind": "declared_dependency",
+    "mechanism": "flash-device-mhc-state names flash-p7-mhc-pre-simdgroup in dependencies; the parent is a precondition of the child",
+    "to": "flash-device-mhc-state"
    },
    {
     "from": "flash-pipeline-cache-reuse",
@@ -5945,7 +6127,7 @@
     "to": "qwen27-q2f-splitk4-vec"
    }
   ],
-  "node_count": 48,
+  "node_count": 49,
   "nodes": [
    {
     "affected_physical_region": "Flash attention output sigmoid gate",
@@ -5985,6 +6167,22 @@
     "resource_tags": [
      "moe_geometry",
      "moe_organ"
+    ],
+    "status": "BLOCKED"
+   },
+   {
+    "affected_physical_region": "Flash native token graph device-resident mHC state boundary",
+    "candidate_id": "flash-device-mhc-state",
+    "dependencies": [
+     "flash-p7-mhc-pre-simdgroup"
+    ],
+    "model": "Flash",
+    "mutation_env": {
+     "HAWKING_DSV4F_DEVICE_MHC": "1",
+     "HAWKING_DSV4F_MHC_NORM_SIMD": "1"
+    },
+    "resource_tags": [
+     "hc_organ"
     ],
     "status": "BLOCKED"
    },
@@ -6706,6 +6904,16 @@
   },
   {
    "class_id": "E004",
+   "evidence": [],
+   "members": [
+    "flash-device-mhc-state"
+   ],
+   "merge_rule": "union only on geometry_refinement (same region + declared parent + geo value refined by _vec) or on shared distinctive env stems / cross-model mechanism jaccard. candidate_id spelling is never a reason to merge.",
+   "singleton": true,
+   "size": 1
+  },
+  {
+   "class_id": "E005",
    "evidence": [
     {
      "kind": "shared_distinctive_stem",
@@ -6721,7 +6929,7 @@
    "size": 2
   },
   {
-   "class_id": "E005",
+   "class_id": "E006",
    "evidence": [],
    "members": [
     "flash-fullseq-catalog-cache"
@@ -6731,7 +6939,7 @@
    "size": 1
   },
   {
-   "class_id": "E006",
+   "class_id": "E007",
    "evidence": [],
    "members": [
     "flash-fullseq-ordered-encoder"
@@ -6741,7 +6949,7 @@
    "size": 1
   },
   {
-   "class_id": "E007",
+   "class_id": "E008",
    "evidence": [],
    "members": [
     "flash-hc-router-topk-fusion"
@@ -6751,7 +6959,7 @@
    "size": 1
   },
   {
-   "class_id": "E008",
+   "class_id": "E009",
    "evidence": [],
    "members": [
     "flash-hc-staged-threadgroup"
@@ -6761,7 +6969,7 @@
    "size": 1
   },
   {
-   "class_id": "E009",
+   "class_id": "E010",
    "evidence": [],
    "members": [
     "flash-meta-sub1-coherent"
@@ -6771,7 +6979,7 @@
    "size": 1
   },
   {
-   "class_id": "E010",
+   "class_id": "E011",
    "evidence": [],
    "members": [
     "flash-p6-act-quant-simdgroup"
@@ -6781,7 +6989,7 @@
    "size": 1
   },
   {
-   "class_id": "E011",
+   "class_id": "E012",
    "evidence": [],
    "members": [
     "flash-p6-batched-down-qat"
@@ -6791,7 +6999,7 @@
    "size": 1
   },
   {
-   "class_id": "E012",
+   "class_id": "E013",
    "evidence": [],
    "members": [
     "flash-p6-fused-down-shared-combine"
@@ -6801,7 +7009,7 @@
    "size": 1
   },
   {
-   "class_id": "E013",
+   "class_id": "E014",
    "evidence": [],
    "members": [
     "flash-p6-fused-epilogue-stack"
@@ -6811,7 +7019,7 @@
    "size": 1
   },
   {
-   "class_id": "E014",
+   "class_id": "E015",
    "evidence": [],
    "members": [
     "flash-p6-hash-single-command-buffer"
@@ -6821,7 +7029,7 @@
    "size": 1
   },
   {
-   "class_id": "E015",
+   "class_id": "E016",
    "evidence": [],
    "members": [
     "flash-p6-learned-expert-cache-reuse"
@@ -6831,7 +7039,7 @@
    "size": 1
   },
   {
-   "class_id": "E016",
+   "class_id": "E017",
    "evidence": [],
    "members": [
     "flash-p6-learned-reader-reuse"
@@ -6841,7 +7049,7 @@
    "size": 1
   },
   {
-   "class_id": "E017",
+   "class_id": "E018",
    "evidence": [],
    "members": [
     "flash-p6-prefix-concurrent-wave"
@@ -6851,7 +7059,7 @@
    "size": 1
   },
   {
-   "class_id": "E018",
+   "class_id": "E019",
    "evidence": [],
    "members": [
     "flash-p6-routed-fp4-down-bf16-fused"
@@ -6861,7 +7069,7 @@
    "size": 1
   },
   {
-   "class_id": "E019",
+   "class_id": "E020",
    "evidence": [],
    "members": [
     "flash-p6-routed-fp4-down-bf16-simd"
@@ -6871,7 +7079,7 @@
    "size": 1
   },
   {
-   "class_id": "E020",
+   "class_id": "E021",
    "evidence": [],
    "members": [
     "flash-p6-routed-fp4-gate-up-swiglu-fused"
@@ -6881,7 +7089,7 @@
    "size": 1
   },
   {
-   "class_id": "E021",
+   "class_id": "E022",
    "evidence": [],
    "members": [
     "flash-p6-routed-fp4-gate-up-swiglu-simd"
@@ -6891,7 +7099,7 @@
    "size": 1
   },
   {
-   "class_id": "E022",
+   "class_id": "E023",
    "evidence": [],
    "members": [
     "flash-p6-routed-fp4-simdgroup"
@@ -6901,7 +7109,7 @@
    "size": 1
   },
   {
-   "class_id": "E023",
+   "class_id": "E024",
    "evidence": [],
    "members": [
     "flash-p6-shared-fp8-simdgroup"
@@ -6911,7 +7119,7 @@
    "size": 1
   },
   {
-   "class_id": "E024",
+   "class_id": "E025",
    "evidence": [],
    "members": [
     "flash-p7-mhc-pre-simdgroup"
@@ -6921,7 +7129,7 @@
    "size": 1
   },
   {
-   "class_id": "E025",
+   "class_id": "E026",
    "evidence": [
     {
      "kind": "shared_distinctive_stem",
@@ -6943,7 +7151,7 @@
    "size": 4
   },
   {
-   "class_id": "E026",
+   "class_id": "E027",
    "evidence": [
     {
      "kind": "shared_distinctive_stem",
@@ -6959,7 +7167,7 @@
    "size": 2
   },
   {
-   "class_id": "E027",
+   "class_id": "E028",
    "evidence": [],
    "members": [
     "flash-routed-fp4-gate-up-swiglu-fused"
@@ -6969,7 +7177,7 @@
    "size": 1
   },
   {
-   "class_id": "E028",
+   "class_id": "E029",
    "evidence": [],
    "members": [
     "flash-router-topk-fusion"
@@ -6979,7 +7187,7 @@
    "size": 1
   },
   {
-   "class_id": "E029",
+   "class_id": "E030",
    "evidence": [],
    "members": [
     "flash-shared-fp8-down-combine-fused"
@@ -6989,7 +7197,7 @@
    "size": 1
   },
   {
-   "class_id": "E030",
+   "class_id": "E031",
    "evidence": [],
    "members": [
     "flash-shared-fp8-gate-up-swiglu-fused"
@@ -6999,7 +7207,7 @@
    "size": 1
   },
   {
-   "class_id": "E031",
+   "class_id": "E032",
    "evidence": [],
    "members": [
     "flash-source-bf16-simd"
@@ -7009,7 +7217,7 @@
    "size": 1
   },
   {
-   "class_id": "E032",
+   "class_id": "E033",
    "evidence": [
     {
      "kind": "geometry_refinement",
@@ -7025,7 +7233,7 @@
    "size": 2
   },
   {
-   "class_id": "E033",
+   "class_id": "E034",
    "evidence": [],
    "members": [
     "qwen27-ba-delta-fusion"
@@ -7035,7 +7243,7 @@
    "size": 1
   },
   {
-   "class_id": "E034",
+   "class_id": "E035",
    "evidence": [],
    "members": [
     "qwen27-commit-timing-elision"
@@ -7045,7 +7253,7 @@
    "size": 1
   },
   {
-   "class_id": "E035",
+   "class_id": "E036",
    "evidence": [],
    "members": [
     "qwen27-deltanet-inproj-fusion"
@@ -7055,7 +7263,7 @@
    "size": 1
   },
   {
-   "class_id": "E036",
+   "class_id": "E037",
    "evidence": [],
    "members": [
     "qwen27-fast-profile"
@@ -7065,7 +7273,7 @@
    "size": 1
   },
   {
-   "class_id": "E037",
+   "class_id": "E038",
    "evidence": [],
    "members": [
     "qwen27-pipeline-state-elision"
@@ -7075,7 +7283,7 @@
    "size": 1
   },
   {
-   "class_id": "E038",
+   "class_id": "E039",
    "evidence": [
     {
      "kind": "geometry_refinement",
@@ -7091,7 +7299,7 @@
    "size": 2
   },
   {
-   "class_id": "E039",
+   "class_id": "E040",
    "evidence": [],
    "members": [
     "qwen27-q4-vecgroup-x64"
@@ -7101,7 +7309,7 @@
    "size": 1
   },
   {
-   "class_id": "E040",
+   "class_id": "E041",
    "evidence": [],
    "members": [
     "qwen27-resident-untimed-decode"
@@ -7123,20 +7331,20 @@
  ],
  "input": {
   "by_model": {
-   "Flash": 32,
+   "Flash": 33,
    "Qwen27": 16
   },
   "by_status": {
-   "BLOCKED": 31,
+   "BLOCKED": 32,
    "READY_PROTECTED": 13,
    "STATIC_ONLY": 4
   },
-  "candidate_count": 48,
+  "candidate_count": 49,
   "funnel_promotion_rule": "only a protected complete-token receipt with capability and zero-fallback gates may promote",
   "loaded_from": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-  "queue_fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
+  "queue_fingerprint": "0fdd1d175dc1eff9a47b93f902819d2b853fd04ae4637331bdbe4dc2cc19b267",
   "queue_schema": "hawking.accelerator.physical_qualification_queue.v1",
-  "queue_sha256": "9a8cd23383daffa56fc9fea9dcfd289d165c6bd8caf8960748df5a28711f0687",
+  "queue_sha256": "3d4291b2cacfe823ac5556268efe0814c24dd0daefee8894226070a48ade02eb",
   "queue_version": 1
  },
  "lineage_scars": {
@@ -7157,6 +7365,13 @@
    "same_region_peers_remain_measurable": []
   },
   "flash-compact-moe-epilogue": {
+   "declared_siblings": [],
+   "equivalence_siblings_questioned": [],
+   "hard_invalidates_descendants": [],
+   "mechanism": "a rejection hard-invalidates declared descendants. equivalence siblings are questioned (especially cross-model: Odyssey II transfer is not automatic). same-region peers that are not descendants remain measurable because they are a different exact_mutation.",
+   "same_region_peers_remain_measurable": []
+  },
+  "flash-device-mhc-state": {
    "declared_siblings": [],
    "equivalence_siblings_questioned": [],
    "hard_invalidates_descendants": [],
@@ -7335,7 +7550,9 @@
   "flash-p7-mhc-pre-simdgroup": {
    "declared_siblings": [],
    "equivalence_siblings_questioned": [],
-   "hard_invalidates_descendants": [],
+   "hard_invalidates_descendants": [
+    "flash-device-mhc-state"
+   ],
    "mechanism": "a rejection hard-invalidates declared descendants. equivalence siblings are questioned (especially cross-model: Odyssey II transfer is not automatic). same-region peers that are not descendants remain measurable because they are a different exact_mutation.",
    "same_region_peers_remain_measurable": []
   },
@@ -7758,6 +7975,25 @@
    "model": "Flash",
    "mutation_env": {
     "HAWKING_FLASH_MOE_GEO": "compact"
+   },
+   "status": "BLOCKED"
+  },
+  {
+   "affected_physical_region": "Flash native token graph device-resident mHC state boundary",
+   "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency",
+   "candidate_id": "flash-device-mhc-state",
+   "dependencies": [
+    "flash-p7-mhc-pre-simdgroup"
+   ],
+   "expected_active_byte_change": "adds bounded persistent device mHC control/state scratch only when enabled; the default path keeps one-byte dormant placeholders",
+   "expected_dispatch_reduction": "adds six exact P7 state dispatches per layer but removes the host-visible activation handoff boundaries; no GPU dispatch reduction is claimed",
+   "expected_eliminated_work": "two HIDDEN_SIZE BF16 activation readbacks, host mHC pre/post transforms, and two serialized HIDDEN_SIZE RMSNorm passes at every native layer",
+   "expected_gpu_ns_mechanism": "run the exact P7 mHC pre/norm/post stages with separate attention/FFN control slots, parallelize both 4096-wide RMSNorm boundaries, ping-pong HC state across layers, and keep the state resident through the P6 MoE tail",
+   "expected_intermediate_byte_reduction": "remove per-layer host activation vectors and the BF16 readback bridge; retain persistent four-lane HC state and one final report/head readback",
+   "model": "Flash",
+   "mutation_env": {
+    "HAWKING_DSV4F_DEVICE_MHC": "1",
+    "HAWKING_DSV4F_MHC_NORM_SIMD": "1"
    },
    "status": "BLOCKED"
   },
@@ -8848,6 +9084,45 @@
    ]
   },
   {
+   "a": "flash-device-mhc-state",
+   "b": "flash-hc-router-topk-fusion",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['hc_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "hc_organ"
+   ]
+  },
+  {
+   "a": "flash-device-mhc-state",
+   "b": "flash-hc-staged-threadgroup",
+   "kind": "shared_resource",
+   "mechanism": "shared resource tags ['hc_organ']; overlapping host ceremony, organ path, or GEMV occupancy is predicted to make the joint effect non-additive",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "hc_organ"
+   ]
+  },
+  {
+   "a": "flash-device-mhc-state",
+   "b": "flash-p7-mhc-pre-simdgroup",
+   "kind": "precondition",
+   "mechanism": "one candidate is a declared dependency of the other",
+   "models": [
+    "Flash",
+    "Flash"
+   ],
+   "shared_resource_tags": [
+    "hc_organ"
+   ]
+  },
+  {
    "a": "flash-encoder-label-elision",
    "b": "flash-fullseq-ordered-encoder",
    "kind": "shared_resource",
@@ -9712,6 +9987,31 @@
     "parity_contract: source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
     "capability_contract: blocked until a complete source-independent NX executable and independent capability path exist",
     "blocked_reason: Flash source-independent compact expert consumer is not yet qualified"
+   ],
+   "source": "status_transitions, funnel, queue_policy, measurement_contract, parity_contract, capability_contract, blocked_reason \u2014 all copied from the queue document. this sidecar invents no new status.",
+   "status": "BLOCKED"
+  },
+  {
+   "can_enter_promotion_list": false,
+   "can_enter_protected_pass": false,
+   "candidate_id": "flash-device-mhc-state",
+   "currently_in_funnel_promotion": false,
+   "funnel_lanes": [],
+   "legal_next_statuses": [
+    "STATIC_ONLY"
+   ],
+   "promotion_prerequisites": [
+    "funnel.promotion_rule: only a protected complete-token receipt with capability and zero-fallback gates may promote",
+    "queue_policy.protected_start_requires_existing_hcli_lease",
+    "queue_policy.protected_start_requires_machine_quiescence",
+    "queue_policy.diagnostic_results_do_not_promote (DIAGNOSTIC_RELATIVE never promotes)",
+    "measurement_contract.protected_pass_requires_all_fields",
+    "measurement_contract.null_policy: missing physical metrics remain null until a native protected complete-token receipt records them"
+   ],
+   "rejection_reasons_from_queue": [
+    "parity_contract: source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+    "capability_contract: blocked until a complete source-independent NX executable and independent capability path exist",
+    "blocked_reason: Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency"
    ],
    "source": "status_transitions, funnel, queue_policy, measurement_contract, parity_contract, capability_contract, blocked_reason \u2014 all copied from the queue document. this sidecar invents no new status.",
    "status": "BLOCKED"
@@ -10947,7 +11247,7 @@
    "when_metal_returns": "STOP INVENTING: execute the named batch, record parity first, then prune, combine, and reprofile from protected receipts"
   },
   "flash_return_batch": {
-   "count": 14,
+   "count": 15,
    "model": "Flash",
    "name": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
    "rule": "all rows remain queue BLOCKED and execution-closed now; after Flash authority returns, run singleton rows first, then the full-down and terminal-stack descendants only when parents survive",
@@ -11032,6 +11332,92 @@
      "transfer_evidence": []
     },
     {
+     "affected_physical_region": "Flash native token graph device-resident mHC state boundary",
+     "allowed_outcomes": [
+      "IMPLEMENTED_UNMEASURED",
+      "REJECTED_PARITY",
+      "REJECTED_PHYSICAL",
+      "PHYSICAL_WIN_MODEL_LOCAL",
+      "PHYSICAL_WIN_FAMILY",
+      "GENERIC_CANDIDATE",
+      "GENERIC_VERIFIED"
+     ],
+     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+     "batch": "FLASH_RETURN_PROTECTED_SINGLETONS_AND_COMPOSITIONS",
+     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency",
+     "candidate_id": "flash-device-mhc-state",
+     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+     "control_configuration": {
+      "mode": "source_oracle_or_scaffold",
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_DEVICE_MHC": "0",
+       "HAWKING_DSV4F_MHC_NORM_SIMD": "0"
+      }
+     },
+     "control_env": {
+      "HAWKING_DSV4F_DEVICE_MHC": "0",
+      "HAWKING_DSV4F_MHC_NORM_SIMD": "0"
+     },
+     "dependencies": [
+      "flash-p7-mhc-pre-simdgroup"
+     ],
+     "diagnostic_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-device-mhc-state-plan.json"
+     ],
+     "exact_mutation": {
+      "source_oracle_controls": {
+       "HAWKING_DSV4F_DEVICE_MHC": "1",
+       "HAWKING_DSV4F_MHC_NORM_SIMD": "1"
+      }
+     },
+     "execution_state": "CONTINGENT_AFTER_SURVIVORS",
+     "expected_active_byte_change": "adds bounded persistent device mHC control/state scratch only when enabled; the default path keeps one-byte dormant placeholders",
+     "expected_dispatch_reduction": "adds six exact P7 state dispatches per layer but removes the host-visible activation handoff boundaries; no GPU dispatch reduction is claimed",
+     "expected_eliminated_work": "two HIDDEN_SIZE BF16 activation readbacks, host mHC pre/post transforms, and two serialized HIDDEN_SIZE RMSNorm passes at every native layer",
+     "expected_gpu_ns_mechanism": "run the exact P7 mHC pre/norm/post stages with separate attention/FFN control slots, parallelize both 4096-wide RMSNorm boundaries, ping-pong HC state across layers, and keep the state resident through the P6 MoE tail",
+     "expected_intermediate_byte_reduction": "remove per-layer host activation vectors and the BF16 readback bridge; retain persistent four-lane HC state and one final report/head readback",
+     "model": "Flash",
+     "mutation_env": {
+      "HAWKING_DSV4F_DEVICE_MHC": "1",
+      "HAWKING_DSV4F_MHC_NORM_SIMD": "1"
+     },
+     "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+     "protected_command": [
+      "python3",
+      "-m",
+      "hcli",
+      "agentos",
+      "flash-executable",
+      "--repo-root",
+      ".",
+      "--emit",
+      "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-device-mhc-state-plan.json"
+     ],
+     "queue_status": "BLOCKED",
+     "requires_survivors": [
+      "flash-p7-mhc-pre-simdgroup"
+     ],
+     "scope_tags": [
+      "MODEL_LOCAL"
+     ],
+     "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
+     "sequence": 2,
+     "source_evidence": [
+      "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+      "crates/hawking-core/shaders/deepseek_v4_p7.metal",
+      "crates/hawking-core/src/metal/mod.rs"
+     ],
+     "transfer_evidence": []
+    },
+    {
      "affected_physical_region": "Flash P6 command-buffer topology after route resolution",
      "allowed_outcomes": [
       "IMPLEMENTED_UNMEASURED",
@@ -11101,7 +11487,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 2,
+     "sequence": 3,
      "source_evidence": [
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
       "crates/hawking-core/src/metal/mod.rs",
@@ -11179,7 +11565,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 3,
+     "sequence": 4,
      "source_evidence": [
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
       "crates/hawking-core/src/metal/mod.rs"
@@ -11260,7 +11646,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 4,
+     "sequence": 5,
      "source_evidence": [
       "crates/hawking-core/shaders/moe.metal",
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
@@ -11338,7 +11724,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 5,
+     "sequence": 6,
      "source_evidence": [
       "crates/hawking-core/shaders/moe.metal",
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
@@ -11416,7 +11802,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 6,
+     "sequence": 7,
      "source_evidence": [
       "crates/hawking-core/shaders/matmul.metal",
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
@@ -11494,7 +11880,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 7,
+     "sequence": 8,
      "source_evidence": [
       "crates/hawking-core/shaders/matmul.metal",
       "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
@@ -11573,7 +11959,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 8,
+     "sequence": 9,
      "source_evidence": [
       "crates/hawking-core/shaders/matmul.metal",
       "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
@@ -11662,7 +12048,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "high-information full downstream fusion; run only after the routed-down and shared-down singleton outcomes are known",
-     "sequence": 9,
+     "sequence": 10,
      "source_evidence": [
       "crates/hawking-core/shaders/moe.metal",
       "crates/hawking-core/shaders/matmul.metal",
@@ -11742,7 +12128,7 @@
       "GENERIC_CANDIDATE"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 10,
+     "sequence": 11,
      "source_evidence": [
       "crates/hawking-core/src/metal/mod.rs",
       "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
@@ -11832,7 +12218,7 @@
       "GENERIC_CANDIDATE"
      ],
      "selection_reason": "pipeline-cache descendant; isolate stable ID resolution only after warmed handle persistence is accepted",
-     "sequence": 11,
+     "sequence": 12,
      "source_evidence": [
       "crates/hawking-core/src/metal/mod.rs",
       "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
@@ -11912,7 +12298,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "material dispatch, wait, resource-admission, fusion, or route/cache mechanism selected for the Flash return batch",
-     "sequence": 12,
+     "sequence": 13,
      "source_evidence": [
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
       "crates/hawking-core/src/gravity_deepseek_v4.rs",
@@ -11998,7 +12384,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "highest-EV route/cache descendant; isolate reader reuse before testing bounded six-expert cache reuse",
-     "sequence": 13,
+     "sequence": 14,
      "source_evidence": [
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
       "crates/hawking-core/src/gravity_deepseek_v4_expert_cache.rs",
@@ -12122,7 +12508,7 @@
       "MODEL_LOCAL"
      ],
      "selection_reason": "terminal composed P6 stack; run only after its primitive and full-down parents survive parity and physical gates",
-     "sequence": 14,
+     "sequence": 15,
      "source_evidence": [
       "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
       "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
@@ -12136,10 +12522,10 @@
   },
   "frontier_snapshot": {
    "blocked_candidates_remain_unscheduled": true,
-   "flash_return_batch_count": 14,
+   "flash_return_batch_count": 15,
    "flash_return_missing_ids": [],
-   "queue_candidate_count": 48,
-   "queue_fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
+   "queue_candidate_count": 49,
+   "queue_fingerprint": "0fdd1d175dc1eff9a47b93f902819d2b853fd04ae4637331bdbe4dc2cc19b267",
    "qwen_first_batch_count": 13,
    "qwen_ready_protected_count": 13,
    "staged_cell_count": 34
@@ -13991,7 +14377,7 @@
   {
    "counts": {
     "by_status": {
-     "BLOCKED": 31,
+     "BLOCKED": 32,
      "DIAGNOSTIC_PASS": 0,
      "DIAGNOSTIC_REJECT": 0,
      "INTEGRATED": 0,
@@ -14001,11 +14387,11 @@
      "READY_PROTECTED": 13,
      "STATIC_ONLY": 4
     },
-    "candidates": 48,
+    "candidates": 49,
     "ready": 13,
     "work_units": 13
    },
-   "fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
+   "fingerprint": "0fdd1d175dc1eff9a47b93f902819d2b853fd04ae4637331bdbe4dc2cc19b267",
    "loaded_from": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
    "role": "live physical qualification queue (disk authority)",
@@ -14064,6 +14450,13 @@
    "mechanism": null,
    "redundant": false,
    "region": "Flash routed/shared expert output epilogue"
+  },
+  {
+   "candidate_id": "flash-device-mhc-state",
+   "dominated_by": [],
+   "mechanism": null,
+   "redundant": false,
+   "region": "Flash native token graph device-resident mHC state boundary"
   },
   {
    "candidate_id": "flash-encoder-label-elision",
@@ -14382,7 +14775,7 @@
   }
  ],
  "schema": "hawking.future.candidate_planner.v1",
- "seal_sha256": "294bb7c030c2692793540463ed1acdfd05d369f22f032c50ffb9601101d1bf04",
+ "seal_sha256": "83fbdaeaeb2ca8b6cd39d32bf0ae00b2915c2bceab8082d74afd0ddbdb5289a1",
  "staged_factorial_plan": {
   "blocked_unscheduled": [
    {
@@ -14402,6 +14795,13 @@
    {
     "blocked_reason": "Flash source-independent compact expert consumer is not yet qualified",
     "candidate_id": "flash-compact-moe-epilogue",
+    "reason_unscheduled": "status is BLOCKED; the sidecar will not invent a GPU cell for a candidate the queue itself refuses to run. legal next status is STATIC_ONLY after the blocked_reason clears.",
+    "scheduled": false,
+    "status": "BLOCKED"
+   },
+   {
+    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency",
+    "candidate_id": "flash-device-mhc-state",
     "reason_unscheduled": "status is BLOCKED; the sidecar will not invent a GPU cell for a candidate the queue itself refuses to run. legal next status is STATIC_ONLY after the blocked_reason clears.",
     "scheduled": false,
     "status": "BLOCKED"
@@ -15307,6 +15707,7 @@
     "flash-attention-gate-fusion",
     "flash-compact-moe-bf16-vec4",
     "flash-compact-moe-epilogue",
+    "flash-device-mhc-state",
     "flash-encoder-label-elision",
     "flash-fullseq-catalog-cache",
     "flash-fullseq-ordered-encoder",
@@ -15363,9 +15764,9 @@
   },
   "naive_power_set": {
    "formula": "2^N including the all-off control; this sidecar does not emit that set",
-   "n_all": 48,
+   "n_all": 49,
    "n_ready_protected_measurable": 13,
-   "size_all": 281474976710656,
+   "size_all": 562949953421312,
    "size_ready_protected": 8192
   },
   "staged": {
@@ -15373,7 +15774,7 @@
    "contingent_cells": 8,
    "dramatically_smaller": true,
    "pair_cells": 13,
-   "reduction_vs_all": 281474976710622,
+   "reduction_vs_all": 562949953421278,
    "reduction_vs_ready": 8158,
    "scheduled_cells": 26,
    "single_cells": 13,

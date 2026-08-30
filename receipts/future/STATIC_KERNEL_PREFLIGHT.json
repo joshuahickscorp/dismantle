@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:52:07Z",
+  "recorded_at": "2026-08-30T05:30:46Z",
   "recorded_by": "tools/future/static_kernel_verify.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -18,22 +18,22 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
   "ERROR": 0,
-  "INFO_pass_like": 869,
-  "UNVERIFIABLE": 530,
-  "WARNING": 75
+  "INFO_pass_like": 871,
+  "UNVERIFIABLE": 533,
+  "WARNING": 76
  },
  "coverage": {
-  "binding_pairs_with_matching_index_sets": 751,
-  "dispatches_resolved": 778,
-  "dispatches_unverifiable_name": 89,
+  "binding_pairs_with_matching_index_sets": 753,
+  "dispatches_resolved": 780,
+  "dispatches_unverifiable_name": 91,
   "honesty": "PASS-like INFO is only recorded when the checker followed both sides to a concrete index or layout. A bind it could not follow is UNVERIFIABLE, never PASS. Matching indices are not a speed claim.",
-  "host_dispatches": 867,
+  "host_dispatches": 871,
   "host_files_with_dispatch": 66,
   "metal_files": 45,
   "metal_generated_kernels": 19,
-  "metal_kernels": 789,
-  "metal_source_kernels": 770,
-  "referenced_kernel_names": 774,
+  "metal_kernels": 791,
+  "metal_source_kernels": 772,
+  "referenced_kernel_names": 776,
   "shaders_not_in_metalcontext_library": [
    "affine2_group32_matvec.metal",
    "bandwidth_roof.metal",
@@ -47,7 +47,7 @@
    "shared_basis_kernel.metal"
   ],
   "structs_paired": 43,
-  "threadgroup_triples_resolved": 461,
+  "threadgroup_triples_resolved": 462,
   "unreferenced_kernel_names": 15
  },
  "decode_family_named_kernels": [
@@ -302,7 +302,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:1875",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2219",
    "kernel": "deepseek_v4_p3a_rmsnorm_bf16_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -310,7 +310,15 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:3523",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2236",
+   "kernel": "deepseek_v4_p7_ffn_rmsnorm_bf16_authority",
+   "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
+   "severity": "WARNING",
+   "shader": "crates/hawking-core/shaders/deepseek_v4_p7.metal:415"
+  },
+  {
+   "check": "dispatch_geometry",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4122",
    "kernel": "deepseek_v4_p6a_hash_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -318,7 +326,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:3537",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4136",
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -326,7 +334,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4641",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:5380",
    "kernel": "deepseek_v4_p6a_hash_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -334,7 +342,7 @@
   },
   {
    "check": "dispatch_geometry",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:4657",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:5396",
    "kernel": "deepseek_v4_p6a_learned_bias_route_sqrtsoftplus_authority",
    "message": "threadgroup product 1 is not a multiple of simdgroup width 32",
    "severity": "WARNING",
@@ -978,7 +986,7 @@
   {
    "check": "dispatch_geometry",
    "extra": {
-    "count": 365,
+    "count": 366,
     "sample": [
      {
       "check": "dispatch_geometry",
@@ -1014,7 +1022,7 @@
       "kernel": "deepseek_v4_fp8_act_quant_e4m3fn_e8m0_matvec_simdgroup_occupancy_candidate",
       "message": "threadgroup size is not a literal/const triple; coverage of the problem size is not scored as PASS",
       "severity": "UNVERIFIABLE",
-      "shader": "crates/hawking-core/shaders/matmul.metal:2616"
+      "shader": "crates/hawking-core/shaders/matmul.metal:2707"
      },
      {
       "check": "dispatch_geometry",
@@ -1128,7 +1136,7 @@
    },
    "host": null,
    "kernel": null,
-   "message": "365 UNVERIFIABLE site(s) for dispatch_geometry (sample of 12)",
+   "message": "366 UNVERIFIABLE site(s) for dispatch_geometry (sample of 12)",
    "severity": "UNVERIFIABLE",
    "shader": null
   },
@@ -1160,7 +1168,7 @@
   {
    "check": "kernel_name",
    "extra": {
-    "count": 89,
+    "count": 91,
     "sample": [
      {
       "check": "kernel_name",
@@ -1310,7 +1318,7 @@
    },
    "host": null,
    "kernel": null,
-   "message": "89 UNVERIFIABLE site(s) for kernel_name (sample of 12)",
+   "message": "91 UNVERIFIABLE site(s) for kernel_name (sample of 12)",
    "severity": "UNVERIFIABLE",
    "shader": null
   },
@@ -1320,7 +1328,7 @@
    "kernel": null,
    "message": "repr(C) ActivationAwareParams matches metal ActivationAwareParams (16 bytes, 4 fields)",
    "severity": "INFO",
-   "shader": "crates/hawking-core/shaders/matmul.metal:2673"
+   "shader": "crates/hawking-core/shaders/matmul.metal:2764"
   },
   {
    "check": "host_shader_abi",
@@ -1412,7 +1420,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2070",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2542",
    "kernel": null,
    "message": "repr(C) ExpertRef matches metal Dsv4fExpertRef (16 bytes, 2 fields)",
    "severity": "INFO",
@@ -1420,7 +1428,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:828",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:928",
    "kernel": null,
    "message": "repr(C) WorklistEntry matches metal Dsv4fWorklistEntry (16 bytes, 4 fields)",
    "severity": "INFO",
@@ -1428,7 +1436,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2070",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:2542",
    "kernel": null,
    "message": "repr(C) ExpertRef matches metal GkExpertRef (16 bytes, 2 fields)",
    "severity": "INFO",
@@ -1436,7 +1444,7 @@
   },
   {
    "check": "host_shader_abi",
-   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:828",
+   "host": "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs:928",
    "kernel": null,
    "message": "repr(C) WorklistEntry matches metal GkWorklistEntry (16 bytes, 4 fields)",
    "severity": "INFO",
@@ -1829,7 +1837,7 @@
    "extra": {
     "feature_gate": 19,
     "host_shader_abi": 118,
-    "type_width": 751
+    "type_width": 753
    },
    "host": null,
    "kernel": null,
@@ -1966,7 +1974,7 @@
    "verification": "NAME_RECOVERED_FROM_MACRO; body binding and PSO geometry remain compiler/runtime checks"
   }
  },
- "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
  "library_membership_files": [
   [
    "attn.metal",
@@ -2147,7 +2155,7 @@
   "metal_mod_trace_name_tests": "crates/hawking-core/src/metal/mod.rs \u2014 static_kernel_name plus per-family `SHADER_X.contains(kernel void {name}()` tests. Compile/trace-name contract, not host bind vs [[buffer(N)]]."
  },
  "schema": "hawking.future.static_kernel_verify.v1",
- "seal_sha256": "80069f1ea94c31ca5b62e5f3f211b56a0bd24660fc2d444ff4e23c05a729384a",
+ "seal_sha256": "07a61a3beb4d84fff1f39b2f8493091d8c52fa81bac90c2b91402943f4c4f425",
  "static_correctness_does_not_prove_speed": "Static correctness does NOT prove speed and does NOT substitute for a protected measurement. A finding of no static ERROR is not a tps number, not a token_ns, not a complete-token, and not PROTECTED_ABSOLUTE. This tool exists to stop wasting a protected GPU window on a defect that was detectable from the .metal sources and their Rust hosts. It produces neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. Everything here is STATIC_ONLY with bench state UNKNOWN.",
  "version": 1,
  "would_waste_a_protected_window": false

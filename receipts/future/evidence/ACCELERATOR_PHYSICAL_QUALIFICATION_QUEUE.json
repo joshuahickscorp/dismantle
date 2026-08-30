@@ -1738,6 +1738,96 @@
       "transfer_evidence": []
     },
     {
+      "affected_physical_region": "Flash native token graph device-resident mHC state boundary",
+      "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified; device mHC still requires matched parity/coherence and protected latency",
+      "candidate_id": "flash-device-mhc-state",
+      "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+      "control_configuration": {
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_DEVICE_MHC": "0",
+          "HAWKING_DSV4F_MHC_NORM_SIMD": "0"
+        }
+      },
+      "dependencies": [
+        "flash-p7-mhc-pre-simdgroup"
+      ],
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-device-mhc-state-plan.json"
+      ],
+      "evidence": [],
+      "exact_mutation": {
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_DEVICE_MHC": "1",
+          "HAWKING_DSV4F_MHC_NORM_SIMD": "1"
+        }
+      },
+      "expected_active_byte_change": "adds bounded persistent device mHC control/state scratch only when enabled; the default path keeps one-byte dormant placeholders",
+      "expected_dispatch_reduction": "adds six exact P7 state dispatches per layer but removes the host-visible activation handoff boundaries; no GPU dispatch reduction is claimed",
+      "expected_eliminated_work": "two HIDDEN_SIZE BF16 activation readbacks, host mHC pre/post transforms, and two serialized HIDDEN_SIZE RMSNorm passes at every native layer",
+      "expected_gpu_ns_mechanism": "run the exact P7 mHC pre/norm/post stages with separate attention/FFN control slots, parallelize both 4096-wide RMSNorm boundaries, ping-pong HC state across layers, and keep the state resident through the P6 MoE tail",
+      "expected_intermediate_byte_reduction": "remove per-layer host activation vectors and the BF16 readback bridge; retain persistent four-lane HC state and one final report/head readback",
+      "measurements": {
+        "absence_reasons": {
+          "accepted_tps": "awaiting native protected complete-token receipt",
+          "active_representation_bytes_per_token": "awaiting native protected complete-token receipt",
+          "actual_read_bytes_per_token": "awaiting native protected complete-token receipt",
+          "complete_wall_ns_per_accepted_token": "awaiting native protected complete-token receipt",
+          "dispatches_per_token": "awaiting native protected complete-token receipt",
+          "fallback_count": "awaiting native protected complete-token receipt",
+          "gpu_ns_per_token": "awaiting native protected complete-token receipt",
+          "resident_bytes": "awaiting native protected complete-token receipt",
+          "sync_ns_per_token": "awaiting native protected complete-token receipt",
+          "total_nx_bytes": "awaiting native protected complete-token receipt",
+          "transient_bytes_per_token": "awaiting native protected complete-token receipt"
+        },
+        "accepted_tps": null,
+        "active_representation_bytes_per_token": null,
+        "actual_read_bytes_per_token": null,
+        "complete_wall_ns_per_accepted_token": null,
+        "dispatches_per_token": null,
+        "fallback_count": null,
+        "gpu_ns_per_token": null,
+        "resident_bytes": null,
+        "status": "NOT_MEASURED",
+        "sync_ns_per_token": null,
+        "total_nx_bytes": null,
+        "transient_bytes_per_token": null
+      },
+      "model": "Flash",
+      "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-device-mhc-state-plan.json"
+      ],
+      "scope_tags": [
+        "MODEL_LOCAL"
+      ],
+      "source_evidence": [
+        "crates/hawking-core/src/gravity_deepseek_v4_native_token_graph.rs",
+        "crates/hawking-core/shaders/deepseek_v4_p7.metal",
+        "crates/hawking-core/src/metal/mod.rs"
+      ],
+      "status": "BLOCKED",
+      "transfer_evidence": []
+    },
+    {
       "affected_physical_region": "Flash native/fullseq ordinary Metal encoder labeling",
       "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
       "blocked_reason": "source-independent Flash NX and protected complete-token capability are not qualified",
@@ -4634,7 +4724,7 @@
   "claim_boundary": "This is a physical qualification frontier and HCLI WorkUnit proposal. It contains hypotheses and commands, not timing, placement, energy, TPS, capability, or promotion claims.",
   "counts": {
     "by_status": {
-      "BLOCKED": 31,
+      "BLOCKED": 32,
       "DIAGNOSTIC_PASS": 0,
       "DIAGNOSTIC_REJECT": 0,
       "INTEGRATED": 0,
@@ -4644,11 +4734,11 @@
       "READY_PROTECTED": 13,
       "STATIC_ONLY": 4
     },
-    "candidates": 48,
+    "candidates": 49,
     "ready": 13,
     "work_units": 13
   },
-  "fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
+  "fingerprint": "0fdd1d175dc1eff9a47b93f902819d2b853fd04ae4637331bdbe4dc2cc19b267",
   "funnel": {
     "diagnostic_relative_ab": [],
     "native_parity": [],

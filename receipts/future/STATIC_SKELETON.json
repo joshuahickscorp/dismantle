@@ -99,7 +99,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:52:07Z",
+  "recorded_at": "2026-08-30T04:55:30Z",
   "recorded_by": "tools/future/static_skeleton.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1499,7 +1499,7 @@
   "what_it_is": "Provider-neutral PhysicalGraph planning boundary: computation, data, representation, memory, residency, state, precision, dependencies, device_placement, synchronization. qualification=PLAN_ONLY. It does not distinguish STATIC topology from dynamic control and has no validator against data-dependent edges."
  },
  "schema": "hawking.future.static_skeleton.v1",
- "seal_sha256": "52c2290a0f6ff9361635a149973f219010ccba22a02abd3ff4f7ee2d98d3e17e",
+ "seal_sha256": "bd750a1a438ce3569423ae0e78c2387db7c61c4733a8bc6b8bd129954872f44d",
  "slot_kinds": [
   "EXPERT_ID",
   "TOKEN_POSITION",

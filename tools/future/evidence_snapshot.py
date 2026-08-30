@@ -90,6 +90,10 @@ WANTED = [
     "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
     "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
     "receipts/headless/ACCELERATOR_FRONT_G_P6.json",
+    # 2026-08-30 phase transition: Codex sealed its Accelerator handoff at the
+    # repo root. It is the training trace the whole resident metabolism is
+    # extracted from, so it must be pinned like any other authority.
+    "CODEX_ACCELERATOR_HANDOFF.json",
 ]
 
 

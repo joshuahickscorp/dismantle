@@ -895,6 +895,7 @@ MEASURABLE_NOW = frozenset({"READY_PROTECTED"})
 # graph but is not promoted into the first return window.
 PROTECTED_FLASH_RETURN_ORDER = (
     "flash-p7-mhc-pre-simdgroup",
+    "flash-device-mhc-state",
     "flash-p6-hash-single-command-buffer",
     "flash-p6-prefix-concurrent-wave",
     "flash-p6-routed-fp4-gate-up-swiglu-fused",

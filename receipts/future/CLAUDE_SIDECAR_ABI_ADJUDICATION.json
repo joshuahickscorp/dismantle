@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:47:19Z",
+  "recorded_at": "2026-08-30T04:50:10Z",
   "recorded_by": "tools/future/claude_abi_adjudication.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,7 +11,7 @@
  "branch": "odyssey-i",
  "claim_boundary": "Source adjudication only. No Metal device, timing, throughput, BPW, or physical qualification claim is present.",
  "evidence_class": "STATIC_ONLY",
- "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
  "outcomes": [
   {
    "classification": "REAL_DEFECT",
@@ -124,7 +124,7 @@
  ],
  "purpose": "Claude sidecar six-row static ABI adjudication and verifier feedback.",
  "schema": "hawking.future.claude_sidecar_abi_adjudication.v1",
- "seal_sha256": "e1707ec0eeab9e37018f6ff348a46ebcd24e49f1dba7af041be46ec8bafa5673",
+ "seal_sha256": "c4bc86ee6469fc8b5d2c37ca93463d1c8f5e121e8594441f666fde11a7edcf4f",
  "source_preflight": {
   "current_blocking_error_count": 0,
   "current_would_waste_a_protected_window": false,

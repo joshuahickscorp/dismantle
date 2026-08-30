@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T02:47:10Z",
+  "recorded_at": "2026-08-30T04:50:02Z",
   "recorded_by": "tools/future/abi_verdicts.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -177,7 +177,7 @@
     "host_kind": null,
     "identity_map": {
      "identity": true,
-     "line": 2233,
+     "line": 2239,
      "maps_to": "kv_append_q8_0_f32",
      "path": "crates/hawking-core/src/metal/mod.rs",
      "path_taken": "read_from_worktree",
@@ -1249,7 +1249,7 @@
   }
  ],
  "gpu_authority": false,
- "head": "b511b5e1b047a92224e0083ebdbdafe100bf00c2",
+ "head": "0cbd19dc4d6d6de175544f8daabde7c0725b7d6c",
  "measurement_states_we_are_not": [
   "DIAGNOSTIC_RELATIVE",
   "PROTECTED_ABSOLUTE"
@@ -1440,7 +1440,7 @@
  "rulings_issued_by_this_sidecar": 0,
  "rulings_recorded_from_external_authority": 6,
  "schema": "hawking.future.abi_verdicts.v1",
- "seal_sha256": "7af2f6f3c417b41f4ffa4b24efcceea09f0672174f9f57380d3f9ac750aa6d9d",
+ "seal_sha256": "7b4796878b2add48e28511d6ac7d28fdb369f7ddcb9ef4bc31193d81f9a149c4",
  "snapshot_captured_count": 45,
  "snapshot_manifest": "receipts/future/EVIDENCE_SNAPSHOT.json",
  "snapshot_path_taken": "present",

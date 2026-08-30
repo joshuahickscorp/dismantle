@@ -189,6 +189,17 @@
       "transfer_evidence": []
     },
     {
+      "candidate_id": "flash-device-mhc-state",
+      "model": "Flash",
+      "outcome": "IMPLEMENTED_UNMEASURED",
+      "outcome_reason": "no protected result is present; implementation remains unmeasured",
+      "scope_tags": [
+        "MODEL_LOCAL"
+      ],
+      "status": "BLOCKED",
+      "transfer_evidence": []
+    },
+    {
       "candidate_id": "flash-encoder-label-elision",
       "model": "Flash",
       "outcome": "GENERIC_CANDIDATE",
@@ -1595,14 +1606,14 @@
       ]
     }
   ],
-  "fingerprint": "e7fed6de08a4d2c02e28a112291c36e2e777ec0a7abc55c365f1fee3fc2cb82b",
+  "fingerprint": "c91992fc913c341f0b923b5885a3f7f5055d53b9cea471d8f65bb0216304c1e3",
   "levels": [
     "SPECIMEN_IMPLEMENTATION",
     "ACCELERATOR_PRIMITIVE",
     "PHYSICAL_LAW"
   ],
   "physical_queue": {
-    "fingerprint": "24fb3af01fab27d8c991086eecb220be10f7502a782554b8725e4d034d82e0c4",
+    "fingerprint": "0fdd1d175dc1eff9a47b93f902819d2b853fd04ae4637331bdbe4dc2cc19b267",
     "path": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
     "schema": "hawking.accelerator.physical_qualification_queue.v1"
   },

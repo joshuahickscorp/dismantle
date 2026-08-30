@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:55:36Z",
+  "recorded_at": "2026-08-30T06:16:28Z",
   "recorded_by": "tools/future/autonomy_trial.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -133,7 +133,7 @@
    "teacher_rows_written": 0
   },
   {
-   "contamination_class": "LIGHT",
+   "contamination_class": "HEAVY",
    "disposition": "SLEEPING",
    "dry_run_stop_reason": "lock file exists but no holder could be proven without flock (lsof status='OK' reason=None). fail closed: present=false. flock would be a seizure",
    "dry_run_stop_stage": "identify_lease_availability",
@@ -142,7 +142,7 @@
    "path_taken": "disk:receipts/future/QUALIFICATION_PIPELINE.json"
   }
  ],
- "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
+ "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
  "integration_points": {
   "codex_behaviors.py": "Codex blocker list is data in CODEX_REPORTED_BLOCKERS plus pinned evidence.",
   "debugger.py": "Process recovery is judged from process_failed/completed + process_recovered.",
@@ -372,7 +372,7 @@
   ]
  },
  "schema": "hawking.future.autonomy_trial.v1",
- "seal_sha256": "cd9d6607965c05c2abc0be26fe76bf4282b2f91e19d60705cc2d88b9c1252b7c",
+ "seal_sha256": "8baedd1f87960a4d7e4a05d06d4881c4ce726901acb484df2c3c0a7c6681e82b",
  "thirteen_acceptance_conditions": [
   "recover_state",
   "identify_live_frontier",

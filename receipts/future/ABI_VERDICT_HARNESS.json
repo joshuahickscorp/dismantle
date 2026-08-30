@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:50:21Z",
+  "recorded_at": "2026-08-30T06:16:21Z",
   "recorded_by": "tools/future/abi_verdicts.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1249,7 +1249,7 @@
   }
  ],
  "gpu_authority": false,
- "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
+ "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
  "measurement_states_we_are_not": [
   "DIAGNOSTIC_RELATIVE",
   "PROTECTED_ABSOLUTE"
@@ -1440,7 +1440,7 @@
  "rulings_issued_by_this_sidecar": 0,
  "rulings_recorded_from_external_authority": 6,
  "schema": "hawking.future.abi_verdicts.v1",
- "seal_sha256": "625ed310cc055ec03e808a2c1877ba3cbc968d4c7ce4a6b85efb00cd28d25b40",
+ "seal_sha256": "03011f39d2f65edfaa82fa090e677e1d419588041d835faab96d70a49ba998a2",
  "snapshot_captured_count": 46,
  "snapshot_manifest": "receipts/future/EVIDENCE_SNAPSHOT.json",
  "snapshot_path_taken": "present",

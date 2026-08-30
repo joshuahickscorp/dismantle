@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:53:27Z",
+  "recorded_at": "2026-08-30T06:19:30Z",
   "recorded_by": "tools/future/repro_science.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -221,7 +221,7 @@
   "SKIP is not PASS: finalize_verdict('SKIP') refuses"
  ],
  "gpu_authority": false,
- "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
+ "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
  "measurement_states": {
   "DIAGNOSTIC_RELATIVE": "contaminated A/B on a busy machine; guides; never promotes; this module does not produce it",
   "PROTECTED_ABSOLUTE": "measurement under a real protected GPU lease; decides; this module does not produce it",
@@ -528,6 +528,6 @@
   }
  },
  "schema": "hawking.future.repro_science.v1",
- "seal_sha256": "13b0abe1be4938afee20a6dc1d077b58e363dc7287768cc03036ee67ccacff45",
+ "seal_sha256": "e4a9268387565a5f17df81b5b26342fb133f0afa427acab90f9d1898c00953a4",
  "version": 1
 }

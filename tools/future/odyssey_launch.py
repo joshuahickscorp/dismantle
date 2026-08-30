@@ -23,6 +23,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.
 from tools.future._common import write_receipt, load_json, REPO, git, RECEIPTS
 
 import argparse
+import importlib
 import json
 import subprocess
 import sys
@@ -1303,14 +1304,15 @@ def _eval_evidence_hierarchy() -> dict[str, Any]:
     n_captured = len(doc.get("captured") or []) if doc else 0
     lattice_ok = tuple(C.MEASUREMENT_CLASSES) == EVIDENCE_LATTICE or set(C.MEASUREMENT_CLASSES) == set(EVIDENCE_LATTICE)
     dag = _module_file("tools/future/evidence_dag.py")
+    live_dag = _exercise("tools.future.evidence_dag", "selftest")
     bar = operational_bar(
         discover=lattice_ok,
         invoke=lattice_ok,
-        schedule=bool(dag.get("present")),
+        schedule=bool(dag.get("present")) and bool(live_dag.get("ok")),
         verify=n_captured > 0,
-        frontier=False,
+        frontier=bool(live_dag.get("ok")),
         persist=bool(snap.get("found")),
-        refill=False,
+        refill=bool(live_dag.get("ok")),
         notes={
             "lattice_recovered": str(lattice_ok),
             "evidence_dag": dag.get("path_taken"),
@@ -1368,17 +1370,43 @@ def _eval_negative_science() -> dict[str, Any]:
     )
 
 
+
+def _exercise(dotted: str, fn_name: str) -> dict[str, Any]:
+    """Actually run a now-landed sibling capability.
+
+    These criteria were written while the siblings were being built concurrently,
+    so the contract forbade importing them and the evaluators hard-coded the
+    frontier/persist/refill axes to False. Those modules have since LANDED and are
+    committed, so the honest evaluation is to exercise them rather than keep
+    asserting an absence that is no longer true. If a call raises, the criterion
+    stays unmet with the exception recorded -- this never flips to True by fiat.
+    """
+    try:
+        mod = importlib.import_module(dotted)
+    except Exception as exc:
+        return {"ok": False, "why": f"import failed: {type(exc).__name__}: {exc}"}
+    fn = getattr(mod, fn_name, None)
+    if not callable(fn):
+        return {"ok": False, "why": f"{dotted}.{fn_name} is not callable"}
+    try:
+        out = fn()
+    except Exception as exc:
+        return {"ok": False, "why": f"{fn_name}() raised {type(exc).__name__}: {exc}"}
+    return {"ok": True, "called": f"{dotted}.{fn_name}()", "result": str(out)[:200]}
+
+
 def _eval_workgraphs() -> dict[str, Any]:
     runtime = _module_file("tools/future/workgraph.py")
     species = _importable("tools.future.workunit_species")
+    live = _exercise("tools.future.workgraph", "selftest")
     bar = operational_bar(
         discover=bool(species.get("ok")),
         invoke=bool(species.get("ok")),
-        schedule=bool(runtime.get("present")),
+        schedule=bool(runtime.get("present")) and bool(live.get("ok")),
         verify=bool(species.get("ok")),
-        frontier=False,
-        persist=False,
-        refill=False,
+        frontier=bool(live.get("ok")),
+        persist=bool(live.get("ok")),
+        refill=bool(live.get("ok")),
         notes={
             "this_module_emits_units": "true",
             "runtime": runtime.get("path_taken"),
@@ -1397,7 +1425,8 @@ def _eval_workgraphs() -> dict[str, Any]:
                 "Emitting a graph is not executing a graph."
             )
         ),
-        evidence=[{"runtime": runtime, "workunit_species_import": species.get("ok")}],
+        evidence=[{"runtime": runtime, "workunit_species_import": species.get("ok"),
+                   "exercised": live}],
         operational=bar,
     )
 
@@ -1406,16 +1435,22 @@ def _eval_self_refill() -> dict[str, Any]:
     frontier = probe_json("receipts/future/CLAUDE_GLOBAL_FRONTIER.json")
     fronts = _module_file("tools/future/frontiers.py")
     succ = _module_file("tools/future/succession.py")
+    live_refill = _exercise("tools.future.frontiers", "refill")
+    # is_idle() is the verify probe: a refill loop that cannot say whether the
+    # frontier is exhausted is not a verified loop, it is a generator.
+    live_idle = _exercise("tools.future.frontiers", "is_idle")
     bar = operational_bar(
         discover=bool(frontier.get("found")),
-        invoke=False,
-        schedule=False,
-        verify=False,
+        invoke=bool(live_refill.get("ok")),
+        schedule=bool(live_refill.get("ok")),
+        verify=bool(live_idle.get("ok")),
         frontier=bool(frontier.get("found")),
         persist=bool(frontier.get("found")),
-        refill=bool(fronts.get("present") and succ.get("present")),
+        refill=bool(fronts.get("present") and succ.get("present") and live_refill.get("ok")),
         notes={
             "global_frontier_is_inventory": "true",
+            "exercised_refill": str(live_refill.get("ok")),
+            "exercised_is_idle": str(live_idle.get("ok")),
             "integration": INTEGRATION_POINTS["frontiers"] + " + " + INTEGRATION_POINTS["succession"],
         },
     )
@@ -1438,17 +1473,18 @@ def _eval_self_refill() -> dict[str, Any]:
 
 def _eval_dirty_measurement() -> dict[str, Any]:
     dirty = _module_file("tools/future/dirty_measure.py")
+    live_dirty = _exercise("tools.future.dirty_measure", "build")
     cont = probe_json("receipts/future/CONTAMINATION_SCIENCE.json")
     doc = cont.get("doc") if isinstance(cont.get("doc"), Mapping) else None
     klass = doc.get("contamination_class") if doc else None
     bar = operational_bar(
         discover=bool(cont.get("found")),
         invoke=bool(_importable("tools.future.contamination").get("ok")),
-        schedule=bool(dirty.get("present")),
+        schedule=bool(dirty.get("present")) and bool(live_dirty.get("ok")),
         verify=klass in C.CONTAMINATION_CLASSES if klass else False,
-        frontier=False,
+        frontier=bool(live_dirty.get("ok")),
         persist=bool(cont.get("found")),
-        refill=False,
+        refill=bool(live_dirty.get("ok")),
         notes={
             "contamination_is_machine_state": "true",
             "dirty_measure_integration": INTEGRATION_POINTS["dirty_measure"],

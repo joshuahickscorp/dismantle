@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:51:13Z",
+  "recorded_at": "2026-08-30T06:17:10Z",
   "recorded_by": "tools/future/freshness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -116,7 +116,7 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "78535956043f804043040a7f96b7c0fd507cef3df8582f1e132b04c688b4e655"
+       "sha256": "1995d170bff320754a7575e3a8f68060a2163a66e4137e6c429d25bc8a106dd5"
       },
       {
        "evidence_source": "live_headless",
@@ -241,7 +241,7 @@
      ],
      "current_candidate_count": null,
      "current_semantic_fingerprint": "a02999b8f3827b0e6bb37969c88c3ad182bdbef4a51e5ea49c3287b245bd1f10",
-     "current_sha256": "78535956043f804043040a7f96b7c0fd507cef3df8582f1e132b04c688b4e655",
+     "current_sha256": "1995d170bff320754a7575e3a8f68060a2163a66e4137e6c429d25bc8a106dd5",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -4374,7 +4374,7 @@
   "STALE_SEMANTIC": 0,
   "UNKNOWN": 4,
   "registered": 6,
-  "unregistered": 65
+  "unregistered": 66
  },
  "eras": [
   "I Genesis of the Laboratory",
@@ -4394,7 +4394,7 @@
   "registry of derived -> source(s) -> producer; unregistered receipts/future/*.json are findings",
   "source resolution copes with live-present, live-absent, and pinned-snapshot copies and records which"
  ],
- "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
+ "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
   "QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json and TOURNAMENT_READINESS.json record no source sha256/semantic fingerprint, so they classify UNKNOWN until those producers start writing the CANDIDATE_STAGED_PLAN.input pattern",
@@ -4403,7 +4403,7 @@
   "no GPU / FPGA / power meter in this lane; no hardware quantity is asserted",
   "--refresh was not invoked by --check/--report; STALE_SEMANTIC artifacts stay on disk until a caller passes --refresh",
   "UNKNOWN artifacts: QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json, TOURNAMENT_READINESS.json",
-  "65 receipts/future/*.json files are not in the freshness registry"
+  "66 receipts/future/*.json files are not in the freshness registry"
  ],
  "no_era_vi": true,
  "no_odyssey_iv": true,
@@ -4568,7 +4568,7 @@
   }
  ],
  "schema": "hawking.future.freshness.v1",
- "seal_sha256": "49e10f1ade48fd33fa238720ca7f1c15a652dd772551a0325df522a48f2de02b",
+ "seal_sha256": "7a13f42bb9d6ba0313d27b38856a6515617c91c6c8b34c089c1bd76c0f3e98f0",
  "unregistered": [
   "ABI_VERDICT_HARNESS.json",
   "ANE_PREBOARD.json",
@@ -4614,6 +4614,7 @@
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
   "ODYSSEY_LAUNCH_GATE.json",
+  "ORCHESTRATION_BINDINGS.json",
   "P6_PRIMITIVE_PROJECTION.json",
   "PHYSICAL_PRIMITIVES.json",
   "PROPAGATION_STATE.json",

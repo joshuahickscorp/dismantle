@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:54:57Z",
+  "recorded_at": "2026-08-30T06:19:43Z",
   "recorded_by": "tools/future/resident_api.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,14 +11,14 @@
  "bench_state": "UNKNOWN",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "capabilities": 100,
-  "discovered_python": 145,
-  "human_cli_only": 72,
+  "capabilities": 101,
+  "discovered_python": 147,
+  "human_cli_only": 73,
   "import_failures": 0,
-  "not_operational": 74,
-  "operational": 0,
-  "scored": 74,
-  "tests": 71,
+  "not_operational": 5,
+  "operational": 70,
+  "scored": 75,
+  "tests": 72,
   "work_units": 6
  },
  "five_questions": [
@@ -31,80 +31,452 @@
  "frontier": {
   "by_integration_module": {
    "tools/future/abi_verdicts.py": [
-    "F018"
+    "F018",
+    "FT.GPU_KERNELS.static-warnings"
+   ],
+   "tools/future/ane_preboard.py": [
+    "FT.ANE.preboard"
+   ],
+   "tools/future/autonomy_trial.py": [
+    "FT.CHILD_RESIDENT.launch"
    ],
    "tools/future/candidate_planner.py": [
-    "F002"
+    "F002",
+    "FT.GPU_KERNELS.ready-protected"
+   ],
+   "tools/future/claude_abi_adjudication.py": [
+    "FT.GPU_KERNELS.static-warnings"
+   ],
+   "tools/future/codex_behaviors.py": [
+    "FT.HCLI_SELF.emit-workunits"
    ],
    "tools/future/codex_ingest.py": [
-    "F015"
+    "F015",
+    "FT.TOOLS.propagate-skips"
    ],
    "tools/future/contamination.py": [
-    "F011"
+    "F011",
+    "FT.VERIFICATION.contamination"
+   ],
+   "tools/future/cuda_lowbit_hypotheses.py": [
+    "FT.ARCHITECTURE_REPATRIATION.compile-specs"
+   ],
+   "tools/future/debugger.py": [
+    "FT.TOOLS.freshness"
+   ],
+   "tools/future/decode_civilization.py": [
+    "FT.DECODING.cost-model"
+   ],
+   "tools/future/detached.py": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "tools/future/device_ascension_pipeline.py": [
+    "FT.ARCHITECTURE_REPATRIATION.device-run"
+   ],
+   "tools/future/devplatform.py": [
+    "FT.TOOLS.freshness"
+   ],
+   "tools/future/dirty_measure.py": [
+    "FT.VERIFICATION.contamination"
+   ],
+   "tools/future/ebpw_categories.py": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "tools/future/evidence_dag.py": [
+    "FT.VERIFICATION.repro"
+   ],
+   "tools/future/evidence_snapshot.py": [
+    "FT.CONTEXT.disk-authority"
+   ],
+   "tools/future/expert_bank_school.py": [
+    "FT.MODEL_REPRESENTATION.ngram-school"
+   ],
+   "tools/future/flash_nr_complete.py": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
    "tools/future/flash_nx_audit.py": [
-    "F001"
+    "F001",
+    "FT.MODEL_EXECUTION.complete-token"
+   ],
+   "tools/future/flash_schools.py": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "tools/future/fpga_engines.py": [
+    "FT.FPGA.engine-sim"
+   ],
+   "tools/future/fpga_fidelity.py": [
+    "FT.FPGA.engine-sim"
    ],
    "tools/future/freshness.py": [
-    "F017"
+    "F017",
+    "FT.EXPERIMENT_TURNAROUND.refresh"
+   ],
+   "tools/future/frontiers.py": [
+    "FT.TOOLS.frontiers-refill"
+   ],
+   "tools/future/fusion_sim.py": [
+    "FT.MODEL_EXECUTION.fusion-sim"
+   ],
+   "tools/future/git_lock_doctor.py": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "tools/future/global_frontier.py": [
+    "FT.CONTEXT.open-question"
    ],
    "tools/future/green_machine.py": [
-    "F006"
+    "F006",
+    "FT.VERIFICATION.contamination"
    ],
    "tools/future/hardware_doctor.py": [
-    "F004"
+    "F004",
+    "FT.FPGA.hardware-doctor"
    ],
    "tools/future/hbm_doctor.py": [
-    "F005"
+    "F005",
+    "FT.ACTIVE_BYTES.hbm-rank"
+   ],
+   "tools/future/hmf_objects.py": [
+    "FT.MEMORY.hmf"
    ],
    "tools/future/hwir.py": [
     "F003",
-    "F012"
+    "F012",
+    "FT.PHYSICAL_GRAPH.hwir-lower"
+   ],
+   "tools/future/lpc_baselines.py": [
+    "FT.VERIFICATION.repro"
    ],
    "tools/future/lpc_dataset.py": [
-    "F007"
+    "F007",
+    "FT.VERIFICATION.repro"
+   ],
+   "tools/future/meta_funnel.py": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
    "tools/future/meta_ready.py": [
-    "F019"
+    "F019",
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "tools/future/moe_physical_school.py": [
+    "FT.GPU_KERNELS.flash-nx"
+   ],
+   "tools/future/mutation_surface.py": [
+    "FT.CONTEXT.disk-authority"
    ],
    "tools/future/negative_index.py": [
-    "F009"
+    "F009",
+    "FT.VERIFICATION.negative-index"
+   ],
+   "tools/future/ngram_school.py": [
+    "FT.MODEL_REPRESENTATION.ngram-school"
    ],
    "tools/future/odyssey2_law_store.py": [
-    "F010"
+    "F010",
+    "FT.ODYSSEY_TRANSFER.flash-qwen27"
+   ],
+   "tools/future/odyssey3_adversary.py": [
+    "FT.ODYSSEY_ADVERSARY.attacks"
+   ],
+   "tools/future/odyssey_launch.py": [
+    "FT.ODYSSEY_TRANSFER.re-earn"
    ],
    "tools/future/p6_projection.py": [
-    "F020"
+    "F020",
+    "FT.PHYSICAL_GRAPH.p6-projection"
    ],
    "tools/future/physical_primitives.py": [
-    "F012"
+    "F012",
+    "FT.MODEL_EXECUTION.static-skeleton"
    ],
    "tools/future/propagate.py": [
-    "F016"
+    "F016",
+    "FT.TOOLS.propagate-skips"
+   ],
+   "tools/future/protected_window.py": [
+    "FT.GPU_KERNELS.ready-protected"
+   ],
+   "tools/future/qualification_pipeline.py": [
+    "FT.GPU_KERNELS.ready-protected"
+   ],
+   "tools/future/qwen27_profile_schema.py": [
+    "FT.LATENCY.gpu-ns"
    ],
    "tools/future/repro_science.py": [
-    "F008"
+    "F008",
+    "FT.VERIFICATION.repro"
+   ],
+   "tools/future/resident_api.py": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "tools/future/resident_identity.py": [
+    "FT.HCLI_SELF.emit-workunits"
    ],
    "tools/future/resident_install.py": [
-    "F013"
+    "F013",
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
+   "tools/future/resident_optimizer.py": [
+    "FT.CHILD_RESIDENT.optimizer"
+   ],
+   "tools/future/router_science.py": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "tools/future/sandbox.py": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "tools/future/scar_scheduling.py": [
+    "FT.VERIFICATION.negative-index"
    ],
    "tools/future/static_kernel_verify.py": [
     "F002",
-    "F014"
+    "F014",
+    "FT.GPU_KERNELS.static-warnings"
+   ],
+   "tools/future/static_skeleton.py": [
+    "FT.MODEL_EXECUTION.static-skeleton"
+   ],
+   "tools/future/succession.py": [
+    "FT.CHILD_RESIDENT.install-dry-run"
+   ],
+   "tools/future/super_resident.py": [
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
+   "tools/future/tabula.py": [
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
+   "tools/future/teacher_corpus.py": [
+    "FT.MODEL_REPRESENTATION.teacher-capture"
    ],
    "tools/future/tournament.py": [
-    "F013"
+    "F013",
+    "FT.MODEL_CAPABILITY.tournament-refuse"
+   ],
+   "tools/future/turnaround.py": [
+    "FT.LATENCY.cpu-turnaround"
+   ],
+   "tools/future/wakeup.py": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "tools/future/workgraph.py": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "tools/future/workunit_species.py": [
+    "FT.HCLI_SELF.emit-workunits"
    ]
   },
   "by_probe_receipt": {
+   "ABI_VERDICT_HARNESS.json": [
+    "FT.GPU_KERNELS.static-warnings"
+   ],
+   "ANE_PREBOARD.json": [
+    "FT.ANE.preboard"
+   ],
+   "AUTONOMY_TRIALS.json": [
+    "FT.CHILD_RESIDENT.launch"
+   ],
    "CANDIDATE_STAGED_PLAN.json": [
-    "F017"
+    "F017",
+    "FT.GPU_KERNELS.ready-protected"
+   ],
+   "CLAUDE_GLOBAL_FRONTIER.json": [
+    "FT.CONTEXT.open-question"
+   ],
+   "CLAUDE_SIDECAR_ABI_ADJUDICATION.json": [
+    "FT.GPU_KERNELS.static-warnings"
    ],
    "CODEX_INGEST_STATE.json": [
-    "F016"
+    "F016",
+    "FT.TOOLS.propagate-skips"
+   ],
+   "CODEX_MUTATION_SURFACE.json": [
+    "FT.CONTEXT.disk-authority"
+   ],
+   "CODEX_WORKUNIT_SPECIES.json": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "CONTAMINATION_SCIENCE.json": [
+    "FT.VERIFICATION.contamination"
+   ],
+   "CUDA_LOWBIT_HYPOTHESES.json": [
+    "FT.ARCHITECTURE_REPATRIATION.compile-specs"
+   ],
+   "DEBUGGER_LAB.json": [
+    "FT.TOOLS.freshness"
+   ],
+   "DECODE_CIVILIZATION.json": [
+    "FT.DECODING.cost-model"
+   ],
+   "DERIVED_FRESHNESS.json": [
+    "FT.EXPERIMENT_TURNAROUND.refresh"
+   ],
+   "DETACHED_EXECUTION.json": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "DEVELOPER_PLATFORM.json": [
+    "FT.TOOLS.freshness"
+   ],
+   "DEVICE_ASCENSION_PIPELINE.json": [
+    "FT.ARCHITECTURE_REPATRIATION.device-run"
+   ],
+   "DIRTY_MEASUREMENT.json": [
+    "FT.VERIFICATION.contamination"
+   ],
+   "EBPW_CATEGORY_VALIDATOR.json": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "EVIDENCE_DAG.json": [
+    "FT.VERIFICATION.repro"
+   ],
+   "EVIDENCE_SNAPSHOT.json": [
+    "FT.CONTEXT.disk-authority"
+   ],
+   "EXPERIMENT_TURNAROUND.json": [
+    "FT.LATENCY.cpu-turnaround"
+   ],
+   "EXPERT_BANK_SCHOOL.json": [
+    "FT.MODEL_REPRESENTATION.ngram-school"
+   ],
+   "FLASH_NR_COMPLETE.json": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "FLASH_NX_COMPLETENESS_AUDIT.json": [
+    "FT.MODEL_EXECUTION.complete-token"
+   ],
+   "FLASH_ORGAN_SCHOOLS.json": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "FPGA_ENGINE_SCHOOL.json": [
+    "FT.FPGA.engine-sim"
+   ],
+   "FPGA_MULTIFIDELITY.json": [
+    "FT.FPGA.engine-sim"
+   ],
+   "FRONTIER_STATE.json": [
+    "FT.TOOLS.frontiers-refill"
+   ],
+   "FUSION_SIMULATION.json": [
+    "FT.MODEL_EXECUTION.fusion-sim"
+   ],
+   "GIT_LOCK_DURABILITY_REPORT.json": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "GREEN_MACHINE.json": [
+    "FT.VERIFICATION.contamination"
+   ],
+   "HARDWARE_DOCTOR.json": [
+    "FT.FPGA.hardware-doctor"
+   ],
+   "HBM_DOCTOR.json": [
+    "FT.ACTIVE_BYTES.hbm-rank"
+   ],
+   "HCLI_FUTURE_WORKUNITS.json": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "HMF_MANAGED_OBJECTS.json": [
+    "FT.MEMORY.hmf"
+   ],
+   "HWIR_V1.json": [
+    "FT.PHYSICAL_GRAPH.hwir-lower"
+   ],
+   "LPC_BASELINES.json": [
+    "FT.VERIFICATION.repro"
+   ],
+   "LPC_DATASET.json": [
+    "FT.VERIFICATION.repro"
+   ],
+   "META_DOWNSTREAM_READY.json": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "META_EXPERIMENT_FUNNEL.json": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "MOE_PHYSICAL_SCHOOL.json": [
+    "FT.GPU_KERNELS.flash-nx"
+   ],
+   "NEGATIVE_SCIENCE_INDEX.json": [
+    "FT.VERIFICATION.negative-index"
+   ],
+   "NGRAM_SCHOOL.json": [
+    "FT.MODEL_REPRESENTATION.ngram-school"
+   ],
+   "ODYSSEY2_LAW_STORE.json": [
+    "FT.ODYSSEY_TRANSFER.flash-qwen27"
+   ],
+   "ODYSSEY3_ADVERSARY.json": [
+    "FT.ODYSSEY_ADVERSARY.attacks"
+   ],
+   "ODYSSEY_LAUNCH_GATE.json": [
+    "FT.ODYSSEY_TRANSFER.re-earn"
+   ],
+   "P6_PRIMITIVE_PROJECTION.json": [
+    "FT.PHYSICAL_GRAPH.p6-projection"
+   ],
+   "PHYSICAL_PRIMITIVES.json": [
+    "FT.MODEL_EXECUTION.static-skeleton"
+   ],
+   "PROPAGATION_STATE.json": [
+    "FT.TOOLS.propagate-skips"
+   ],
+   "PROTECTED_WINDOW_PLAN.json": [
+    "FT.GPU_KERNELS.ready-protected"
+   ],
+   "QUALIFICATION_PIPELINE.json": [
+    "FT.GPU_KERNELS.ready-protected"
+   ],
+   "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json": [
+    "FT.LATENCY.gpu-ns"
+   ],
+   "RECEIPT_WAKEUP.json": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "REPRO_SCIENCE.json": [
+    "FT.VERIFICATION.repro"
+   ],
+   "RESIDENT_API_AUDIT.json": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "RESIDENT_IDENTITY.json": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "RESIDENT_INSTALL_CONTRACT.json": [
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
+   "RESIDENT_OPTIMIZER.json": [
+    "FT.CHILD_RESIDENT.optimizer"
+   ],
+   "RESIDENT_SANDBOX.json": [
+    "FT.HCLI_SELF.no-launch"
+   ],
+   "ROUTER_SENSITIVE_ALLOCATION.json": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "SCAR_SCHEDULING.json": [
+    "FT.VERIFICATION.negative-index"
    ],
    "STATIC_KERNEL_PREFLIGHT.json": [
-    "F018"
+    "F018",
+    "FT.GPU_KERNELS.static-warnings"
+   ],
+   "STATIC_SKELETON.json": [
+    "FT.MODEL_EXECUTION.static-skeleton"
+   ],
+   "SUCCESSION.json": [
+    "FT.CHILD_RESIDENT.install-dry-run"
+   ],
+   "SUPER_RESIDENT_FLOOR.json": [
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
+   "TABULA_FLOOR.json": [
+    "FT.MODEL_CAPABILITY.hard-gates"
+   ],
+   "TEACHER_CORPUS_CONTRACT.json": [
+    "FT.MODEL_REPRESENTATION.teacher-capture"
+   ],
+   "TOURNAMENT_READINESS.json": [
+    "FT.MODEL_CAPABILITY.tournament-refuse"
+   ],
+   "WORKGRAPH_STATE.json": [
+    "FT.HCLI_SELF.no-launch"
    ]
   },
   "entry_ids": [
@@ -137,56 +509,9 @@
   "does_not_emit_workunit": [
    "__init__",
    "_common",
-   "abi_verdicts",
-   "ane_preboard",
-   "candidate_planner",
-   "claude_abi_adjudication",
-   "codex_ingest",
-   "contamination",
-   "cuda_lowbit_hypotheses",
-   "decode_civilization",
-   "device_ascension_pipeline",
-   "devplatform",
-   "ebpw_categories",
-   "evidence_snapshot",
-   "expert_bank_school",
-   "flash_nx_audit",
-   "fpga_engines",
-   "fpga_fidelity",
-   "freshness",
-   "fusion_sim",
-   "git_lock_doctor",
-   "global_frontier",
-   "green_machine",
    "handoff",
-   "hardware_doctor",
-   "hbm_doctor",
-   "hmf_objects",
-   "hwir",
    "integration_attack",
-   "lpc_baselines",
-   "lpc_dataset",
-   "meta_funnel",
-   "meta_ready",
-   "moe_physical_school",
-   "mutation_surface",
-   "negative_index",
-   "ngram_school",
-   "odyssey2_law_store",
-   "odyssey3_adversary",
-   "p6_projection",
-   "physical_primitives",
-   "qwen27_profile_schema",
-   "repro_science",
-   "resident_identity",
-   "resident_install",
-   "router_science",
-   "scar_scheduling",
-   "static_kernel_verify",
-   "static_skeleton",
-   "teacher_corpus",
-   "tournament",
-   "turnaround"
+   "orchestration"
   ],
   "does_not_produce_receipt": [
    "__init__",
@@ -202,74 +527,9 @@
   "result_does_not_feed_a_named_frontier": [
    "__init__",
    "_common",
-   "abi_verdicts",
-   "ane_preboard",
-   "autonomy_trial",
-   "claude_abi_adjudication",
-   "codex_behaviors",
-   "contamination",
-   "cuda_lowbit_hypotheses",
-   "debugger",
-   "decode_civilization",
-   "detached",
-   "device_ascension_pipeline",
-   "devplatform",
-   "dirty_measure",
-   "ebpw_categories",
-   "evidence_dag",
-   "evidence_snapshot",
-   "expert_bank_school",
-   "flash_nr_complete",
-   "flash_nx_audit",
-   "flash_schools",
-   "fpga_engines",
-   "fpga_fidelity",
-   "freshness",
-   "frontiers",
-   "fusion_sim",
-   "git_lock_doctor",
-   "green_machine",
    "handoff",
-   "hardware_doctor",
-   "hbm_doctor",
-   "hmf_objects",
-   "hwir",
    "integration_attack",
-   "lpc_baselines",
-   "lpc_dataset",
-   "meta_funnel",
-   "meta_ready",
-   "moe_physical_school",
-   "mutation_surface",
-   "negative_index",
-   "ngram_school",
-   "odyssey2_law_store",
-   "odyssey3_adversary",
-   "odyssey_launch",
-   "p6_projection",
-   "physical_primitives",
-   "propagate",
-   "protected_window",
-   "qualification_pipeline",
-   "qwen27_profile_schema",
-   "repro_science",
-   "resident_api",
-   "resident_identity",
-   "resident_install",
-   "resident_optimizer",
-   "router_science",
-   "sandbox",
-   "scar_scheduling",
-   "static_skeleton",
-   "succession",
-   "super_resident",
-   "tabula",
-   "teacher_corpus",
-   "tournament",
-   "turnaround",
-   "wakeup",
-   "workgraph",
-   "workunit_species"
+   "orchestration"
   ]
  },
  "gaps_closed": [
@@ -384,7 +644,7 @@
   ],
   "tool_registry_present": true
  },
- "honest_scoring": "0 operational / 74 not operational / 74 scored. A human CLI is not an operational subsystem.",
+ "honest_scoring": "70 operational / 5 not operational / 75 scored. A human CLI is not an operational subsystem.",
  "law": "A subsystem is not operational until the RESIDENT can discover it, invoke it, schedule it and verify it; its result changes a frontier; the result persists; and next work refills. 'It has a CLI a human can run' is NOT enough.",
  "measurement_class": "STATIC_ONLY",
  "modules": [
@@ -414,7 +674,8 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": false
      },
      "gap": "does_not_emit_workunit",
      "pass": false
@@ -503,7 +764,8 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": false
      },
      "gap": "does_not_emit_workunit",
      "pass": false
@@ -581,10 +843,7 @@
    ],
    "docstring": "ABI_VERDICT_HARNESS \u2014 prepare every ruling the six ERROR findings can take. The static preflight raised six ERROR-class host/shader findings. Codex owns the investigation. This sidecar does not rule. It writes a dossier for each finding BE\u2026",
    "filename": "abi_verdicts.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -624,10 +883,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -641,13 +900,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F018"
+       "F018",
+       "FT.GPU_KERNELS.static-warnings"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.GPU_KERNELS.static-warnings"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -704,7 +965,7 @@
    "raise_count": 11,
    "receipt": "ABI_VERDICT_HARNESS.json",
    "relpath": "tools/future/abi_verdicts.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "abi_verdicts",
    "workunit_constructs": []
   },
@@ -725,10 +986,7 @@
    ],
    "docstring": "ANE_PREBOARD \u2014 prepared-but-unrun Core ML / ANE contracts. Headline: this machine has no matching Core ML / Xcode toolchain. Command Line Tools are not Xcode, coremltools is not installed, and /Applications/Xcode.app is absent. This module\u2026",
    "filename": "ane_preboard.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -774,10 +1032,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -790,12 +1048,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.ANE.preboard"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.ANE.preboard"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -858,7 +1119,7 @@
    "raise_count": 21,
    "receipt": "ANE_PREBOARD.json",
    "relpath": "tools/future/ane_preboard.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "ane_preboard",
    "workunit_constructs": []
   },
@@ -897,9 +1158,7 @@
    ],
    "docstring": "Autonomy trial harness \u2014 run and judge 15m / 1h / 3h / 6h on evidence. A timer expiring is not a pass. Each trial is judged from a recorded timeline of WorkUnits, receipts, refusals and frontier deltas. Three behaviours are automatic FAILU\u2026",
    "filename": "autonomy_trial.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -970,7 +1229,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -985,12 +1245,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.CHILD_RESIDENT.launch"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.CHILD_RESIDENT.launch"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -1076,7 +1339,7 @@
    "raise_count": 2,
    "receipt": "AUTONOMY_TRIALS.json",
    "relpath": "tools/future/autonomy_trial.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "autonomy_trial",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -1097,9 +1360,7 @@
    ],
    "docstring": "CANDIDATE_STAGED_PLAN \u2014 static planner over the physical qualification queue. Codex owns the live queue and the protected GPU window. This sidecar never acquires a lease, never quiesces a process, and never runs a benchmark. It reads the q\u2026",
    "filename": "candidate_planner.py",
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -1145,10 +1406,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -1162,10 +1423,12 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F002"
+       "F002",
+       "FT.GPU_KERNELS.ready-protected"
       ],
       "receipt_is_frontier_probe": [
-       "F017"
+       "F017",
+       "FT.GPU_KERNELS.ready-protected"
       ],
       "writes_frontier_document": false
      },
@@ -1232,7 +1495,7 @@
    "raise_count": 11,
    "receipt": "CANDIDATE_STAGED_PLAN.json",
    "relpath": "tools/future/candidate_planner.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "candidate_planner",
    "workunit_constructs": []
   },
@@ -1243,10 +1506,7 @@
    "cli_flags": [],
    "docstring": "Adjudicate the six static ABI rows reported by the Claude sidecar. This is a source-only feedback receipt. It records whether each preflight row was a real defect or a parser limitation, and it refuses to emit any hardware metric. The rece\u2026",
    "filename": "claude_abi_adjudication.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -1262,10 +1522,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -1278,12 +1538,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.GPU_KERNELS.static-warnings"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.GPU_KERNELS.static-warnings"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -1316,7 +1579,7 @@
    "raise_count": 4,
    "receipt": "CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
    "relpath": "tools/future/claude_abi_adjudication.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "claude_abi_adjudication",
    "workunit_constructs": []
   },
@@ -1334,9 +1597,7 @@
    ],
    "docstring": "Freeze Codex's optimization metabolism into schedulable HCLI WorkUnit species. Codex handed over nine loose labels. This module turns the handoff into thirty precise WorkUnit species, each grounded in an observed Codex operation (or explic\u2026",
    "filename": "codex_behaviors.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -1371,7 +1632,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -1386,12 +1648,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -1441,7 +1706,7 @@
    "raise_count": 46,
    "receipt": "CODEX_WORKUNIT_SPECIES.json",
    "relpath": "tools/future/codex_behaviors.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "codex_behaviors",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -1468,9 +1733,7 @@
    ],
    "docstring": "CODEX_INGEST \u2014 read-only watcher that turns Codex receipts into sidecar deltas. `receipts/headless/` is Codex's live artifact stream. This module never writes there. It hashes every file, classifies genuinely new or changed artifacts as LA\u2026",
    "filename": "codex_ingest.py",
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -1498,10 +1761,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -1515,10 +1778,12 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F015"
+       "F015",
+       "FT.TOOLS.propagate-skips"
       ],
       "receipt_is_frontier_probe": [
-       "F016"
+       "F016",
+       "FT.TOOLS.propagate-skips"
       ],
       "writes_frontier_document": false
      },
@@ -1567,7 +1832,7 @@
    "raise_count": 1,
    "receipt": "CODEX_INGEST_STATE.json",
    "relpath": "tools/future/codex_ingest.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "codex_ingest",
    "workunit_constructs": []
   },
@@ -1589,10 +1854,7 @@
    ],
    "docstring": "CONTAMINATION_SCIENCE \u2014 machine-state record, A/B stats, promotion gate. A DIAGNOSTIC_RELATIVE number taken on a busy machine has burned this program before. This sidecar consolidates the existing quiescence / cleanliness / benchmark-bound\u2026",
    "filename": "contamination.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -1619,10 +1881,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -1636,13 +1898,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F011"
+       "F011",
+       "FT.VERIFICATION.contamination"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.contamination"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -1686,7 +1950,7 @@
    "raise_count": 12,
    "receipt": "CONTAMINATION_SCIENCE.json",
    "relpath": "tools/future/contamination.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "contamination",
    "workunit_constructs": []
   },
@@ -1704,10 +1968,7 @@
    ],
    "docstring": "CUDA low-bit decode literature -> executable Hawking hypotheses. CUDA is a textbook now and a physical oracle later. This sidecar extracts physical invariants from publicly-known low-bit decode / MoE kernel design (NVIDIA as a source schoo\u2026",
    "filename": "cuda_lowbit_hypotheses.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -1735,10 +1996,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -1751,12 +2012,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.ARCHITECTURE_REPATRIATION.compile-specs"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.ARCHITECTURE_REPATRIATION.compile-specs"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -1801,7 +2065,7 @@
    "raise_count": 23,
    "receipt": "CUDA_LOWBIT_HYPOTHESES.json",
    "relpath": "tools/future/cuda_lowbit_hypotheses.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "cuda_lowbit_hypotheses",
    "workunit_constructs": []
   },
@@ -1822,9 +2086,7 @@
    ],
    "docstring": "DEBUGGER LAB \u2014 provider-neutral debugger contract and honest Apple probes. Headline: this host has Command Line Tools, not Xcode. `xcrun` cannot locate the Metal compiler. LLDB is on PATH but cannot launch a debuggee (`Operation not permit\u2026",
    "filename": "debugger.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -1877,7 +2139,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -1892,12 +2155,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.TOOLS.freshness"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.TOOLS.freshness"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -1966,7 +2232,7 @@
    "raise_count": 35,
    "receipt": "DEBUGGER_LAB.json",
    "relpath": "tools/future/debugger.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "debugger",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -1986,10 +2252,7 @@
    ],
    "docstring": "DECODE CIVILIZATION \u2014 tokenizer, LM head, sampling, state, speculative/MTP. Hawking optimization must not collapse to weight matrices. Tokenizer, LM head, sampling, KV, recurrent state, and speculative decoding are physical organs with rea\u2026",
    "filename": "decode_civilization.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2032,10 +2295,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -2048,12 +2311,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.DECODING.cost-model"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.DECODING.cost-model"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -2113,7 +2379,7 @@
    "raise_count": 11,
    "receipt": "DECODE_CIVILIZATION.json",
    "relpath": "tools/future/decode_civilization.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "decode_civilization",
    "workunit_constructs": []
   },
@@ -2143,9 +2409,7 @@
    ],
    "docstring": "DETACHED EXECUTION \u2014 HCLI owns the child; the generation loop does not wait. Long work seals a WorkUnit, launches a real detached OS process, records pid + start-token identity and the expected receipt, then returns immediately. HCLI \u2014 not\u2026",
    "filename": "detached.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2184,7 +2448,8 @@
      "evidence": {
       "constructs": [
        "WorkUnit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -2199,12 +2464,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.no-launch"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.no-launch"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -2258,7 +2526,7 @@
    "raise_count": 16,
    "receipt": "DETACHED_EXECUTION.json",
    "relpath": "tools/future/detached.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "detached",
    "workunit_constructs": [
     "WorkUnit"
@@ -2279,10 +2547,7 @@
    ],
    "docstring": "Device Ascension Pipeline \u2014 arrival of a new machine. When a new machine arrives it must not restart the science from zero, and it must not inherit another machine's laws as truth. This sidecar is the ordered arrival PIPE around the existi\u2026",
    "filename": "device_ascension_pipeline.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2318,10 +2583,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -2334,12 +2599,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.ARCHITECTURE_REPATRIATION.device-run"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.ARCHITECTURE_REPATRIATION.device-run"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -2392,7 +2660,7 @@
    "raise_count": 12,
    "receipt": "DEVICE_ASCENSION_PIPELINE.json",
    "relpath": "tools/future/device_ascension_pipeline.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "device_ascension_pipeline",
    "workunit_constructs": []
   },
@@ -2411,10 +2679,7 @@
    ],
    "docstring": "Developer platform foundations \u2014 programmable substrate, not product polish. Stable IR serialization, a receipt API over the sealed sidecar format, versioned model/machine profiles, a backend provider contract, a WorkUnit API over the HCLI\u2026",
    "filename": "devplatform.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2459,10 +2724,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -2475,12 +2740,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.TOOLS.freshness"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.TOOLS.freshness"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -2543,7 +2811,7 @@
    "raise_count": 34,
    "receipt": "DEVELOPER_PLATFORM.json",
    "relpath": "tools/future/devplatform.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "devplatform",
    "workunit_constructs": []
   },
@@ -2564,9 +2832,7 @@
    ],
    "docstring": "SELF_MEASURED_DIRTY \u2014 honest evidence from a contaminated machine. A resident that lives on the machine contaminates every measurement it takes. Those numbers are good for ranking, direction, cheap A/B and pruning. They must NEVER promote.\u2026",
    "filename": "dirty_measure.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2603,7 +2869,8 @@
      "evidence": {
       "constructs": [
        "emit_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -2618,12 +2885,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.VERIFICATION.contamination"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.contamination"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -2675,7 +2945,7 @@
    "raise_count": 43,
    "receipt": "DIRTY_MEASUREMENT.json",
    "relpath": "tools/future/dirty_measure.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "dirty_measure",
    "workunit_constructs": [
     "emit_workunit"
@@ -2699,10 +2969,7 @@
    ],
    "docstring": "EBPW category validator \u2014 meta-BPW must never launder physical EBPW. Five quantities are distinct types. Arithmetic between them is a type error. `prospective_meta_bpw < 1` alone never promotes. python3 tools/future/ebpw_categories.py --bu\u2026",
    "filename": "ebpw_categories.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2727,10 +2994,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -2743,12 +3010,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -2790,7 +3060,7 @@
    "raise_count": 20,
    "receipt": "EBPW_CATEGORY_VALIDATOR.json",
    "relpath": "tools/future/ebpw_categories.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "ebpw_categories",
    "workunit_constructs": []
   },
@@ -2814,9 +3084,7 @@
    ],
    "docstring": "EVIDENCE_DAG \u2014 V0\u2013V9 verification hierarchy, reuse, precise invalidation. Proof is expensive and must be earned, reused, and invalidated precisely. This module is the sidecar guard that kills the full-suite reflex: a mutation does not auto\u2026",
    "filename": "evidence_dag.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2858,7 +3126,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -2873,12 +3142,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.VERIFICATION.repro"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.repro"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -2935,7 +3207,7 @@
    "raise_count": 63,
    "receipt": "EVIDENCE_DAG.json",
    "relpath": "tools/future/evidence_dag.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "evidence_dag",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -2955,10 +3227,7 @@
    ],
    "docstring": "Pinned evidence snapshot for sidecar lanes. Codex writes its authoritative receipts into `receipts/headless/`, and most of the current ones are NOT committed. A sidecar lane running in a sparse git worktree therefore cannot see them at all\u2026",
    "filename": "evidence_snapshot.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -2975,10 +3244,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -2991,12 +3260,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.CONTEXT.disk-authority"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.CONTEXT.disk-authority"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3030,7 +3302,7 @@
    "raise_count": 1,
    "receipt": "EVIDENCE_SNAPSHOT.json",
    "relpath": "tools/future/evidence_snapshot.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "evidence_snapshot",
    "workunit_constructs": []
   },
@@ -3048,10 +3320,7 @@
    ],
    "docstring": "EXPERT_BANK_SCHOOL \u2014 generators for structured expert STORAGE sharing and COMPUTE sharing. Naive global similarity, trivial shared basis, and unchanged archetypes are recorded-dead and refused. This module emits candidates and their cheape\u2026",
    "filename": "expert_bank_school.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -3081,10 +3350,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -3097,12 +3366,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.ngram-school"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.ngram-school"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3149,7 +3421,7 @@
    "raise_count": 9,
    "receipt": "EXPERT_BANK_SCHOOL.json",
    "relpath": "tools/future/expert_bank_school.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "expert_bank_school",
    "workunit_constructs": []
   },
@@ -3167,9 +3439,7 @@
    ],
    "docstring": "Continuous complete Flash NR + seven strictly separated EBPW quantities. Extends ``tools/future/ebpw_categories.py`` (five landed types, can_promote false for prospective-only). This module does not fork that type system: new quantities su\u2026",
    "filename": "flash_nr_complete.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -3216,7 +3486,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -3231,12 +3502,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3298,7 +3572,7 @@
    "raise_count": 26,
    "receipt": "FLASH_NR_COMPLETE.json",
    "relpath": "tools/future/flash_nr_complete.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "flash_nr_complete",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -3321,10 +3595,7 @@
    ],
    "docstring": "FLASH_NX_AUDIT \u2014 what stands between Flash NR V2 and a promotable NX. The physical qualification queue's BLOCKED Flash rows collapse, except for two specialized extras, to one missing dependency: a source-independent Flash NX with a protec\u2026",
    "filename": "flash_nx_audit.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -3357,10 +3628,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -3374,13 +3645,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F001"
+       "F001",
+       "FT.MODEL_EXECUTION.complete-token"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_EXECUTION.complete-token"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3430,7 +3703,7 @@
    "raise_count": 2,
    "receipt": "FLASH_NX_COMPLETENESS_AUDIT.json",
    "relpath": "tools/future/flash_nx_audit.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "flash_nx_audit",
    "workunit_constructs": []
   },
@@ -3451,9 +3724,7 @@
    ],
    "docstring": "FLASH_ORGAN_SCHOOLS \u2014 fourteen independently schedulable Gravity schools. Codex advanced Flash EXECUTION far past Flash REPRESENTATION. This sidecar does not quantize tensors. It searches for the smallest executable PROGRAM that preserves \u2026",
    "filename": "flash_schools.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -3499,7 +3770,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -3514,12 +3786,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3580,7 +3855,7 @@
    "raise_count": 27,
    "receipt": "FLASH_ORGAN_SCHOOLS.json",
    "relpath": "tools/future/flash_schools.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "flash_schools",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -3601,10 +3876,7 @@
    ],
    "docstring": "FPGA engine school \u2014 bit-exact functional references, no HDL. These are golden models a later cycle model, HW emulation, and eventually real hardware are checked against. They are not an FPGA backend and emit no HDL. FPGA here is part of A\u2026",
    "filename": "fpga_engines.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -3647,10 +3919,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -3663,12 +3935,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.FPGA.engine-sim"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.FPGA.engine-sim"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3728,7 +4003,7 @@
    "raise_count": 48,
    "receipt": "FPGA_ENGINE_SCHOOL.json",
    "relpath": "tools/future/fpga_engines.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "fpga_engines",
    "workunit_constructs": []
   },
@@ -3747,10 +4022,7 @@
    ],
    "docstring": "FPGA multi-fidelity estimator and the four adaptation clocks. Cheap ladder levels can kill losers before an expensive level runs. Disagreement between levels is a finding, not noise. HW_EMULATION and REAL_HARDWARE are UNIMPLEMENTED (no emu\u2026",
    "filename": "fpga_fidelity.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -3784,10 +4056,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -3800,12 +4072,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.FPGA.engine-sim"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.FPGA.engine-sim"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3856,7 +4131,7 @@
    "raise_count": 53,
    "receipt": "FPGA_MULTIFIDELITY.json",
    "relpath": "tools/future/fpga_fidelity.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "fpga_fidelity",
    "workunit_constructs": []
   },
@@ -3881,10 +4156,7 @@
    ],
    "docstring": "DERIVED_FRESHNESS \u2014 semantic vs byte freshness for sidecar artifacts. Codex rewrites the physical qualification queue rapidly. Every rewrite changes the file sha even when nothing semantic moved. This module distinguishes: FRESH byte sha a\u2026",
    "filename": "freshness.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -3920,10 +4192,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -3937,13 +4209,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F017"
+       "F017",
+       "FT.EXPERIMENT_TURNAROUND.refresh"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.EXPERIMENT_TURNAROUND.refresh"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -3996,7 +4270,7 @@
    "raise_count": 7,
    "receipt": "DERIVED_FRESHNESS.json",
    "relpath": "tools/future/freshness.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "freshness",
    "workunit_constructs": []
   },
@@ -4020,9 +4294,7 @@
    ],
    "docstring": "FRONTIER_STATE \u2014 twenty-two persistent frontiers a resident cannot idle past. global_frontier.py is the campaign gap tracker (F001\u2013F020, probe-backed). It is adequate for that job and is not forked here. This module is the operating layer \u2026",
    "filename": "frontiers.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4048,7 +4320,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -4063,12 +4336,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
-      "writes_frontier_document": false
+      "named_as_integration_target": [
+       "FT.TOOLS.frontiers-refill"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.TOOLS.frontiers-refill"
+      ],
+      "writes_frontier_document": true
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -4109,7 +4385,7 @@
    "raise_count": 14,
    "receipt": "FRONTIER_STATE.json",
    "relpath": "tools/future/frontiers.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "frontiers",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -4130,10 +4406,7 @@
    ],
    "docstring": "FUSION_SIMULATION \u2014 semantic heterogeneous simulation with no fake speed claim. Models a Hawking execution spread across Apple Silicon, an FPGA card, a future CUDA/DGX node, an eGPU and additional Macs \u2014 before any of those nodes exist. Th\u2026",
    "filename": "fusion_sim.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4170,10 +4443,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -4186,12 +4459,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_EXECUTION.fusion-sim"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_EXECUTION.fusion-sim"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -4245,7 +4521,7 @@
    "raise_count": 34,
    "receipt": "FUSION_SIMULATION.json",
    "relpath": "tools/future/fusion_sim.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "fusion_sim",
    "workunit_constructs": []
   },
@@ -4273,10 +4549,7 @@
    ],
    "docstring": "GIT LOCK DURABILITY \u2014 conservative recovery for abandoned git index.lock files. Hawking chronically abandons `.git/index.lock` on the PRIMARY working tree. The leftover files are a presence-lock (O_CREAT|O_EXCL), not flock: SIGKILL skips g\u2026",
    "filename": "git_lock_doctor.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4310,10 +4583,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -4326,12 +4599,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.no-launch"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.no-launch"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -4382,7 +4658,7 @@
    "raise_count": 1,
    "receipt": "GIT_LOCK_DURABILITY_REPORT.json",
    "relpath": "tools/future/git_lock_doctor.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "git_lock_doctor",
    "workunit_constructs": []
   },
@@ -4400,9 +4676,7 @@
    ],
    "docstring": "CLAUDE_GLOBAL_FRONTIER \u2014 a live frontier, not a backlog. Directive section 2 asks for missing / weak / stale / blocked / high-value-integration work only, and section 78 requires every entry to carry prerequisite, expected value, resource \u2026",
    "filename": "global_frontier.py",
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4420,10 +4694,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -4436,8 +4710,12 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.CONTEXT.open-question"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.CONTEXT.open-question"
+      ],
       "writes_frontier_document": true
      },
      "pass": true
@@ -4475,7 +4753,7 @@
    "raise_count": 4,
    "receipt": "CLAUDE_GLOBAL_FRONTIER.json",
    "relpath": "tools/future/global_frontier.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "global_frontier",
    "workunit_constructs": []
   },
@@ -4496,10 +4774,7 @@
    ],
    "docstring": "GREEN_MACHINE \u2014 energy accounting that says UNKNOWN. Energy is a missing axis of the dominance scoreboard. This sidecar defines the metric contract, probes what THIS Mac can measure without root and without a GPU lease, and exposes an ener\u2026",
    "filename": "green_machine.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4533,10 +4808,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -4550,13 +4825,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F006"
+       "F006",
+       "FT.VERIFICATION.contamination"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.contamination"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -4607,7 +4884,7 @@
    "raise_count": 12,
    "receipt": "GREEN_MACHINE.json",
    "relpath": "tools/future/green_machine.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "green_machine",
    "workunit_constructs": []
   },
@@ -4644,7 +4921,8 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": false
      },
      "gap": "does_not_emit_workunit",
      "pass": false
@@ -4719,10 +4997,7 @@
    ],
    "docstring": "HARDWARE DOCTOR \u2014 falsifiable hardware-axis experiment proposer. The representation Doctor (tools/headless/doctor_diagnosis.py) ranks S026 \u00a765 families per organ and emits ORGAN / DIAGNOSIS / PRESCRIPTION / AVOID. This sidecar does the sam\u2026",
    "filename": "hardware_doctor.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4753,10 +5028,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -4770,13 +5045,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F004"
+       "F004",
+       "FT.FPGA.hardware-doctor"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.FPGA.hardware-doctor"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -4824,7 +5101,7 @@
    "raise_count": 13,
    "receipt": "HARDWARE_DOCTOR.json",
    "relpath": "tools/future/hardware_doctor.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "hardware_doctor",
    "workunit_constructs": []
   },
@@ -4845,10 +5122,7 @@
    ],
    "docstring": "HBM Doctor \u2014 what should live in 8 GB of HBM. An FPGA card's HBM is a BANDWIDTH SHARD, not overflow RAM. This module answers the residency question by ranking candidates on marginal complete-token critical-path reduction per resident byte.\u2026",
    "filename": "hbm_doctor.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4876,10 +5150,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -4893,13 +5167,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F005"
+       "F005",
+       "FT.ACTIVE_BYTES.hbm-rank"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.ACTIVE_BYTES.hbm-rank"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -4944,7 +5220,7 @@
    "raise_count": 5,
    "receipt": "HBM_DOCTOR.json",
    "relpath": "tools/future/hbm_doctor.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "hbm_doctor",
    "workunit_constructs": []
   },
@@ -4963,10 +5239,7 @@
    ],
    "docstring": "HMF/HGVAS managed-object semantics that never lie about coherence. This is a SEMANTIC OVERLAY on the canonical Hawking Memory Fabric (`tools/accelerator/humf.py`, re-exported as `tools/accelerator/hmf.py`). It is not a second fabric. HUMF \u2026",
    "filename": "hmf_objects.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -4999,10 +5272,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -5015,12 +5288,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MEMORY.hmf"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MEMORY.hmf"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -5070,7 +5346,7 @@
    "raise_count": 20,
    "receipt": "HMF_MANAGED_OBJECTS.json",
    "relpath": "tools/future/hmf_objects.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "hmf_objects",
    "workunit_constructs": []
   },
@@ -5094,10 +5370,7 @@
    ],
    "docstring": "HWIR v1 \u2014 hardware intermediate representation. The FPGA/spatial school compiles into this IR. It consumes Noetic/PhysicalGraph semantics and real FPGA organ-map receipts. A graph that assumes it is multiplying original dense source weight\u2026",
    "filename": "hwir.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -5130,10 +5403,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -5148,13 +5421,15 @@
       "frontier_present": true,
       "named_as_integration_target": [
        "F003",
-       "F012"
+       "F012",
+       "FT.PHYSICAL_GRAPH.hwir-lower"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.PHYSICAL_GRAPH.hwir-lower"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -5204,7 +5479,7 @@
    "raise_count": 10,
    "receipt": "HWIR_V1.json",
    "relpath": "tools/future/hwir.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "hwir",
    "workunit_constructs": []
   },
@@ -5250,7 +5525,8 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": false
      },
      "gap": "does_not_emit_workunit",
      "pass": false
@@ -5331,10 +5607,7 @@
    ],
    "docstring": "LPC_BASELINES \u2014 honest baselines with calibrated uncertainty and ABSTENTION. A learned compiler that cannot say \"I do not know\" will confidently mispredict outside its support. These baselines refuse to extrapolate: * nearest measured neig\u2026",
    "filename": "lpc_baselines.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -5360,10 +5633,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -5376,12 +5649,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.VERIFICATION.repro"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.repro"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -5424,7 +5700,7 @@
    "raise_count": 7,
    "receipt": "LPC_BASELINES.json",
    "relpath": "tools/future/lpc_baselines.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "lpc_baselines",
    "workunit_constructs": []
   },
@@ -5443,10 +5719,7 @@
    ],
    "docstring": "LPC_DATASET \u2014 experiment data contract for a learned physical compiler. Data before ML. A row binds every physical experiment to the identity and measurement fields required to learn from it. Missing keys are REJECTED. Unmeasured values ar\u2026",
    "filename": "lpc_dataset.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -5478,10 +5751,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -5495,13 +5768,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F007"
+       "F007",
+       "FT.VERIFICATION.repro"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.repro"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -5550,7 +5825,7 @@
    "raise_count": 3,
    "receipt": "LPC_DATASET.json",
    "relpath": "tools/future/lpc_dataset.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "lpc_dataset",
    "workunit_constructs": []
   },
@@ -5569,10 +5844,7 @@
    ],
    "docstring": "META_EXPERIMENT_FUNNEL \u2014 kill representation candidates early, keep the scar. Representation search is expensive and most candidates are wrong. This sidecar funnel is the ordered refusal to spend a later gate on a candidate whose earlier i\u2026",
    "filename": "meta_funnel.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -5599,10 +5871,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -5615,12 +5887,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -5664,7 +5939,7 @@
    "raise_count": 3,
    "receipt": "META_EXPERIMENT_FUNNEL.json",
    "relpath": "tools/future/meta_funnel.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "meta_funnel",
    "workunit_constructs": []
   },
@@ -5689,10 +5964,7 @@
    ],
    "docstring": "META_DOWNSTREAM_READY \u2014 gates 3\u20139 start the instant a real corpus exists. The Flash meta funnel's binding gate is `real_teacher_fit`. Physical capture reports BLOCKED_NO_METAL_GPU (0 of 256 rows) at `dense_source_bf16_prefix_initialization\u2026",
    "filename": "meta_ready.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -5730,10 +6002,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -5747,13 +6019,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F019"
+       "F019",
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -5808,7 +6082,7 @@
    "raise_count": 10,
    "receipt": "META_DOWNSTREAM_READY.json",
    "relpath": "tools/future/meta_ready.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "meta_ready",
    "workunit_constructs": []
   },
@@ -5826,10 +6100,7 @@
    ],
    "docstring": "MOE_PHYSICAL_SCHOOL \u2014 physical execution of routed expert compute. Flash is a large MoE. Most of its bytes and most of its blocked candidates live on the routed-expert path. Expert-bank school already generates STORAGE and COMPUTE sharing \u2026",
    "filename": "moe_physical_school.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -5876,10 +6147,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -5892,12 +6163,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.GPU_KERNELS.flash-nx"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.GPU_KERNELS.flash-nx"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -5961,7 +6235,7 @@
    "raise_count": 18,
    "receipt": "MOE_PHYSICAL_SCHOOL.json",
    "relpath": "tools/future/moe_physical_school.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "moe_physical_school",
    "workunit_constructs": []
   },
@@ -5980,10 +6254,7 @@
    ],
    "docstring": "CODEX_MUTATION_SURFACE \u2014 who is allowed to write where. Codex owns the live physical Accelerator frontier. Claude/Grok must not mutate files Codex is holding. This module records the ownership map with mtime evidence and provides a checker\u2026",
    "filename": "mutation_surface.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6002,10 +6273,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -6018,12 +6289,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.CONTEXT.disk-authority"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.CONTEXT.disk-authority"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -6059,7 +6333,7 @@
    "raise_count": 1,
    "receipt": "CODEX_MUTATION_SURFACE.json",
    "relpath": "tools/future/mutation_surface.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "mutation_surface",
    "workunit_constructs": []
   },
@@ -6099,10 +6373,7 @@
    ],
    "docstring": "NEGATIVE_SCIENCE_INDEX \u2014 query the scars before proposing. Hawking already recorded a large corpus of things that do not work. Nothing queried that corpus before a new experiment was proposed, so rediscovery was free. This module is the ke\u2026",
    "filename": "negative_index.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6141,10 +6412,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -6158,13 +6429,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F009"
+       "F009",
+       "FT.VERIFICATION.negative-index"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.negative-index"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -6220,7 +6493,7 @@
    "raise_count": 4,
    "receipt": "NEGATIVE_SCIENCE_INDEX.json",
    "relpath": "tools/future/negative_index.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "negative_index",
    "workunit_constructs": []
   },
@@ -6238,10 +6511,7 @@
    ],
    "docstring": "NGRAM_SCHOOL \u2014 five-axis candidate generator for Flash's n-gram organ. Flash's n-gram surface is a representation/execution school, not a storage problem. This module measures each idea on five conceptual axes (executable bytes, active loo\u2026",
    "filename": "ngram_school.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6289,10 +6559,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -6305,12 +6575,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.ngram-school"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.ngram-school"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -6375,7 +6648,7 @@
    "raise_count": 15,
    "receipt": "NGRAM_SCHOOL.json",
    "relpath": "tools/future/ngram_school.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "ngram_school",
    "workunit_constructs": []
   },
@@ -6394,10 +6667,7 @@
    ],
    "docstring": "ODYSSEY2_LAW_STORE \u2014 every law carries its evidence and its SCOPE. Odyssey II asks WHAT DID HAWKING ALREADY LEARN? Transfer receipts already exist; nothing held a law together with a sequential scope lattice, and a model-local observation \u2026",
    "filename": "odyssey2_law_store.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6432,10 +6702,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -6449,13 +6719,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F010"
+       "F010",
+       "FT.ODYSSEY_TRANSFER.flash-qwen27"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.ODYSSEY_TRANSFER.flash-qwen27"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -6507,7 +6779,7 @@
    "raise_count": 24,
    "receipt": "ODYSSEY2_LAW_STORE.json",
    "relpath": "tools/future/odyssey2_law_store.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "odyssey2_law_store",
    "workunit_constructs": []
   },
@@ -6529,10 +6801,7 @@
    ],
    "docstring": "ODYSSEY III \u2014 WHERE IS HAWKING WRONG? Generate executable attack specs against Odyssey II law records, rank them by cost versus probability of refutation, and close the loop LAW -> TRANSFER HYPOTHESIS -> ADVERSARIAL TARGET -> EXPERIMENT SP\u2026",
    "filename": "odyssey3_adversary.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6564,10 +6833,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -6580,12 +6849,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.ODYSSEY_ADVERSARY.attacks"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.ODYSSEY_ADVERSARY.attacks"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -6634,7 +6906,7 @@
    "raise_count": 23,
    "receipt": "ODYSSEY3_ADVERSARY.json",
    "relpath": "tools/future/odyssey3_adversary.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "odyssey3_adversary",
    "workunit_constructs": []
   },
@@ -6655,9 +6927,7 @@
    ],
    "docstring": "ODYSSEY I launch gate \u2014 WHAT IS TRUE? may not start on a green scaffold. The sidecar substrate is executable. That is not the same as Odyssey started. This module evaluates sixteen launch criteria from disk evidence, names every unmet crit\u2026",
    "filename": "odyssey_launch.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6693,7 +6963,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -6708,12 +6979,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.ODYSSEY_TRANSFER.re-earn"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.ODYSSEY_TRANSFER.re-earn"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -6762,11 +7036,113 @@
    "raise_count": 3,
    "receipt": "ODYSSEY_LAUNCH_GATE.json",
    "relpath": "tools/future/odyssey_launch.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "odyssey_launch",
    "workunit_constructs": [
     "emit_hcli_workunit"
    ]
+  },
+  {
+   "capabilities": [
+    "future.orchestration"
+   ],
+   "cli_flags": [
+    [
+     "--bind"
+    ],
+    [
+     "--invoke"
+    ]
+   ],
+   "docstring": "ORCHESTRATION \u2014 bind every sidecar module to the frontier it informs. The resident-callability audit found `operational=0 of 74`, and the gaps had one shape rather than seventy: `result_does_not_feed_a_named_frontier` on 70 modules and `do\u2026",
+   "filename": "orchestration.py",
+   "gaps": [
+    "does_not_emit_workunit",
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "validate_bindings",
+    "frontier_view",
+    "species_for",
+    "emit_workunit",
+    "invoke",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [],
+      "emitted_by_orchestration_connector": false
+     },
+     "gap": "does_not_emit_workunit",
+     "pass": false
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 9,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [],
+      "receipt_is_frontier_probe": [],
+      "writes_frontier_document": false
+     },
+     "gap": "result_does_not_feed_a_named_frontier",
+     "pass": false
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "validate_bindings",
+       "frontier_view",
+       "species_for",
+       "emit_workunit",
+       "invoke",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "ORCHESTRATION_BINDINGS.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "ORCHESTRATION_BINDINGS.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 9,
+   "receipt": "ORCHESTRATION_BINDINGS.json",
+   "relpath": "tools/future/orchestration.py",
+   "status": "NOT_OPERATIONAL",
+   "stem": "orchestration",
+   "workunit_constructs": []
   },
   {
    "capabilities": [
@@ -6786,10 +7162,7 @@
    ],
    "docstring": "P6_PRIMITIVE_PROJECTION \u2014 map Codex P6/P7 physical candidates onto Hawking. Codex owns the physical Accelerator frontier. This sidecar does not measure anything: every P6/P7 row is BLOCKED and unmeasured. The job is compounding \u2014 each cand\u2026",
    "filename": "p6_projection.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6822,10 +7195,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -6839,13 +7212,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F020"
+       "F020",
+       "FT.PHYSICAL_GRAPH.p6-projection"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.PHYSICAL_GRAPH.p6-projection"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -6895,7 +7270,7 @@
    "raise_count": 12,
    "receipt": "P6_PRIMITIVE_PROJECTION.json",
    "relpath": "tools/future/p6_projection.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "p6_projection",
    "workunit_constructs": []
   },
@@ -6914,10 +7289,7 @@
    ],
    "docstring": "PHYSICAL PRIMITIVES \u2014 executable contracts for the 17 atlas primitives. The Architecture Atlas already names 17 backend-neutral primitives as data. This module is their executable form: NR -> PhysicalGraph -> backend lowering, each carryin\u2026",
    "filename": "physical_primitives.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -6948,10 +7320,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -6965,13 +7337,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F012"
+       "F012",
+       "FT.MODEL_EXECUTION.static-skeleton"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_EXECUTION.static-skeleton"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -7019,7 +7393,7 @@
    "raise_count": 12,
    "receipt": "PHYSICAL_PRIMITIVES.json",
    "relpath": "tools/future/physical_primitives.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "physical_primitives",
    "workunit_constructs": []
   },
@@ -7041,9 +7415,7 @@
    ],
    "docstring": "PROPAGATE \u2014 apply Codex ingest deltas into the seven sidecar consumers. `codex_ingest.py` classifies Codex artifacts and emits LAW/SCAR deltas that name downstream consumers. Nothing consumed them: the compounding loop was open. This modul\u2026",
    "filename": "propagate.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -7079,7 +7451,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -7095,13 +7468,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F016"
+       "F016",
+       "FT.TOOLS.propagate-skips"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.TOOLS.propagate-skips"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -7152,7 +7527,7 @@
    "raise_count": 1,
    "receipt": "PROPAGATION_STATE.json",
    "relpath": "tools/future/propagate.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "propagate",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -7178,9 +7553,7 @@
    ],
    "docstring": "PROTECTED_WINDOW \u2014 the resident removes itself from the resource path. Protected evidence outranks resident convenience. This sidecar plans the sequence that checkpoints the resident, frees the GPU, runs Codex's staged qualification, and r\u2026",
    "filename": "protected_window.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -7228,7 +7601,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -7243,12 +7617,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.GPU_KERNELS.ready-protected"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.GPU_KERNELS.ready-protected"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -7311,7 +7688,7 @@
    "raise_count": 23,
    "receipt": "PROTECTED_WINDOW_PLAN.json",
    "relpath": "tools/future/protected_window.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "protected_window",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -7338,9 +7715,7 @@
    ],
    "docstring": "QUALIFICATION_PIPELINE \u2014 sequence the existing pieces; never seize the GPU. The planning, preflight, contamination and work-unit modules already exist. This sidecar sequences them into one resumable pipeline that is structurally incapable \u2026",
    "filename": "qualification_pipeline.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -7387,7 +7762,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -7402,12 +7778,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.GPU_KERNELS.ready-protected"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.GPU_KERNELS.ready-protected"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -7469,7 +7848,7 @@
    "raise_count": 22,
    "receipt": "QUALIFICATION_PIPELINE.json",
    "relpath": "tools/future/qualification_pipeline.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "qualification_pipeline",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -7489,10 +7868,7 @@
    ],
    "docstring": "QWEN27_ACCELERATOR_PROFILE_SCHEMA \u2014 one contract for every optimization. Qwen27 optimizations are incomparable when each one invents its own shape. This module is the schema: every section required unless marked optional, hard REJECTED (fi\u2026",
    "filename": "qwen27_profile_schema.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -7519,10 +7895,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -7535,12 +7911,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.LATENCY.gpu-ns"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.LATENCY.gpu-ns"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -7584,7 +7963,7 @@
    "raise_count": 7,
    "receipt": "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
    "relpath": "tools/future/qwen27_profile_schema.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "qwen27_profile_schema",
    "workunit_constructs": []
   },
@@ -7603,10 +7982,7 @@
    ],
    "docstring": "REPRO_SCIENCE \u2014 provenance, identity, canaries, replication, fail-closed faults. Autonomy that cannot be shown to fail closed will launder weak evidence into a strong claim. This module is the sidecar guard: STATIC_ONLY, bench UNKNOWN, gpu\u2026",
    "filename": "repro_science.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -7662,10 +8038,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -7679,13 +8055,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F008"
+       "F008",
+       "FT.VERIFICATION.repro"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.repro"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -7758,7 +8136,7 @@
    "raise_count": 36,
    "receipt": "REPRO_SCIENCE.json",
    "relpath": "tools/future/repro_science.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "repro_science",
    "workunit_constructs": []
   },
@@ -7779,9 +8157,7 @@
    ],
    "docstring": "Resident-callability audit \u2014 is the substrate operational or merely present? Fifty-odd sidecar modules exist. A subsystem is not operational until the RESIDENT can discover, invoke, schedule and verify it; its result changes a frontier; th\u2026",
    "filename": "resident_api.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -7819,7 +8195,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -7834,12 +8211,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -7892,7 +8272,7 @@
    "raise_count": 20,
    "receipt": "RESIDENT_API_AUDIT.json",
    "relpath": "tools/future/resident_api.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "resident_api",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -7915,10 +8295,7 @@
    ],
    "docstring": "Persist the HCLI resident identity to disk so restart needs no conversation. A resident whose identity lives only in a prompt cannot restart, cannot be compared to a child, and cannot be held to a capability claim. This module recovers the\u2026",
    "filename": "resident_identity.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -7949,10 +8326,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -7965,12 +8342,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -8018,7 +8398,7 @@
    "raise_count": 9,
    "receipt": "RESIDENT_IDENTITY.json",
    "relpath": "tools/future/resident_identity.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "resident_identity",
    "workunit_constructs": []
   },
@@ -8036,10 +8416,7 @@
    ],
    "docstring": "Generic resident install contract for whichever NX wins the tournament. The tournament outcome plugs in without a rewrite: every slot is generic over the winner's identity document. This module never installs, launches, or measures; it rec\u2026",
    "filename": "resident_install.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8060,10 +8437,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -8077,13 +8454,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F013"
+       "F013",
+       "FT.MODEL_CAPABILITY.hard-gates"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_CAPABILITY.hard-gates"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -8121,7 +8500,7 @@
    "raise_count": 1,
    "receipt": "RESIDENT_INSTALL_CONTRACT.json",
    "relpath": "tools/future/resident_install.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "resident_install",
    "workunit_constructs": []
   },
@@ -8139,9 +8518,7 @@
    ],
    "docstring": "Bounded resident-optimizer machinery: propose, rank, never promote. A future resident will improve Hawking by emitting experiment hypotheses. This sidecar prepares the economy that resident wakes into, and makes it structurally impossible \u2026",
    "filename": "resident_optimizer.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8171,7 +8548,8 @@
       "constructs": [
        "WorkUnit",
        "emit_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -8186,12 +8564,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.CHILD_RESIDENT.optimizer"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.CHILD_RESIDENT.optimizer"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -8235,7 +8616,7 @@
    "raise_count": 49,
    "receipt": "RESIDENT_OPTIMIZER.json",
    "relpath": "tools/future/resident_optimizer.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "resident_optimizer",
    "workunit_constructs": [
     "WorkUnit",
@@ -8256,10 +8637,7 @@
    ],
    "docstring": "ROUTER_SENSITIVE_ALLOCATION \u2014 which bits exist to preserve future control flow. Flash already showed that a small hidden-state perturbation changes later routing. This sidecar does not recompute that measurement. It consumes `receipts/head\u2026",
    "filename": "router_science.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8302,10 +8680,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -8318,12 +8696,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -8383,7 +8764,7 @@
    "raise_count": 10,
    "receipt": "ROUTER_SENSITIVE_ALLOCATION.json",
    "relpath": "tools/future/router_science.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "router_science",
    "workunit_constructs": []
   },
@@ -8410,9 +8791,7 @@
    ],
    "docstring": "Resident laboratory: isolated worktree, bounded writes, authority lattice. The super-resident lives here for hours. Provisioning creates (or re-enters) an isolated git worktree under the canonical repo's own `.worktrees/`, a writable root \u2026",
    "filename": "sandbox.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8442,7 +8821,8 @@
       "constructs": [
        "WorkUnit",
        "emit_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -8457,12 +8837,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.no-launch"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.no-launch"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -8506,7 +8889,7 @@
    "raise_count": 58,
    "receipt": "RESIDENT_SANDBOX.json",
    "relpath": "tools/future/sandbox.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "sandbox",
    "workunit_constructs": [
     "WorkUnit",
@@ -8536,10 +8919,7 @@
    ],
    "docstring": "SCAR_SCHEDULING \u2014 a scar must cost something before work is admitted. `negative_index.refuse_if_dead()` is the retrieval side: it cites a scar. This module is the scheduling and propagation side. Rediscovery is no longer free. admit(workun\u2026",
    "filename": "scar_scheduling.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8572,10 +8952,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -8588,12 +8968,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.VERIFICATION.negative-index"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.negative-index"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -8643,7 +9026,7 @@
    "raise_count": 19,
    "receipt": "SCAR_SCHEDULING.json",
    "relpath": "tools/future/scar_scheduling.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "scar_scheduling",
    "workunit_constructs": []
   },
@@ -8662,9 +9045,7 @@
    ],
    "docstring": "STATIC_KERNEL_PREFLIGHT \u2014 host/shader ABI checker with zero GPU. Reads the real .metal sources and their Rust hosts and checks the contract between them. Everything this tool emits is STATIC_ONLY. Static correctness does NOT prove speed an\u2026",
    "filename": "static_kernel_verify.py",
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8694,10 +9075,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -8712,10 +9093,12 @@
       "frontier_present": true,
       "named_as_integration_target": [
        "F002",
-       "F014"
+       "F014",
+       "FT.GPU_KERNELS.static-warnings"
       ],
       "receipt_is_frontier_probe": [
-       "F018"
+       "F018",
+       "FT.GPU_KERNELS.static-warnings"
       ],
       "writes_frontier_document": false
      },
@@ -8766,7 +9149,7 @@
    "raise_count": 1,
    "receipt": "STATIC_KERNEL_PREFLIGHT.json",
    "relpath": "tools/future/static_kernel_verify.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "static_kernel_verify",
    "workunit_constructs": []
   },
@@ -8784,10 +9167,7 @@
    ],
    "docstring": "STATIC SKELETON \u2014 compile-time topology with typed dynamic slots. Almost all model-execution topology is static. Only five slot kinds are genuinely dynamic. This module is the representation that makes that split explicit, plus a validator\u2026",
    "filename": "static_skeleton.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8816,10 +9196,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -8832,12 +9212,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_EXECUTION.static-skeleton"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_EXECUTION.static-skeleton"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -8883,7 +9266,7 @@
    "raise_count": 6,
    "receipt": "STATIC_SKELETON.json",
    "relpath": "tools/future/static_skeleton.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "static_skeleton",
    "workunit_constructs": []
   },
@@ -8901,9 +9284,7 @@
    ],
    "docstring": "Child, shadow, qualification, succession, and stop-a-bad-child. The incumbent resident has no constitutional privilege. It can create a child, run that child in shadow, qualify it on real axes, and hand over \u2014 while remaining structurally \u2026",
    "filename": "succession.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -8939,7 +9320,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -8954,12 +9336,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.CHILD_RESIDENT.install-dry-run"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.CHILD_RESIDENT.install-dry-run"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9010,7 +9395,7 @@
    "raise_count": 90,
    "receipt": "SUCCESSION.json",
    "relpath": "tools/future/succession.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "succession",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -9033,9 +9418,7 @@
    ],
    "docstring": "SANDBOX_RESIDENT_FLOOR and the provider-neutral super-resident daemon. The floor a body must clear to enter the orchestrator sandbox. It is not Singularity promotion. This module evaluates Flash and the incumbent Qwen27 against real receip\u2026",
    "filename": "super_resident.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9066,7 +9449,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -9081,12 +9465,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_CAPABILITY.hard-gates"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_CAPABILITY.hard-gates"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9132,7 +9519,7 @@
    "raise_count": 15,
    "receipt": "SUPER_RESIDENT_FLOOR.json",
    "relpath": "tools/future/super_resident.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "super_resident",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -9152,9 +9539,7 @@
    ],
    "docstring": "TABULA_FLOOR \u2014 behavioral surgery evaluated independently, not by refusal rate. Tabula is already a Doctor axis in this repository: recover the abliterated direction as a left-null vector, measure how much a codec puts back, and count refu\u2026",
    "filename": "tabula.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9199,7 +9584,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -9214,12 +9600,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_CAPABILITY.hard-gates"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_CAPABILITY.hard-gates"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9279,7 +9668,7 @@
    "raise_count": 43,
    "receipt": "TABULA_FLOOR.json",
    "relpath": "tools/future/tabula.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "tabula",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -9299,10 +9688,7 @@
    ],
    "docstring": "TEACHER_CORPUS_CONTRACT \u2014 real captures, bound, diverse, not fabricated. Every representation experiment downstream depends on teacher captures being real, bound to the right specimen/layer/surface, and diverse enough to mean anything. Thi\u2026",
    "filename": "teacher_corpus.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9340,10 +9726,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -9356,12 +9742,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.teacher-capture"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.teacher-capture"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9416,7 +9805,7 @@
    "raise_count": 13,
    "receipt": "TEACHER_CORPUS_CONTRACT.json",
    "relpath": "tools/future/teacher_corpus.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "teacher_corpus",
    "workunit_constructs": []
   },
@@ -9437,10 +9826,7 @@
    ],
    "docstring": "FLASH_SINGULARITY.NX vs QWEN27_SINGULARITY.NX \u2014 pre-registered, not run. Fair comparison registered before either contender is a complete NX. The harness REFUSES to run while either is incomplete. This sidecar has no GPU and must not execu\u2026",
    "filename": "tournament.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9469,10 +9855,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -9486,13 +9872,15 @@
      "evidence": {
       "frontier_present": true,
       "named_as_integration_target": [
-       "F013"
+       "F013",
+       "FT.MODEL_CAPABILITY.tournament-refuse"
       ],
-      "receipt_is_frontier_probe": [],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_CAPABILITY.tournament-refuse"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9538,7 +9926,7 @@
    "raise_count": 5,
    "receipt": "TOURNAMENT_READINESS.json",
    "relpath": "tools/future/tournament.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "tournament",
    "workunit_constructs": []
   },
@@ -9563,10 +9951,7 @@
    ],
    "docstring": "EXPERIMENT_TURNAROUND \u2014 development-loop latency, measured like a token budget. Token latency is already a first-class scoreboard field. Experiment turnaround is the same shape of question (which repeated phase dominates, with evidence) an\u2026",
    "filename": "turnaround.py",
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9590,10 +9975,10 @@
    "questions": {
     "emits_workunit": {
      "evidence": {
-      "constructs": []
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
      },
-     "gap": "does_not_emit_workunit",
-     "pass": false
+     "pass": true
     },
     "fail_closed": {
      "evidence": {
@@ -9606,12 +9991,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.LATENCY.cpu-turnaround"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.LATENCY.cpu-turnaround"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9652,7 +10040,7 @@
    "raise_count": 10,
    "receipt": "EXPERIMENT_TURNAROUND.json",
    "relpath": "tools/future/turnaround.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "turnaround",
    "workunit_constructs": []
   },
@@ -9670,9 +10058,7 @@
    ],
    "docstring": "RECEIPT_WAKEUP \u2014 completion wakes the graph, not the launcher. A receipt appearing (or changing by content hash) at an expected path is the completion event. The verifier, the dependency graph and the named frontier are callables registere\u2026",
    "filename": "wakeup.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9704,7 +10090,8 @@
      "evidence": {
       "constructs": [
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -9719,12 +10106,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.no-launch"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.no-launch"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9771,7 +10161,7 @@
    "raise_count": 16,
    "receipt": "RECEIPT_WAKEUP.json",
    "relpath": "tools/future/wakeup.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "wakeup",
    "workunit_constructs": [
     "emit_hcli_workunit"
@@ -9797,9 +10187,7 @@
    ],
    "docstring": "WORKGRAPH \u2014 graph scheduler with fourteen durable resource lanes. HCLI already has a DAG dispatcher (`hcli/scheduler.py` + `hcli/workunit.py` + `hcli/dag_store.py`). It is FIFO by ready_at, occupancy-capped on HCLI ResourceClass, exclusive\u2026",
    "filename": "workgraph.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9838,7 +10226,8 @@
      "evidence": {
       "constructs": [
        "WorkUnit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -9853,12 +10242,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.no-launch"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.no-launch"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -9912,7 +10304,7 @@
    "raise_count": 52,
    "receipt": "WORKGRAPH_STATE.json",
    "relpath": "tools/future/workgraph.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "workgraph",
    "workunit_constructs": [
     "WorkUnit"
@@ -9933,9 +10325,7 @@
    ],
    "docstring": "HCLI future WorkUnit species \u2014 types and a non-empty starting queue. Defines the ten future-work species and emits units INTO the existing HCLI WorkUnit field set. This module does not schedule, promote, or reimplement HCLI. Disk-backed li\u2026",
    "filename": "workunit_species.py",
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "has_if_main": true,
    "has_main": true,
    "hcli_tool_registered": false,
@@ -9962,7 +10352,8 @@
       "constructs": [
        "WorkUnit",
        "emit_hcli_workunit"
-      ]
+      ],
+      "emitted_by_orchestration_connector": true
      },
      "pass": true
     },
@@ -9977,12 +10368,15 @@
     "feeds_named_frontier": {
      "evidence": {
       "frontier_present": true,
-      "named_as_integration_target": [],
-      "receipt_is_frontier_probe": [],
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
       "writes_frontier_document": false
      },
-     "gap": "result_does_not_feed_a_named_frontier",
-     "pass": false
+     "pass": true
     },
     "hcli_invoke": {
      "evidence": {
@@ -10023,7 +10417,7 @@
    "raise_count": 28,
    "receipt": "HCLI_FUTURE_WORKUNITS.json",
    "relpath": "tools/future/workunit_species.py",
-   "status": "NOT_OPERATIONAL",
+   "status": "OPERATIONAL",
    "stem": "workunit_species",
    "workunit_constructs": [
     "WorkUnit",
@@ -10032,8 +10426,8 @@
   }
  ],
  "negative_findings": [
-  "74 of 74 scored modules are NOT_OPERATIONAL; operational=0. Not rounded up.",
-  "72 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
+  "5 of 75 scored modules are NOT_OPERATIONAL; operational=70. Not rounded up.",
+  "73 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
   "hcli/tool_registry.py default_tool_registry lists 32 tools and 0 future.* tools. AgentOS cannot discover the sidecar.",
   "HCLI ToolRegistry.invoke returns ToolResult(ok=False, UNKNOWN_TOOL) instead of raising; resident_api.invoke raises. Fail-closed is this surface, not HCLI's.",
   "Most modules persist a receipt a human can regenerate with `python3 tools/future/<mod>.py --build` but do not emit a WorkUnit and do not feed CLAUDE_GLOBAL_FRONTIER.json.",
@@ -10046,6 +10440,11 @@
  "not_operational_stems": [
   "__init__",
   "_common",
+  "handoff",
+  "integration_attack",
+  "orchestration"
+ ],
+ "operational_stems": [
   "abi_verdicts",
   "ane_preboard",
   "autonomy_trial",
@@ -10076,12 +10475,10 @@
   "git_lock_doctor",
   "global_frontier",
   "green_machine",
-  "handoff",
   "hardware_doctor",
   "hbm_doctor",
   "hmf_objects",
   "hwir",
-  "integration_attack",
   "lpc_baselines",
   "lpc_dataset",
   "meta_funnel",
@@ -10119,7 +10516,6 @@
   "workgraph",
   "workunit_species"
  ],
- "operational_stems": [],
  "purpose": "Audit whether the future sidecar is resident-operable or merely present, and expose the invocation surface the resident calls.",
  "recovered_implementation": {
   "hcli.agentos.runtime.AgentOS.invoke_tool": "hcli/agentos/runtime.py \u2014 the resident-facing dispatch. Persists a tool receipt under .hcli/receipts/tools/. Does not import tools.future.",
@@ -10165,16 +10561,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F018"
+    "F018",
+    "FT.GPU_KERNELS.static-warnings"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/abi_verdicts.py",
    "receipt": "ABI_VERDICT_HARNESS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.abi_verdicts": {
    "aliases": [
@@ -10208,16 +10602,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F018"
+    "F018",
+    "FT.GPU_KERNELS.static-warnings"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/abi_verdicts.py",
    "receipt": "ABI_VERDICT_HARNESS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.ane_preboard": {
    "aliases": [
@@ -10248,15 +10640,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.ANE.preboard"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/ane_preboard.py",
    "receipt": "ANE_PREBOARD.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.autonomous_reproducible_science": {
    "aliases": [
@@ -10283,16 +10674,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F008"
+    "F008",
+    "FT.VERIFICATION.repro"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/repro_science.py",
    "receipt": "REPRO_SCIENCE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.autonomy_trial": {
    "aliases": [
@@ -10359,14 +10748,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.CHILD_RESIDENT.launch"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/autonomy_trial.py",
    "receipt": "AUTONOMY_TRIALS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.candidate_planner": {
    "aliases": [
@@ -10401,15 +10790,14 @@
    "callable": "build",
    "frontier": [
     "F002",
-    "F017"
+    "F017",
+    "FT.GPU_KERNELS.ready-protected"
    ],
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/candidate_planner.py",
    "receipt": "CANDIDATE_STAGED_PLAN.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.candidate_queue_planner": {
    "aliases": [
@@ -10444,15 +10832,14 @@
    "callable": "build",
    "frontier": [
     "F002",
-    "F017"
+    "F017",
+    "FT.GPU_KERNELS.ready-protected"
    ],
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/candidate_planner.py",
    "receipt": "CANDIDATE_STAGED_PLAN.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.claude_abi_adjudication": {
    "aliases": [
@@ -10464,15 +10851,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.GPU_KERNELS.static-warnings"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/claude_abi_adjudication.py",
    "receipt": "CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.codex_behaviors": {
    "aliases": [
@@ -10497,14 +10883,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.emit-workunits"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/codex_behaviors.py",
    "receipt": "CODEX_WORKUNIT_SPECIES.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.codex_ingest": {
    "aliases": [
@@ -10563,15 +10949,14 @@
    "callable": "build",
    "frontier": [
     "F015",
-    "F016"
+    "F016",
+    "FT.TOOLS.propagate-skips"
    ],
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/codex_ingest.py",
    "receipt": "CODEX_INGEST_STATE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.codex_mutation_surface": {
    "aliases": [
@@ -10597,15 +10982,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.CONTEXT.disk-authority"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/mutation_surface.py",
    "receipt": "CODEX_MUTATION_SURFACE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.codex_receipt_ingestion": {
    "aliases": [
@@ -10664,15 +11048,14 @@
    "callable": "build",
    "frontier": [
     "F015",
-    "F016"
+    "F016",
+    "FT.TOOLS.propagate-skips"
    ],
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/codex_ingest.py",
    "receipt": "CODEX_INGEST_STATE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.contamination": {
    "aliases": [
@@ -10705,16 +11088,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F011"
+    "F011",
+    "FT.VERIFICATION.contamination"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/contamination.py",
    "receipt": "CONTAMINATION_SCIENCE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.contamination_science": {
    "aliases": [
@@ -10747,16 +11128,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F011"
+    "F011",
+    "FT.VERIFICATION.contamination"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/contamination.py",
    "receipt": "CONTAMINATION_SCIENCE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.cuda_lowbit_hypotheses": {
    "aliases": [
@@ -10781,15 +11160,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.ARCHITECTURE_REPATRIATION.compile-specs"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/cuda_lowbit_hypotheses.py",
    "receipt": "CUDA_LOWBIT_HYPOTHESES.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.debugger": {
    "aliases": [
@@ -10820,14 +11198,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.TOOLS.freshness"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/debugger.py",
    "receipt": "DEBUGGER_LAB.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.decode_civilization": {
    "aliases": [
@@ -10852,15 +11230,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.DECODING.cost-model"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/decode_civilization.py",
    "receipt": "DECODE_CIVILIZATION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.derived_freshness": {
    "aliases": [
@@ -10912,16 +11289,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F017"
+    "F017",
+    "FT.EXPERIMENT_TURNAROUND.refresh"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/freshness.py",
    "receipt": "DERIVED_FRESHNESS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.detached": {
    "aliases": [
@@ -10970,14 +11345,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.no-launch"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/detached.py",
    "receipt": "DETACHED_EXECUTION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.developer_platform": {
    "aliases": [
@@ -11010,15 +11385,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.TOOLS.freshness"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/devplatform.py",
    "receipt": "DEVELOPER_PLATFORM.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.device_ascension": {
    "aliases": [
@@ -11057,15 +11431,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.ARCHITECTURE_REPATRIATION.device-run"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/device_ascension_pipeline.py",
    "receipt": "DEVICE_ASCENSION_PIPELINE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.device_ascension_pipeline": {
    "aliases": [
@@ -11104,15 +11477,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.ARCHITECTURE_REPATRIATION.device-run"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/device_ascension_pipeline.py",
    "receipt": "DEVICE_ASCENSION_PIPELINE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.devplatform": {
    "aliases": [
@@ -11145,15 +11517,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.TOOLS.freshness"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/devplatform.py",
    "receipt": "DEVELOPER_PLATFORM.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.dirty_measure": {
    "aliases": [
@@ -11191,14 +11562,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.VERIFICATION.contamination"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/dirty_measure.py",
    "receipt": "DIRTY_MEASUREMENT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.ebpw_categories": {
    "aliases": [
@@ -11230,15 +11601,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/ebpw_categories.py",
    "receipt": "EBPW_CATEGORY_VALIDATOR.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.ebpw_category_validator": {
    "aliases": [
@@ -11270,15 +11640,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/ebpw_categories.py",
    "receipt": "EBPW_CATEGORY_VALIDATOR.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.evidence_dag": {
    "aliases": [
@@ -11315,14 +11684,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.VERIFICATION.repro"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/evidence_dag.py",
    "receipt": "EVIDENCE_DAG.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.evidence_snapshot": {
    "aliases": [
@@ -11347,15 +11716,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.CONTEXT.disk-authority"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/evidence_snapshot.py",
    "receipt": "EVIDENCE_SNAPSHOT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.experiment_turnaround": {
    "aliases": [
@@ -11400,15 +11768,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.LATENCY.cpu-turnaround"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/turnaround.py",
    "receipt": "EXPERIMENT_TURNAROUND.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.expert_bank_school": {
    "aliases": [
@@ -11433,15 +11800,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.ngram-school"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/expert_bank_school.py",
    "receipt": "EXPERT_BANK_SCHOOL.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.flash_nr_complete": {
    "aliases": [
@@ -11466,14 +11832,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/flash_nr_complete.py",
    "receipt": "FLASH_NR_COMPLETE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.flash_nx_audit": {
    "aliases": [
@@ -11505,16 +11871,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F001"
+    "F001",
+    "FT.MODEL_EXECUTION.complete-token"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/flash_nx_audit.py",
    "receipt": "FLASH_NX_COMPLETENESS_AUDIT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.flash_schools": {
    "aliases": [
@@ -11552,14 +11916,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/flash_schools.py",
    "receipt": "FLASH_ORGAN_SCHOOLS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.fpga_engine_school": {
    "aliases": [
@@ -11585,15 +11949,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.FPGA.engine-sim"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/fpga_engines.py",
    "receipt": "FPGA_ENGINE_SCHOOL.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.fpga_engines": {
    "aliases": [
@@ -11619,15 +11982,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.FPGA.engine-sim"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/fpga_engines.py",
    "receipt": "FPGA_ENGINE_SCHOOL.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.fpga_fidelity": {
    "aliases": [
@@ -11653,15 +12015,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.FPGA.engine-sim"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/fpga_fidelity.py",
    "receipt": "FPGA_MULTIFIDELITY.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.fpga_multifidelity": {
    "aliases": [
@@ -11687,15 +12048,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.FPGA.engine-sim"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/fpga_fidelity.py",
    "receipt": "FPGA_MULTIFIDELITY.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.freshness": {
    "aliases": [
@@ -11747,16 +12107,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F017"
+    "F017",
+    "FT.EXPERIMENT_TURNAROUND.refresh"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/freshness.py",
    "receipt": "DERIVED_FRESHNESS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.frontiers": {
    "aliases": [
@@ -11806,14 +12164,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.TOOLS.frontiers-refill"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/frontiers.py",
    "receipt": "FRONTIER_STATE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.fusion": {
    "aliases": [
@@ -11839,15 +12197,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_EXECUTION.fusion-sim"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/fusion_sim.py",
    "receipt": "FUSION_SIMULATION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.fusion_sim": {
    "aliases": [
@@ -11873,15 +12230,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_EXECUTION.fusion-sim"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/fusion_sim.py",
    "receipt": "FUSION_SIMULATION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.git_lock_doctor": {
    "aliases": [
@@ -11974,15 +12330,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.no-launch"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/git_lock_doctor.py",
    "receipt": "GIT_LOCK_DURABILITY_REPORT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.git_lock_durability": {
    "aliases": [
@@ -12075,15 +12430,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.no-launch"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/git_lock_doctor.py",
    "receipt": "GIT_LOCK_DURABILITY_REPORT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.global_frontier": {
    "aliases": [
@@ -12115,14 +12469,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit"
+   "frontier": [
+    "FT.CONTEXT.open-question"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/global_frontier.py",
    "receipt": "CLAUDE_GLOBAL_FRONTIER.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.green_machine": {
    "aliases": [
@@ -12154,16 +12508,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F006"
+    "F006",
+    "FT.VERIFICATION.contamination"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/green_machine.py",
    "receipt": "GREEN_MACHINE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.handoff": {
    "aliases": [
@@ -12216,16 +12568,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F004"
+    "F004",
+    "FT.FPGA.hardware-doctor"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/hardware_doctor.py",
    "receipt": "HARDWARE_DOCTOR.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.hbm_doctor": {
    "aliases": [
@@ -12264,16 +12614,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F005"
+    "F005",
+    "FT.ACTIVE_BYTES.hbm-rank"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/hbm_doctor.py",
    "receipt": "HBM_DOCTOR.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.hcli_future_workunits": {
    "aliases": [
@@ -12299,14 +12647,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.emit-workunits"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/workunit_species.py",
    "receipt": "HCLI_FUTURE_WORKUNITS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.hmf_hgvas": {
    "aliases": [
@@ -12332,15 +12680,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MEMORY.hmf"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/hmf_objects.py",
    "receipt": "HMF_MANAGED_OBJECTS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.hmf_objects": {
    "aliases": [
@@ -12366,15 +12713,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MEMORY.hmf"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/hmf_objects.py",
    "receipt": "HMF_MANAGED_OBJECTS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.hwir": {
    "aliases": [
@@ -12413,16 +12759,14 @@
    "callable": "build",
    "frontier": [
     "F003",
-    "F012"
+    "F012",
+    "FT.PHYSICAL_GRAPH.hwir-lower"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/hwir.py",
    "receipt": "HWIR_V1.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.integration_attack": {
    "aliases": [
@@ -12482,16 +12826,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F007"
+    "F007",
+    "FT.VERIFICATION.repro"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/lpc_dataset.py",
    "receipt": "LPC_DATASET.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.lpc_baselines": {
    "aliases": [
@@ -12516,15 +12858,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.VERIFICATION.repro"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/lpc_baselines.py",
    "receipt": "LPC_BASELINES.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.lpc_dataset": {
    "aliases": [
@@ -12551,16 +12892,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F007"
+    "F007",
+    "FT.VERIFICATION.repro"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/lpc_dataset.py",
    "receipt": "LPC_DATASET.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.meta_downstream_ready": {
    "aliases": [
@@ -12599,16 +12938,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F019"
+    "F019",
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/meta_ready.py",
    "receipt": "META_DOWNSTREAM_READY.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.meta_experiment_funnel": {
    "aliases": [
@@ -12634,15 +12971,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/meta_funnel.py",
    "receipt": "META_EXPERIMENT_FUNNEL.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.meta_funnel": {
    "aliases": [
@@ -12668,15 +13004,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/meta_funnel.py",
    "receipt": "META_EXPERIMENT_FUNNEL.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.meta_ready": {
    "aliases": [
@@ -12715,16 +13050,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F019"
+    "F019",
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/meta_ready.py",
    "receipt": "META_DOWNSTREAM_READY.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.moe_physical_school": {
    "aliases": [
@@ -12749,15 +13082,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.GPU_KERNELS.flash-nx"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/moe_physical_school.py",
    "receipt": "MOE_PHYSICAL_SCHOOL.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.mutation_surface": {
    "aliases": [
@@ -12783,15 +13115,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.CONTEXT.disk-authority"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/mutation_surface.py",
    "receipt": "CODEX_MUTATION_SURFACE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.negative_index": {
    "aliases": [
@@ -12867,16 +13198,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F009"
+    "F009",
+    "FT.VERIFICATION.negative-index"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/negative_index.py",
    "receipt": "NEGATIVE_SCIENCE_INDEX.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.negative_science_index": {
    "aliases": [
@@ -12952,16 +13281,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F009"
+    "F009",
+    "FT.VERIFICATION.negative-index"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/negative_index.py",
    "receipt": "NEGATIVE_SCIENCE_INDEX.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.ngram_school": {
    "aliases": [
@@ -12986,15 +13313,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.ngram-school"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/ngram_school.py",
    "receipt": "NGRAM_SCHOOL.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.odyssey2_law_store": {
    "aliases": [
@@ -13021,16 +13347,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F010"
+    "F010",
+    "FT.ODYSSEY_TRANSFER.flash-qwen27"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/odyssey2_law_store.py",
    "receipt": "ODYSSEY2_LAW_STORE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.odyssey3_adversary": {
    "aliases": [
@@ -13062,15 +13386,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.ODYSSEY_ADVERSARY.attacks"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/odyssey3_adversary.py",
    "receipt": "ODYSSEY3_ADVERSARY.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.odyssey_ii_law_store": {
    "aliases": [
@@ -13097,16 +13420,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F010"
+    "F010",
+    "FT.ODYSSEY_TRANSFER.flash-qwen27"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/odyssey2_law_store.py",
    "receipt": "ODYSSEY2_LAW_STORE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.odyssey_iii_adversary": {
    "aliases": [
@@ -13138,15 +13459,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.ODYSSEY_ADVERSARY.attacks"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/odyssey3_adversary.py",
    "receipt": "ODYSSEY3_ADVERSARY.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.odyssey_launch": {
    "aliases": [
@@ -13184,13 +13504,46 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.ODYSSEY_TRANSFER.re-earn"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/odyssey_launch.py",
    "receipt": "ODYSSEY_LAUNCH_GATE.json",
+   "status": "OPERATIONAL"
+  },
+  "future.orchestration": {
+   "aliases": [
+    "future.orchestration"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--bind"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--invoke"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [],
+   "gaps": [
+    "does_not_emit_workunit",
+    "result_does_not_feed_a_named_frontier"
+   ],
+   "import_error": null,
+   "module": "tools/future/orchestration.py",
+   "receipt": "ORCHESTRATION_BINDINGS.json",
    "status": "NOT_OPERATIONAL"
   },
   "future.p6_primitive_projection": {
@@ -13231,16 +13584,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F020"
+    "F020",
+    "FT.PHYSICAL_GRAPH.p6-projection"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/p6_projection.py",
    "receipt": "P6_PRIMITIVE_PROJECTION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.p6_projection": {
    "aliases": [
@@ -13280,16 +13631,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F020"
+    "F020",
+    "FT.PHYSICAL_GRAPH.p6-projection"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/p6_projection.py",
    "receipt": "P6_PRIMITIVE_PROJECTION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.physical_primitive_library": {
    "aliases": [
@@ -13316,16 +13665,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F012"
+    "F012",
+    "FT.MODEL_EXECUTION.static-skeleton"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/physical_primitives.py",
    "receipt": "PHYSICAL_PRIMITIVES.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.physical_primitives": {
    "aliases": [
@@ -13352,16 +13699,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F012"
+    "F012",
+    "FT.MODEL_EXECUTION.static-skeleton"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/physical_primitives.py",
    "receipt": "PHYSICAL_PRIMITIVES.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.propagate": {
    "aliases": [
@@ -13407,15 +13752,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F016"
+    "F016",
+    "FT.TOOLS.propagate-skips"
    ],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/propagate.py",
    "receipt": "PROPAGATION_STATE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.propagation_engine": {
    "aliases": [
@@ -13461,15 +13805,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F016"
+    "F016",
+    "FT.TOOLS.propagate-skips"
    ],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/propagate.py",
    "receipt": "PROPAGATION_STATE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.protected_window": {
    "aliases": [
@@ -13513,14 +13856,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.GPU_KERNELS.ready-protected"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/protected_window.py",
    "receipt": "PROTECTED_WINDOW_PLAN.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.qualification_automation": {
    "aliases": [
@@ -13565,14 +13908,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.GPU_KERNELS.ready-protected"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/qualification_pipeline.py",
    "receipt": "QUALIFICATION_PIPELINE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.qualification_pipeline": {
    "aliases": [
@@ -13617,14 +13960,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.GPU_KERNELS.ready-protected"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/qualification_pipeline.py",
    "receipt": "QUALIFICATION_PIPELINE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.qwen27_profile_schema": {
    "aliases": [
@@ -13649,15 +13992,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.LATENCY.gpu-ns"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/qwen27_profile_schema.py",
    "receipt": "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.repro_science": {
    "aliases": [
@@ -13684,16 +14026,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F008"
+    "F008",
+    "FT.VERIFICATION.repro"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/repro_science.py",
    "receipt": "REPRO_SCIENCE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.resident_api": {
    "aliases": [
@@ -13724,14 +14064,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.emit-workunits"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/resident_api.py",
    "receipt": "RESIDENT_API_AUDIT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.resident_identity": {
    "aliases": [
@@ -13762,15 +14102,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.emit-workunits"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/resident_identity.py",
    "receipt": "RESIDENT_IDENTITY.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.resident_install": {
    "aliases": [
@@ -13796,16 +14135,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F013"
+    "F013",
+    "FT.MODEL_CAPABILITY.hard-gates"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/resident_install.py",
    "receipt": "RESIDENT_INSTALL_CONTRACT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.resident_optimizer": {
    "aliases": [
@@ -13830,14 +14167,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.CHILD_RESIDENT.optimizer"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/resident_optimizer.py",
    "receipt": "RESIDENT_OPTIMIZER.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.router_science": {
    "aliases": [
@@ -13862,15 +14199,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/router_science.py",
    "receipt": "ROUTER_SENSITIVE_ALLOCATION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.sandbox": {
    "aliases": [
@@ -13913,14 +14249,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.no-launch"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/sandbox.py",
    "receipt": "RESIDENT_SANDBOX.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.scar_scheduling": {
    "aliases": [
@@ -13982,15 +14318,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.VERIFICATION.negative-index"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/scar_scheduling.py",
    "receipt": "SCAR_SCHEDULING.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.static_kernel_preflight": {
    "aliases": [
@@ -14019,15 +14354,14 @@
    "frontier": [
     "F002",
     "F014",
-    "F018"
+    "F018",
+    "FT.GPU_KERNELS.static-warnings"
    ],
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/static_kernel_verify.py",
    "receipt": "STATIC_KERNEL_PREFLIGHT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.static_kernel_verify": {
    "aliases": [
@@ -14056,15 +14390,14 @@
    "frontier": [
     "F002",
     "F014",
-    "F018"
+    "F018",
+    "FT.GPU_KERNELS.static-warnings"
    ],
-   "gaps": [
-    "does_not_emit_workunit"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/static_kernel_verify.py",
    "receipt": "STATIC_KERNEL_PREFLIGHT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.static_skeleton": {
    "aliases": [
@@ -14089,15 +14422,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_EXECUTION.static-skeleton"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/static_skeleton.py",
    "receipt": "STATIC_SKELETON.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.succession": {
    "aliases": [
@@ -14122,14 +14454,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.CHILD_RESIDENT.install-dry-run"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/succession.py",
    "receipt": "SUCCESSION.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.super_resident": {
    "aliases": [
@@ -14160,14 +14492,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_CAPABILITY.hard-gates"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/super_resident.py",
    "receipt": "SUPER_RESIDENT_FLOOR.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.tabula": {
    "aliases": [
@@ -14192,14 +14524,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_CAPABILITY.hard-gates"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/tabula.py",
    "receipt": "TABULA_FLOOR.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.teacher_corpus": {
    "aliases": [
@@ -14224,15 +14556,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.teacher-capture"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/teacher_corpus.py",
    "receipt": "TEACHER_CORPUS_CONTRACT.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.tournament": {
    "aliases": [
@@ -14264,16 +14595,14 @@
    },
    "callable": "build",
    "frontier": [
-    "F013"
+    "F013",
+    "FT.MODEL_CAPABILITY.tournament-refuse"
    ],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
-   ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/tournament.py",
    "receipt": "TOURNAMENT_READINESS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.turnaround": {
    "aliases": [
@@ -14318,15 +14647,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "does_not_emit_workunit",
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.LATENCY.cpu-turnaround"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/turnaround.py",
    "receipt": "EXPERIMENT_TURNAROUND.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.wakeup": {
    "aliases": [
@@ -14358,14 +14686,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.no-launch"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/wakeup.py",
    "receipt": "RECEIPT_WAKEUP.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.workgraph": {
    "aliases": [
@@ -14415,14 +14743,14 @@
     ]
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.no-launch"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/workgraph.py",
    "receipt": "WORKGRAPH_STATE.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   },
   "future.workunit_species": {
    "aliases": [
@@ -14448,14 +14776,14 @@
     "params": []
    },
    "callable": "build",
-   "frontier": [],
-   "gaps": [
-    "result_does_not_feed_a_named_frontier"
+   "frontier": [
+    "FT.HCLI_SELF.emit-workunits"
    ],
+   "gaps": [],
    "import_error": null,
    "module": "tools/future/workunit_species.py",
    "receipt": "HCLI_FUTURE_WORKUNITS.json",
-   "status": "NOT_OPERATIONAL"
+   "status": "OPERATIONAL"
   }
  },
  "resident_callable": {
@@ -14477,7 +14805,7 @@
   ]
  },
  "schema": "hawking.future.resident_api.v1",
- "seal_sha256": "749746fc8d5a41a5db30b7796935993fa123b091f1e2a2b21f3a49b19301e934",
+ "seal_sha256": "004f4cda2740840d1f72f72a13604a64e6a12f7fc0b889d02ef060329ffaa7c9",
  "version": 1,
  "work_units": [
   {
@@ -14487,68 +14815,21 @@
    "backend_task_id": null,
    "claim_boundary": "Proposal only. Sidecar cannot register HCLI tools or rewrite CLAUDE_GLOBAL_FRONTIER.json.",
    "classification": "STATIC_ONLY",
-   "content_hash": "09332e80c9c6a04522956d6d9880017169d0e92dcf06a6198509183eb421a432",
+   "content_hash": "2d35c77e4a85f2918bec8d709eb87f859580fa023ba5968709cfeb9c57b5c43e",
    "dependencies": [],
-   "description": "Close resident-callability gap 'does_not_emit_workunit' for 52 sidecar module(s).",
+   "description": "Close resident-callability gap 'does_not_emit_workunit' for 5 sidecar module(s).",
    "effect_class": "READ_ONLY",
    "failure_context": null,
    "finished_at": null,
    "gap": "does_not_emit_workunit",
    "id": "future.resident_api.close.does_not_emit_workunit",
-   "module_count": 52,
+   "module_count": 5,
    "module_stems": [
     "__init__",
     "_common",
-    "abi_verdicts",
-    "ane_preboard",
-    "candidate_planner",
-    "claude_abi_adjudication",
-    "codex_ingest",
-    "contamination",
-    "cuda_lowbit_hypotheses",
-    "decode_civilization",
-    "device_ascension_pipeline",
-    "devplatform",
-    "ebpw_categories",
-    "evidence_snapshot",
-    "expert_bank_school",
-    "flash_nx_audit",
-    "fpga_engines",
-    "fpga_fidelity",
-    "freshness",
-    "fusion_sim",
-    "git_lock_doctor",
-    "global_frontier",
-    "green_machine",
     "handoff",
-    "hardware_doctor",
-    "hbm_doctor",
-    "hmf_objects",
-    "hwir",
     "integration_attack",
-    "lpc_baselines",
-    "lpc_dataset",
-    "meta_funnel",
-    "meta_ready",
-    "moe_physical_school",
-    "mutation_surface",
-    "negative_index",
-    "ngram_school",
-    "odyssey2_law_store",
-    "odyssey3_adversary",
-    "p6_projection",
-    "physical_primitives",
-    "qwen27_profile_schema",
-    "repro_science",
-    "resident_identity",
-    "resident_install",
-    "router_science",
-    "scar_scheduling",
-    "static_kernel_verify",
-    "static_skeleton",
-    "teacher_corpus",
-    "tournament",
-    "turnaround"
+    "orchestration"
    ],
    "preferred_backend": null,
    "provider": "future.resident_api",
@@ -14684,86 +14965,21 @@
    "backend_task_id": null,
    "claim_boundary": "Proposal only. Sidecar cannot register HCLI tools or rewrite CLAUDE_GLOBAL_FRONTIER.json.",
    "classification": "STATIC_ONLY",
-   "content_hash": "e140e7f69c4430d18d4427f41dd92e8663edf4488ac185b4449f0691d7f8ca15",
+   "content_hash": "b31ec32c05fb68d630e7f38d1a29d83666530f2490e19c9e50e20ec34e36f2ec",
    "dependencies": [],
-   "description": "Close resident-callability gap 'result_does_not_feed_a_named_frontier' for 70 sidecar module(s).",
+   "description": "Close resident-callability gap 'result_does_not_feed_a_named_frontier' for 5 sidecar module(s).",
    "effect_class": "READ_ONLY",
    "failure_context": null,
    "finished_at": null,
    "gap": "result_does_not_feed_a_named_frontier",
    "id": "future.resident_api.close.result_does_not_feed_a_named_frontier",
-   "module_count": 70,
+   "module_count": 5,
    "module_stems": [
     "__init__",
     "_common",
-    "abi_verdicts",
-    "ane_preboard",
-    "autonomy_trial",
-    "claude_abi_adjudication",
-    "codex_behaviors",
-    "contamination",
-    "cuda_lowbit_hypotheses",
-    "debugger",
-    "decode_civilization",
-    "detached",
-    "device_ascension_pipeline",
-    "devplatform",
-    "dirty_measure",
-    "ebpw_categories",
-    "evidence_dag",
-    "evidence_snapshot",
-    "expert_bank_school",
-    "flash_nr_complete",
-    "flash_nx_audit",
-    "flash_schools",
-    "fpga_engines",
-    "fpga_fidelity",
-    "freshness",
-    "frontiers",
-    "fusion_sim",
-    "git_lock_doctor",
-    "green_machine",
     "handoff",
-    "hardware_doctor",
-    "hbm_doctor",
-    "hmf_objects",
-    "hwir",
     "integration_attack",
-    "lpc_baselines",
-    "lpc_dataset",
-    "meta_funnel",
-    "meta_ready",
-    "moe_physical_school",
-    "mutation_surface",
-    "negative_index",
-    "ngram_school",
-    "odyssey2_law_store",
-    "odyssey3_adversary",
-    "odyssey_launch",
-    "p6_projection",
-    "physical_primitives",
-    "propagate",
-    "protected_window",
-    "qualification_pipeline",
-    "qwen27_profile_schema",
-    "repro_science",
-    "resident_api",
-    "resident_identity",
-    "resident_install",
-    "resident_optimizer",
-    "router_science",
-    "sandbox",
-    "scar_scheduling",
-    "static_skeleton",
-    "succession",
-    "super_resident",
-    "tabula",
-    "teacher_corpus",
-    "tournament",
-    "turnaround",
-    "wakeup",
-    "workgraph",
-    "workunit_species"
+    "orchestration"
    ],
    "preferred_backend": null,
    "provider": "future.resident_api",

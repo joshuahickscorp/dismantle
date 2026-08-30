@@ -71,9 +71,14 @@ def test_can_launch_false_today_names_every_unmet():
     assert ol.can_launch(results) is False
     assert unmet == [r["id"] for r in results if not r["met"]]
     assert unmet, "today several criteria are unmet; an empty unmet list would open the gate"
+    # These two cannot be met without work that has not happened: no autonomy
+    # trial has passed, and there is no callable NR/NX path on this host.
     assert "resident_autonomy_trial_pass" in unmet
     assert "nr_nx_path_callable" in unmet
-    assert "workgraphs" in unmet
+    # Deliberately NOT asserting a frozen list. Criteria become met as their
+    # capability actually lands -- `workgraphs` did, once the runtime was
+    # exercised rather than merely looked for. Pinning the unmet set would make
+    # this test fight real progress.
     verdict = ol.launch_verdict(results)
     assert verdict["verdict"] == "REFUSED"
     assert verdict["allowed"] is False
@@ -296,24 +301,33 @@ def test_hardware_claim_still_raises_through_write_receipt(tmp_path, monkeypatch
         assert doc.get("tps") != 12.0
 
 
-def test_this_wave_siblings_are_not_imported():
-    # NOT sys.modules: it is a process global, so a sibling lane's own test
-    # importing its module makes this fail for reasons unrelated to this one.
-    # The real property is that THIS module never imports them -- parse it.
-    tree = ast.parse(pathlib.Path(ol.__file__).read_text())
-    imported = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported.update(a.name for a in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            imported.add(node.module)
-    for name in ol.THIS_WAVE_SIBLINGS:
-        assert not any(name in m for m in imported), f"{name} imported: {sorted(imported)}"
-    src = Path(ol.__file__).read_text()
-    for name in ol.THIS_WAVE_SIBLINGS:
-        assert f"tools.future.{name}" not in src
-        assert f"import {name}" not in src
+def test_siblings_are_exercised_not_merely_named():
+    """The no-import rule was a WAVE-TIME constraint, and that wave has landed.
 
+    While the siblings were being written concurrently, importing them would have
+    coupled unfinished work. They are now committed, so the honest evaluation is
+    to RUN them: a criterion that reports "not landed" about a module sitting on
+    disk is stale, not careful. What must still hold is that every import is
+    exercised rather than decorative, and that a failed exercise leaves the
+    criterion unmet instead of flipping it true.
+    """
+    src = pathlib.Path(ol.__file__).read_text()
+    exercised = {
+        line.split('"')[1]
+        for line in src.splitlines()
+        if "_exercise(" in line and '"' in line
+    }
+    assert exercised, "no sibling is exercised; the criteria would be measuring absence"
+    for dotted in exercised:
+        assert dotted.startswith("tools.future."), dotted
+
+    # A failed exercise must NOT be able to open a criterion.
+    bad = ol._exercise("tools.future.does_not_exist", "build")
+    assert bad["ok"] is False
+    assert "import failed" in bad["why"]
+    bad2 = ol._exercise("tools.future.frontiers", "no_such_function")
+    assert bad2["ok"] is False
+    assert "not callable" in bad2["why"]
 
 def test_verify_cli_refuses_and_keeps_phase_not_started():
     rc = ol.verify()

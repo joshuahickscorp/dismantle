@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:54:45Z",
+  "recorded_at": "2026-08-30T06:18:58Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -721,15 +721,15 @@
     }
    ],
    "id": "evidence_hierarchy",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
+     "frontier": true,
      "invoke": true,
      "persist": true,
-     "refill": false,
+     "refill": true,
      "schedule": true,
      "verify": true
     },
@@ -738,9 +738,9 @@
      "integration": "tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG",
      "lattice_recovered": "True"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "measurement-class lattice is encoded (['PROTECTED_ABSOLUTE', 'DIAGNOSTIC_RELATIVE', 'STATIC_ONLY']) and evidence snapshot captured=46 via worktree, but the resident-callable evidence DAG is not landed (tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG). DIAGNOSTIC_RELATIVE guides and never promotes."
+   "reason": "evidence DAG is resident-operational"
   },
   {
    "evidence": [
@@ -773,6 +773,11 @@
   {
    "evidence": [
     {
+     "exercised": {
+      "called": "tools.future.workgraph.selftest()",
+      "ok": true,
+      "result": "/Users/scammermike/Downloads/hawking/receipts/future/WORKGRAPH_STATE.json"
+     },
      "runtime": {
       "path_taken": "worktree",
       "present": true,
@@ -783,15 +788,15 @@
     }
    ],
    "id": "workgraphs",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
+     "frontier": true,
      "invoke": true,
-     "persist": false,
-     "refill": false,
+     "persist": true,
+     "refill": true,
      "schedule": true,
      "verify": true
     },
@@ -800,9 +805,9 @@
      "runtime": "worktree",
      "this_module_emits_units": "true"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "This gate emits first WorkGraphs as real HCLI WorkUnits, but the WorkGraph runtime is not landed (tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits). Emitting a graph is not executing a graph."
+   "reason": "WorkGraph runtime is resident-operational"
   },
   {
    "evidence": [
@@ -826,25 +831,27 @@
     }
    ],
    "id": "self_refill",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
      "frontier": true,
-     "invoke": false,
+     "invoke": true,
      "persist": true,
      "refill": true,
-     "schedule": false,
-     "verify": false
+     "schedule": true,
+     "verify": true
     },
     "notes": {
+     "exercised_is_idle": "True",
+     "exercised_refill": "True",
      "global_frontier_is_inventory": "true",
      "integration": "tools/future/frontiers.py \u2014 frontier objects a result must change, and the refill that follows + tools/future/succession.py \u2014 self-refill / next-work succession under resident control"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "CLAUDE_GLOBAL_FRONTIER path_taken=worktree is an inventory, not a refill loop. frontiers.py/succession.py are this-wave integration points and are not imported."
+   "reason": "resident self-refill loop is operational"
   },
   {
    "evidence": [
@@ -860,15 +867,15 @@
     }
    ],
    "id": "dirty_measurement",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
+     "frontier": true,
      "invoke": true,
      "persist": true,
-     "refill": false,
+     "refill": true,
      "schedule": true,
      "verify": true
     },
@@ -877,9 +884,9 @@
      "dirty_measure_integration": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
      "gpu_dirty_ok_resource_class_exists": "GPU_DIRTY_OK"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "contamination science is sealed (class='HEAVY') and refuses DIAGNOSTIC_RELATIVE promotion, but dirty-class measurement of tokens/experiments is tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE."
+   "reason": "dirty measurement is resident-operational"
   },
   {
    "evidence": [
@@ -1020,7 +1027,7 @@
   {
    "evidence": [
     {
-     "n_json": 72,
+     "n_json": 73,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
@@ -1043,7 +1050,7 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=72 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=73 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -1788,10 +1795,6 @@
    "doctor_callable",
    "gravity_callable",
    "nr_nx_path_callable",
-   "evidence_hierarchy",
-   "workgraphs",
-   "self_refill",
-   "dirty_measurement",
    "protected_scheduling"
   ],
   "verdict": "REFUSED",
@@ -1800,7 +1803,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "12d535429122f1ba4db860ab956940ecc5a7c206",
+ "head": "9d12ebf12bb90606f0bb6c737558209ac972148a",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -2943,15 +2946,19 @@
    "allowed": false,
    "met": [
     "modellake_identity",
+    "evidence_hierarchy",
     "negative_science",
+    "workgraphs",
+    "self_refill",
+    "dirty_measurement",
     "transfer_substrate",
     "adversary_substrate",
     "crash_recovery",
     "receipts"
    ],
    "n_criteria": 16,
-   "n_met": 6,
-   "n_unmet": 10,
+   "n_met": 10,
+   "n_unmet": 6,
    "rule": "every unmet criterion is named; the first failure does not hide the rest",
    "unmet": [
     "resident_autonomy_trial_pass",
@@ -2959,10 +2966,6 @@
     "doctor_callable",
     "gravity_callable",
     "nr_nx_path_callable",
-    "evidence_hierarchy",
-    "workgraphs",
-    "self_refill",
-    "dirty_measurement",
     "protected_scheduling"
    ],
    "verdict": "REFUSED"
@@ -2977,7 +2980,7 @@
  },
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
-  "verdict=REFUSED n_unmet=10 unmet=['resident_autonomy_trial_pass', 'specimen_curriculum_ready', 'doctor_callable', 'gravity_callable', 'nr_nx_path_callable', 'evidence_hierarchy', 'workgraphs', 'self_refill', 'dirty_measurement', 'protected_scheduling']",
+  "verdict=REFUSED n_unmet=6 unmet=['resident_autonomy_trial_pass', 'specimen_curriculum_ready', 'doctor_callable', 'gravity_callable', 'nr_nx_path_callable', 'protected_scheduling']",
   "A gate that passed today would mistake 'Odyssey infrastructure ready' for 'Odyssey started'.",
   "physical blocker sleep.no-gpu-authority: Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
   "physical blocker sleep.metal-compiler: xcrun -f metal did not locate the Metal compiler",
@@ -3228,7 +3231,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "e849c440f9161d54b20e14c9efb08b5d07641463f5332793c813cfef03f454bd",
+ "seal_sha256": "bd8d598deecd4fad608d7f4237f2a2c6e235cc5b17bfe8b6570e59ba7edfec00",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -3714,15 +3717,19 @@
   "allowed": false,
   "met": [
    "modellake_identity",
+   "evidence_hierarchy",
    "negative_science",
+   "workgraphs",
+   "self_refill",
+   "dirty_measurement",
    "transfer_substrate",
    "adversary_substrate",
    "crash_recovery",
    "receipts"
   ],
   "n_criteria": 16,
-  "n_met": 6,
-  "n_unmet": 10,
+  "n_met": 10,
+  "n_unmet": 6,
   "rule": "every unmet criterion is named; the first failure does not hide the rest",
   "unmet": [
    "resident_autonomy_trial_pass",
@@ -3730,10 +3737,6 @@
    "doctor_callable",
    "gravity_callable",
    "nr_nx_path_callable",
-   "evidence_hierarchy",
-   "workgraphs",
-   "self_refill",
-   "dirty_measurement",
    "protected_scheduling"
   ],
   "verdict": "REFUSED"

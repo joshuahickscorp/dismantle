@@ -385,7 +385,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:50:45Z",
+  "recorded_at": "2026-08-30T06:16:43Z",
   "recorded_by": "tools/future/debugger.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -573,7 +573,7 @@
    "source": "ON_DISK"
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk": true,
    "path": "tools/future/debugger.py",
    "role": "this module (provider-neutral debugger + Apple lab)",
@@ -1240,7 +1240,7 @@
   "memory_inspection": "read-only"
  },
  "schema": "hawking.future.debugger.v1",
- "seal_sha256": "7487f1bdf489d20c1e8bdcb98e9f601425f9b4d0f4532b3844c29350498ed83e",
+ "seal_sha256": "c3a3641e7de04030c572ad3613ab323bec60cbd0efa87af7ca48655c8a24197b",
  "stub_provider_available": false,
  "version": 1,
  "workunits": [

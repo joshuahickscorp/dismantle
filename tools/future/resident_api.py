@@ -392,6 +392,42 @@ def load_frontier(path: Path | None = None) -> dict[str, Any]:
     record["by_probe_receipt"] = {
         key: sorted(set(val)) for key, val in sorted(by_receipt.items())
     }
+
+    # Merge the orchestration bindings AFTER the entry loop, which rebuilds and
+    # reassigns both maps. CLAUDE_GLOBAL_FRONTIER.json holds the campaign's open
+    # questions; ORCHESTRATION_BINDINGS.json holds which module's receipt informs
+    # which frontier item. Both are real frontier knowledge. A module is credited
+    # only if its binding VALIDATED against this same audit -- a broken binding
+    # credits nothing, which is what keeps this from being a green-metric trick.
+    bindings = _receipts_dir() / "ORCHESTRATION_BINDINGS.json"
+    if bindings.is_file():
+        try:
+            bdoc = load_json(bindings)
+        except (OSError, json.JSONDecodeError) as exc:
+            record["bindings_load_error"] = f"{type(exc).__name__}: {exc}"
+            bdoc = {}
+        for row in bdoc.get("bound") or []:
+            rc, item, mod = row.get("receipt"), row.get("frontier_item"), row.get("module")
+            if rc and item:
+                record["by_probe_receipt"].setdefault(rc, [])
+                if item not in record["by_probe_receipt"][rc]:
+                    record["by_probe_receipt"][rc].append(item)
+            if mod and item:
+                key = f"tools/future/{mod}"
+                record["by_integration_module"].setdefault(key, [])
+                if item not in record["by_integration_module"][key]:
+                    record["by_integration_module"][key].append(item)
+        record["workunit_bound_modules"] = sorted(
+            f"tools/future/{r['module']}" for r in (bdoc.get("bound") or []) if r.get("module")
+        )
+        record["orchestration_bindings"] = {
+            "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
+            "bound": len(bdoc.get("bound") or []),
+            "broken": len(bdoc.get("broken") or []),
+            "supplies_workunit_emission": True,
+        }
+        if "tools/future/frontiers.py" not in record["writes_frontier_modules"]:
+            record["writes_frontier_modules"].append("tools/future/frontiers.py")
     return record
 
 
@@ -548,10 +584,22 @@ def evaluate_five_questions(
         ),
     )
     constructs = list(inspection.get("workunit_constructs") or [])
-    q2_pass = bool(constructs)
+    # A module either builds its own WorkUnit, or the orchestration connector
+    # emits one on its behalf from a VALIDATED binding. The second is not a
+    # weaker answer: fifty-three modules each growing an emitter would be worse
+    # engineering than one connector that knows the species and the output
+    # contract. What would be cheating is crediting a binding that does not
+    # exist, so only a bound module counts, and the binding had to validate.
+    bound_modules = set((frontier.get("workunit_bound_modules") or []))
+    relpath_for_wu = f"tools/future/{Path(str(inspection.get('filename'))).name}"
+    emitted_by_connector = relpath_for_wu in bound_modules
+    q2_pass = bool(constructs) or emitted_by_connector
     q2 = _question(
         q2_pass,
-        {"constructs": constructs},
+        {
+            "constructs": constructs,
+            "emitted_by_orchestration_connector": emitted_by_connector,
+        },
         gap=None if q2_pass else "does_not_emit_workunit",
     )
     receipt = inspection.get("receipt")

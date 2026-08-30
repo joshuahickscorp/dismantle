@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T05:50:28Z",
+  "recorded_at": "2026-08-30T06:16:27Z",
   "recorded_by": "tools/future/ane_preboard.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1764,7 +1764,7 @@
   }
  ],
  "schema": "hawking.future.ane_preboard.v1",
- "seal_sha256": "bfc37b6ea7c6e47b197b1478e5092eb937cd4bb9b69ce8d3a83a37ec783fa32d",
+ "seal_sha256": "f1e0f6886fd887dac119b4c10fa6e093b1e0492896d2d31f3ab6341d8384a8f2",
  "test_matrix": [
   {
    "compute_units": "CPU_AND_NEURAL_ENGINE",

@@ -1138,6 +1138,17 @@ def negative_findings(organs: dict[str, Any], scar_pack: dict[str, Any]) -> list
     return findings
 
 
+def _runtime_compile_state() -> str:
+    """What the reachability probe last observed, or UNKNOWN. Never a guess."""
+    path = REPO / "receipts" / "future" / "METAL_REACHABILITY.json"
+    try:
+        doc = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return "UNKNOWN"
+    observed = doc.get("observed_runtime_binding") or {}
+    return {"OK": "AVAILABLE"}.get(observed.get("runtime_source_compile"), "UNKNOWN")
+
+
 def metal_state() -> dict[str, Any]:
     """What this host can actually do with Metal, measured, not quoted.
 
@@ -1184,11 +1195,12 @@ def metal_state() -> dict[str, Any]:
         "offline_metal_compiler_detail": metal_out.splitlines()[0][:200] if metal_out else "",
         "developer_dir": dev_dir if rc_dev == 0 else "",
         "full_xcode_installed": Path("/Applications/Xcode.app").is_dir(),
-        "runtime_source_compilation": "UNKNOWN",
-        "why_runtime_unknown": (
+        "runtime_source_compilation": _runtime_compile_state(),
+        "why_runtime_state": (
             "compiling shader source at runtime goes through the Metal framework, "
-            "not xcrun, and nothing here has exercised that path; guessing either "
-            "way would be a capability claim without evidence"
+            "not xcrun. tools/future/metal_reachability.py exercises that path with "
+            "the crate the runtime uses; UNKNOWN here means it has not been run yet, "
+            "not that it fails"
         ),
         "is_a_measurement": False,
     }

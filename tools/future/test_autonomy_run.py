@@ -115,8 +115,9 @@ def test_the_metal_blocker_is_measured_not_quoted():
     state = hwd.metal_state()
     why = ar._metal_why()
     assert state["is_a_measurement"] is False, "this is a capability probe, not a timing"
-    assert state["runtime_source_compilation"] == "UNKNOWN", (
-        "nothing has exercised runtime shader compilation; guessing is a claim"
+    assert state["runtime_source_compilation"] in {"AVAILABLE", "UNKNOWN"}, (
+        "AVAILABLE only after the probe exercised it; UNKNOWN means not run, "
+        "never a guess that it fails"
     )
     if state["gpu_present"]:
         assert "no Metal-capable GPU" not in why

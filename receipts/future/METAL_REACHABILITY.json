@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T11:55:39Z",
+  "recorded_at": "2026-08-30T11:57:16Z",
   "recorded_by": "tools/future/metal_reachability.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -52,8 +52,10 @@
   "unified_memory": true
  },
  "observed_runtime_binding": {
+  "function_lookup": "OK",
   "metal_crate_version": "0.29.0",
   "n_devices": 1,
+  "runtime_source_compile": "OK",
   "system_default": "Apple M3 Ultra"
  },
  "purpose": "Test the campaign-wide claim that this host has no Metal-capable GPU, because a host property and a process property have different remedies.",
@@ -69,7 +71,7 @@
   "workunit": "one CPU_ANALYSIS unit; cheap; no GPU authority"
  },
  "schema": "hawking.future.metal_reachability.v1",
- "seal_sha256": "25702403a28865e1c6c23b2744ec60539f03d343696167e54ab48bd373f28d2d",
+ "seal_sha256": "7e8a595be06d9f80ea36be7d1c903172d2e9bcf42f9979ddc339373098d7ca7d",
  "verdict": {
   "claim": "this host has no Metal-capable GPU",
   "different_remedies": {
@@ -88,6 +90,11 @@
     "the cause of the process-side failure; sandbox, launch context and build target are all consistent with what was observed and nothing here distinguishes them"
    ],
    "why": "metal crate 0.29.0 -- the same crate and the same Device::system_default() call the runtime uses -- returned 'Apple M3 Ultra' here. The language binding is not the suspect; it is the binding that failed in the blocked run."
+  },
+  "shader_compilation": {
+   "runtime_source_compile": "OK",
+   "still_not_a_measurement": "the compiler service was exercised, not the GPU: no command queue was created and nothing was dispatched",
+   "why_it_matters": "load_or_compile_shader_library falls back to device.new_library_with_source when no metallib cache is warm, and the xcrun precompile path is optional and gated behind HAWKING_METALLIB_BUILD. So the absent offline compiler does not block execution here -- it forces source compilation on a cold start, which is a cost, not a wall."
   },
   "verdict": "FALSIFIED_AS_A_HOST_PROPERTY",
   "what_this_does_not_establish": [

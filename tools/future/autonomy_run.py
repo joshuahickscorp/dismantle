@@ -153,7 +153,14 @@ def _metal_why() -> str:
         if not m["offline_metal_compiler"]
         else "the offline Metal shader compiler is available"
     )
-    parts.append("runtime shader compilation is UNKNOWN and unexercised")
+    state = m.get("runtime_source_compilation")
+    parts.append(
+        "runtime shader compilation from source is AVAILABLE (exercised with the "
+        "crate the runtime uses), so the missing offline compiler is a cold-start "
+        "cost, not a wall"
+        if state == "AVAILABLE"
+        else f"runtime shader compilation is {state} and unexercised"
+    )
     return "; ".join(parts)
 
 

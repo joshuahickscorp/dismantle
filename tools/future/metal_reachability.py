@@ -79,14 +79,30 @@ print(String(data: data, encoding: .utf8)!)
 # no command queue, no shader library, nothing submitted. This is the probe that
 # matters: it removes the language binding as a suspect, because it IS the
 # binding that failed.
-PROBE_RUST_MAIN = '''use metal::Device;
+PROBE_RUST_MAIN = '''use metal::{CompileOptions, Device};
 fn main() {
-    match Device::system_default() {
-        Some(d) => println!("system_default={}", d.name()),
-        None => println!("system_default=NONE"),
+    let device = match Device::system_default() {
+        Some(d) => d,
+        None => { println!("system_default=NONE"); println!("all_devices=0"); return; }
+    };
+    println!("system_default={}", device.name());
+    println!("all_devices={}", Device::all().len());
+    // Compiling a shader from SOURCE is the path the runtime actually takes when
+    // no metallib cache is warm. It exercises the compiler service, not the GPU:
+    // no command queue is created and nothing is dispatched.
+    let src = "#include <metal_stdlib>\\nusing namespace metal;\\n\\
+kernel void nop(device float* o [[buffer(0)]], uint i [[thread_position_in_grid]]) \\
+{ o[i] = 0.0f; }\\n";
+    match device.new_library_with_source(src, &CompileOptions::new()) {
+        Ok(lib) => {
+            println!("runtime_source_compile=OK");
+            match lib.get_function("nop", None) {
+                Ok(_) => println!("function_lookup=OK"),
+                Err(e) => println!("function_lookup=ERR {}", e),
+            }
+        }
+        Err(e) => println!("runtime_source_compile=ERR {}", e),
     }
-    let all = Device::all();
-    println!("all_devices={}", all.len());
 }
 '''
 
@@ -162,6 +178,8 @@ def probe_rust() -> dict[str, Any]:
                 out["system_default"] = None if value.strip() == "NONE" else value.strip()
             elif key.strip() == "all_devices":
                 out["n_devices"] = int(value.strip())
+            elif key.strip() in ("runtime_source_compile", "function_lookup"):
+                out[key.strip()] = value.strip()
         return out
 
 
@@ -237,6 +255,22 @@ def build() -> Path:
 
     v = verdict(observed, why)
     v["runtime_binding"] = verdict(runtime_binding, runtime_why)
+    if runtime_binding and runtime_binding.get("runtime_source_compile") == "OK":
+        v["shader_compilation"] = {
+            "runtime_source_compile": "OK",
+            "why_it_matters": (
+                "load_or_compile_shader_library falls back to "
+                "device.new_library_with_source when no metallib cache is warm, and "
+                "the xcrun precompile path is optional and gated behind "
+                "HAWKING_METALLIB_BUILD. So the absent offline compiler does not "
+                "block execution here -- it forces source compilation on a cold "
+                "start, which is a cost, not a wall."
+            ),
+            "still_not_a_measurement": (
+                "the compiler service was exercised, not the GPU: no command queue "
+                "was created and nothing was dispatched"
+            ),
+        }
     if runtime_binding and runtime_binding.get("system_default"):
         v["runtime_binding"]["why"] = (
             f"metal crate {runtime_binding['metal_crate_version']} -- the same crate and "

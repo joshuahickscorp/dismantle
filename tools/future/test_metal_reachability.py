@@ -84,8 +84,27 @@ def test_the_rust_probe_uses_the_version_the_runtime_resolves():
 
 
 def test_the_rust_probe_also_creates_no_command_queue():
+    """It compiles a shader, which exercises the compiler service, not the GPU."""
     assert "new_command_queue" not in mr.PROBE_RUST_MAIN
     assert "Device::system_default()" in mr.PROBE_RUST_MAIN
+    assert "new_library_with_source" in mr.PROBE_RUST_MAIN
+    for dispatched in ("dispatch_thread", "commit()", "new_compute_command_encoder"):
+        assert dispatched not in mr.PROBE_RUST_MAIN
+
+
+def test_shader_compilation_is_only_claimed_when_it_was_exercised():
+    """UNKNOWN must mean not-run, never a guess in either direction."""
+    from tools.future import hardware_doctor as hwd
+
+    doc = json.loads((RECEIPTS / mr.RECEIPT).read_text())
+    observed = (doc.get("observed_runtime_binding") or {}).get("runtime_source_compile")
+    state = hwd.metal_state()["runtime_source_compilation"]
+    assert state in {"AVAILABLE", "UNKNOWN"}
+    assert (state == "AVAILABLE") == (observed == "OK")
+    if state == "AVAILABLE":
+        note = doc["verdict"]["shader_compilation"]
+        assert "not a wall" in note["why_it_matters"]
+        assert "no command queue" in note["still_not_a_measurement"]
 
 
 def test_the_rust_probe_builds_out_of_tree():

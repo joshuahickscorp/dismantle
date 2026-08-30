@@ -3736,7 +3736,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_sha256": "62dbd33f8d45d9f972eb430a305ba0be148b14e4c3917a2ac16ca5ee4d513ba5"
+   "source_sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69"
   },
   {
    "architecture_atlas_behaviour_reference": {
@@ -53507,14 +53507,42 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:57:48Z",
+  "recorded_at": "2026-08-30T01:44:16Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement. Does not produce DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE. Deltas are proposals for downstream modules; disk evidence stays in receipts/headless.",
- "classified_this_scan": [],
+ "classified_this_scan": [
+  {
+   "confidence": 0.85,
+   "event": "changed",
+   "field": "candidate_statuses[2]",
+   "label": "SCAR",
+   "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+   "relpath": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "token": "DIAGNOSTIC_REJECT"
+  },
+  {
+   "confidence": 0.6,
+   "event": "changed",
+   "field": "<default>",
+   "label": "NEUTRAL",
+   "reason": "no LAW or SCAR driver in well-known fields",
+   "relpath": "receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json",
+   "token": "no_verdict"
+  },
+  {
+   "confidence": 0.8,
+   "event": "changed",
+   "field": "schema",
+   "label": "NEUTRAL",
+   "reason": "metadata / census / index / schema / plan with no verdict",
+   "relpath": "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
+   "token": "hawking.accelerator.repatriation_effects.v1"
+  }
+ ],
  "cursor": {
   "receipts/headless/ACCELERATOR_628_BOUNDARY_CENSUS.json": {
    "classification": "NEUTRAL",
@@ -54422,11 +54450,11 @@
    "driver_field": "candidate_statuses[2]",
    "driver_token": "DIAGNOSTIC_REJECT",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-30T00:49:38Z",
-   "mtime": 1788051015.9103994,
+   "last_classified": "2026-08-30T01:44:14Z",
+   "mtime": 1788053457.054849,
    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
-   "sha256": "62dbd33f8d45d9f972eb430a305ba0be148b14e4c3917a2ac16ca5ee4d513ba5",
-   "size": 226746
+   "sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69",
+   "size": 241090
   },
   "receipts/headless/ACCELERATOR_QUIESCENCE_INSTRUMENT.json": {
    "classification": "NEUTRAL",
@@ -54506,10 +54534,10 @@
    "driver_field": "<default>",
    "driver_token": "no_verdict",
    "first_seen": "2026-08-29T22:44:01Z",
-   "last_classified": "2026-08-30T00:49:38Z",
-   "mtime": 1788051030.4064813,
+   "last_classified": "2026-08-30T01:44:14Z",
+   "mtime": 1788053457.3180232,
    "reason": "no LAW or SCAR driver in well-known fields",
-   "sha256": "a0cb092c547f0d5c312e5f9b08373bf912930e8518153b32d0237c77fbdb7d9a",
+   "sha256": "b4aaf80b6f2264caa5706ab5194b0791ce8bf82d3d22859e0187ab55ad278643",
    "size": 11344
   },
   "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json": {
@@ -54518,11 +54546,11 @@
    "driver_field": "schema",
    "driver_token": "hawking.accelerator.repatriation_effects.v1",
    "first_seen": "2026-08-30T00:29:31Z",
-   "last_classified": "2026-08-30T00:49:38Z",
-   "mtime": 1788051023.8263366,
+   "last_classified": "2026-08-30T01:44:14Z",
+   "mtime": 1788053457.1832108,
    "reason": "metadata / census / index / schema / plan with no verdict",
-   "sha256": "8f6948a3f747408d2216f6bc1b66246c69818935b9dfc7d0f4ff6b4eab405029",
-   "size": 43889
+   "sha256": "8a8bf9dd2cedec61b80914628b8710654a8cddf404f8dcdb3850be614c568a68",
+   "size": 44497
   },
   "receipts/headless/ACCELERATOR_REPATRIATION_QUEUE.json": {
    "classification": "NEUTRAL",
@@ -73569,7 +73597,41 @@
    "size": 1325
   }
  },
- "deltas_this_scan": [],
+ "deltas_this_scan": [
+  {
+   "classification": "SCAR",
+   "consumers_notified": [
+    "odyssey_ii_law_store",
+    "odyssey_iii",
+    "negative_index",
+    "learned_physical_compiler"
+   ],
+   "driver": {
+    "confidence": 0.85,
+    "field": "candidate_statuses[2]",
+    "label": "SCAR",
+    "reason": "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+    "token": "DIAGNOSTIC_REJECT"
+   },
+   "invalidation": {
+    "action": "feed the negative index; a single model's scar never globally prunes a technique",
+    "kills": [
+     "candidate_statuses[2] contains DIAGNOSTIC_REJECT",
+     "any hypothesis that this artifact is promotion-grade PROTECTED_ABSOLUTE evidence"
+    ],
+    "level": "MODEL_SPECIFIC",
+    "makes_redundant": [
+     "retrying the same hypothesis on the same model/organ/machine without a new reopen condition",
+     "promoting a DIAGNOSTIC_RELATIVE number derived from this artifact"
+    ],
+    "organ": "UNKNOWN",
+    "reopen_condition": "UNKNOWN",
+    "sidecar_must_not_promote": true
+   },
+   "source": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
+   "source_sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69"
+  }
+ ],
  "gaps_closed": [
   "durable sha256 cursor over receipts/headless keyed by relpath",
   "pure-content LAW/SCAR/NEUTRAL classifier with recorded driver field/token",
@@ -73578,7 +73640,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "269a627f65f751707489a106357b801c53de0f6a",
+ "head": "6e246058f2b34abe64f5fc346c625a8fe4a0658f",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73734,22 +73796,22 @@
   },
   "by_class_this_scan": {
    "LAW": 0,
-   "NEUTRAL": 0,
-   "SCAR": 0
+   "NEUTRAL": 2,
+   "SCAR": 1
   },
   "missing_from_disk": [],
   "n_active_deltas": 808,
-  "n_changed": 0,
-  "n_deltas": 0,
+  "n_changed": 3,
+  "n_deltas": 1,
   "n_missing_from_disk": 0,
   "n_new": 0,
   "n_on_disk": 1671,
-  "n_unchanged": 1671,
+  "n_unchanged": 1668,
   "n_unreadable": 0,
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "1c513709745ecab6f1ed40a615e4c412a939112c3bd3e67bb06908ce63ff1e7c",
+ "seal_sha256": "918e43c454608a6cc1de12eb42c4c4c9f97b58c482745460bb16dc93fb601ad7",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

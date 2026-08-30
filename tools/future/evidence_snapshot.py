@@ -85,6 +85,11 @@ WANTED = [
     "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json",
     "tools/foundry/NEGATIVE_TRANSFER_ATLAS.json",
     "workspace/campaign/odyssey/NEGATIVE_SCIENCE.json",
+    # Added 2026-08-29 in compounding mode: Codex produced these after the
+    # scaffold campaign closed, and downstream lanes reason over both.
+    "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json",
+    "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+    "receipts/headless/ACCELERATOR_FRONT_G_P6.json",
 ]
 
 

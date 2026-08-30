@@ -3,19 +3,19 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:57:49Z",
+  "recorded_at": "2026-08-30T01:45:23Z",
   "recorded_by": "tools/future/evidence_snapshot.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "captured": [
   {
-   "bytes": 226746,
+   "bytes": 241090,
    "name": "ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "sha256": "62dbd33f8d45d9f972eb430a305ba0be148b14e4c3917a2ac16ca5ee4d513ba5",
+   "sha256": "6881b8a10c72caba224af6d2df4773dca7fac64b73d991410e71107277f0bd69",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_mtime_epoch": 1788051015.91,
-   "source_mtime_utc": "2026-08-30T00:50:15Z",
+   "source_mtime_epoch": 1788053457.055,
+   "source_mtime_utc": "2026-08-30T01:30:57Z",
    "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
   },
   {
@@ -39,10 +39,10 @@
   {
    "bytes": 11344,
    "name": "ACCELERATOR_REPATRIATION_AUDIT.json",
-   "sha256": "a0cb092c547f0d5c312e5f9b08373bf912930e8518153b32d0237c77fbdb7d9a",
+   "sha256": "b4aaf80b6f2264caa5706ab5194b0791ce8bf82d3d22859e0187ab55ad278643",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_REPATRIATION_AUDIT.json",
-   "source_mtime_epoch": 1788051030.406,
-   "source_mtime_utc": "2026-08-30T00:50:30Z",
+   "source_mtime_epoch": 1788053457.318,
+   "source_mtime_utc": "2026-08-30T01:30:57Z",
    "source_path": "receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json"
   },
   {
@@ -386,13 +386,40 @@
    "source_mtime_epoch": 1787116236.999,
    "source_mtime_utc": "2026-08-19T05:10:36Z",
    "source_path": "workspace/campaign/odyssey/NEGATIVE_SCIENCE.json"
+  },
+  {
+   "bytes": 44497,
+   "name": "ACCELERATOR_REPATRIATION_EFFECTS.json",
+   "sha256": "8a8bf9dd2cedec61b80914628b8710654a8cddf404f8dcdb3850be614c568a68",
+   "snapshot_path": "receipts/future/evidence/ACCELERATOR_REPATRIATION_EFFECTS.json",
+   "source_mtime_epoch": 1788053457.183,
+   "source_mtime_utc": "2026-08-30T01:30:57Z",
+   "source_path": "receipts/headless/ACCELERATOR_REPATRIATION_EFFECTS.json"
+  },
+  {
+   "bytes": 1032,
+   "name": "FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+   "sha256": "40e580c6b68cafaecbb2cf1f5c8ab4da5cde53a5822a9580dcd36bd8fa8b97af",
+   "snapshot_path": "receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+   "source_mtime_epoch": 1788046889.732,
+   "source_mtime_utc": "2026-08-29T23:41:29Z",
+   "source_path": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json"
+  },
+  {
+   "bytes": 5112,
+   "name": "ACCELERATOR_FRONT_G_P6.json",
+   "sha256": "07d949a2eaab00e08f6dc092e07d1d462b5ae1aa2836da7ccc91858bb00cb597",
+   "snapshot_path": "receipts/future/evidence/ACCELERATOR_FRONT_G_P6.json",
+   "source_mtime_epoch": 1787736939.313,
+   "source_mtime_utc": "2026-08-26T09:35:39Z",
+   "source_path": "receipts/headless/ACCELERATOR_FRONT_G_P6.json"
   }
  ],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "captured": 42,
+  "captured": 45,
   "missing": 2,
-  "wanted": 44
+  "wanted": 47
  },
  "missing": [
   "receipts/headless/FLASH_ROUTE_STABILITY.json",
@@ -403,6 +430,6 @@
  "purpose": "Pinned copy of the Codex receipts sidecar lanes read. Lanes run in sparse git worktrees where the live, uncommitted receipts are invisible; without this snapshot a lane would silently fall back to a fixture and its conclusions would be attached to nothing.",
  "read_only_guarantee": "Codex originals are opened read-only and never modified.",
  "schema": "hawking.future.evidence_snapshot.v1",
- "seal_sha256": "37d7cec5d28764ca9dc037906a886aaca0e6f4b5521cc957888751c42fcf192d",
+ "seal_sha256": "fe472b90fcc1a54d338004bea552fc4642d8e50144b565a50050657f2674ff27",
  "version": 1
 }

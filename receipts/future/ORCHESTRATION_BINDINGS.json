@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:06:51Z",
+  "recorded_at": "2026-08-30T16:42:26Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -328,6 +328,12 @@
    "species": "GRAVITY_SEARCH"
   },
   {
+   "frontier_item": "FT.GPU_KERNELS.flash-nx",
+   "module": "nr_nx_path.py",
+   "receipt": "NR_NX_PATH.json",
+   "species": "NR_NX_PATH_MAP"
+  },
+  {
    "frontier_item": "FT.ODYSSEY_TRANSFER.flash-qwen27",
    "module": "odyssey2_law_store.py",
    "receipt": "ODYSSEY2_LAW_STORE.json",
@@ -520,6 +526,12 @@
    "species": "TRIAL_BUILD_SEAL"
   },
   {
+   "frontier_item": "FT.VERIFICATION.repro",
+   "module": "trial_workload.py",
+   "receipt": "TRIAL_WORKLOAD.json",
+   "species": "TRIAL_WORKLOAD"
+  },
+  {
    "frontier_item": "FT.LATENCY.cpu-turnaround",
    "module": "turnaround.py",
    "receipt": "EXPERIMENT_TURNAROUND.json",
@@ -553,12 +565,12 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 90,
+  "bound": 92,
   "broken": 0,
   "distinct_frontier_items": 40,
-  "distinct_species": 59,
+  "distinct_species": 61,
   "infrastructure_excluded": 5,
-  "unbound_production": 2
+  "unbound_production": 1
  },
  "frontier_view_keys": [
   "ABI_VERDICT_HARNESS.json",
@@ -616,6 +628,7 @@
   "MOE_PHYSICAL_SCHOOL.json",
   "NEGATIVE_SCIENCE_INDEX.json",
   "NGRAM_SCHOOL.json",
+  "NR_NX_PATH.json",
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
   "ODYSSEY_CONSOLIDATED_RUN.json",
@@ -649,6 +662,7 @@
   "TEACHER_CORPUS_CONTRACT.json",
   "TEACHER_CORPUS_EXPANSION.json",
   "TOURNAMENT_READINESS.json",
+  "TRIAL_WORKLOAD.json",
   "WORKGRAPH_STATE.json",
   "WORK_EVENT_CONTRACT.json"
  ],
@@ -664,7 +678,7 @@
   "orchestration.py"
  ],
  "negative_findings": [
-  "2 production modules remain unbound and are NOT credited",
+  "1 production modules remain unbound and are NOT credited",
   "0 bindings are broken and credit nothing",
   "binding a module does not make its science correct; it makes the module reachable and its result routable"
  ],
@@ -683,10 +697,9 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "ab5cb2dec514ed0fc68864ee25c69886b3f1ac8e7ad6780699dabfd129a9af51",
+ "seal_sha256": "4d7e17650f47ca156de02a14c4ce06492d94dd6baade621dde7a895225be8cd5",
  "unbound_production": [
-  "autonomy_run.py",
-  "trial_workload.py"
+  "autonomy_run.py"
  ],
  "version": 1
 }

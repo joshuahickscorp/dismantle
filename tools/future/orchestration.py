@@ -145,6 +145,7 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "external_specimen_seal.py":  ("FT.MODEL_CAPABILITY.hard-gates", "EXTERNAL_SPECIMEN"),
     "odyssey_tool_driver.py":     ("FT.MODEL_CAPABILITY.hard-gates.drive-tools", "ODYSSEY_TOOL_DRIVER"),
     "nr_nx_path.py":              ("FT.GPU_KERNELS.flash-nx", "NR_NX_PATH_MAP"),
+    "rival_codec_screen.py":      ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "RIVAL_CODEC_SCREEN"),
     "trial_workload.py":          ("FT.VERIFICATION.repro", "TRIAL_WORKLOAD"),
     "sprint_profile.py":          ("FT.EXPERIMENT_TURNAROUND.refresh", "WALL_ATTRIBUTION"),
     "resident_health.py":         ("FT.HCLI_SELF.no-launch", "RESIDENT_TELEMETRY"),

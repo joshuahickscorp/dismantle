@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T18:59:18Z",
+  "recorded_at": "2026-08-30T19:00:08Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -443,6 +443,12 @@
   },
   {
    "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+   "module": "rival_codec_screen.py",
+   "receipt": "RIVAL_CODEC_SCREEN.json",
+   "species": "RIVAL_CODEC_SCREEN"
+  },
+  {
+   "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
    "module": "router_science.py",
    "receipt": "ROUTER_SENSITIVE_ALLOCATION.json",
    "species": "GRAVITY_SEARCH"
@@ -565,10 +571,10 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 92,
+  "bound": 93,
   "broken": 0,
   "distinct_frontier_items": 41,
-  "distinct_species": 61,
+  "distinct_species": 62,
   "infrastructure_excluded": 5,
   "unbound_production": 1
  },
@@ -651,6 +657,7 @@
   "RESIDENT_OPTIMIZER.json",
   "RESIDENT_SANDBOX.json",
   "RESTART_SUPERVISOR.json",
+  "RIVAL_CODEC_SCREEN.json",
   "ROUTER_SENSITIVE_ALLOCATION.json",
   "SCAR_SCHEDULING.json",
   "SPECIMEN_VERIFICATION.json",
@@ -697,7 +704,7 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "571f400f669cb54ffd5c1bac0eda2045687fd5b8698ba0ad2c46706212589a70",
+ "seal_sha256": "44dd8c4aee1f73b7fe817f13979cb278a1128adb7f29fb3909bd6d532b8d3aa8",
  "unbound_production": [
   "autonomy_run.py"
  ],

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:39:43Z",
+  "recorded_at": "2026-08-30T01:01:47Z",
   "recorded_by": "tools/future/resident_optimizer.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -599,7 +599,7 @@
   "mark_verified / weaken_verifier / widen_authority each RAISE on the proposer",
   "promote() does not exist; receipt status is BUILT_NOT_PROMOTED"
  ],
- "head": "c5863bb694c47a75a5ba6c289a59d7982cfd6cfc",
+ "head": "269a627f65f751707489a106357b801c53de0f6a",
  "hypotheses": [
   {
    "bench_state": "UNKNOWN",
@@ -1603,7 +1603,7 @@
   }
  },
  "schema": "hawking.future.resident_optimizer.v1",
- "seal_sha256": "9b288191b607220f700ef694c72a4741cf81bd49e07ea46d790af285525e4f9f",
+ "seal_sha256": "334d0cb708a8f2ec3259b9c093f975a9ef4de2ee18ed32160bf6a68be9a84cce",
  "status": "BUILT_NOT_PROMOTED",
  "verifier_separation": {
   "principle": "Models propose; protected deterministic evidence decides. The IsolatedVerifier in this module is STATIC_ONLY structure checking. A protected GPU verifier is Codex-owned and absent here.",

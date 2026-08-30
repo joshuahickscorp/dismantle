@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:39:22Z",
+  "recorded_at": "2026-08-30T01:00:43Z",
   "recorded_by": "tools/future/hmf_objects.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -256,7 +256,7 @@
   "note": "HUMF/HMF already implement the copy fabric (twelve recorded fields, fail-closed transitions, trust decay, resident digest, HAWKGPU-0). They do not implement tri-state is_coherent, kernel-boundary UNKNOWN, UNDECIDABLE costs, device visibility, or HGVAS identity-without-native-pointers. This module closes those gaps as an overlay rather than a rival fabric."
  },
  "schema": "hawking.future.hmf_objects.v1",
- "seal_sha256": "af120951751a118f95d38ddab85e0397a1b3b7ae4dd904c8d54b917ce882ecc6",
+ "seal_sha256": "9d7e60785cd67285a36511b4853ab910a71fba8602624d70cb748af9497627c2",
  "selftest": {
   "boolean_collapse_refused_on_coherent": "PASS",
   "consume_for_kernel_accepts_coherent": "PASS",

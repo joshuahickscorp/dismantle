@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:40:04Z",
+  "recorded_at": "2026-08-30T01:02:06Z",
   "recorded_by": "tools/future/turnaround.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -88,7 +88,7 @@
  "dominant_cost": {
   "among_measured_cpu_side": {
    "evidence": "largest median_ms among MEASURED_CPU_SIDE phases; process timings, not a GPU measurement",
-   "median_ms": 368.477,
+   "median_ms": 298.559,
    "phase": "verify"
   },
   "full_experiment_loop": {
@@ -134,44 +134,44 @@
   "Did not touch hcli/ledger.py; ledger timing is a tempfile JSONL analog"
  ],
  "phase_wall_ms_cpu_side": {
-  "ledger": 0.257,
-  "next_decision": 0.016,
-  "receipt": 0.75,
-  "source_discovery": 75.446,
-  "transform": 40.206,
-  "verify": 368.477
+  "ledger": 0.224,
+  "next_decision": 0.011,
+  "receipt": 0.719,
+  "source_discovery": 69.249,
+  "transform": 33.927,
+  "verify": 298.559
  },
  "phases": [
   {
-   "max_ms": 81.082,
+   "max_ms": 69.29,
    "measurement_kind": "git_ls_tree_full_inventory",
-   "median_ms": 75.446,
-   "min_ms": 69.809,
+   "median_ms": 69.249,
+   "min_ms": 69.208,
    "n": 2,
    "name": "source_discovery",
-   "phase_wall_ms_cpu_side": 75.446,
-   "range_ms": 11.273,
+   "phase_wall_ms_cpu_side": 69.249,
+   "range_ms": 0.082,
    "reason": null,
    "samples_ms": [
-    81.082,
-    69.809
+    69.29,
+    69.208
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 40.339,
+   "max_ms": 34.586,
    "measurement_kind": "python_import_tools.future._common",
-   "median_ms": 40.206,
-   "min_ms": 40.073,
+   "median_ms": 33.927,
+   "min_ms": 33.267,
    "n": 2,
    "name": "transform",
-   "phase_wall_ms_cpu_side": 40.206,
-   "range_ms": 0.266,
+   "phase_wall_ms_cpu_side": 33.927,
+   "range_ms": 1.319,
    "reason": null,
    "samples_ms": [
-    40.339,
-    40.073
+    34.586,
+    33.267
    ],
    "scoreboard_field": "transform_ns",
    "state": "MEASURED_CPU_SIDE"
@@ -247,69 +247,69 @@
    "state": "UNKNOWN"
   },
   {
-   "max_ms": 369.453,
+   "max_ms": 300.806,
    "measurement_kind": "pytest_collect_only_tools.future",
-   "median_ms": 368.477,
-   "min_ms": 367.501,
+   "median_ms": 298.559,
+   "min_ms": 296.313,
    "n": 2,
    "name": "verify",
-   "phase_wall_ms_cpu_side": 368.477,
-   "range_ms": 1.952,
+   "phase_wall_ms_cpu_side": 298.559,
+   "range_ms": 4.493,
    "reason": null,
    "samples_ms": [
-    369.453,
-    367.501
+    300.806,
+    296.313
    ],
    "scoreboard_field": "verification_ns",
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 0.868,
+   "max_ms": 0.741,
    "measurement_kind": "serialize_seal_fsync_tempfile",
-   "median_ms": 0.75,
-   "min_ms": 0.632,
+   "median_ms": 0.719,
+   "min_ms": 0.697,
    "n": 2,
    "name": "receipt",
-   "phase_wall_ms_cpu_side": 0.75,
-   "range_ms": 0.236,
+   "phase_wall_ms_cpu_side": 0.719,
+   "range_ms": 0.044,
    "reason": null,
    "samples_ms": [
-    0.868,
-    0.632
+    0.741,
+    0.697
    ],
    "scoreboard_field": "receipt_ns",
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 0.269,
+   "max_ms": 0.252,
    "measurement_kind": "jsonl_append_fsync_tempfile",
-   "median_ms": 0.257,
-   "min_ms": 0.245,
+   "median_ms": 0.224,
+   "min_ms": 0.197,
    "n": 2,
    "name": "ledger",
-   "phase_wall_ms_cpu_side": 0.257,
-   "range_ms": 0.024,
+   "phase_wall_ms_cpu_side": 0.224,
+   "range_ms": 0.055,
    "reason": null,
    "samples_ms": [
-    0.269,
-    0.245
+    0.197,
+    0.252
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "max_ms": 0.027,
+   "max_ms": 0.018,
    "measurement_kind": "dominant_cost_and_lever_selection",
-   "median_ms": 0.016,
-   "min_ms": 0.005,
+   "median_ms": 0.011,
+   "min_ms": 0.003,
    "n": 2,
    "name": "next_decision",
-   "phase_wall_ms_cpu_side": 0.016,
-   "range_ms": 0.022,
+   "phase_wall_ms_cpu_side": 0.011,
+   "range_ms": 0.015,
    "reason": null,
    "samples_ms": [
-    0.027,
-    0.005
+    0.018,
+    0.003
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
@@ -392,7 +392,7 @@
   },
   "values_in_this_receipt": "all null \u2014 CPU timings are not ns GPU/build quantities"
  },
- "seal_sha256": "8e2aae861f22fbef13058192c7655d40c560f174eeb27a678b3bdcf087c5d871",
+ "seal_sha256": "53294660da76aba3c720c1f10867e4ccc04314b1fa945de066e5c2d48feee4d8",
  "source_inventory": {
   "by_suffix": {
    ".bash": 1,

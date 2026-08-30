@@ -3,19 +3,19 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:36:31Z",
+  "recorded_at": "2026-08-30T00:57:49Z",
   "recorded_by": "tools/future/evidence_snapshot.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "captured": [
   {
-   "bytes": 218416,
+   "bytes": 226746,
    "name": "ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "sha256": "a26c61b7b42e8099cf8f2c815634551a6d06c93c241d5214721ee825caaa0b35",
+   "sha256": "62dbd33f8d45d9f972eb430a305ba0be148b14e4c3917a2ac16ca5ee4d513ba5",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-   "source_mtime_epoch": 1788050100.503,
-   "source_mtime_utc": "2026-08-30T00:35:00Z",
+   "source_mtime_epoch": 1788051015.91,
+   "source_mtime_utc": "2026-08-30T00:50:15Z",
    "source_path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
   },
   {
@@ -39,10 +39,10 @@
   {
    "bytes": 11344,
    "name": "ACCELERATOR_REPATRIATION_AUDIT.json",
-   "sha256": "f2f0d67ca0ebdfbdefd61a6785baceb8f9f2cb94a81ce7347e7b5e7bd8b99b2e",
+   "sha256": "a0cb092c547f0d5c312e5f9b08373bf912930e8518153b32d0237c77fbdb7d9a",
    "snapshot_path": "receipts/future/evidence/ACCELERATOR_REPATRIATION_AUDIT.json",
-   "source_mtime_epoch": 1788050100.649,
-   "source_mtime_utc": "2026-08-30T00:35:00Z",
+   "source_mtime_epoch": 1788051030.406,
+   "source_mtime_utc": "2026-08-30T00:50:30Z",
    "source_path": "receipts/headless/ACCELERATOR_REPATRIATION_AUDIT.json"
   },
   {
@@ -403,6 +403,6 @@
  "purpose": "Pinned copy of the Codex receipts sidecar lanes read. Lanes run in sparse git worktrees where the live, uncommitted receipts are invisible; without this snapshot a lane would silently fall back to a fixture and its conclusions would be attached to nothing.",
  "read_only_guarantee": "Codex originals are opened read-only and never modified.",
  "schema": "hawking.future.evidence_snapshot.v1",
- "seal_sha256": "1afeb023f3f540d81a5d0ba186339f397b571afa22ce77651dd99fad140253f0",
+ "seal_sha256": "37d7cec5d28764ca9dc037906a886aaca0e6f4b5521cc957888751c42fcf192d",
  "version": 1
 }

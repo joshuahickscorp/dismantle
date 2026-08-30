@@ -1,10 +1,9 @@
 {
  "active_processes": [
   "1131 /Applications/Bl /Applications/Blender.app/Contents/MacOS/Blender -b --python /Users/scammermike/.grok-mcp/blender_headless_server.py",
-  "95371 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python tools/odyssey_ctl.py cycle --go --max-lanes 14 --grok-lanes 0 --loop-secs 300 --inner-sleep 3",
-  "95494 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download thinkingmachines/Inkling-Small .gita",
-  "96587 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download zai-org/GLM-5.3-Flash .gitattributes",
-  "96597 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download ibm-granite/granite-4.0-h-tiny .gita",
+  "46975 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python tools/odyssey_ctl.py cycle --go --max-lanes 14 --grok-lanes 0 --loop-secs 300 --inner-sleep 3",
+  "47701 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download zai-org/GLM-5.3-Flash .gitattributes",
+  "48087 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Library/Frameworks/Python.framework/Versions/3.12/bin/hf download ibm-granite/granite-4.0-h-tiny .gita",
   "98220 /Library/Framewo /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/odyssey/modellake_watch.py --poll-secs 0.10"
  ],
  "adversarial_attack": {
@@ -163,26 +162,28 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:28:11Z",
+  "recorded_at": "2026-08-30T01:02:06Z",
   "recorded_by": "tools/future/handoff.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "blockers": [
   "No protected GPU authority in this campaign: every hardware quantity is UNKNOWN by rule, not by omission.",
-  "Flash has no source-independent complete NX; 12 of 14 blocked Flash candidates in the physical qualification queue depend on that one artifact.",
+  "Flash has no source-independent complete NX. This is the dominant blocker: the count is read live from FLASH_NX_COMPLETENESS_AUDIT.json rather than pinned here, because Codex keeps adding candidates behind it -- it was 12 of 14 at campaign start and 27 of 28 Flash candidates by the end.",
   "No U50 board, no CUDA node, no Core ML/ANE compiler environment: those fidelity levels and backends are declared UNAVAILABLE rather than simulated as if present."
  ],
  "branch": "odyssey-i",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
- "dirty_paths": 734,
+ "dirty_paths": 737,
  "gpu_authority": false,
- "head": "b607d29dca57b57350a902dd29c9cd32006f4648",
- "head_subject": "feat(future): ANE preboard and resident optimizer",
+ "head": "269a627f65f751707489a106357b801c53de0f6a",
+ "head_subject": "fix(future): plan-size guard must not depend on a capped convenience integer",
  "protected_measurements_taken": 0,
  "schema": "hawking.future.handoff.v1",
- "seal_sha256": "67906c6c14158740f56a964cd3ded236bbedf13cdf86ab26690c19209e612397",
+ "seal_sha256": "0dc355cdd55504e7e4c77e9ff64cb5bd6edc818f90a6625e833a1bc3ae8446f6",
  "sidecar_commits": [
+  "269a627f6 fix(future): plan-size guard must not depend on a capped convenience integer",
+  "c5863bb69 feat(future): physical qualification pipeline",
   "b607d29dc feat(future): ANE preboard and resident optimizer",
   "607532bd4 feat(future): static kernel preflight, negative science index, tournament harness, HCLI workunit species",
   "d355718d9 feat(future): integrate 25 sidecar lanes across FPGA, representation and science",
@@ -212,7 +213,7 @@
   },
   "candidate_queue_planner": {
    "module": "tools/future/candidate_planner.py",
-   "module_lines": 1515,
+   "module_lines": 1526,
    "receipt": "receipts/future/CANDIDATE_STAGED_PLAN.json",
    "state": "EXECUTABLE",
    "test": "tools/future/test_candidate_planner.py"
@@ -487,7 +488,7 @@
  "tests": {
   "exit_code": 0,
   "green": true,
-  "summary": "766 passed in 477.28s (0:07:57)"
+  "summary": "766 passed in 464.27s (0:07:44)"
  },
  "version": 1
 }

@@ -2598,6 +2598,91 @@
       "transfer_evidence": []
     },
     {
+      "affected_physical_region": "Flash P6 Gate and activation-quantization prefix",
+      "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "blocked_reason": "Flash complete source-independent NX is not qualified and the shared prefix has no matched parity/coherence and protected-latency receipt",
+      "candidate_id": "flash-p6-prefix-concurrent-wave",
+      "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+      "control_configuration": {
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0"
+        }
+      },
+      "dependencies": [],
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-prefix-concurrent-wave-plan.json"
+      ],
+      "evidence": [],
+      "exact_mutation": {
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "1"
+        }
+      },
+      "expected_active_byte_change": "unchanged source BF16 input, Gate BF16 weights, and quantizer output bytes",
+      "expected_dispatch_reduction": "0; Gate, QAT, and route dispatches remain unchanged",
+      "expected_eliminated_work": "one compute-encoder boundary between the independent Gate reduction and activation quantization",
+      "expected_gpu_ns_mechanism": "place Gate and activation quantization in one concurrent encoder because both only read the shared input and write disjoint outputs, then retain a separate route dependency boundary",
+      "expected_intermediate_byte_reduction": "0; Gate logits and E4M3FN/UE8M0 quantized buffers remain separate and source-visible",
+      "measurements": {
+        "absence_reasons": {
+          "accepted_tps": "awaiting native protected complete-token receipt",
+          "active_representation_bytes_per_token": "awaiting native protected complete-token receipt",
+          "actual_read_bytes_per_token": "awaiting native protected complete-token receipt",
+          "complete_wall_ns_per_accepted_token": "awaiting native protected complete-token receipt",
+          "dispatches_per_token": "awaiting native protected complete-token receipt",
+          "fallback_count": "awaiting native protected complete-token receipt",
+          "gpu_ns_per_token": "awaiting native protected complete-token receipt",
+          "resident_bytes": "awaiting native protected complete-token receipt",
+          "sync_ns_per_token": "awaiting native protected complete-token receipt",
+          "total_nx_bytes": "awaiting native protected complete-token receipt",
+          "transient_bytes_per_token": "awaiting native protected complete-token receipt"
+        },
+        "accepted_tps": null,
+        "active_representation_bytes_per_token": null,
+        "actual_read_bytes_per_token": null,
+        "complete_wall_ns_per_accepted_token": null,
+        "dispatches_per_token": null,
+        "fallback_count": null,
+        "gpu_ns_per_token": null,
+        "resident_bytes": null,
+        "status": "NOT_MEASURED",
+        "sync_ns_per_token": null,
+        "total_nx_bytes": null,
+        "transient_bytes_per_token": null
+      },
+      "model": "Flash",
+      "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-prefix-concurrent-wave-plan.json"
+      ],
+      "scope_tags": [
+        "MODEL_LOCAL"
+      ],
+      "source_evidence": [
+        "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
+        "crates/hawking-core/src/metal/mod.rs"
+      ],
+      "status": "BLOCKED",
+      "transfer_evidence": []
+    },
+    {
       "affected_physical_region": "Flash P6A routed FP4 W2/down projection and BF16 boundary",
       "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
       "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
@@ -2679,6 +2764,95 @@
         "crates/hawking-core/shaders/moe.metal",
         "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs",
         "crates/hawking-core/src/metal/mod.rs"
+      ],
+      "status": "BLOCKED",
+      "transfer_evidence": []
+    },
+    {
+      "affected_physical_region": "Flash P6A fused routed FP4 W2/down occupancy",
+      "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+      "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+      "candidate_id": "flash-p6-routed-fp4-down-bf16-simd",
+      "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+      "control_configuration": {
+        "mode": "source_oracle_or_scaffold",
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+          "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0"
+        }
+      },
+      "dependencies": [
+        "flash-p6-routed-fp4-down-bf16-fused"
+      ],
+      "diagnostic_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-routed-fp4-down-bf16-simd-plan.json"
+      ],
+      "evidence": [],
+      "exact_mutation": {
+        "source_oracle_controls": {
+          "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+          "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "1"
+        }
+      },
+      "expected_active_byte_change": "unchanged routed FP4 W2 weights, E8M0 scales, per-expert QAT bytes, and BF16 output bytes",
+      "expected_dispatch_reduction": "0 relative to scalar fusion; one fixed-six indirect launch remains",
+      "expected_eliminated_work": "the same six routed W2 launches and six routed FP32-to-BF16 cast launches as scalar fusion while changing only row-reduction geometry",
+      "expected_gpu_ns_mechanism": "eight SIMDgroups per 256-threadgroup split each 32-value FP4 block across lanes, preserving source block order while isolating intra-block reduction association for an A/B",
+      "expected_intermediate_byte_reduction": "0 relative to scalar fusion; existing six per-expert BF16 combine buffers remain the contract",
+      "measurements": {
+        "absence_reasons": {
+          "accepted_tps": "awaiting native protected complete-token receipt",
+          "active_representation_bytes_per_token": "awaiting native protected complete-token receipt",
+          "actual_read_bytes_per_token": "awaiting native protected complete-token receipt",
+          "complete_wall_ns_per_accepted_token": "awaiting native protected complete-token receipt",
+          "dispatches_per_token": "awaiting native protected complete-token receipt",
+          "fallback_count": "awaiting native protected complete-token receipt",
+          "gpu_ns_per_token": "awaiting native protected complete-token receipt",
+          "resident_bytes": "awaiting native protected complete-token receipt",
+          "sync_ns_per_token": "awaiting native protected complete-token receipt",
+          "total_nx_bytes": "awaiting native protected complete-token receipt",
+          "transient_bytes_per_token": "awaiting native protected complete-token receipt"
+        },
+        "accepted_tps": null,
+        "active_representation_bytes_per_token": null,
+        "actual_read_bytes_per_token": null,
+        "complete_wall_ns_per_accepted_token": null,
+        "dispatches_per_token": null,
+        "fallback_count": null,
+        "gpu_ns_per_token": null,
+        "resident_bytes": null,
+        "status": "NOT_MEASURED",
+        "sync_ns_per_token": null,
+        "total_nx_bytes": null,
+        "transient_bytes_per_token": null
+      },
+      "model": "Flash",
+      "parity_contract": "source organ/reference parity is required; no whole-model Flash parity or NX claim is implied",
+      "protected_command": [
+        "python3",
+        "-m",
+        "hcli",
+        "agentos",
+        "flash-executable",
+        "--repo-root",
+        ".",
+        "--emit",
+        "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION/flash-p6-routed-fp4-down-bf16-simd-plan.json"
+      ],
+      "scope_tags": [
+        "MODEL_LOCAL"
+      ],
+      "source_evidence": [
+        "crates/hawking-core/shaders/moe.metal",
+        "crates/hawking-core/src/gravity_deepseek_v4_p6_device.rs"
       ],
       "status": "BLOCKED",
       "transfer_evidence": []
@@ -4074,7 +4248,7 @@
   "claim_boundary": "This is a physical qualification frontier and HCLI WorkUnit proposal. It contains hypotheses and commands, not timing, placement, energy, TPS, capability, or promotion claims.",
   "counts": {
     "by_status": {
-      "BLOCKED": 25,
+      "BLOCKED": 27,
       "DIAGNOSTIC_PASS": 0,
       "DIAGNOSTIC_REJECT": 0,
       "INTEGRATED": 0,
@@ -4084,11 +4258,11 @@
       "READY_PROTECTED": 13,
       "STATIC_ONLY": 4
     },
-    "candidates": 42,
+    "candidates": 44,
     "ready": 13,
     "work_units": 13
   },
-  "fingerprint": "0006509807b232e5881394a62cc803bd0e4923988fe6aabe7d64366056f7dd28",
+  "fingerprint": "27ec656be7eeb822ff165ed1356a16709bc865a042b5eef5ade3fd02670a3a76",
   "funnel": {
     "diagnostic_relative_ab": [],
     "native_parity": [],

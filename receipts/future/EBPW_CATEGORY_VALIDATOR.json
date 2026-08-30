@@ -10,7 +10,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:36:31Z",
+  "recorded_at": "2026-08-30T00:57:49Z",
   "recorded_by": "tools/future/ebpw_categories.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -56,7 +56,7 @@
   "Active-bytes accounting is five separate fields; collapsing them raises.",
   "Validator is GREEN on honest FLASH_META_REPRESENTATION_SUB1 and REFUSED on a synthetic promotion variant."
  ],
- "head": "c5863bb694c47a75a5ba6c289a59d7982cfd6cfc",
+ "head": "269a627f65f751707489a106357b801c53de0f6a",
  "integration": {
   "can_promote": "can_promote(ledger: PromotionLedger | Mapping) -> tuple[bool, str]",
   "extract_ledger": "extract_ledger(doc: Mapping, source_path: str | None = None) -> PromotionLedger",
@@ -475,7 +475,7 @@
   }
  ],
  "schema": "hawking.future.ebpw_categories.v1",
- "seal_sha256": "ea5002eaa7bce0c1415910c5144df2dcfa5200595a5f8d63a237fe6ac28a4582",
+ "seal_sha256": "f4a0e3b15bb1c988f7460693fa5a82c1475851df2b46c5ec2280213c127b8d73",
  "selftest": {
   "cross_category_arithmetic_message": "refused prospective_meta_bpw + complete_physical_ebpw: EBPW categories are not interchangeable",
   "cross_category_arithmetic_raises": true,

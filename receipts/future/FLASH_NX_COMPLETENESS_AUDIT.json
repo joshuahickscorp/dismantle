@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:36:33Z",
+  "recorded_at": "2026-08-30T00:57:51Z",
   "recorded_by": "tools/future/flash_nx_audit.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -270,6 +270,29 @@
   },
   {
    "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+   "blocked_reason": "Flash complete source-independent NX is not qualified and the shared prefix has no matched parity/coherence and protected-latency receipt",
+   "candidate_id": "flash-p6-prefix-concurrent-wave",
+   "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+   "cluster": "DOMINANT",
+   "control_configuration": {
+    "mode": "source_oracle_or_scaffold",
+    "source_oracle_controls": {
+     "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0"
+    }
+   },
+   "extra_pieces": [],
+   "measurements_status": "NOT_MEASURED",
+   "requires": [
+    "serialized_source_independent_nx_artifact",
+    "physical_loader",
+    "whole_model_native_kernel_binding",
+    "protected_complete_token_measurement",
+    "capability_suite_on_nx"
+   ],
+   "status": "BLOCKED"
+  },
+  {
+   "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
    "candidate_id": "flash-p6-routed-fp4-down-bf16-fused",
    "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
@@ -278,6 +301,30 @@
     "mode": "source_oracle_or_scaffold",
     "source_oracle_controls": {
      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0"
+    }
+   },
+   "extra_pieces": [],
+   "measurements_status": "NOT_MEASURED",
+   "requires": [
+    "serialized_source_independent_nx_artifact",
+    "physical_loader",
+    "whole_model_native_kernel_binding",
+    "protected_complete_token_measurement",
+    "capability_suite_on_nx"
+   ],
+   "status": "BLOCKED"
+  },
+  {
+   "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+   "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+   "candidate_id": "flash-p6-routed-fp4-down-bf16-simd",
+   "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+   "cluster": "DOMINANT",
+   "control_configuration": {
+    "mode": "source_oracle_or_scaffold",
+    "source_oracle_controls": {
+     "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+     "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0"
     }
    },
    "extra_pieces": [],
@@ -601,7 +648,7 @@
    "flash-meta-sub1-coherent"
   ],
   "additional_count": 2,
-  "blocked_count": 25,
+  "blocked_count": 27,
   "candidates": [
    {
     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
@@ -864,6 +911,29 @@
    },
    {
     "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+    "blocked_reason": "Flash complete source-independent NX is not qualified and the shared prefix has no matched parity/coherence and protected-latency receipt",
+    "candidate_id": "flash-p6-prefix-concurrent-wave",
+    "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+    "cluster": "DOMINANT",
+    "control_configuration": {
+     "mode": "source_oracle_or_scaffold",
+     "source_oracle_controls": {
+      "HAWKING_DSV4F_P6_PREFIX_CONCURRENT": "0"
+     }
+    },
+    "extra_pieces": [],
+    "measurements_status": "NOT_MEASURED",
+    "requires": [
+     "serialized_source_independent_nx_artifact",
+     "physical_loader",
+     "whole_model_native_kernel_binding",
+     "protected_complete_token_measurement",
+     "capability_suite_on_nx"
+    ],
+    "status": "BLOCKED"
+   },
+   {
+    "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
     "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
     "candidate_id": "flash-p6-routed-fp4-down-bf16-fused",
     "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
@@ -872,6 +942,30 @@
      "mode": "source_oracle_or_scaffold",
      "source_oracle_controls": {
       "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "0"
+     }
+    },
+    "extra_pieces": [],
+    "measurements_status": "NOT_MEASURED",
+    "requires": [
+     "serialized_source_independent_nx_artifact",
+     "physical_loader",
+     "whole_model_native_kernel_binding",
+     "protected_complete_token_measurement",
+     "capability_suite_on_nx"
+    ],
+    "status": "BLOCKED"
+   },
+   {
+    "baseline_path": "receipts/headless/FLASH_NEXT_NOETIC_EXECUTABLE.json",
+    "blocked_reason": "Flash source-independent NX and protected complete-token capability are not qualified",
+    "candidate_id": "flash-p6-routed-fp4-down-bf16-simd",
+    "capability_contract": "blocked until a complete source-independent NX executable and independent capability path exist",
+    "cluster": "DOMINANT",
+    "control_configuration": {
+     "mode": "source_oracle_or_scaffold",
+     "source_oracle_controls": {
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_FUSED": "1",
+      "HAWKING_DSV4F_P6_FP4_DOWN_BF16_SIMD": "0"
      }
     },
     "extra_pieces": [],
@@ -1158,7 +1252,9 @@
    "flash-p6-hash-single-command-buffer",
    "flash-p6-learned-expert-cache-reuse",
    "flash-p6-learned-reader-reuse",
+   "flash-p6-prefix-concurrent-wave",
    "flash-p6-routed-fp4-down-bf16-fused",
+   "flash-p6-routed-fp4-down-bf16-simd",
    "flash-p6-routed-fp4-gate-up-swiglu-fused",
    "flash-p6-routed-fp4-gate-up-swiglu-simd",
    "flash-p6-routed-fp4-simdgroup",
@@ -1172,7 +1268,7 @@
    "flash-shared-fp8-gate-up-swiglu-fused",
    "flash-source-bf16-simd"
   ],
-  "dominant_count": 23,
+  "dominant_count": 25,
   "dominant_dependency": "source-independent Flash NX with a protected complete-token measurement",
   "gpu_window_worth_the_most": {
    "cpu_prerequisites_that_must_exist_first": [
@@ -1185,7 +1281,7 @@
     "flash-compact-moe-epilogue",
     "flash-meta-sub1-coherent"
    ],
-   "unblocks_count": 23,
+   "unblocks_count": 25,
    "unblocks_to_qualifiable": [
     "flash-attention-gate-fusion",
     "flash-compact-moe-bf16-vec4",
@@ -1197,7 +1293,9 @@
     "flash-p6-hash-single-command-buffer",
     "flash-p6-learned-expert-cache-reuse",
     "flash-p6-learned-reader-reuse",
+    "flash-p6-prefix-concurrent-wave",
     "flash-p6-routed-fp4-down-bf16-fused",
+    "flash-p6-routed-fp4-down-bf16-simd",
     "flash-p6-routed-fp4-gate-up-swiglu-fused",
     "flash-p6-routed-fp4-gate-up-swiglu-simd",
     "flash-p6-routed-fp4-simdgroup",
@@ -1246,7 +1344,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1300,7 +1400,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1348,7 +1450,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1401,7 +1505,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1426,7 +1532,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1475,7 +1583,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1500,7 +1610,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1572,7 +1684,7 @@
     ],
     "rank": 1,
     "state": "NOT_BUILT",
-    "still_required_by_count": 25,
+    "still_required_by_count": 27,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1585,7 +1697,7 @@
     ],
     "rank": 2,
     "state": "NOT_IMPLEMENTED",
-    "still_required_by_count": 25,
+    "still_required_by_count": 27,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1598,7 +1710,7 @@
     ],
     "rank": 3,
     "state": "PLAN_ONLY",
-    "still_required_by_count": 25,
+    "still_required_by_count": 27,
     "unblocks_count": 0,
     "unblocks_to_qualifiable": [],
     "why_this_position": "Must exist before any later piece can be consumed."
@@ -1611,8 +1723,8 @@
     ],
     "rank": 4,
     "state": "NOT_MEASURED",
-    "still_required_by_count": 25,
-    "unblocks_count": 23,
+    "still_required_by_count": 27,
+    "unblocks_count": 25,
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
@@ -1624,7 +1736,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1648,8 +1762,8 @@
     ],
     "rank": 5,
     "state": "NOT_RUN",
-    "still_required_by_count": 25,
-    "unblocks_count": 23,
+    "still_required_by_count": 27,
+    "unblocks_count": 25,
     "unblocks_to_qualifiable": [
      "flash-attention-gate-fusion",
      "flash-compact-moe-bf16-vec4",
@@ -1661,7 +1775,9 @@
      "flash-p6-hash-single-command-buffer",
      "flash-p6-learned-expert-cache-reuse",
      "flash-p6-learned-reader-reuse",
+     "flash-p6-prefix-concurrent-wave",
      "flash-p6-routed-fp4-down-bf16-fused",
+     "flash-p6-routed-fp4-down-bf16-simd",
      "flash-p6-routed-fp4-gate-up-swiglu-fused",
      "flash-p6-routed-fp4-gate-up-swiglu-simd",
      "flash-p6-routed-fp4-simdgroup",
@@ -1756,7 +1872,9 @@
    "flash-p6-hash-single-command-buffer",
    "flash-p6-learned-expert-cache-reuse",
    "flash-p6-learned-reader-reuse",
+   "flash-p6-prefix-concurrent-wave",
    "flash-p6-routed-fp4-down-bf16-fused",
+   "flash-p6-routed-fp4-down-bf16-simd",
    "flash-p6-routed-fp4-gate-up-swiglu-fused",
    "flash-p6-routed-fp4-gate-up-swiglu-simd",
    "flash-p6-routed-fp4-simdgroup",
@@ -1766,8 +1884,8 @@
   ],
   "authority": "disk",
   "disk_additional": 2,
-  "disk_blocked_flash": 25,
-  "disk_dominant": 23,
+  "disk_blocked_flash": 27,
+  "disk_dominant": 25,
   "frontier_F001_wording": "12 of 14 BLOCKED Flash candidates"
  },
  "gaps_closed": [
@@ -1778,7 +1896,7 @@
   "designed-vs-built runtime audit for loader, kernel, catalog, and consumer",
   "verification-vs-production dense rematerialization split"
  ],
- "head": "c5863bb694c47a75a5ba6c289a59d7982cfd6cfc",
+ "head": "269a627f65f751707489a106357b801c53de0f6a",
  "meta_measurement_state": {
   "capability": "NOT_MEASURED",
   "complete_token": "NOT_MEASURED",
@@ -2381,7 +2499,7 @@
   }
  ],
  "schema": "hawking.future.flash_nx_audit.v1",
- "seal_sha256": "3aeb22d7cebf6e19f3dc784d3c88fb4b7d402dfef9385d622f5accb7ae71f7d1",
+ "seal_sha256": "3c8d118898acb8ae3a961794dd010860310c1c6664c9edc5a34d7594a6020cb7",
  "seven_all_met": false,
  "seven_requirements": [
   {

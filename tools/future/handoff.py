@@ -169,8 +169,10 @@ def build() -> Path:
         "blockers": [
             "No protected GPU authority in this campaign: every hardware quantity is UNKNOWN "
             "by rule, not by omission.",
-            "Flash has no source-independent complete NX; 12 of 14 blocked Flash candidates "
-            "in the physical qualification queue depend on that one artifact.",
+            "Flash has no source-independent complete NX. This is the dominant blocker: "
+            "the count is read live from FLASH_NX_COMPLETENESS_AUDIT.json rather than "
+            "pinned here, because Codex keeps adding candidates behind it -- it was 12 of "
+            "14 at campaign start and 27 of 28 Flash candidates by the end.",
             "No U50 board, no CUDA node, no Core ML/ANE compiler environment: those fidelity "
             "levels and backends are declared UNAVAILABLE rather than simulated as if present.",
         ],

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T00:36:35Z",
+  "recorded_at": "2026-08-30T00:57:54Z",
   "recorded_by": "tools/future/fusion_sim.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1147,7 +1147,7 @@
   }
  },
  "schema": "hawking.future.fusion_sim.v1",
- "seal_sha256": "515a825c253ff8f028dbe7872730ac95cdf2abf35c32d0b5efc30b60ba6b0f31",
+ "seal_sha256": "b45e9ba9afe07750e909aa2a9bbd181a808a718101190cd8908b3104a04917fc",
  "simulated_dimensions": [
   "placement",
   "residency",

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T14:24:11Z",
+  "recorded_at": "2026-08-30T15:04:16Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -564,7 +564,7 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "8b36100ce42ddfd884fccc6aa785638682f64b10e6a48fa4d7f0ed90e6a105ea",
+ "seal_sha256": "c70a72972bf2203152b1355312d74521a11b7235d8d7a82e81f69a76c80e31ee",
  "unbound_production": [
   "autonomy_run.py"
  ],

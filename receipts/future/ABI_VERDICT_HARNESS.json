@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:57:24Z",
+  "recorded_at": "2026-08-30T14:59:02Z",
   "recorded_by": "tools/future/abi_verdicts.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -14,51 +14,39 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "codex_adjudication": {
   "available": true,
-  "recorded": [
+  "recorded": [],
+  "refused": [
    {
-    "applied": null,
-    "codex_classification": "REAL_DEFECT",
-    "codex_status": "FIXED",
+    "error": "VerdictRefused: finding 'claude-abi-01-kv-append-q8' already has a verdict; reset_store to re-rule",
     "finding_id": "claude-abi-01-kv-append-q8",
     "verdict": "CONFIRMED_BUG"
    },
    {
-    "applied": null,
-    "codex_classification": "BLOCKED_BY_GENERATION",
-    "codex_status": "RESOLVED_BY_MACRO_AWARE_PREFLIGHT",
+    "error": "VerdictRefused: finding 'claude-abi-02-qwen-generated-k1' already has a verdict; reset_store to re-rule",
     "finding_id": "claude-abi-02-qwen-generated-k1",
     "verdict": "GENERATED_KERNEL"
    },
    {
-    "applied": null,
-    "codex_classification": "REAL_DEFECT",
-    "codex_status": "FIXED",
+    "error": "VerdictRefused: finding 'claude-abi-03-gemv-attn-command-batch' already has a verdict; reset_store to re-rule",
     "finding_id": "claude-abi-03-gemv-attn-command-batch",
     "verdict": "CONFIRMED_BUG"
    },
    {
-    "applied": null,
-    "codex_classification": "REAL_DEFECT",
-    "codex_status": "FIXED",
+    "error": "VerdictRefused: finding 'claude-abi-04-gemv-attn-arena' already has a verdict; reset_store to re-rule",
     "finding_id": "claude-abi-04-gemv-attn-arena",
     "verdict": "CONFIRMED_BUG"
    },
    {
-    "applied": null,
-    "codex_classification": "REAL_DEFECT",
-    "codex_status": "FIXED",
+    "error": "VerdictRefused: finding 'claude-abi-05-moe-silu' already has a verdict; reset_store to re-rule",
     "finding_id": "claude-abi-05-moe-silu",
     "verdict": "CONFIRMED_BUG"
    },
    {
-    "applied": null,
-    "codex_classification": "REAL_DEFECT",
-    "codex_status": "FIXED",
+    "error": "VerdictRefused: finding 'claude-abi-06-moe-route-accumulate' already has a verdict; reset_store to re-rule",
     "finding_id": "claude-abi-06-moe-route-accumulate",
     "verdict": "CONFIRMED_BUG"
    }
   ],
-  "refused": [],
   "source": "receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
   "summary": {
    "blocked_by_generation_resolved": 1,
@@ -1249,7 +1237,7 @@
   }
  ],
  "gpu_authority": false,
- "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+ "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
  "measurement_states_we_are_not": [
   "DIAGNOSTIC_RELATIVE",
   "PROTECTED_ABSOLUTE"
@@ -1440,7 +1428,7 @@
  "rulings_issued_by_this_sidecar": 0,
  "rulings_recorded_from_external_authority": 6,
  "schema": "hawking.future.abi_verdicts.v1",
- "seal_sha256": "de92c280c5fb4eb25169be88c1aab43a99858dfd304fa24abbf08975c5f130e2",
+ "seal_sha256": "9b77e697bdf923cbcec9c7ea0f87897ff0865acaf92ad4eb026c342246817165",
  "snapshot_captured_count": 46,
  "snapshot_manifest": "receipts/future/EVIDENCE_SNAPSHOT.json",
  "snapshot_path_taken": "present",

@@ -46,6 +46,17 @@ def test_build_emits_sealed_receipt():
     assert doc["n_levels"] == len(ed.levels())
     assert doc["n_work_units"] == len(doc["work_units"])
     assert doc["reuse"]["skipped_work_on_identical_inputs"] is True
+    assert doc["cached_invariant_reuse"]["holds"] is True
+    assert doc["cached_invariant_reuse"]["byte_flip_named_the_input"] is True
+    assert doc["cached_invariant_reuse"]["deleted_input_is_rerun"] is True
+    assert doc["cached_invariant_reuse"]["scar_after_receipt_is_rerun"] is True
+    assert doc["cached_invariant_reuse"]["no_recorded_inputs_never_reuses"] is True
+    assert doc["claim"] == ed.CACHED_INVARIANT_CLAIM
+    assert doc["claim_family"] == ed.CACHED_INVARIANT_FAMILY
+    assert doc["recorded_inputs"]
+    for row in doc["recorded_inputs"]:
+        assert row["path"]
+        assert isinstance(row["sha256"], str) and len(row["sha256"]) == 64
     assert doc["diamond_invalidation"]["holds"] is True
     assert doc["adaptive_depth"]["proof"]["holds"] is True
     assert doc["unavailable_levels"]["holds"] is True
@@ -316,6 +327,11 @@ def test_v8_workunit_is_sleeping_not_synthetic():
     by_id = {u["id"]: u for u in units}
     assert "future.evidence-dag.selftest" in by_id
     assert "future.evidence-dag.adapt-next-mutation" in by_id
+    reuse_wu = by_id["future.evidence-dag.reuse-or-rerun"]
+    assert reuse_wu["status"] == "pending"
+    assert reuse_wu["resource_class"] == "STATIC_ANALYSIS"
+    assert reuse_wu["verifier"] == "future.evidence_dag.reuse_or_rerun"
+    assert "future.evidence-dag.selftest" in reuse_wu["dependencies"]
     sleeping = by_id["future.evidence-dag.v8-protected-capability"]
     assert sleeping["status"] == "blocked"
     assert sleeping["classification"] == "BLOCKED"
@@ -357,4 +373,302 @@ def test_resident_callable_names_fail_closed_paths():
     assert any("UnavailableLevelError" in s for s in doc["fail_closed"])
     assert any("BelowRequiredLevelError" in s for s in doc["fail_closed"])
     assert "future.evidence-dag.selftest" in doc["work_units_emitted"]
+    assert "future.evidence-dag.reuse-or-rerun" in doc["work_units_emitted"]
     assert "future.evidence-dag.v8-protected-capability" in doc["work_units_emitted"]
+    assert any("reuse_or_rerun" in s for s in doc["fail_closed"])
+    assert any("reused_from" in s for s in doc["fail_closed"])
+
+
+def _sealed_claim(tmp_path, *, content=b"payload-v1\n", extra=None):
+    inp = tmp_path / "input.bin"
+    inp.write_bytes(content)
+    dest = tmp_path / "claim.json"
+    doc = ed.write_claim_receipt(
+        claim="test.claim",
+        family="test.family",
+        input_paths=[inp],
+        dest=dest,
+        root=tmp_path,
+        recorded_at="2026-08-01T00:00:00Z",
+        extra=extra,
+    )
+    envelope = {
+        "id": "test.claim",
+        "receipt": str(dest),
+        "family": "test.family",
+        "asking_evidence_class": "STATIC_ONLY",
+    }
+    return envelope, inp, dest, doc
+
+
+def test_reuse_or_rerun_reuses_when_all_conditions_hold(tmp_path):
+    envelope, _inp, dest, doc = _sealed_claim(tmp_path)
+    verdict = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[])
+    assert verdict["decision"] == ed.REUSE
+    assert verdict["failed_condition"] is None
+    assert verdict["reused_from"]["receipt"]
+    assert verdict["reused_from"]["digest"] == doc["seal_sha256"]
+    assert verdict["gpu_authority"] is False
+    assert verdict["evidence_class"] == "STATIC_ONLY"
+    wu = ed.execute_reuse_workunit(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[])
+    assert wu["decision"] == ed.REUSE
+    assert wu["reused_from"]["digest"] == json.loads(dest.read_text())["seal_sha256"]
+    assert wu["resource_class"] == "STATIC_ANALYSIS"
+
+
+def test_negative_control_one_input_byte_flips_reuse_to_rerun(tmp_path):
+    """Same claim name, one input byte changed: must RERUN and name that input.
+
+    A cache keyed on the claim name is exactly how a stale baseline survives.
+    """
+    envelope, inp, _dest, _doc = _sealed_claim(tmp_path, content=b"ABCDEFGH")
+    before = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[])
+    assert before["decision"] == ed.REUSE
+
+    raw = bytearray(inp.read_bytes())
+    raw[3] ^= 0x01
+    inp.write_bytes(bytes(raw))
+
+    after = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[])
+    assert after["decision"] == ed.RERUN
+    assert after["failed_condition"] == "input_hash_mismatch"
+    assert after["named_input"] == "input.bin"
+    assert after["reused_from"] is None
+    assert "input.bin" in after["reason"]
+
+
+def test_negative_control_deleted_input_is_rerun_not_reuse(tmp_path):
+    envelope, inp, _dest, _doc = _sealed_claim(tmp_path)
+    assert ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[])["decision"] == ed.REUSE
+    inp.unlink()
+    after = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[])
+    assert after["decision"] == ed.RERUN
+    assert after["failed_condition"] == "input_missing"
+    assert after["named_input"] == "input.bin"
+    assert after["reused_from"] is None
+
+
+def test_negative_control_scar_after_receipt_is_rerun(tmp_path):
+    envelope, _inp, _dest, _doc = _sealed_claim(tmp_path)
+    later = {
+        "id": "SCAR.test.after",
+        "family": "test.family",
+        "landed_at": "2026-08-20T00:00:00Z",
+    }
+    after = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[later])
+    assert after["decision"] == ed.RERUN
+    assert after["failed_condition"] == "scar_after_receipt"
+    assert after["named_scar"] == "SCAR.test.after"
+    assert after["reused_from"] is None
+
+    earlier = {
+        "id": "SCAR.test.before",
+        "family": "test.family",
+        "landed_at": "2026-07-01T00:00:00Z",
+    }
+    before = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[earlier])
+    assert before["decision"] == ed.REUSE
+    assert before["reused_from"]["digest"]
+
+    other = {
+        "id": "SCAR.other",
+        "family": "other.family",
+        "landed_at": "2026-08-20T00:00:00Z",
+    }
+    unrelated = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[other])
+    assert unrelated["decision"] == ed.REUSE
+
+
+def test_negative_control_receipt_with_no_inputs_never_reuses(tmp_path):
+    dest = tmp_path / "empty.json"
+    doc = {
+        "schema": ed.CLAIM_RECEIPT_SCHEMA,
+        "version": 1,
+        "claim": "empty.claim",
+        "claim_family": "test.family",
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "recorded_inputs": [],
+        "bench": {
+            "state": "UNKNOWN",
+            "measurement_state": "STATIC_ONLY",
+            "recorded_at": "2026-08-01T00:00:00Z",
+            "recorded_by": "test",
+            "gpu_authority": False,
+        },
+    }
+    doc = rs.seal_doc(doc)
+    dest.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
+    verdict = ed.reuse_or_rerun(
+        {
+            "id": "empty.claim",
+            "receipt": str(dest),
+            "family": "test.family",
+            "asking_evidence_class": "STATIC_ONLY",
+        },
+        root=tmp_path,
+        receipts_dir=tmp_path,
+        scars=[],
+    )
+    assert verdict["decision"] == ed.RERUN
+    assert verdict["failed_condition"] == "no_recorded_inputs"
+    assert verdict["reused_from"] is None
+
+    missing_key = dict(doc)
+    missing_key.pop("recorded_inputs")
+    missing_key.pop("seal_sha256", None)
+    missing_key = rs.seal_doc(missing_key)
+    dest2 = tmp_path / "no-key.json"
+    dest2.write_text(json.dumps(missing_key, indent=1, sort_keys=True) + "\n")
+    verdict2 = ed.reuse_or_rerun(
+        {
+            "id": "empty.claim",
+            "receipt": str(dest2),
+            "family": "test.family",
+        },
+        root=tmp_path,
+        receipts_dir=tmp_path,
+        scars=[],
+    )
+    assert verdict2["decision"] == ed.RERUN
+    assert verdict2["failed_condition"] == "no_recorded_inputs"
+
+
+def test_reuse_or_rerun_refuses_unsealed_and_corrupt_receipts(tmp_path):
+    envelope, _inp, dest, _doc = _sealed_claim(tmp_path)
+    body = json.loads(dest.read_text())
+    body.pop("seal_sha256")
+    dest.write_text(json.dumps(body, indent=1, sort_keys=True) + "\n")
+    unsealed = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[])
+    assert unsealed["decision"] == ed.RERUN
+    assert unsealed["failed_condition"] == "unsealed_receipt"
+
+    nest = tmp_path / "corrupt"
+    nest.mkdir()
+    envelope2, _inp2, dest2, doc2 = _sealed_claim(nest)
+    flipped = dict(doc2)
+    digest = flipped["seal_sha256"]
+    flipped["seal_sha256"] = ("0" if digest[0] != "0" else "1") + digest[1:]
+    dest2.write_text(json.dumps(flipped, indent=1, sort_keys=True) + "\n")
+    corrupt = ed.reuse_or_rerun(envelope2, root=nest, receipts_dir=nest, scars=[])
+    assert corrupt["decision"] == ed.RERUN
+    assert corrupt["failed_condition"] == "corrupt_receipt"
+
+
+def test_reuse_or_rerun_static_receipt_cannot_satisfy_protected_ask(tmp_path):
+    envelope, _inp, _dest, _doc = _sealed_claim(tmp_path)
+    verdict = ed.reuse_or_rerun(
+        envelope,
+        root=tmp_path,
+        receipts_dir=tmp_path,
+        scars=[],
+        asking_evidence_class="PROTECTED_ABSOLUTE",
+    )
+    assert verdict["decision"] == ed.RERUN
+    assert verdict["failed_condition"] == "evidence_class_insufficient"
+    assert verdict["reused_from"] is None
+
+    ok = ed.reuse_or_rerun(
+        envelope,
+        root=tmp_path,
+        receipts_dir=tmp_path,
+        scars=[],
+        asking_evidence_class="STATIC_ONLY",
+    )
+    assert ok["decision"] == ed.REUSE
+
+
+def test_reuse_or_rerun_missing_claim_is_rerun_not_an_exception(tmp_path):
+    verdict = ed.reuse_or_rerun(
+        "no.such.claim",
+        root=tmp_path,
+        receipts_dir=tmp_path,
+        scars=[],
+    )
+    assert verdict["decision"] == ed.RERUN
+    assert verdict["failed_condition"] == "missing_receipt"
+    assert verdict["reused_from"] is None
+
+
+def test_write_claim_receipt_refuses_missing_or_empty_inputs(tmp_path):
+    dest = tmp_path / "nope.json"
+    with pytest.raises(rs.FailClosed) as ei:
+        ed.write_claim_receipt(
+            claim="x",
+            family="y",
+            input_paths=[],
+            dest=dest,
+            root=tmp_path,
+        )
+    assert ei.value.fault == "no_recorded_inputs"
+    with pytest.raises(rs.FailClosed) as e2:
+        ed.write_claim_receipt(
+            claim="x",
+            family="y",
+            input_paths=[tmp_path / "gone.bin"],
+            dest=dest,
+            root=tmp_path,
+        )
+    assert e2.value.fault == "input_missing"
+    assert not dest.exists()
+
+
+def test_untimestamped_matching_family_scar_is_rerun(tmp_path):
+    envelope, _inp, _dest, _doc = _sealed_claim(tmp_path)
+    scar = {"id": "SCAR.no-when", "family": "test.family"}
+    verdict = ed.reuse_or_rerun(envelope, root=tmp_path, receipts_dir=tmp_path, scars=[scar])
+    assert verdict["decision"] == ed.RERUN
+    assert verdict["failed_condition"] == "scar_untimestamped"
+
+
+def test_catalog_claim_reuses_freshly_built_receipt():
+    out = ed.build()
+    doc = json.loads(out.read_text())
+    verdict = ed.reuse_or_rerun(ed.CACHED_INVARIANT_CLAIM, scars=[])
+    assert verdict["decision"] == ed.REUSE
+    assert verdict["reused_from"]["digest"] == doc["seal_sha256"]
+    assert verdict["reused_from"]["receipt"].endswith("EVIDENCE_DAG.json")
+    wu = ed.execute_reuse_workunit(ed.CACHED_INVARIANT_CLAIM, scars=[])
+    assert wu["decision"] == ed.REUSE
+    assert wu["reused_from"]["digest"] == doc["seal_sha256"]
+    # Default scar source is autonomy_scars; those families are not this DAG's.
+    defaulted = ed.reuse_or_rerun(ed.CACHED_INVARIANT_CLAIM)
+    assert defaulted["decision"] == ed.REUSE
+    assert defaulted["reused_from"]["digest"] == doc["seal_sha256"]
+
+
+def test_cached_invariant_proof_function_holds():
+    proof = ed.cached_invariant_reuse_proof()
+    assert proof["holds"] is True
+    assert proof["byte_flip_named_the_input"] is True
+    assert proof["deleted_input_is_rerun"] is True
+    assert proof["scar_after_receipt_is_rerun"] is True
+    assert proof["no_recorded_inputs_never_reuses"] is True
+
+
+def test_logical_name_inputs_are_not_a_reuse_key(tmp_path):
+    dest = tmp_path / "logical.json"
+    doc = {
+        "schema": ed.CLAIM_RECEIPT_SCHEMA,
+        "claim": "logical.claim",
+        "claim_family": "test.family",
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "inputs": {"schema": "a" * 64, "payload": "b" * 64},
+        "bench": {
+            "state": "UNKNOWN",
+            "measurement_state": "STATIC_ONLY",
+            "recorded_at": "2026-08-01T00:00:00Z",
+            "gpu_authority": False,
+        },
+    }
+    doc = rs.seal_doc(doc)
+    dest.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
+    verdict = ed.reuse_or_rerun(
+        {"id": "logical.claim", "receipt": str(dest), "family": "test.family"},
+        root=tmp_path,
+        receipts_dir=tmp_path,
+        scars=[],
+    )
+    assert verdict["decision"] == ed.RERUN
+    assert verdict["failed_condition"] == "no_recorded_inputs"

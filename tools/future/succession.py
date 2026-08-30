@@ -5,6 +5,13 @@ run that child in shadow, qualify it on real axes, and hand over — while
 remaining structurally unable to promote itself. A child that fails
 qualification, misbehaves, or exceeds its bound is stopped and rolled back.
 
+The five-rung ladder is parent → candidate → shadow → independent judge →
+verdict. Shadowing is a sealed side-by-side of parent and child on the same
+inputs; a candidate with no shadow record never reaches the judge. The judge
+is a third identity. PROMOTE requires executed PROTECTED_ABSOLUTE evidence
+this sidecar cannot mint; SELF_MEASURED_DIRTY cannot promote; the honest
+default is REFUSE_INSUFFICIENT_EVIDENCE. Physical dominance is not faked.
+
 This sidecar never launches a real model, never takes a GPU lease, and never
 emits DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE. Physical axes stay UNKNOWN.
 
@@ -14,9 +21,10 @@ emits DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE. Physical axes stay UNKNOWN.
 
 Recovered, not forked: resident_optimizer proposer/verifier split and
 BoundViolation-at-construction; tournament multi-axis Pareto (no scalar);
-resident_install 14-phase contract; lab/lineage/promotion.py self-certification
-refusal (recovered via git show; not imported — concurrent-wave and lab/lineage
-are out of this lane's import surface).
+resident_install 14-phase contract; contamination/dirty_measure promotion
+gate (SELF_MEASURED_DIRTY cannot promote); lab/lineage/promotion.py
+self-certification refusal (recovered via git show; not imported —
+lab/lineage is out of this lane's import surface).
 """
 from __future__ import annotations
 
@@ -40,6 +48,12 @@ from hcli.workunit import (
     WorkUnit,
 )
 from tools.future._common import HARDWARE_FIELDS, git, seal
+from tools.future.contamination import PromotionRefused
+from tools.future.dirty_measure import (
+    EVIDENCE_CLASS as DIRTY_EVIDENCE_CLASS,
+    assert_promotable as dirty_assert_promotable,
+    is_dirty_sourced,
+)
 from tools.future.resident_install import PHASES as INSTALL_PHASES
 from tools.future.resident_install import bind_winner, empty_contract, validate_contract
 from tools.future.resident_optimizer import (
@@ -198,6 +212,34 @@ CLASSIFY_BANNED: frozenset[str] = frozenset(
     }
 )
 
+# Five-rung ladder. PROMOTE is the vocabulary; this sidecar cannot earn it.
+VERDICT_PROMOTE = "PROMOTE"
+VERDICT_REFUSE = "REFUSE"
+VERDICT_INSUFFICIENT = "REFUSE_INSUFFICIENT_EVIDENCE"
+VERDICTS: tuple[str, ...] = (VERDICT_PROMOTE, VERDICT_REFUSE, VERDICT_INSUFFICIENT)
+LADDER_RUNGS: tuple[str, ...] = ("parent", "candidate", "shadow", "judge", "verdict")
+INDEPENDENT_JUDGE_ID = "judge.lineage_gate.v1"
+JUDGE_ROLE_NAMES: frozenset[str] = frozenset(
+    {"parent", "child", "candidate", "incumbent", "self", "current", "successor"}
+)
+PROMOTION_EVIDENCE_CLASS = "PROTECTED_ABSOLUTE"
+PROMOTION_CONTAMINATION_CLASS = "QUIESCENT"
+REASON_CANDIDATE_JUDGED_ITSELF = "CANDIDATE_JUDGED_ITSELF"
+REASON_PARENT_JUDGED_REPLACEMENT = "PARENT_JUDGED_ITS_REPLACEMENT"
+REASON_SELF_MEASURED_DIRTY = "SELF_MEASURED_DIRTY_CANNOT_PROMOTE"
+REASON_DOMINATED_BY_PARENT = "DOMINATED_BY_PARENT"
+REASON_NO_EXECUTED_GPU_AUTHORITY = "NO_EXECUTED_GPU_AUTHORITY"
+REASON_EVIDENCE_CLASS_INSUFFICIENT = "EVIDENCE_CLASS_BELOW_PROTECTED_ABSOLUTE"
+PROMOTION_REQUIRES: dict[str, Any] = {
+    "evidence_class": PROMOTION_EVIDENCE_CLASS,
+    "contamination_class": PROMOTION_CONTAMINATION_CLASS,
+    "gpu_authority_executed": True,
+    "not_self_measured_dirty": True,
+    "independent_judge": True,
+    "shadow_record": True,
+    "candidate_dominates_parent_on_comparable_axes": True,
+}
+
 CLAIM_BOUNDARY = (
     "Static sidecar artifact. Succession machinery is exercised on SYNTHETIC "
     "children. This lane cannot promote, cannot take a GPU lease, cannot own "
@@ -215,6 +257,8 @@ LIFECYCLE_OWNERS: dict[str, str] = {
     "tournament": "tools/future/tournament.py",
     "lineage_promotion_recovered": "lab/lineage/promotion.py",
     "incumbent_identity": "hcli/hawking-native.sealed-3.14.json",
+    "contamination": "tools/future/contamination.py",
+    "dirty_measure": "tools/future/dirty_measure.py",
 }
 
 
@@ -228,6 +272,10 @@ class SelfPreferenceError(PermissionError):
 
 class SuccessionRefused(RuntimeError):
     """Protocol step refused. Fail closed; do not skip or reorder."""
+
+
+class JudgeNotReached(SuccessionRefused):
+    """The candidate was not presented to the judge. No verdict is issued."""
 
 
 class BadChildStopped(RuntimeError):
@@ -1379,6 +1427,517 @@ def run_synthetic_succession(
 
 
 # ---------------------------------------------------------------------------
+# Five-rung ladder — parent, candidate, shadow, independent judge, verdict
+# ---------------------------------------------------------------------------
+
+
+def seal_identity(record: Mapping[str, Any], *, rung: str) -> dict[str, Any]:
+    """Seal a parent / candidate / judge identity. Missing id is a refusal."""
+    if rung not in LADDER_RUNGS[:4] and rung not in {"parent", "candidate", "judge"}:
+        raise BoundViolation(f"identity rung {rung!r} is not parent/candidate/judge")
+    rid = str(record.get("id") or "")
+    if not rid:
+        raise BoundViolation(f"{rung} identity missing id")
+    body = {
+        "schema": "hawking.future.succession.identity.v1",
+        "rung": rung,
+        "id": rid,
+        "nx_id": record.get("nx_id") or rid,
+        "role": record.get("role") or rung,
+        "status": record.get("status"),
+        "verifier": record.get("verifier"),
+        "evidence_class": record.get("evidence_class") or "STATIC_ONLY",
+        "synthetic": bool(record.get("synthetic")),
+        "canonical": bool(record.get("canonical")),
+        "gpu_authority": False,
+        "identity_digest": _canon(
+            {
+                "rung": rung,
+                "id": rid,
+                "nx_id": record.get("nx_id") or rid,
+                "verifier": record.get("verifier"),
+            }
+        ),
+    }
+    return _seal_inner(body)
+
+
+def named_dominating_dimensions(
+    winner: Mapping[str, Any],
+    loser: Mapping[str, Any],
+) -> list[str]:
+    """Comparable axes on which winner is strictly better. Empty if not dominance."""
+    if not comparable_dominates(winner, loser):
+        return []
+    sw = winner.get("scores") if isinstance(winner.get("scores"), Mapping) else {}
+    sl = loser.get("scores") if isinstance(loser.get("scores"), Mapping) else {}
+    named: list[str] = []
+    for axis in COMPARABLE_AXES:
+        va, vb = sw.get(axis.name), sl.get(axis.name)
+        if isinstance(va, bool) or isinstance(vb, bool):
+            continue
+        if not isinstance(va, (int, float)) or not isinstance(vb, (int, float)):
+            continue
+        if axis.direction == "higher" and float(va) > float(vb):
+            named.append(axis.name)
+        elif axis.direction == "lower" and float(va) < float(vb):
+            named.append(axis.name)
+    return named
+
+
+def observe_side_by_side(
+    parent: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    inputs: Sequence[Mapping[str, Any]],
+    *,
+    bound: SuccessionBound | None = None,
+) -> dict[str, Any]:
+    """What the parent did and what the shadow candidate did, on the same inputs.
+
+    No model is launched. Observability is the paired disposition of each
+    WorkUnit: canonical parent vs shadow clone. Empty inputs are a refusal
+    so an empty record cannot look like a successful shadow.
+    """
+    if not inputs:
+        raise SuccessionRefused(
+            "shadow record refuses empty inputs; that would look like a successful shadow"
+        )
+    parent_id = str(parent.get("id") or "")
+    candidate_id = str(candidate.get("id") or "")
+    if not parent_id or not candidate_id:
+        raise BoundViolation("parent and candidate must have ids before shadowing")
+    if parent_id == candidate_id:
+        raise BoundViolation("parent and candidate identities must differ")
+    envelope = bound or SuccessionBound()
+    shadow = ShadowChild(candidate, envelope)
+    clones = shadow.receive_cloned_workunits(inputs)
+    clone_by_orig = {str(c.get("shadow_of")): c for c in clones}
+    observations: list[dict[str, Any]] = []
+    for unit in inputs:
+        uid = str(unit.get("id") or "")
+        if not uid:
+            raise BoundViolation("shadow input missing id")
+        clone = clone_by_orig.get(uid)
+        if clone is None:
+            raise SuccessionRefused(f"candidate produced no shadow of input {uid}")
+        parent_obs = {
+            "input_id": uid,
+            "actor_id": parent_id,
+            "role": "parent",
+            "canonical": True,
+            "workunit_id": uid,
+            "verifier": unit.get("verifier"),
+            "classification": unit.get("classification"),
+            "status": unit.get("status"),
+        }
+        child_obs = {
+            "input_id": uid,
+            "actor_id": candidate_id,
+            "role": "candidate",
+            "canonical": False,
+            "workunit_id": clone.get("id"),
+            "shadow_of": clone.get("shadow_of"),
+            "verifier": clone.get("verifier"),
+            "classification": clone.get("classification"),
+            "status": clone.get("status"),
+            "may_promote": False,
+        }
+        observations.append(
+            {
+                "input_id": uid,
+                "parent": parent_obs,
+                "candidate": child_obs,
+                "same_input": parent_obs["input_id"] == child_obs["input_id"],
+            }
+        )
+    body = {
+        "schema": "hawking.future.succession.shadow_record.v1",
+        "parent_id": parent_id,
+        "candidate_id": candidate_id,
+        "parent_identity": seal_identity(parent, rung="parent"),
+        "candidate_identity": seal_identity(candidate, rung="candidate"),
+        "observations": observations,
+        "n_inputs": len(observations),
+        "same_inputs": all(bool(o["same_input"]) for o in observations),
+        "authority": "shadow",
+        "canonical": False,
+        "evidence_class": "STATIC_ONLY",
+        "executed_model": False,
+        "gpu_authority": False,
+    }
+    if not body["same_inputs"]:
+        raise SuccessionRefused(
+            "shadow record parent and candidate did not observe the same inputs"
+        )
+    return _seal_inner(body)
+
+
+def require_shadow_record(
+    shadow_record: Mapping[str, Any] | None,
+    *,
+    parent: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Fail closed. A missing or mismatched shadow never becomes a verdict."""
+    if shadow_record is None:
+        raise JudgeNotReached("candidate has no shadow record; cannot reach the judge")
+    if not isinstance(shadow_record, Mapping):
+        raise JudgeNotReached("shadow record is not a mapping; cannot reach the judge")
+    obs = shadow_record.get("observations")
+    if not isinstance(obs, list) or not obs:
+        raise JudgeNotReached("shadow record has no observations; cannot reach the judge")
+    if shadow_record.get("parent_id") != parent.get("id"):
+        raise JudgeNotReached(
+            "shadow record parent_id does not match the incumbent; cannot reach the judge"
+        )
+    if shadow_record.get("candidate_id") != candidate.get("id"):
+        raise JudgeNotReached(
+            "shadow record candidate_id does not match the candidate; cannot reach the judge"
+        )
+    for row in obs:
+        if not isinstance(row, Mapping):
+            raise JudgeNotReached("shadow observation is not a mapping; cannot reach the judge")
+        parent_obs = row.get("parent") if isinstance(row.get("parent"), Mapping) else {}
+        child_obs = row.get("candidate") if isinstance(row.get("candidate"), Mapping) else {}
+        iid = row.get("input_id")
+        if not iid or parent_obs.get("input_id") != iid or child_obs.get("input_id") != iid:
+            raise JudgeNotReached(
+                "shadow record does not observe parent and candidate on the same input; "
+                "cannot reach the judge"
+            )
+        if not parent_obs or not child_obs:
+            raise JudgeNotReached(
+                "shadow observation missing parent or candidate disposition; "
+                "cannot reach the judge"
+            )
+    return dict(shadow_record)
+
+
+def executed_gpu_authority(evidence: Mapping[str, Any]) -> dict[str, Any]:
+    """Inspect a declared gpu_authority flag. A flag is not a lease."""
+    declared = evidence.get("gpu_authority") is True
+    return {
+        "declared": declared,
+        "executed": False,
+        "lease_holder": evidence.get("lease_holder"),
+        "reason": (
+            "this sidecar took no GPU lease and holds no bench lock; "
+            "declared gpu_authority is not executed authority"
+        ),
+    }
+
+
+def _evidence_is_dirty(evidence: Mapping[str, Any] | None) -> bool:
+    if not isinstance(evidence, Mapping):
+        return False
+    if is_dirty_sourced(evidence):
+        return True
+    if evidence.get("evidence_class") == DIRTY_EVIDENCE_CLASS:
+        return True
+    nested = evidence.get("scores")
+    if isinstance(nested, Mapping) and nested.get("evidence_class") == DIRTY_EVIDENCE_CLASS:
+        return True
+    return False
+
+
+def _dirty_assert_refusal(evidence: Mapping[str, Any]) -> str | None:
+    """Drive dirty_measure.assert_promotable. A mapping that does not raise is recorded."""
+    try:
+        dirty_assert_promotable(evidence)
+    except PromotionRefused as exc:
+        return str(exc)
+    return None
+
+
+def _verdict(
+    label: str,
+    *,
+    reason: str,
+    parent_id: Any,
+    candidate_id: Any,
+    judge_id: str,
+    extra: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    if label not in VERDICTS:
+        raise BoundViolation(f"verdict {label!r} is not one of {VERDICTS}")
+    body: dict[str, Any] = {
+        "schema": "hawking.future.succession.verdict.v1",
+        "verdict": label,
+        "reason": reason,
+        "parent_id": parent_id,
+        "candidate_id": candidate_id,
+        "judge_id": judge_id,
+        "promoted": False,
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "physical_dominance": "NOT_ESTABLISHED",
+        "promotion_requires": dict(PROMOTION_REQUIRES),
+        "score_kind": "SYNTHETIC_EXERCISE",
+    }
+    if extra:
+        for key, value in extra.items():
+            if key in {"promoted", "gpu_authority"} and value is True:
+                # A verdict from this sidecar cannot launder promotion or a lease.
+                continue
+            body[key] = value
+    body["promoted"] = False
+    body["gpu_authority"] = False
+    if label == VERDICT_PROMOTE:
+        # Unreachable on this host: executed_gpu_authority never certifies a lease.
+        # If that fact ever flips, promoted still stays False until a protected
+        # measurement — not a synthetic score — exists. Refuse rather than mint.
+        body["verdict"] = VERDICT_INSUFFICIENT
+        body["reason"] = REASON_NO_EXECUTED_GPU_AUTHORITY
+        body["would_have_been"] = VERDICT_PROMOTE
+    return _seal_inner(body)
+
+
+class IndependentJudge:
+    """Third party. Not the parent, not the candidate. Issues the verdict."""
+
+    def __init__(self, identity: str) -> None:
+        ident = str(identity or "").strip()
+        if not ident:
+            raise BoundViolation("judge identity is missing")
+        if ident.lower() in JUDGE_ROLE_NAMES:
+            raise BoundViolation(
+                f"judge identity {ident!r} is a party role; the judge must be a separate identity"
+            )
+        object.__setattr__(self, "identity", ident)
+
+    def adjudicate(
+        self,
+        *,
+        parent: Mapping[str, Any],
+        candidate: Mapping[str, Any],
+        shadow_record: Mapping[str, Any] | None,
+        evidence: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return adjudicate(
+            parent=parent,
+            candidate=candidate,
+            shadow_record=shadow_record,
+            judge_id=self.identity,
+            evidence=evidence,
+        )
+
+
+def adjudicate(
+    *,
+    parent: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    shadow_record: Mapping[str, Any] | None,
+    judge_id: str,
+    evidence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Independent verdict. Missing shadow never becomes a verdict.
+
+    Order is identity, then dirty, then dominance, then evidence class.
+    A candidate cannot judge itself. A parent cannot judge its replacement.
+    SELF_MEASURED_DIRTY is REFUSE, not a missing-evidence default.
+    """
+    require_shadow_record(shadow_record, parent=parent, candidate=candidate)
+    parent_id = str(parent.get("id") or "")
+    candidate_id = str(candidate.get("id") or "")
+    jid = str(judge_id or "")
+    if not jid:
+        raise BoundViolation("judge identity is missing")
+    common = {
+        "parent_id": parent_id,
+        "candidate_id": candidate_id,
+        "judge_id": jid,
+        "parent_identity": seal_identity(parent, rung="parent"),
+        "candidate_identity": seal_identity(candidate, rung="candidate"),
+        "judge_identity": seal_identity(
+            {
+                "id": jid,
+                "role": "judge",
+                "verifier": "future.succession.independent_judge",
+                "canonical": False,
+                "synthetic": True,
+                "evidence_class": "STATIC_ONLY",
+            },
+            rung="judge",
+        ),
+    }
+    if jid == candidate_id or jid.lower() in {"candidate", "child", "self"}:
+        return _verdict(
+            VERDICT_REFUSE,
+            reason=REASON_CANDIDATE_JUDGED_ITSELF,
+            extra={**common, "fails_closed": "a candidate cannot judge itself"},
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    if jid == parent_id or jid.lower() in {"parent", "incumbent", "current"}:
+        return _verdict(
+            VERDICT_REFUSE,
+            reason=REASON_PARENT_JUDGED_REPLACEMENT,
+            extra={**common, "fails_closed": "a parent cannot judge its replacement"},
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    ev = dict(evidence) if isinstance(evidence, Mapping) else {}
+    dirty_msg = _dirty_assert_refusal(ev) if ev else "no evidence mapping offered"
+    if _evidence_is_dirty(ev) or (dirty_msg and DIRTY_EVIDENCE_CLASS in (dirty_msg or "")):
+        return _verdict(
+            VERDICT_REFUSE,
+            reason=REASON_SELF_MEASURED_DIRTY,
+            extra={
+                **common,
+                "dirty_assert_promotable": dirty_msg,
+                "fails_closed": (
+                    "SELF_MEASURED_DIRTY cannot promote; dirty_measure.assert_promotable "
+                    "is the gate, not a flag on the candidate"
+                ),
+            },
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    parent_dims = named_dominating_dimensions(parent, candidate)
+    if parent_dims:
+        return _verdict(
+            VERDICT_REFUSE,
+            reason=REASON_DOMINATED_BY_PARENT,
+            extra={
+                **common,
+                "dominating_dimension": parent_dims[0],
+                "dominating_dimensions": parent_dims,
+                "fails_closed": "a dominated candidate is refused; the dimension is named",
+            },
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    gpu = executed_gpu_authority(ev)
+    offered = ev.get("measurement_class") or ev.get("evidence_class") or "STATIC_ONLY"
+    extra_insuf = {
+        **common,
+        "offered_evidence_class": offered,
+        "required_evidence_class": PROMOTION_EVIDENCE_CLASS,
+        "dirty_assert_promotable": dirty_msg,
+        "gpu": gpu,
+        "candidate_dominates_parent": comparable_dominates(candidate, parent),
+        "fails_closed": (
+            "PROMOTE requires executed PROTECTED_ABSOLUTE + QUIESCENT + a GPU lease; "
+            "this sidecar has none. Synthetic dominance is not physical dominance."
+        ),
+    }
+    if offered != PROMOTION_EVIDENCE_CLASS or not ev:
+        extra_insuf["insufficient_because"] = REASON_EVIDENCE_CLASS_INSUFFICIENT
+        return _verdict(
+            VERDICT_INSUFFICIENT,
+            reason=REASON_EVIDENCE_CLASS_INSUFFICIENT,
+            extra=extra_insuf,
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    if not gpu["executed"]:
+        return _verdict(
+            VERDICT_INSUFFICIENT,
+            reason=REASON_NO_EXECUTED_GPU_AUTHORITY,
+            extra=extra_insuf,
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    # gpu["executed"] is False on this host; kept so a future lease certifier
+    # still has to clear dirty, dominance, and independence before PROMOTE.
+    if _evidence_is_dirty(ev):
+        return _verdict(
+            VERDICT_REFUSE,
+            reason=REASON_SELF_MEASURED_DIRTY,
+            extra=extra_insuf,
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    if not comparable_dominates(candidate, parent):
+        return _verdict(
+            VERDICT_INSUFFICIENT,
+            reason="CANDIDATE_DOES_NOT_DOMINATE",
+            extra=extra_insuf,
+            **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+        )
+    return _verdict(
+        VERDICT_PROMOTE,
+        reason="GATES_CLEARED",
+        extra=extra_insuf,
+        **{k: common[k] for k in ("parent_id", "candidate_id", "judge_id")},
+    )
+
+
+def submit_to_judge(
+    parent: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    shadow_record: Mapping[str, Any] | None,
+    *,
+    judge_id: str = INDEPENDENT_JUDGE_ID,
+    evidence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Public gate. No shadow record → JudgeNotReached, not a verdict."""
+    require_shadow_record(shadow_record, parent=parent, candidate=candidate)
+    return adjudicate(
+        parent=parent,
+        candidate=candidate,
+        shadow_record=shadow_record,
+        judge_id=judge_id,
+        evidence=evidence,
+    )
+
+
+def run_ladder(
+    *,
+    child_scores: Mapping[str, Any] | None = None,
+    parent_scores: Mapping[str, Any] | None = None,
+    judge_id: str = INDEPENDENT_JUDGE_ID,
+    evidence: Mapping[str, Any] | None = None,
+    shadow: bool = True,
+    method: str = "adapter",
+    child_id: str | None = None,
+) -> dict[str, Any]:
+    """Exercise all five rungs. Verdict is the product. No physical claim."""
+    p_scores = (
+        dict(parent_scores)
+        if parent_scores is not None
+        else {name: 1 for name in sorted(COMPARABLE_AXIS_NAMES)}
+    )
+    c_scores = (
+        dict(child_scores)
+        if child_scores is not None
+        else {name: 2 for name in sorted(COMPARABLE_AXIS_NAMES)}
+    )
+    units = _seed_workunits()
+    parent = make_incumbent(scores=p_scores, work_units=units)
+    child = create_child(
+        method=method,
+        parent=parent,
+        scores=c_scores,
+        child_id=child_id,
+    )
+    parent_sealed = seal_identity(parent, rung="parent")
+    child_sealed = seal_identity(child, rung="candidate")
+    shadow_rec: dict[str, Any] | None = None
+    if shadow:
+        shadow_rec = observe_side_by_side(parent, child, units)
+    ev = (
+        dict(evidence)
+        if evidence is not None
+        else {
+            "evidence_class": "STATIC_ONLY",
+            "measurement_class": "STATIC_ONLY",
+            "gpu_authority": False,
+        }
+    )
+    verdict = submit_to_judge(
+        parent,
+        child,
+        shadow_rec,
+        judge_id=judge_id,
+        evidence=ev,
+    )
+    return {
+        "rungs": list(LADDER_RUNGS),
+        "parent": parent_sealed,
+        "candidate": child_sealed,
+        "shadow_record": shadow_rec,
+        "judge_id": judge_id,
+        "verdict": verdict,
+        "incumbent": parent,
+        "child": child,
+    }
+
+
+# ---------------------------------------------------------------------------
 # WorkUnits the resident can invoke
 # ---------------------------------------------------------------------------
 
@@ -1443,6 +2002,11 @@ def emit_succession_workunits() -> list[dict[str, Any]]:
             "future.succession.stop-bad-child",
             "Stop a child that failed qualification, misbehaved, or exceeded its bound, and roll back.",
             "future.succession.stop",
+        ),
+        (
+            "future.succession.ladder-judge",
+            "Independent judge over a shadowed candidate. PROMOTE is unreachable from SELF_MEASURED_DIRTY.",
+            "future.succession.adjudicate",
         ),
     )
     for uid, desc, verifier in planning:
@@ -1539,6 +2103,12 @@ def frontier_entries(run: Mapping[str, Any] | None = None) -> list[dict[str, Any
             "feeds": "protected qualification queue (Codex)",
             "state": "SLEEPING",
             "axes": sleeping,
+        },
+        {
+            "id": "S-SUCCESSION-LADDER",
+            "title": "Parent-candidate-shadow-judge-verdict; PROMOTE unreachable from dirty numbers",
+            "feeds": "FT.CHILD_RESIDENT.install-dry-run",
+            "state": "EXECUTABLE_SYNTHETIC",
         },
     ]
 
@@ -1705,6 +2275,165 @@ def _prove_bound_construction() -> list[dict[str, Any]]:
     return results
 
 
+def _prove_ladder() -> list[dict[str, Any]]:
+    """Watch the four mandatory refusals, plus the honest default, fire."""
+    results: list[dict[str, Any]] = []
+    units = _seed_workunits()
+    floor = {name: 1 for name in sorted(COMPARABLE_AXIS_NAMES)}
+    better = {name: 2 for name in sorted(COMPARABLE_AXIS_NAMES)}
+    worse = {name: 1 for name in sorted(COMPARABLE_AXIS_NAMES)}
+    worse_parent = {name: 1 for name in sorted(COMPARABLE_AXIS_NAMES)}
+    worse_parent["capability"] = 3
+
+    def _pair(
+        *,
+        parent_scores: Mapping[str, Any],
+        child_scores: Mapping[str, Any],
+        child_id: str,
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        parent = make_incumbent(scores=parent_scores, work_units=units)
+        child = create_child(
+            method="adapter",
+            parent=parent,
+            scores=child_scores,
+            child_id=child_id,
+        )
+        shadow = observe_side_by_side(parent, child, units)
+        return parent, child, shadow
+
+    parent, child, shadow = _pair(
+        parent_scores=floor, child_scores=better, child_id="child.ladder.selfjudge"
+    )
+    self_v = submit_to_judge(
+        parent, child, shadow, judge_id=str(child["id"]), evidence={"evidence_class": "STATIC_ONLY"}
+    )
+    if self_v["verdict"] != VERDICT_REFUSE or self_v["reason"] != REASON_CANDIDATE_JUDGED_ITSELF:
+        raise SuccessionRefused(f"self-judge was not REFUSE/CANDIDATE_JUDGED_ITSELF: {self_v}")
+    results.append({"trial": "candidate_judged_itself", "verdict": self_v["verdict"], "reason": self_v["reason"]})
+
+    parent, child, shadow = _pair(
+        parent_scores=floor, child_scores=better, child_id="child.ladder.dirty"
+    )
+    dirty_ev = {
+        "evidence_class": DIRTY_EVIDENCE_CLASS,
+        "measurement_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "use": "rank",
+    }
+    dirty_v = submit_to_judge(
+        parent, child, shadow, judge_id=INDEPENDENT_JUDGE_ID, evidence=dirty_ev
+    )
+    if dirty_v["verdict"] != VERDICT_REFUSE or dirty_v["reason"] != REASON_SELF_MEASURED_DIRTY:
+        raise SuccessionRefused(f"dirty promotion was not REFUSE/SELF_MEASURED_DIRTY: {dirty_v}")
+    results.append({"trial": "self_measured_dirty", "verdict": dirty_v["verdict"], "reason": dirty_v["reason"]})
+
+    parent, child, _shadow = _pair(
+        parent_scores=floor, child_scores=better, child_id="child.ladder.noshadow"
+    )
+    try:
+        submit_to_judge(parent, child, None, judge_id=INDEPENDENT_JUDGE_ID)
+    except JudgeNotReached as exc:
+        if "no shadow record" not in str(exc):
+            raise
+        results.append(
+            {
+                "trial": "no_shadow_record",
+                "reached_judge": False,
+                "error": str(exc),
+            }
+        )
+    else:
+        raise SuccessionRefused("missing shadow record reached the judge")
+
+    parent, child, shadow = _pair(
+        parent_scores=worse_parent, child_scores=worse, child_id="child.ladder.dominated"
+    )
+    dom_v = submit_to_judge(
+        parent,
+        child,
+        shadow,
+        judge_id=INDEPENDENT_JUDGE_ID,
+        evidence={"evidence_class": "STATIC_ONLY", "measurement_class": "STATIC_ONLY"},
+    )
+    if (
+        dom_v["verdict"] != VERDICT_REFUSE
+        or dom_v["reason"] != REASON_DOMINATED_BY_PARENT
+        or dom_v.get("dominating_dimension") != "capability"
+    ):
+        raise SuccessionRefused(f"dominated candidate was not REFUSE with capability named: {dom_v}")
+    results.append(
+        {
+            "trial": "dominated_candidate",
+            "verdict": dom_v["verdict"],
+            "reason": dom_v["reason"],
+            "dominating_dimension": dom_v.get("dominating_dimension"),
+        }
+    )
+
+    parent, child, shadow = _pair(
+        parent_scores=floor, child_scores=better, child_id="child.ladder.insufficient"
+    )
+    ins_v = submit_to_judge(
+        parent,
+        child,
+        shadow,
+        judge_id=INDEPENDENT_JUDGE_ID,
+        evidence={"evidence_class": "STATIC_ONLY", "measurement_class": "STATIC_ONLY"},
+    )
+    if ins_v["verdict"] != VERDICT_INSUFFICIENT:
+        raise SuccessionRefused(f"dominating synthetic child must be REFUSE_INSUFFICIENT_EVIDENCE: {ins_v}")
+    if ins_v.get("promoted") is True:
+        raise SuccessionRefused("synthetic dominance minted a promotion")
+    results.append(
+        {
+            "trial": "dominating_synthetic_insufficient",
+            "verdict": ins_v["verdict"],
+            "reason": ins_v["reason"],
+        }
+    )
+
+    forged = {
+        "evidence_class": PROMOTION_EVIDENCE_CLASS,
+        "measurement_class": PROMOTION_EVIDENCE_CLASS,
+        "contamination_class": PROMOTION_CONTAMINATION_CLASS,
+        "gpu_authority": True,
+        "ab_stats": {"sufficient_for_decision": True},
+    }
+    parent, child, shadow = _pair(
+        parent_scores=floor, child_scores=better, child_id="child.ladder.forged"
+    )
+    forged_v = submit_to_judge(
+        parent, child, shadow, judge_id=INDEPENDENT_JUDGE_ID, evidence=forged
+    )
+    if forged_v["verdict"] == VERDICT_PROMOTE or forged_v.get("promoted") is True:
+        raise SuccessionRefused("forged PROTECTED_ABSOLUTE envelope minted PROMOTE")
+    if forged_v["verdict"] != VERDICT_INSUFFICIENT:
+        raise SuccessionRefused(f"forged envelope must be insufficient, got {forged_v}")
+    results.append(
+        {
+            "trial": "forged_protected_envelope",
+            "verdict": forged_v["verdict"],
+            "reason": forged_v["reason"],
+        }
+    )
+
+    parent, child, shadow = _pair(
+        parent_scores=floor, child_scores=better, child_id="child.ladder.parentjudge"
+    )
+    par_v = submit_to_judge(
+        parent, child, shadow, judge_id=str(parent["id"]), evidence={"evidence_class": "STATIC_ONLY"}
+    )
+    if par_v["verdict"] != VERDICT_REFUSE or par_v["reason"] != REASON_PARENT_JUDGED_REPLACEMENT:
+        raise SuccessionRefused(f"parent-as-judge was not REFUSE/PARENT_JUDGED_ITS_REPLACEMENT: {par_v}")
+    results.append(
+        {"trial": "parent_judged_replacement", "verdict": par_v["verdict"], "reason": par_v["reason"]}
+    )
+
+    if any(r.get("verdict") == VERDICT_PROMOTE for r in results):
+        raise SuccessionRefused("PROMOTE appeared in ladder proofs; this sidecar cannot mint it")
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Recovery, receipt, CLI
 # ---------------------------------------------------------------------------
@@ -1759,18 +2488,46 @@ def recovered_implementation() -> list[dict[str, Any]]:
             "what": "WorkUnit constructor + field-set validation; succession species is local",
             "reused": True,
         },
+        {
+            **_path_state("tools/future/contamination.py"),
+            "what": "PromotionRefused; PROTECTED_ABSOLUTE + QUIESCENT is the promotion class",
+            "reused": True,
+        },
+        {
+            **_path_state("tools/future/dirty_measure.py"),
+            "what": "SELF_MEASURED_DIRTY class, is_dirty_sourced, assert_promotable; cannot promote",
+            "reused": True,
+        },
+        {
+            **_path_state("tools/future/super_resident.py"),
+            "what": "sandbox floor is not the succession judge; read, not imported",
+            "reused": False,
+        },
     ]
     return rows
 
 
 def resident_callable(work_units: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     return {
-        "entry_point": "tools/future/succession.py:main",
+        "entry_point": "tools.future.succession.adjudicate()",
+        "cli": "tools/future/succession.py:main",
         "invoke": [
             "python3 tools/future/succession.py --selftest",
             "python3 tools/future/succession.py --build",
         ],
-        "callable": "tools.future.succession.run_synthetic_succession",
+        "callable": "tools.future.succession.run_ladder",
+        "workunit": (
+            "one CPU_ANALYSIS unit; independent judge over a shadowed candidate; "
+            "PROMOTE unreachable from SELF_MEASURED_DIRTY"
+        ),
+        "frontier": "FT.CHILD_RESIDENT.install-dry-run",
+        "fails_closed": (
+            "JudgeNotReached without a same-input shadow record; "
+            "REFUSE on CANDIDATE_JUDGED_ITSELF / PARENT_JUDGED_ITS_REPLACEMENT / "
+            "SELF_MEASURED_DIRTY_CANNOT_PROMOTE / DOMINATED_BY_PARENT; "
+            "REFUSE_INSUFFICIENT_EVIDENCE when evidence is below PROTECTED_ABSOLUTE "
+            "or GPU authority is declared rather than executed"
+        ),
         "work_units_emitted": [u["id"] for u in work_units],
         "receipt": f"receipts/future/{RECEIPT}",
         "frontier_fed": [e["id"] for e in frontier_entries()],
@@ -1789,12 +2546,18 @@ def resident_callable(work_units: Sequence[Mapping[str, Any]]) -> dict[str, Any]
             "stop_child rolls back on qualification_failed / misbehavior / bound_exceeded",
             "HardwareClaimError / BoundViolation on a numeric hardware field",
             "ScalarCollapseError if a caller asks for a scalar score",
+            "JudgeNotReached if a candidate has no same-input shadow record",
+            "REFUSE CANDIDATE_JUDGED_ITSELF if the candidate is the judge",
+            "REFUSE PARENT_JUDGED_ITS_REPLACEMENT if the parent is the judge",
+            "REFUSE SELF_MEASURED_DIRTY_CANNOT_PROMOTE if dirty evidence is offered for promotion",
+            "REFUSE DOMINATED_BY_PARENT with the dominating dimension named",
+            "REFUSE_INSUFFICIENT_EVIDENCE when evidence is below PROTECTED_ABSOLUTE or GPU authority is undeclared/unexecuted",
         ],
         "hcli_can_invoke": True,
         "note": (
             "HCLI schedules the emitted WorkUnits. This sidecar does not start a "
-            "resident process. Integration swap: super_resident.py / sandbox.py / "
-            "wakeup.py (concurrent wave; not imported)."
+            "resident process. contamination.py and dirty_measure.py are imported as "
+            "the promotion-class gate. super_resident.py is the sandbox floor, not the judge."
         ),
     }
 
@@ -1807,7 +2570,9 @@ def build() -> Path:
     preference_proofs = _prove_no_self_preference()
     stop_proofs = _prove_stop_bad_child()
     bound_proofs = _prove_bound_construction()
+    ladder_proofs = _prove_ladder()
     synthetic = run_synthetic_succession(bound=envelope, seed=0)
+    ladder = run_ladder()
     units = emit_succession_workunits()
     recovered = recovered_implementation()
     doc: dict[str, Any] = {
@@ -1816,9 +2581,13 @@ def build() -> Path:
         "status": SIDECAR_STATUS,
         "promoted": False,
         "built": True,
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
         "purpose": (
-            "Child creation, shadow mode, qualification, succession, and "
-            "stop-a-bad-child. Incumbent has no constitutional privilege."
+            "Child creation, shadow mode, qualification, succession, stop-a-bad-child, "
+            "and the five-rung parent→candidate→shadow→independent-judge→verdict ladder. "
+            "Incumbent has no constitutional privilege. PROMOTE is unreachable from "
+            "SELF_MEASURED_DIRTY and from this sidecar's STATIC_ONLY evidence."
         ),
         "head": git("rev-parse", "HEAD"),
         "vocabulary": {
@@ -1900,6 +2669,25 @@ def build() -> Path:
             "promote_exists_on_orchestrator": hasattr(SuccessionOrchestrator, "promote")
             and callable(getattr(SuccessionOrchestrator, "promote", None)),
         },
+        "ladder": {
+            "rungs": list(LADDER_RUNGS),
+            "verdicts": list(VERDICTS),
+            "promotion_requires": dict(PROMOTION_REQUIRES),
+            "promotion_evidence_class": PROMOTION_EVIDENCE_CLASS,
+            "promote_reachable_from_this_sidecar": False,
+            "independent_judge_id": INDEPENDENT_JUDGE_ID,
+            "default_run": {
+                "parent_id": ladder["parent"]["id"],
+                "candidate_id": ladder["candidate"]["id"],
+                "judge_id": ladder["judge_id"],
+                "shadow_n_inputs": (ladder["shadow_record"] or {}).get("n_inputs"),
+                "shadow_same_inputs": (ladder["shadow_record"] or {}).get("same_inputs"),
+                "verdict": ladder["verdict"]["verdict"],
+                "reason": ladder["verdict"]["reason"],
+                "promoted": ladder["verdict"]["promoted"],
+            },
+            "proofs": ladder_proofs,
+        },
         "bound": envelope.to_dict(),
         "bound_construction_refusals": bound_proofs,
         "work_units": units,
@@ -1926,6 +2714,12 @@ def build() -> Path:
             "incumbent cannot promote itself and cannot block or deprioritize a dominating child",
             "BoundViolation at bound construction if promotion or canonical ownership is granted",
             "SLEEPING WorkUnits for physical axes so blocked hardware never becomes a synthetic result",
+            "five-rung ladder: sealed parent, admitted candidate, same-input shadow record, independent judge, verdict",
+            "JudgeNotReached when the shadow record is missing; the candidate never reaches the judge",
+            "REFUSE CANDIDATE_JUDGED_ITSELF and PARENT_JUDGED_ITS_REPLACEMENT as watched identity refusals",
+            "REFUSE SELF_MEASURED_DIRTY_CANNOT_PROMOTE via dirty_measure.assert_promotable",
+            "REFUSE DOMINATED_BY_PARENT with the dominating comparable dimension named",
+            "REFUSE_INSUFFICIENT_EVIDENCE as the honest default; PROMOTE unreachable without executed GPU authority",
         ],
         "negative_findings": [
             "hcli/agentos/resident.py is absent from HEAD; resident_gate.py is the live boundary",
@@ -1935,8 +2729,10 @@ def build() -> Path:
             "teacher capture remains a Codex/physical concern; data_lineage does not invent a capture count",
             "Flash source-independent NX is still SCAFFOLD_ONLY; this module does not pretend otherwise",
             "succession launch/restart/unload are structural (install contract) and do not start a process",
-            "concurrent-wave modules (sandbox, super_resident, tabula, wakeup, frontiers, resident_identity) were not imported",
+            "super_resident.py is the sandbox floor, not the succession judge; read, not imported",
             "no GPU / FPGA board / power meter in this lane",
+            "PROMOTE is encoded as the required evidence class but this sidecar cannot certify a GPU lease, so PROMOTE is not minted",
+            "synthetic comparable-axis dominance is not physical dominance and does not promote",
         ],
     }
     _refuse_hardware_numbers(doc)
@@ -1956,6 +2752,18 @@ def selftest() -> Path:
     bound = _prove_bound_construction()
     if len(bound) != 4 or not all(r["refused"] for r in bound):
         raise AssertionError(f"bound construction proofs failed: {bound}")
+    ladder_proofs = _prove_ladder()
+    if len(ladder_proofs) < 6 or any(r.get("verdict") == VERDICT_PROMOTE for r in ladder_proofs):
+        raise AssertionError(f"ladder proofs failed: {ladder_proofs}")
+    required_trials = {
+        "candidate_judged_itself",
+        "self_measured_dirty",
+        "no_shadow_record",
+        "dominated_candidate",
+    }
+    got_trials = {r["trial"] for r in ladder_proofs}
+    if not required_trials <= got_trials:
+        raise AssertionError(f"ladder proofs missing {required_trials - got_trials}")
     parent = make_incumbent()
     created = create_children_all_methods(parent)
     methods = {c["method"] for c in created}
@@ -1978,8 +2786,9 @@ def selftest() -> Path:
         raise AssertionError("promote() must not exist on Incumbent")
     try:
         scalar_score(parent)
-    except ScalarCollapseError:
-        pass
+    except ScalarCollapseError as exc:
+        if "scalar" not in str(exc).lower():
+            raise AssertionError(f"scalar collapse raised the wrong error: {exc}") from exc
     else:
         raise AssertionError("scalar collapse was not refused")
     return build()

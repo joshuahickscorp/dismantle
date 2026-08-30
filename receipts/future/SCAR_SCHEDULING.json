@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:58:31Z",
+  "recorded_at": "2026-08-30T15:05:11Z",
   "recorded_by": "tools/future/scar_scheduling.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -285,7 +285,7 @@
   "Idempotent re-propagation of the same hypothesis does not double-halve confidence."
  ],
  "gpu_authority": false,
- "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+ "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
  "how_to_use": {
   "admit": "from tools.future.scar_scheduling import admit; outcome = admit({'model': ..., 'organ': ..., 'representation': ..., 'hypothesis_family': ...})",
   "propagate_failure": "from tools.future.scar_scheduling import propagate_failure; effects = propagate_failure({'model': ..., 'organ': ..., 'representation': ..., 'machine': ..., 'hypothesis_family': ..., 'mechanism': ..., 'candidate_id': ...})",
@@ -580,7 +580,7 @@
   }
  },
  "schema": "hawking.future.scar_scheduling.v1",
- "seal_sha256": "f77483f21223070b75f9259bd76664f072aa4858cec13393317d22d157a26a84",
+ "seal_sha256": "00859807d297c9880bf62bff26136f65b50a226f66f7a7b74a44f159f1f04dfc",
  "version": 1,
  "workunit": {
   "assigned_backend": null,

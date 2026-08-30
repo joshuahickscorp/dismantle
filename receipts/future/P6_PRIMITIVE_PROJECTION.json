@@ -33,7 +33,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:59:14Z",
+  "recorded_at": "2026-08-30T15:04:17Z",
   "recorded_by": "tools.future.p6_projection.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -79,9 +79,6 @@
   "front_g_p6": {
    "consulted": [
     "receipts/headless/ACCELERATOR_FRONT_G_P6.json",
-    "/Users/scammermike/.claude-grok/worktrees/autonomy-trials-20260830-012501/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
-    "/Users/scammermike/.claude-grok/worktrees/codex-behaviors-20260830-012514/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
-    "/Users/scammermike/.claude-grok/worktrees/debugger-lab-20260830-012529/receipts/headless/ACCELERATOR_FRONT_G_P6.json",
     "receipts/future/evidence/ACCELERATOR_FRONT_G_P6.json"
    ],
    "evidence_source": "live_headless",
@@ -118,7 +115,7 @@
   "FPGA form cites fpga_engines functional references; no HDL, no backend."
  ],
  "gpu_authority": false,
- "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+ "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
  "negative_findings": [
   "No protected GPU lease: every hardware quantity remains UNKNOWN.",
   "No FPGA board, bitstream, or cycle-accurate model; FPGA forms are hypotheses.",
@@ -4961,7 +4958,7 @@
   "p6_projection_module_existed": false
  },
  "schema": "hawking.future.p6_projection.v1",
- "seal_sha256": "ccfd7a2fb6c42712619e06b88da2c0b4d699e6eb38ce30e5ba664c22c0766396",
+ "seal_sha256": "2f16597a0cfbb3bf3ce74ed6ff93348b1411b6f2cdefcf7c13d52f08af48fdcf",
  "spatially_not_meaningful_ids": [
   "flash-p6-hash-single-command-buffer",
   "flash-p6-learned-reader-reuse"

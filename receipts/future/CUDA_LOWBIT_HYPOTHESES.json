@@ -146,7 +146,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:59:17Z",
+  "recorded_at": "2026-08-30T15:01:56Z",
   "recorded_by": "tools/future/cuda_lowbit_hypotheses.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2139,7 +2139,7 @@
   }
  ],
  "schema": "hawking.future.cuda_lowbit.v1",
- "seal_sha256": "a6c2853aee244c5b0eb8ebf6f234ca25a76b55dd3f17c40534f41afa27bb0dbe",
+ "seal_sha256": "5c7a78c2884c9a0e964022745be3ee7fc4050ebcc244fc2c49e455dcdfca3152",
  "version": 1,
  "vocabulary": {
   "cuda_is": "textbook now, physical oracle later; source school, not an execution backend on this Apple host",

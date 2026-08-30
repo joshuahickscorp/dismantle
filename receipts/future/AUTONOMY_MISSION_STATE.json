@@ -1,6 +1,6 @@
 {
- "trial": "1h",
- "mission_id": "AUTONOMY.1h",
+ "trial": "15m",
+ "mission_id": "AUTONOMY.15m",
  "phase": "running",
  "units": [
   "WU.AUTONOMY.generate.1",
@@ -137,11 +137,8 @@
   "WU.AUTONOMY.flash_nx_audit.132",
   "WU.AUTONOMY.candidate_planner.133",
   "WU.AUTONOMY.workunit_species.134",
-  "WU.AUTONOMY.static_kernel_verify.135",
-  "WU.AUTONOMY.tournament.136",
-  "WU.AUTONOMY.super_resident.137",
-  "WU.AUTONOMY.odyssey_launch.138"
+  "WU.AUTONOMY.static_kernel_verify.135"
  ],
  "next_action": "drain queue then refill from frontiers",
- "elapsed_s": 183
+ "elapsed_s": 184
 }

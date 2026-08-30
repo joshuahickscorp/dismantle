@@ -25,12 +25,28 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T14:16:50Z",
+  "recorded_at": "2026-08-30T15:10:45Z",
   "recorded_by": "tools/future/evidence_dag.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "branch": "odyssey-i",
+ "cached_invariant_reuse": {
+  "byte_flip_named_the_input": true,
+  "cache_key": "recorded input sha256, not claim name",
+  "deleted_input_is_rerun": true,
+  "holds": true,
+  "no_recorded_inputs_never_reuses": true,
+  "reuse_on_identical_inputs": true,
+  "reused_from_digest_is_seal": true,
+  "reused_from_reported": true,
+  "scar_after_receipt_is_rerun": true,
+  "scar_before_receipt_still_reuses": true,
+  "static_receipt_insufficient_for_protected_ask": true,
+  "unrelated_family_scar_does_not_rerun": true,
+  "workunit_result_carries_reused_from": true
+ },
+ "claim": "evidence_dag.cached_invariant",
  "claim_boundary": "Static sidecar artifact. No hardware measurement. Neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. V8/V9 are UNAVAILABLE and must be requested as sleeping work, never synthesized.",
  "claim_downgrade": {
   "diamond": {
@@ -43,6 +59,7 @@
   "holds": true,
   "sibling_claim_survived": true
  },
+ "claim_family": "evidence_dag.hierarchy",
  "diamond_invalidation": {
   "D_refused_on_stale_parent": true,
   "affected": [
@@ -138,10 +155,14 @@
   "admission is two-sided: below-required raises; a V8 claim on this host also raises (no V7 consolation prize)",
   "request_level(V8) and request_level(V9) RAISE UnavailableLevelError rather than returning a weaker level; prove() does not count work or store a VALID V8 proof",
   "claim downgrade on the DAG uses repro_science.ledger_invalidate: parent invalidation transitively DOWNGRADES derived claims; sibling claims stay VALID",
-  "V8 work is a SLEEPING/blocked HCLI WorkUnit, never a synthetic protected result"
+  "V8 work is a SLEEPING/blocked HCLI WorkUnit, never a synthetic protected result",
+  "reuse_or_rerun(claim) -> REUSE|RERUN: sealed receipt + live input sha256 match + no family scar since seal + evidence class sufficient; otherwise RERUN naming the failed condition",
+  "a receipt that names no inputs can never be reused (nothing to verify); a named input that is gone is RERUN, never REUSE",
+  "REUSE is reported: WorkUnit result carries reused_from {receipt, digest}; silent cache is FailClosed reuse_unreported",
+  "one input byte, a deleted input, a post-seal family scar, and an empty recorded_inputs list each flip REUSE -> RERUN"
  ],
  "gpu_authority": false,
- "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+ "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
  "host": {
   "gpu_authority": false,
   "note": "Unavailability is an authority fact of this sidecar, not a device query. MetalContext / xcrun were not probed.",
@@ -384,9 +405,9 @@
   "PROTECTED_ABSOLUTE": "measurement under a real protected GPU lease; decides; this module does not produce it",
   "STATIC_ONLY": "everything this module emits"
  },
- "module_sha256": "d2a82d69a38b5fa7c26f8279cdae968ca7c198b6a88d5676b565c0bd01f28aaa",
+ "module_sha256": "22df790695b89ae17b62f557ff8d62751af98bbd3ff75ab24a07602378a801c2",
  "n_levels": 10,
- "n_work_units": 3,
+ "n_work_units": 4,
  "negative_findings": [
   "this sidecar has no protected GPU lease; V8 and V9 are UNAVAILABLE by authority, not by a Metal probe (Metal was not queried)",
   "xcrun / Metal compiler / qualification HEAVY classification were not re-measured; Codex's blockers are accepted as given and become a sleeping WorkUnit",
@@ -394,7 +415,11 @@
   "this module does not rewrite receipts/future/CLAUDE_GLOBAL_FRONTIER.json (owner: tools/future/global_frontier.py, prohibited)",
   "this-wave siblings (resident_api, workgraph, wakeup, protected_window, frontiers, super_resident) were not imported; local interfaces are named as integration points",
   "no DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE number was produced; bench.state stays UNKNOWN",
-  "Flash NX remains SCAFFOLD_ONLY / teacher capture 0/256 \u2014 out of this lane; noted, not papered over"
+  "Flash NX remains SCAFFOLD_ONLY / teacher capture 0/256 \u2014 out of this lane; noted, not papered over",
+  "freshness semantic fingerprints are not a reuse key; a byte change is RERUN even when meaning is identical",
+  "default scar source is autonomy_scars in this partition; the negative_index corpus is not consulted (sparse checkout, hypothesis-keyed, not this DAG's families)",
+  "a receipt that records only logical input names (schema/payload) has nothing to re-hash and cannot be reused by this checker",
+  "STATIC_ONLY reuse never satisfies a DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE ask; this sidecar mints neither"
  ],
  "odysseys": [
   "I WHAT IS TRUE?",
@@ -409,7 +434,56 @@
   "machine_genome_sensitive": true,
   "reproduces": true
  },
- "purpose": "V0\u2013V9 evidence DAG: reuse byte-identical proofs, invalidate only affected descendants, choose verification depth from mutation scope / uncertainty / risk / upside / promotion proximity, and refuse V8/V9 on this host rather than silently downgrading.",
+ "purpose": "V0\u2013V9 evidence DAG: reuse byte-identical proofs, invalidate only affected descendants, choose verification depth from mutation scope / uncertainty / risk / upside / promotion proximity, refuse V8/V9 on this host rather than silently downgrading, and reuse a sealed claim only when every named input still hashes.",
+ "recorded_inputs": [
+  {
+   "path": "tools/future/evidence_dag.py",
+   "sha256": "22df790695b89ae17b62f557ff8d62751af98bbd3ff75ab24a07602378a801c2"
+  },
+  {
+   "path": "tools/future/_common.py",
+   "sha256": "cacc92109ffa1f0d8f78a966a9797056286e984266b163808d739374412ceb23"
+  },
+  {
+   "path": "tools/future/repro_science.py",
+   "sha256": "f565c5df51465c7493d8016a6c2b03be92846779746dedb9184989f9d558e7b0"
+  },
+  {
+   "path": "tools/future/freshness.py",
+   "sha256": "33c650b2ae835f2f0936bf57eb74c6123b6848d45b3c9da0d2e835155bc210b5"
+  },
+  {
+   "path": "tools/future/evidence_snapshot.py",
+   "sha256": "a3e969a472818ce8360d2d58e9d77d15d95920c604cfb8c645aa6f082bcfc537"
+  }
+ ],
+ "recorded_inputs_probe": [
+  {
+   "path": "tools/future/evidence_dag.py",
+   "present": true,
+   "sha256": "22df790695b89ae17b62f557ff8d62751af98bbd3ff75ab24a07602378a801c2"
+  },
+  {
+   "path": "tools/future/_common.py",
+   "present": true,
+   "sha256": "cacc92109ffa1f0d8f78a966a9797056286e984266b163808d739374412ceb23"
+  },
+  {
+   "path": "tools/future/repro_science.py",
+   "present": true,
+   "sha256": "f565c5df51465c7493d8016a6c2b03be92846779746dedb9184989f9d558e7b0"
+  },
+  {
+   "path": "tools/future/freshness.py",
+   "present": true,
+   "sha256": "33c650b2ae835f2f0936bf57eb74c6123b6848d45b3c9da0d2e835155bc210b5"
+  },
+  {
+   "path": "tools/future/evidence_snapshot.py",
+   "present": true,
+   "sha256": "a3e969a472818ce8360d2d58e9d77d15d95920c604cfb8c645aa6f082bcfc537"
+  }
+ ],
  "recovered_implementation": [
   {
    "path": "tools/future/repro_science.py",
@@ -473,6 +547,31 @@
    "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
    "use": "WorkUnit refill is how a result changes the next verification depth",
    "what": "F008 provenance gap (closed by repro_science). No frontier file is rewritten here."
+  },
+  {
+   "path": "tools/future/_common.py",
+   "use": "reuse_or_rerun re-hashes every named input with sha256_file; does not reimplement the hasher",
+   "what": "sha256_file + seal; HARDWARE_FIELDS raise on a numeric claim"
+  },
+  {
+   "path": "tools/future/freshness.py",
+   "use": "The byte-match half is the same guarantee. Semantic fingerprint is deliberately NOT used here: one input byte must RERUN even if meaning is identical. A stale baseline surviving a cosmetic rewrite is the defect this lane kills.",
+   "what": "byte sha vs semantic fingerprint for derived artifacts; FRESH only when sha matches"
+  },
+  {
+   "path": "tools/future/evidence_snapshot.py",
+   "use": "same live-hash-against-recorded-digest pattern; applied to named claims rather than the snapshot set",
+   "what": "pinned copy + verify() that every captured file still hashes to the manifest"
+  },
+  {
+   "path": "tools/future/repro_science.py",
+   "use": "reuse_or_rerun refuses an unsealed or corrupt receipt via seal_is_valid; does not fork the sealer",
+   "what": "seal_is_valid, FailClosed, experiment_identity"
+  },
+  {
+   "path": "tools/future/autonomy_scars.py",
+   "use": "load_default_scars(). Matching family + landed_at after receipt_written_at forces RERUN",
+   "what": "orchestrator-defect scars with families; default scar source when the caller passes none"
   }
  ],
  "recovery_probes": [
@@ -522,7 +621,8 @@
    "python3 tools/future/evidence_dag.py --selftest",
    "python3 tools/future/evidence_dag.py --build",
    "python3 tools/future/evidence_dag.py --required-level <candidate.json>",
-   "python3 tools/future/evidence_dag.py --admit <candidate.json>"
+   "python3 tools/future/evidence_dag.py --admit <candidate.json>",
+   "python3 tools/future/evidence_dag.py --reuse-or-rerun evidence_dag.cached_invariant"
   ],
   "entry_point": "python3 tools/future/evidence_dag.py --selftest",
   "fail_closed": [
@@ -532,8 +632,11 @@
    "prove() with a non-VALID parent raises FailClosed stale_parent",
    "write_receipt raises HardwareClaimError on a numeric hardware field",
    "unknown mutation_scope or out-of-range factor raises FailClosed",
-   "a V8 WorkUnit is blocked/SLEEPING and is never a VALID proof record"
+   "a V8 WorkUnit is blocked/SLEEPING and is never a VALID proof record",
+   "reuse_or_rerun returns RERUN (never REUSE) when the receipt is missing, unsealed, corrupt, names no inputs, names a missing input, names a hash-mismatched input, has a post-seal family scar, or is weaker than the asking evidence class",
+   "REUSE without reused_from (receipt path + digest) raises FailClosed reuse_unreported"
   ],
+  "frontier": "FT.VERIFICATION.repro",
   "frontier_fed": {
    "how": "A sealed proof changes which verification depth is still required. The next WorkUnit is refilled at required_level rather than the full suite. The frontier JSON is owned by global_frontier.py and is not mutated here.",
    "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
@@ -543,22 +646,25 @@
    "writes_frontier_file": false
   },
   "hcli_can_invoke": true,
-  "invoke": "tools.future.evidence_dag:build|selftest|required_level|admit_candidate|request_level|EvidenceDAG.prove",
+  "invoke": "tools.future.evidence_dag:build|selftest|required_level|admit_candidate|request_level|EvidenceDAG.prove|reuse_or_rerun|execute_reuse_workunit",
   "next_work_refills": "future.evidence-dag.adapt-next-mutation depends on selftest",
   "persists": "receipts/future/EVIDENCE_DAG.json via write_receipt",
   "receipt": "receipts/future/EVIDENCE_DAG.json",
-  "result_changes_a_frontier": "required_level output is the next verification WorkUnit's depth; a reused VALID proof is not re-run; an invalidated descendant is",
+  "result_changes_a_frontier": "required_level output is the next verification WorkUnit's depth; a reused VALID proof is not re-run; an invalidated descendant is; reuse_or_rerun is the 3h-trial WorkUnit that demonstrates cached-invariant reuse",
   "schedule": [
    "future.evidence-dag.selftest",
    "future.evidence-dag.adapt-next-mutation",
+   "future.evidence-dag.reuse-or-rerun",
    "future.evidence-dag.v8-protected-capability"
   ],
   "verify": "python3 -m pytest tools/future/test_evidence_dag.py -q",
   "work_units_emitted": [
    "future.evidence-dag.selftest",
    "future.evidence-dag.adapt-next-mutation",
+   "future.evidence-dag.reuse-or-rerun",
    "future.evidence-dag.v8-protected-capability"
-  ]
+  ],
+  "workunit": "one STATIC_ANALYSIS unit; reuse_or_rerun a named claim; REUSE result carries reused_from"
  },
  "reuse": {
   "changed_inputs_did_not_reuse": true,
@@ -575,7 +681,7 @@
   "work_first_pass": 4
  },
  "schema": "hawking.future.evidence_dag.v1",
- "seal_sha256": "5d0cfc31cf3861083051d1822e4dec0d9677c122ffe44b422711f15107511db4",
+ "seal_sha256": "6385487671e89b1b428d328e4a72ebd6a4e980df093e79703f4914e540a08119",
  "static_ladder": {
   "holds": true,
   "n_proved": 8,
@@ -682,6 +788,49 @@
    "status": "pending",
    "verification": null,
    "verifier": "future.evidence_dag.required_level",
+   "workspace": "repo-root"
+  },
+  {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "claim": "evidence_dag.cached_invariant",
+   "claim_boundary": "Static sidecar artifact. No hardware measurement. Reuse is earned by live input hashes, not by claim name.",
+   "classification": null,
+   "command": [
+    "python3",
+    "tools/future/evidence_dag.py",
+    "--reuse-or-rerun",
+    "evidence_dag.cached_invariant"
+   ],
+   "content_hash": "1847b3a5f3028d2bc6f9f3d37e60bc8409dfc33bea34c92e434a2d84afe7db1a",
+   "dependencies": [
+    "future.evidence-dag.selftest"
+   ],
+   "description": "Reuse a sealed claim if every named input still hashes, no scar has landed against its family since the seal, and the receipt's evidence class covers the ask. Otherwise RERUN, naming the condition. A REUSE result MUST carry reused_from.",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "id": "future.evidence-dag.reuse-or-rerun",
+   "output_receipt_path": "receipts/future/EVIDENCE_DAG.json",
+   "preferred_backend": null,
+   "provider": "tools.future.evidence_dag",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": false,
+   "resource_class": "STATIC_ANALYSIS",
+   "result_must_carry": "reused_from",
+   "role": "science",
+   "running_at": null,
+   "species": "independent_reproduction",
+   "status": "pending",
+   "verification": null,
+   "verifier": "future.evidence_dag.reuse_or_rerun",
    "workspace": "repo-root"
   },
   {

@@ -15,17 +15,20 @@ silently downgrading.
     python3 tools/future/evidence_dag.py --build
     python3 tools/future/evidence_dag.py --required-level '{"mutation_scope":"organ","uncertainty":0.1,"risk":0.1,"upside":0.1,"promotion_proximity":0.0}'
     python3 tools/future/evidence_dag.py --admit '{"mutation_scope":"organ","uncertainty":0.1,"risk":0.1,"upside":0.1,"promotion_proximity":0.0,"achieved_level":"V2"}'
+    python3 tools/future/evidence_dag.py --reuse-or-rerun evidence_dag.cached_invariant
 """
 from __future__ import annotations
 
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 
-from tools.future._common import write_receipt, load_json, REPO, git, sha256_file
+from tools.future._common import write_receipt, load_json, REPO, RECEIPTS, git, sha256_file
 
 import argparse
 import json
+import tempfile
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -60,6 +63,34 @@ UNCERTAINTY_HIGH = 0.60
 RISK_MID = 0.25
 RISK_HIGH = 0.60
 UPSIDE_HIGH = 0.80
+
+# Cached-invariant reuse. A name is not a cache key. Inputs are.
+REUSE = "REUSE"
+RERUN = "RERUN"
+CACHED_INVARIANT_CLAIM = "evidence_dag.cached_invariant"
+CACHED_INVARIANT_FAMILY = "evidence_dag.hierarchy"
+CLAIM_RECEIPT_SCHEMA = "hawking.future.claim_receipt.v1"
+
+# Rank is "how much the receipt actually proved". An ask may reuse only
+# when the receipt is at least as strong. STATIC_ONLY cannot satisfy a
+# protected ask; a protected receipt may satisfy a static ask.
+EVIDENCE_CLASS_RANK: dict[str, int] = {
+    "STATIC_ONLY": 0,
+    "DIAGNOSTIC_RELATIVE": 1,
+    "PROTECTED_ABSOLUTE": 2,
+}
+
+# Named claims this module itself can answer. Other claims pass a receipt path.
+CLAIM_CATALOG: dict[str, dict[str, str]] = {
+    CACHED_INVARIANT_CLAIM: {
+        "receipt": RECEIPT,
+        "family": CACHED_INVARIANT_FAMILY,
+    },
+    "evidence_dag.v0_v9_catalog": {
+        "receipt": RECEIPT,
+        "family": CACHED_INVARIANT_FAMILY,
+    },
+}
 
 # Qualification-funnel rungs recovered from
 # receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json.
@@ -800,6 +831,1019 @@ def prove_diamond(dag: EvidenceDAG) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cached invariant reuse. Keyed on live input bytes, never on a claim name.
+# ---------------------------------------------------------------------------
+#
+# EvidenceDAG.prove() already reuses in-memory ProofRecords whose identity
+# covers hashed inputs + code + genome + level. That cache dies with the
+# process and never re-hashes a file. A 3h trial that "reuses" by claim
+# name will happily replay a result computed from inputs that have since
+# moved. This path is the disk check: sealed receipt, every named input
+# still hashes, no scar landed against the family since the seal, evidence
+# class covers the ask. Fail any one of those and the answer is RERUN,
+# naming the condition. REUSE without reused_from is a silent cache and
+# is refused.
+
+
+def _utc_now_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _parse_ts(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    s = str(value).strip()
+    if not s:
+        return None
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt
+
+
+def _canon_family(text: Any) -> str:
+    return str(text or "").strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _looks_like_sha256(value: Any) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    try:
+        int(value, 16)
+    except ValueError:
+        return False
+    return True
+
+
+def _pathish(key: str) -> bool:
+    """A recorded input we can re-hash. Logical names ('schema') are not files."""
+    s = str(key)
+    if "/" in s or "\\" in s:
+        return True
+    name = s.replace("\\", "/").rsplit("/", 1)[-1]
+    return "." in name and not name.startswith(".")
+
+
+def _relpath(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def _receipt_relpath(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(REPO.resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def evidence_class_sufficient(have: str, need: str) -> bool:
+    """True iff the receipt proved at least as much as the ask requires."""
+    if have not in EVIDENCE_CLASS_RANK or need not in EVIDENCE_CLASS_RANK:
+        return False
+    return EVIDENCE_CLASS_RANK[have] >= EVIDENCE_CLASS_RANK[need]
+
+
+def extract_recorded_inputs(
+    doc: Mapping[str, Any],
+) -> tuple[list[dict[str, str]], str | None]:
+    """Pull path+sha256 rows out of a receipt. Empty/logical → no_recorded_inputs.
+
+    `recorded_inputs` wins over `input_hashes` over `inputs`. An explicit empty
+    list is "nothing to verify", not a cue to fall through to another key.
+    """
+    raw: Any = None
+    for key in ("recorded_inputs", "input_hashes", "inputs"):
+        if key in doc and doc[key] is not None:
+            raw = doc[key]
+            break
+    if raw is None or raw == [] or raw == {}:
+        return [], "no_recorded_inputs"
+    rows: list[dict[str, str]] = []
+    if isinstance(raw, Mapping):
+        pathish_keys = [k for k in raw if _pathish(str(k))]
+        if not pathish_keys:
+            return [], "no_recorded_inputs"
+        for path in sorted(pathish_keys, key=lambda x: str(x)):
+            sha = raw[path]
+            if not _looks_like_sha256(sha):
+                return [], "no_recorded_inputs"
+            rows.append({"path": str(path), "sha256": str(sha).lower()})
+        return rows, None
+    if isinstance(raw, list):
+        if not raw:
+            return [], "no_recorded_inputs"
+        for item in raw:
+            if not isinstance(item, Mapping):
+                return [], "no_recorded_inputs"
+            path = item.get("path") or item.get("rel") or item.get("file")
+            sha = item.get("sha256") or item.get("hash") or item.get("digest")
+            if not path or not _looks_like_sha256(sha):
+                return [], "no_recorded_inputs"
+            rows.append({"path": str(path), "sha256": str(sha).lower()})
+        return rows, None
+    return [], "no_recorded_inputs"
+
+
+def receipt_written_at(doc: Mapping[str, Any]) -> datetime | None:
+    bench = doc.get("bench") if isinstance(doc.get("bench"), Mapping) else {}
+    for value in (
+        doc.get("written_at"),
+        doc.get("recorded_at"),
+        bench.get("recorded_at") if isinstance(bench, Mapping) else None,
+    ):
+        parsed = _parse_ts(value)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def receipt_evidence_class(doc: Mapping[str, Any]) -> str | None:
+    for value in (
+        doc.get("evidence_class"),
+        (doc.get("bench") or {}).get("measurement_state")
+        if isinstance(doc.get("bench"), Mapping)
+        else None,
+    ):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def resolve_input_path(rel: str, *, root: Path) -> Path | None:
+    """Live file or nothing. A sparse-checkout hole is missing, not 'use git'."""
+    p = Path(rel)
+    candidates: list[Path] = []
+    if p.is_absolute():
+        candidates.append(p)
+    candidates.append(root / rel)
+    if root.resolve() != REPO.resolve():
+        candidates.append(REPO / rel)
+    seen: set[str] = set()
+    for cand in candidates:
+        try:
+            key = str(cand.resolve()) if cand.exists() else str(cand)
+        except OSError:
+            key = str(cand)
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            if cand.is_file():
+                return cand
+        except OSError:
+            continue
+    return None
+
+
+def write_claim_receipt(
+    *,
+    claim: str,
+    family: str,
+    input_paths: Sequence[str | Path],
+    dest: str | Path,
+    evidence_class: str = "STATIC_ONLY",
+    recorded_at: str | None = None,
+    root: Path | None = None,
+    extra: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Seal a claim receipt that records live file hashes. Missing input raises.
+
+    Writes wherever `dest` says so tests can land in tmp. Does not go through
+    write_receipt: that helper always lands under receipts/future/.
+    """
+    dest_path = Path(dest)
+    root_p = Path(root) if root is not None else dest_path.parent
+    if not input_paths:
+        raise rs.FailClosed(
+            "no_recorded_inputs",
+            f"refusing to seal claim {claim!r} with no inputs; nothing would be verifiable",
+        )
+    if evidence_class not in EVIDENCE_CLASS_RANK:
+        raise rs.FailClosed(
+            "unknown_evidence_class",
+            f"cannot seal claim {claim!r} with unknown evidence_class {evidence_class!r}",
+        )
+    rows: list[dict[str, str]] = []
+    for raw in input_paths:
+        p = Path(raw)
+        if not p.is_absolute():
+            cand = root_p / p
+            p = cand if cand.is_file() else p
+        if not p.is_file():
+            raise rs.FailClosed(
+                "input_missing",
+                f"cannot seal claim {claim!r}: input {raw} is not a file",
+            )
+        rows.append({"path": _relpath(p, root_p), "sha256": sha256_file(p)})
+    written = recorded_at or _utc_now_stamp()
+    doc: dict[str, Any] = {
+        "schema": CLAIM_RECEIPT_SCHEMA,
+        "version": 1,
+        "claim": str(claim),
+        "claim_family": str(family),
+        "evidence_class": str(evidence_class),
+        "gpu_authority": False,
+        "recorded_inputs": rows,
+        "bench": {
+            "state": "UNKNOWN",
+            "measurement_state": "STATIC_ONLY",
+            "recorded_at": written,
+            "recorded_by": RECORDED_BY,
+            "gpu_authority": False,
+        },
+        "claim_boundary": "Static sidecar artifact. No hardware measurement.",
+    }
+    if extra:
+        for key, value in extra.items():
+            if key == "seal_sha256":
+                continue
+            doc[key] = value
+    # seal_doc copies; writing the original would emit an unsealed receipt.
+    sealed = rs.seal_doc(doc)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    dest_path.write_text(json.dumps(sealed, indent=1, sort_keys=True) + "\n")
+    return sealed
+
+
+def module_recorded_inputs() -> list[dict[str, Any]]:
+    """File hashes this receipt is allowed to be reused against.
+
+    Named because they actually moved the proof, not because they were nearby.
+    A missing file is recorded as missing: dropping it would let reuse skip
+    a dependency that is not here to verify.
+    """
+    rels = (
+        "tools/future/evidence_dag.py",
+        "tools/future/_common.py",
+        "tools/future/repro_science.py",
+        "tools/future/freshness.py",
+        "tools/future/evidence_snapshot.py",
+    )
+    rows: list[dict[str, Any]] = []
+    for rel in rels:
+        path = REPO / rel
+        if path.is_file():
+            rows.append({"path": rel, "sha256": sha256_file(path), "present": True})
+        else:
+            rows.append(
+                {
+                    "path": rel,
+                    "sha256": None,
+                    "present": False,
+                    "reason": "not on disk in this worktree; cannot be a reuse key",
+                }
+            )
+    return rows
+
+
+def load_default_scars() -> tuple[list[dict[str, Any]] | None, str]:
+    """Scars this partition can actually consult.
+
+    negative_index walks a corpus this sparse worktree does not materialise.
+    autonomy_scars is in the write partition and is the orchestrator ledger
+    reuse has to respect. A matching-family untimestamped scar still RERUNs.
+    """
+    try:
+        from tools.future import autonomy_scars as aus
+
+        rows: list[dict[str, Any]] = []
+        for scar in aus.scars():
+            if isinstance(scar, Mapping):
+                rows.append(dict(scar))
+        return rows, "tools.future.autonomy_scars.scars"
+    except Exception as exc:
+        return None, f"autonomy_scars_unavailable:{type(exc).__name__}"
+
+
+def _scar_families(scar: Mapping[str, Any]) -> list[str]:
+    found: list[str] = []
+    for key in ("family", "claim_family", "hypothesis_family"):
+        value = scar.get(key)
+        if isinstance(value, str) and value.strip():
+            found.append(_canon_family(value))
+    extra = scar.get("families")
+    if isinstance(extra, list):
+        for value in extra:
+            if isinstance(value, str) and value.strip():
+                found.append(_canon_family(value))
+    # Preserve order, drop dupes.
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in found:
+        if item and item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+def _scar_id(scar: Mapping[str, Any]) -> str:
+    for key in ("id", "scar_id", "original_id"):
+        value = scar.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return "unnamed_scar"
+
+
+def _scar_landed_at(scar: Mapping[str, Any]) -> datetime | None:
+    for key in ("landed_at", "recorded_at", "at", "written_at"):
+        parsed = _parse_ts(scar.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _invalidating_scar(
+    scar: Mapping[str, Any],
+    *,
+    family: str,
+    written: datetime | None,
+) -> dict[str, Any] | None:
+    """Return a hit if this scar forces RERUN of `family`, else None.
+
+    Matching family + no timestamp: cannot prove it did not land after the
+    receipt, so RERUN. Matching family + landed after written_at: RERUN.
+    Matching family + landed at or before written_at: the receipt already
+    had to live with it. Different family: ignore.
+    """
+    want = _canon_family(family)
+    if not want:
+        return None
+    families = _scar_families(scar)
+    if want not in families:
+        return None
+    sid = _scar_id(scar)
+    landed = _scar_landed_at(scar)
+    if landed is None:
+        return {
+            "id": sid,
+            "family": want,
+            "failed_condition": "scar_untimestamped",
+            "reason": (
+                f"scar {sid} matches family {want} but has no landed_at; "
+                "cannot prove it did not land after the receipt"
+            ),
+        }
+    if written is None:
+        return {
+            "id": sid,
+            "family": want,
+            "failed_condition": "receipt_untimestamped",
+            "reason": (
+                f"scar {sid} matches family {want} but the receipt has no "
+                "written_at; cannot prove the scar landed first"
+            ),
+        }
+    if landed > written:
+        return {
+            "id": sid,
+            "family": want,
+            "failed_condition": "scar_after_receipt",
+            "reason": (
+                f"scar {sid} landed at {landed.strftime('%Y-%m-%dT%H:%M:%SZ')} "
+                f"after receipt written_at "
+                f"{written.strftime('%Y-%m-%dT%H:%M:%SZ')} and invalidates "
+                f"family {want}"
+            ),
+        }
+    return None
+
+
+def _verdict(
+    decision: str,
+    *,
+    claim: str,
+    reason: str,
+    failed_condition: str | None = None,
+    reused_from: dict[str, Any] | None = None,
+    **extra: Any,
+) -> dict[str, Any]:
+    if decision == REUSE:
+        if not reused_from or not reused_from.get("receipt") or not reused_from.get("digest"):
+            raise rs.FailClosed(
+                "reuse_unreported",
+                "REUSE without reused_from (receipt path + digest) is a silent cache; refused",
+            )
+    body: dict[str, Any] = {
+        "decision": decision,
+        "reason": reason,
+        "failed_condition": failed_condition,
+        "claim": claim,
+        "reused_from": reused_from if decision == REUSE else None,
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
+    }
+    body.update(extra)
+    return body
+
+
+def _load_receipt_file(path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return None, "missing_receipt"
+    try:
+        doc = json.loads(raw)
+    except json.JSONDecodeError:
+        return None, "corrupt_receipt"
+    if not isinstance(doc, dict):
+        return None, "corrupt_receipt"
+    return doc, None
+
+
+def _resolve_claim(
+    claim: str | Mapping[str, Any],
+    *,
+    receipts_dir: Path,
+    root: Path,
+) -> dict[str, Any]:
+    """Normalise a name or envelope into {id, receipt, family, asking, ...}."""
+    envelope: dict[str, Any]
+    if isinstance(claim, Mapping):
+        envelope = dict(claim)
+    elif isinstance(claim, str):
+        text = claim.strip()
+        envelope = {"id": text}
+        if text in CLAIM_CATALOG:
+            envelope.update(CLAIM_CATALOG[text])
+        elif text.endswith(".json"):
+            envelope["receipt"] = text
+    else:
+        envelope = {"id": ""}
+
+    cid = str(envelope.get("id") or envelope.get("claim") or "").strip()
+    receipt_raw = envelope.get("receipt") or envelope.get("receipt_path")
+    family = envelope.get("family") or envelope.get("claim_family")
+    asking = envelope.get("asking_evidence_class") or envelope.get("required_evidence_class")
+    if asking is None:
+        asking = "STATIC_ONLY"
+
+    receipt_path: Path | None = None
+    if isinstance(receipt_raw, Path):
+        receipt_path = receipt_raw
+    elif isinstance(receipt_raw, str) and receipt_raw.strip():
+        p = Path(receipt_raw.strip())
+        if p.is_absolute():
+            receipt_path = p
+        elif (receipts_dir / p.name).is_file() and not p.parent.parts:
+            receipt_path = receipts_dir / p.name
+        elif (root / p).is_file():
+            receipt_path = root / p
+        elif (receipts_dir / p).is_file():
+            receipt_path = receipts_dir / p
+        elif (REPO / p).is_file():
+            receipt_path = REPO / p
+        else:
+            receipt_path = receipts_dir / p if not p.parent.parts else root / p
+
+    if receipt_path is None and cid in CLAIM_CATALOG:
+        receipt_path = receipts_dir / CLAIM_CATALOG[cid]["receipt"]
+        family = family or CLAIM_CATALOG[cid].get("family")
+        envelope.setdefault("receipt", CLAIM_CATALOG[cid]["receipt"])
+
+    envelope["id"] = cid
+    envelope["family"] = family
+    envelope["asking_evidence_class"] = str(asking)
+    envelope["_receipt_path"] = receipt_path
+    return envelope
+
+
+def reuse_or_rerun(
+    claim: str | Mapping[str, Any],
+    *,
+    asking_evidence_class: str | None = None,
+    root: Path | None = None,
+    receipts_dir: Path | None = None,
+    scars: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """REUSE a sealed receipt or RERUN, with the condition that failed.
+
+    REUSE requires all of:
+      * the claim names a sealed receipt whose seal still verifies
+      * every input the receipt names still hashes to the recorded value
+      * no scar landed since that invalidates the claim's family
+      * the receipt's evidence class is sufficient for the asking context
+
+    A receipt that names no inputs can never be reused: nothing to verify.
+    A named input that is gone is RERUN, never REUSE. The cache key is the
+    input bytes, not the claim name. Silent reuse is refused: a REUSE
+    result always carries reused_from {receipt, digest}.
+    """
+    root_p = Path(root) if root is not None else REPO
+    rec_dir = Path(receipts_dir) if receipts_dir is not None else RECEIPTS
+    env = _resolve_claim(claim, receipts_dir=rec_dir, root=root_p)
+    cid = env["id"] or "<unnamed>"
+    asking = str(asking_evidence_class or env["asking_evidence_class"] or "STATIC_ONLY")
+
+    receipt_path: Path | None = env.get("_receipt_path")
+    if receipt_path is None:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason="claim names no receipt path and is not in CLAIM_CATALOG",
+            failed_condition="missing_receipt",
+            asking_evidence_class=asking,
+        )
+    if not receipt_path.is_file():
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=f"receipt {_receipt_relpath(receipt_path)} is not on disk",
+            failed_condition="missing_receipt",
+            receipt_path=_receipt_relpath(receipt_path),
+            asking_evidence_class=asking,
+        )
+
+    doc, load_fault = _load_receipt_file(receipt_path)
+    if doc is None:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=f"receipt {_receipt_relpath(receipt_path)} could not be loaded ({load_fault})",
+            failed_condition=load_fault or "corrupt_receipt",
+            receipt_path=_receipt_relpath(receipt_path),
+            asking_evidence_class=asking,
+        )
+
+    if not cid or cid == "<unnamed>":
+        cid = str(doc.get("claim") or env.get("id") or receipt_path.stem)
+
+    family = env.get("family") or doc.get("claim_family") or doc.get("family")
+    family = str(family).strip() if family not in (None, "") else ""
+
+    seal = doc.get("seal_sha256")
+    if not isinstance(seal, str) or not seal:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=f"receipt {_receipt_relpath(receipt_path)} has no seal_sha256",
+            failed_condition="unsealed_receipt",
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+        )
+    if not rs.seal_is_valid(doc):
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=f"receipt {_receipt_relpath(receipt_path)} seal does not match the body",
+            failed_condition="corrupt_receipt",
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+        )
+
+    inputs, input_fault = extract_recorded_inputs(doc)
+    if input_fault == "no_recorded_inputs" or not inputs:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=(
+                f"receipt {_receipt_relpath(receipt_path)} records no inputs; "
+                "nothing to verify; refuse reuse"
+            ),
+            failed_condition="no_recorded_inputs",
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+        )
+
+    missing: list[str] = []
+    mismatched: list[dict[str, str]] = []
+    verified: list[dict[str, str]] = []
+    for row in inputs:
+        rel = row["path"]
+        recorded = row["sha256"]
+        live = resolve_input_path(rel, root=root_p)
+        if live is None:
+            missing.append(rel)
+            continue
+        try:
+            current = sha256_file(live)
+        except OSError:
+            missing.append(rel)
+            continue
+        if current.lower() != recorded.lower():
+            mismatched.append(
+                {
+                    "path": rel,
+                    "recorded_sha256": recorded,
+                    "current_sha256": current,
+                }
+            )
+            continue
+        verified.append({"path": rel, "sha256": current})
+
+    if missing:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=(
+                "input "
+                + ", ".join(missing)
+                + " named by the receipt is not on disk"
+            ),
+            failed_condition="input_missing",
+            named_input=missing[0],
+            named_inputs=missing,
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+        )
+    if mismatched:
+        first = mismatched[0]
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=(
+                f"input {first['path']} sha256 changed: "
+                f"recorded={first['recorded_sha256']} current={first['current_sha256']}"
+            ),
+            failed_condition="input_hash_mismatch",
+            named_input=first["path"],
+            named_inputs=[m["path"] for m in mismatched],
+            mismatches=mismatched,
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+        )
+
+    written = receipt_written_at(doc)
+
+    scar_rows: list[Mapping[str, Any]]
+    scar_source: str
+    if scars is not None:
+        scar_rows = [s for s in scars if isinstance(s, Mapping)]
+        scar_source = "caller"
+    else:
+        loaded, scar_source = load_default_scars()
+        if loaded is None:
+            return _verdict(
+                RERUN,
+                claim=cid,
+                reason=f"scar source unavailable ({scar_source}); cannot establish no invalidating scar",
+                failed_condition="scar_source_absent",
+                receipt_path=_receipt_relpath(receipt_path),
+                family=family or None,
+                asking_evidence_class=asking,
+            )
+        scar_rows = loaded
+
+    if scar_rows and not family:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=(
+                "receipt/claim records no family and scars were consulted; "
+                "cannot prove none of them invalidate this claim"
+            ),
+            failed_condition="claim_family_unrecorded",
+            receipt_path=_receipt_relpath(receipt_path),
+            asking_evidence_class=asking,
+            scar_source=scar_source,
+        )
+
+    if family:
+        for scar in scar_rows:
+            hit = _invalidating_scar(scar, family=family, written=written)
+            if hit is not None:
+                return _verdict(
+                    RERUN,
+                    claim=cid,
+                    reason=hit["reason"],
+                    failed_condition=hit["failed_condition"],
+                    named_scar=hit["id"],
+                    family=family,
+                    receipt_path=_receipt_relpath(receipt_path),
+                    asking_evidence_class=asking,
+                    scar_source=scar_source,
+                )
+
+    have_cls = receipt_evidence_class(doc)
+    if have_cls is None:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=f"receipt {_receipt_relpath(receipt_path)} records no evidence_class",
+            failed_condition="evidence_class_unrecorded",
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+        )
+    if asking not in EVIDENCE_CLASS_RANK:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=f"asking evidence class {asking!r} is not in {sorted(EVIDENCE_CLASS_RANK)}",
+            failed_condition="evidence_class_unknown",
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+            receipt_evidence_class=have_cls,
+        )
+    if have_cls not in EVIDENCE_CLASS_RANK:
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=f"receipt evidence class {have_cls!r} is not in {sorted(EVIDENCE_CLASS_RANK)}",
+            failed_condition="evidence_class_unknown",
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+            receipt_evidence_class=have_cls,
+        )
+    if not evidence_class_sufficient(have_cls, asking):
+        return _verdict(
+            RERUN,
+            claim=cid,
+            reason=(
+                f"receipt evidence class {have_cls} is not sufficient for "
+                f"asking context {asking}"
+            ),
+            failed_condition="evidence_class_insufficient",
+            receipt_path=_receipt_relpath(receipt_path),
+            family=family or None,
+            asking_evidence_class=asking,
+            receipt_evidence_class=have_cls,
+        )
+
+    digest = str(doc["seal_sha256"])
+    reused_from = {
+        "receipt": _receipt_relpath(receipt_path),
+        "digest": digest,
+        "inputs_verified": verified,
+    }
+    return _verdict(
+        REUSE,
+        claim=cid,
+        reason=(
+            "sealed receipt; every named input still hashes; "
+            "no invalidating scar since seal; evidence class sufficient"
+        ),
+        reused_from=reused_from,
+        receipt_path=_receipt_relpath(receipt_path),
+        family=family or None,
+        asking_evidence_class=asking,
+        receipt_evidence_class=have_cls,
+        n_inputs_verified=len(verified),
+        scar_source=scar_source if scars is not None or scar_rows else "caller_empty",
+    )
+
+
+def execute_reuse_workunit(
+    claim: str | Mapping[str, Any] = CACHED_INVARIANT_CLAIM,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Run reuse_or_rerun and shape a WorkUnit result. REUSE always reports it."""
+    verdict = reuse_or_rerun(claim, **kwargs)
+    result: dict[str, Any] = {
+        "id": "future.evidence-dag.reuse-or-rerun",
+        "claim": verdict.get("claim"),
+        "decision": verdict["decision"],
+        "reason": verdict["reason"],
+        "failed_condition": verdict.get("failed_condition"),
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "resource_class": "STATIC_ANALYSIS",
+        "reused_from": verdict.get("reused_from"),
+    }
+    if verdict["decision"] == REUSE and not result["reused_from"]:
+        raise rs.FailClosed(
+            "reuse_unreported",
+            "WorkUnit REUSE result missing reused_from; silent cache refused",
+        )
+    return result
+
+
+def cached_invariant_reuse_proof() -> dict[str, Any]:
+    """Four negative controls plus the earned REUSE path, on temp files.
+
+    A validator nobody has watched reject is a validator that will drift.
+    """
+    with tempfile.TemporaryDirectory(prefix="evidence-dag-reuse-") as td:
+        root = Path(td)
+        payload = b"cached-invariant-v1\n"
+        inp = root / "fixture.bin"
+        inp.write_bytes(payload)
+        dest = root / "CLAIM.json"
+        write_claim_receipt(
+            claim="fixture.cached_invariant",
+            family="fixture.family",
+            input_paths=[inp],
+            dest=dest,
+            root=root,
+            recorded_at="2026-08-01T00:00:00Z",
+        )
+        envelope: dict[str, Any] = {
+            "id": "fixture.cached_invariant",
+            "receipt": str(dest),
+            "family": "fixture.family",
+            "asking_evidence_class": "STATIC_ONLY",
+        }
+
+        reuse = reuse_or_rerun(envelope, root=root, receipts_dir=root, scars=[])
+        if reuse["decision"] != REUSE:
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"identical inputs did not REUSE: {reuse}",
+            )
+        reused_from = reuse.get("reused_from") or {}
+        if reused_from.get("receipt") is None or reused_from.get("digest") is None:
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"REUSE did not report reused_from: {reuse}",
+            )
+        sealed = json.loads(dest.read_text())
+        if reused_from.get("digest") != sealed.get("seal_sha256"):
+            raise rs.FailClosed(
+                "cached_invariant",
+                "reused_from.digest is not the receipt seal",
+            )
+        wu = execute_reuse_workunit(envelope, root=root, receipts_dir=root, scars=[])
+        if wu["decision"] != REUSE or not wu.get("reused_from"):
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"WorkUnit result hid reuse: {wu}",
+            )
+
+        # One input byte flips REUSE -> RERUN and names that input.
+        flipped = bytearray(payload)
+        flipped[0] ^= 0x01
+        inp.write_bytes(bytes(flipped))
+        after_flip = reuse_or_rerun(envelope, root=root, receipts_dir=root, scars=[])
+        if after_flip["decision"] != RERUN:
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"byte-flipped input still REUSE: {after_flip}",
+            )
+        if after_flip.get("failed_condition") != "input_hash_mismatch":
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"byte-flip named {after_flip.get('failed_condition')}, not input_hash_mismatch",
+            )
+        if after_flip.get("named_input") != "fixture.bin":
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"byte-flip did not name the input: {after_flip}",
+            )
+        if after_flip.get("reused_from") is not None:
+            raise rs.FailClosed(
+                "cached_invariant",
+                "RERUN carried reused_from; that is silent success",
+            )
+
+        # Restore, then delete: missing named input is RERUN, never REUSE.
+        inp.write_bytes(payload)
+        restored = reuse_or_rerun(envelope, root=root, receipts_dir=root, scars=[])
+        if restored["decision"] != REUSE:
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"restored bytes did not REUSE: {restored}",
+            )
+        inp.unlink()
+        after_del = reuse_or_rerun(envelope, root=root, receipts_dir=root, scars=[])
+        if after_del["decision"] != RERUN or after_del.get("failed_condition") != "input_missing":
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"deleted input was not input_missing RERUN: {after_del}",
+            )
+        if after_del.get("named_input") != "fixture.bin":
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"deleted input did not name fixture.bin: {after_del}",
+            )
+
+        inp.write_bytes(payload)
+        scar_after = {
+            "id": "SCAR.fixture.after",
+            "family": "fixture.family",
+            "landed_at": "2026-08-15T00:00:00Z",
+        }
+        after_scar = reuse_or_rerun(
+            envelope, root=root, receipts_dir=root, scars=[scar_after]
+        )
+        if after_scar["decision"] != RERUN or after_scar.get("failed_condition") != "scar_after_receipt":
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"scar after receipt did not RERUN: {after_scar}",
+            )
+        if after_scar.get("named_scar") != "SCAR.fixture.after":
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"scar after receipt did not name the scar: {after_scar}",
+            )
+
+        scar_before = {
+            "id": "SCAR.fixture.before",
+            "family": "fixture.family",
+            "landed_at": "2026-07-01T00:00:00Z",
+        }
+        before_scar = reuse_or_rerun(
+            envelope, root=root, receipts_dir=root, scars=[scar_before]
+        )
+        if before_scar["decision"] != REUSE:
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"scar landed before receipt forced RERUN: {before_scar}",
+            )
+
+        other_family = {
+            "id": "SCAR.other",
+            "family": "other.family",
+            "landed_at": "2026-08-20T00:00:00Z",
+        }
+        other = reuse_or_rerun(
+            envelope, root=root, receipts_dir=root, scars=[other_family]
+        )
+        if other["decision"] != REUSE:
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"unrelated-family scar forced RERUN: {other}",
+            )
+
+        empty_dest = root / "EMPTY.json"
+        empty_doc = {
+            "schema": CLAIM_RECEIPT_SCHEMA,
+            "version": 1,
+            "claim": "fixture.empty",
+            "claim_family": "fixture.family",
+            "evidence_class": "STATIC_ONLY",
+            "gpu_authority": False,
+            "recorded_inputs": [],
+            "bench": {
+                "state": "UNKNOWN",
+                "measurement_state": "STATIC_ONLY",
+                "recorded_at": "2026-08-01T00:00:00Z",
+                "recorded_by": RECORDED_BY,
+                "gpu_authority": False,
+            },
+        }
+        empty_doc = rs.seal_doc(empty_doc)
+        empty_dest.write_text(json.dumps(empty_doc, indent=1, sort_keys=True) + "\n")
+        empty_v = reuse_or_rerun(
+            {
+                "id": "fixture.empty",
+                "receipt": str(empty_dest),
+                "family": "fixture.family",
+                "asking_evidence_class": "STATIC_ONLY",
+            },
+            root=root,
+            receipts_dir=root,
+            scars=[],
+        )
+        if empty_v["decision"] != RERUN or empty_v.get("failed_condition") != "no_recorded_inputs":
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"empty recorded_inputs was not no_recorded_inputs RERUN: {empty_v}",
+            )
+
+        protected = reuse_or_rerun(
+            envelope,
+            root=root,
+            receipts_dir=root,
+            scars=[],
+            asking_evidence_class="PROTECTED_ABSOLUTE",
+        )
+        if (
+            protected["decision"] != RERUN
+            or protected.get("failed_condition") != "evidence_class_insufficient"
+        ):
+            raise rs.FailClosed(
+                "cached_invariant",
+                f"STATIC_ONLY receipt satisfied a protected ask: {protected}",
+            )
+
+    return {
+        "holds": True,
+        "reuse_on_identical_inputs": True,
+        "reused_from_reported": True,
+        "reused_from_digest_is_seal": True,
+        "workunit_result_carries_reused_from": True,
+        "byte_flip_named_the_input": True,
+        "deleted_input_is_rerun": True,
+        "scar_after_receipt_is_rerun": True,
+        "scar_before_receipt_still_reuses": True,
+        "unrelated_family_scar_does_not_rerun": True,
+        "no_recorded_inputs_never_reuses": True,
+        "static_receipt_insufficient_for_protected_ask": True,
+        "cache_key": "recorded input sha256, not claim name",
+    }
+
+
+# ---------------------------------------------------------------------------
 # WorkUnits the resident can schedule. V8 is SLEEPING, never synthetic.
 # ---------------------------------------------------------------------------
 
@@ -893,7 +1937,42 @@ def emit_work_units() -> list[dict[str, Any]]:
         },
     )
     wus.validate_emitted_unit(sleeping)
-    return [selftest, adapt, sleeping]
+
+    reuse_unit = wus.emit_hcli_workunit(
+        id="future.evidence-dag.reuse-or-rerun",
+        role="science",
+        description=(
+            "Reuse a sealed claim if every named input still hashes, no scar "
+            "has landed against its family since the seal, and the receipt's "
+            "evidence class covers the ask. Otherwise RERUN, naming the "
+            "condition. A REUSE result MUST carry reused_from."
+        ),
+        dependencies=["future.evidence-dag.selftest"],
+        resource_class="STATIC_ANALYSIS",
+        verifier="future.evidence_dag.reuse_or_rerun",
+        provider="tools.future.evidence_dag",
+        effect_class="READ_ONLY",
+        status="pending",
+        extras={
+            "command": [
+                "python3",
+                "tools/future/evidence_dag.py",
+                "--reuse-or-rerun",
+                CACHED_INVARIANT_CLAIM,
+            ],
+            "output_receipt_path": f"receipts/future/{RECEIPT}",
+            "species": "independent_reproduction",
+            "requires_quiescence": False,
+            "claim": CACHED_INVARIANT_CLAIM,
+            "result_must_carry": "reused_from",
+            "claim_boundary": (
+                "Static sidecar artifact. No hardware measurement. "
+                "Reuse is earned by live input hashes, not by claim name."
+            ),
+        },
+    )
+    wus.validate_emitted_unit(reuse_unit)
+    return [selftest, adapt, reuse_unit, sleeping]
 
 
 # ---------------------------------------------------------------------------
@@ -1332,12 +2411,14 @@ def run_all_proofs() -> dict[str, Any]:
     adaptive = adaptive_depth_proof()
     unavailable = unavailable_level_proof()
     claims = claim_downgrade_on_dag_proof()
+    cached = cached_invariant_reuse_proof()
     units = emit_work_units()
     return {
         "levels": catalog,
         "identity": identity,
         "static_ladder": ladder,
         "reuse": reuse,
+        "cached_invariant": cached,
         "diamond": diamond,
         "adaptive_depth": adaptive,
         "unavailable_levels": unavailable,
@@ -1437,6 +2518,35 @@ RECOVERED_IMPLEMENTATION = [
         "what": "F008 provenance gap (closed by repro_science). No frontier file is rewritten here.",
         "use": "WorkUnit refill is how a result changes the next verification depth",
     },
+    {
+        "path": "tools/future/_common.py",
+        "what": "sha256_file + seal; HARDWARE_FIELDS raise on a numeric claim",
+        "use": "reuse_or_rerun re-hashes every named input with sha256_file; does not reimplement the hasher",
+    },
+    {
+        "path": "tools/future/freshness.py",
+        "what": "byte sha vs semantic fingerprint for derived artifacts; FRESH only when sha matches",
+        "use": (
+            "The byte-match half is the same guarantee. Semantic fingerprint is "
+            "deliberately NOT used here: one input byte must RERUN even if meaning is identical. "
+            "A stale baseline surviving a cosmetic rewrite is the defect this lane kills."
+        ),
+    },
+    {
+        "path": "tools/future/evidence_snapshot.py",
+        "what": "pinned copy + verify() that every captured file still hashes to the manifest",
+        "use": "same live-hash-against-recorded-digest pattern; applied to named claims rather than the snapshot set",
+    },
+    {
+        "path": "tools/future/repro_science.py",
+        "what": "seal_is_valid, FailClosed, experiment_identity",
+        "use": "reuse_or_rerun refuses an unsealed or corrupt receipt via seal_is_valid; does not fork the sealer",
+    },
+    {
+        "path": "tools/future/autonomy_scars.py",
+        "what": "orchestrator-defect scars with families; default scar source when the caller passes none",
+        "use": "load_default_scars(). Matching family + landed_at after receipt_written_at forces RERUN",
+    },
 ]
 
 GAPS_CLOSED = [
@@ -1448,6 +2558,10 @@ GAPS_CLOSED = [
     "request_level(V8) and request_level(V9) RAISE UnavailableLevelError rather than returning a weaker level; prove() does not count work or store a VALID V8 proof",
     "claim downgrade on the DAG uses repro_science.ledger_invalidate: parent invalidation transitively DOWNGRADES derived claims; sibling claims stay VALID",
     "V8 work is a SLEEPING/blocked HCLI WorkUnit, never a synthetic protected result",
+    "reuse_or_rerun(claim) -> REUSE|RERUN: sealed receipt + live input sha256 match + no family scar since seal + evidence class sufficient; otherwise RERUN naming the failed condition",
+    "a receipt that names no inputs can never be reused (nothing to verify); a named input that is gone is RERUN, never REUSE",
+    "REUSE is reported: WorkUnit result carries reused_from {receipt, digest}; silent cache is FailClosed reuse_unreported",
+    "one input byte, a deleted input, a post-seal family scar, and an empty recorded_inputs list each flip REUSE -> RERUN",
 ]
 
 NEGATIVE_FINDINGS = [
@@ -1458,6 +2572,10 @@ NEGATIVE_FINDINGS = [
     "this-wave siblings (resident_api, workgraph, wakeup, protected_window, frontiers, super_resident) were not imported; local interfaces are named as integration points",
     "no DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE number was produced; bench.state stays UNKNOWN",
     "Flash NX remains SCAFFOLD_ONLY / teacher capture 0/256 — out of this lane; noted, not papered over",
+    "freshness semantic fingerprints are not a reuse key; a byte change is RERUN even when meaning is identical",
+    "default scar source is autonomy_scars in this partition; the negative_index corpus is not consulted (sparse checkout, hypothesis-keyed, not this DAG's families)",
+    "a receipt that records only logical input names (schema/payload) has nothing to re-hash and cannot be reused by this checker",
+    "STATIC_ONLY reuse never satisfies a DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE ask; this sidecar mints neither",
 ]
 
 
@@ -1470,10 +2588,12 @@ def resident_callable_doc(units: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "python3 tools/future/evidence_dag.py --build",
             "python3 tools/future/evidence_dag.py --required-level <candidate.json>",
             "python3 tools/future/evidence_dag.py --admit <candidate.json>",
+            "python3 tools/future/evidence_dag.py --reuse-or-rerun evidence_dag.cached_invariant",
         ],
         "invoke": (
             "tools.future.evidence_dag:build|selftest|required_level|"
-            "admit_candidate|request_level|EvidenceDAG.prove"
+            "admit_candidate|request_level|EvidenceDAG.prove|"
+            "reuse_or_rerun|execute_reuse_workunit"
         ),
         "schedule": [u["id"] for u in units],
         "work_units_emitted": [u["id"] for u in units],
@@ -1498,11 +2618,19 @@ def resident_callable_doc(units: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "write_receipt raises HardwareClaimError on a numeric hardware field",
             "unknown mutation_scope or out-of-range factor raises FailClosed",
             "a V8 WorkUnit is blocked/SLEEPING and is never a VALID proof record",
+            "reuse_or_rerun returns RERUN (never REUSE) when the receipt is missing, unsealed, corrupt, names no inputs, names a missing input, names a hash-mismatched input, has a post-seal family scar, or is weaker than the asking evidence class",
+            "REUSE without reused_from (receipt path + digest) raises FailClosed reuse_unreported",
         ],
         "result_changes_a_frontier": (
             "required_level output is the next verification WorkUnit's depth; "
-            "a reused VALID proof is not re-run; an invalidated descendant is"
+            "a reused VALID proof is not re-run; an invalidated descendant is; "
+            "reuse_or_rerun is the 3h-trial WorkUnit that demonstrates cached-invariant reuse"
         ),
+        "workunit": (
+            "one STATIC_ANALYSIS unit; reuse_or_rerun a named claim; "
+            "REUSE result carries reused_from"
+        ),
+        "frontier": "FT.VERIFICATION.repro",
         "persists": f"receipts/future/{RECEIPT} via write_receipt",
         "next_work_refills": "future.evidence-dag.adapt-next-mutation depends on selftest",
     }
@@ -1511,15 +2639,26 @@ def resident_callable_doc(units: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 def build() -> Path:
     proofs = run_all_proofs()
     units = proofs["work_units"]
+    recorded = module_recorded_inputs()
+    verifiable_inputs = [
+        {"path": row["path"], "sha256": row["sha256"]}
+        for row in recorded
+        if row.get("present") and _looks_like_sha256(row.get("sha256"))
+    ]
     doc: dict[str, Any] = {
         "schema": SCHEMA,
         "version": VERSION,
         "purpose": (
             "V0–V9 evidence DAG: reuse byte-identical proofs, invalidate only "
             "affected descendants, choose verification depth from mutation "
-            "scope / uncertainty / risk / upside / promotion proximity, and "
-            "refuse V8/V9 on this host rather than silently downgrading."
+            "scope / uncertainty / risk / upside / promotion proximity, refuse "
+            "V8/V9 on this host rather than silently downgrading, and reuse a "
+            "sealed claim only when every named input still hashes."
         ),
+        "claim": CACHED_INVARIANT_CLAIM,
+        "claim_family": CACHED_INVARIANT_FAMILY,
+        "recorded_inputs": verifiable_inputs,
+        "recorded_inputs_probe": recorded,
         "evidence_class": "STATIC_ONLY",
         "gpu_authority": False,
         "head": git("rev-parse", "HEAD"),
@@ -1558,6 +2697,7 @@ def build() -> Path:
             "proof": proofs["adaptive_depth"],
         },
         "reuse": proofs["reuse"],
+        "cached_invariant_reuse": proofs["cached_invariant"],
         "diamond_invalidation": proofs["diamond"],
         "unavailable_levels": proofs["unavailable_levels"],
         "claim_downgrade": proofs["claim_downgrade"],
@@ -1619,7 +2759,50 @@ def main() -> int:
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--required-level", metavar="CANDIDATE")
     ap.add_argument("--admit", metavar="CANDIDATE")
+    ap.add_argument("--reuse-or-rerun", metavar="CLAIM")
     args = ap.parse_args()
+    if args.reuse_or_rerun is not None:
+        raw = args.reuse_or_rerun.strip()
+        try:
+            loaded = json.loads(raw) if raw.startswith("{") or raw.startswith("[") else raw
+        except json.JSONDecodeError:
+            loaded = raw
+        if isinstance(loaded, list):
+            print(
+                json.dumps(
+                    {
+                        "decision": RERUN,
+                        "failed_condition": "unknown_claim",
+                        "reason": "claim must be a name or a JSON object, not a list",
+                        "reused_from": None,
+                        "evidence_class": "STATIC_ONLY",
+                        "gpu_authority": False,
+                    },
+                    indent=1,
+                    sort_keys=True,
+                )
+            )
+            return 1
+        try:
+            verdict = execute_reuse_workunit(loaded)
+        except rs.FailClosed as exc:
+            print(
+                json.dumps(
+                    {
+                        "decision": RERUN,
+                        "failed_condition": exc.fault,
+                        "reason": exc.reason,
+                        "reused_from": None,
+                        "evidence_class": "STATIC_ONLY",
+                        "gpu_authority": False,
+                    },
+                    indent=1,
+                    sort_keys=True,
+                )
+            )
+            return 1
+        print(json.dumps(verdict, indent=1, sort_keys=True))
+        return 0 if verdict["decision"] == REUSE else 1
     if args.required_level is not None:
         try:
             cand = _load_candidate(args.required_level)

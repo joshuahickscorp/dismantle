@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:59:27Z",
+  "recorded_at": "2026-08-30T15:01:54Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -73578,7 +73578,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+ "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73638,7 +73638,7 @@
     "path": "tools/odyssey/ingest.py"
    },
    {
-    "in_git": false,
+    "in_git": true,
     "note": "named in the contract; absent from HEAD",
     "on_disk": true,
     "path": "tools/odyssey/modellake_watch.py"
@@ -73749,7 +73749,7 @@
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "a6051efb737ac59118f2712c8649d62918b7f9148adda51a15825dede9f9d7e2",
+ "seal_sha256": "97639ecd6ea7535713ea81e6fc5af0bbc65e63cd7e9256cdb30f0175b9a50ed5",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:59:13Z",
+  "recorded_at": "2026-08-30T15:02:17Z",
   "recorded_by": "tools/future/flash_schools.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -3793,7 +3793,7 @@
   "rule": "Pareto on storage_bytes, flop_milli, capability_risk_rank; joint_cost = storage_ratio_milli + flop_milli",
   "storage_only": "REFUSED"
  },
- "seal_sha256": "cd022ecc1bf7c9fa153ff1e1af701b2ce5bc24fdc92056d480e67c66235112b5",
+ "seal_sha256": "912f6282c027d3894927f88d343b62e51bfa5b3a150f16e4e7eb7407d6026ae3",
  "three_zeros": [
   "ZERO_STORAGE",
   "ZERO_INDEPENDENT_INFORMATION",

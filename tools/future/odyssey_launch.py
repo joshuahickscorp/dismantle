@@ -422,6 +422,15 @@ def _ready(identity: Mapping[str, Any], *, require_lake_verified: bool) -> tuple
     if identity.get("physical_status") == "metadata_only_weights_not_present":
         return False, "school identity is metadata-only; weights are not present"
     if not identity.get("revision") and not identity.get("resolved_sha") and not identity.get("patient_seal"):
+        # A local directory has no repository revision. The external specimen
+        # seal is that identity; lake specimens cannot take this branch.
+        try:
+            from tools.future.external_specimen_seal import accept_as_sealed_identity
+        except ImportError:
+            return False, "no sealed revision or patient seal"
+        ok, why = accept_as_sealed_identity(identity)
+        if ok:
+            return True, why
         return False, "no sealed revision or patient seal"
     if identity.get("whole_tree_verified"):
         return True, "ModelLake whole-tree sha256 verification"

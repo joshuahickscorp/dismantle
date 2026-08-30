@@ -62,7 +62,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:58:08Z",
+  "recorded_at": "2026-08-30T15:03:58Z",
   "recorded_by": "tools/future/lpc_dataset.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -80,7 +80,7 @@
   "held-out splits by architecture, organ, and device",
   "authority helper: PROTECTED_ABSOLUTE always outranks a model"
  ],
- "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+ "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
  "ingest": {
   "inventory": {
    "by_contamination": {
@@ -506,6 +506,6 @@
   ]
  },
  "schema": "hawking.future.lpc_dataset.v1",
- "seal_sha256": "d1eca923eddfd7a0d4902cbc839cea06f1dbd767b6bdcbdf6a89b21fa094a4c7",
+ "seal_sha256": "1382e67462773b7420fd760815bc69d5766ded76e2552ca82a2bf832f6ad9ffb",
  "version": 1
 }

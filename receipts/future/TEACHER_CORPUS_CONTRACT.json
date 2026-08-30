@@ -23,7 +23,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:58:50Z",
+  "recorded_at": "2026-08-30T15:05:41Z",
   "recorded_by": "tools/future/teacher_corpus.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -555,11 +555,9 @@
  "negative_findings": [
   "contract named receipts/headless/QWEN80_CAPTURE_INDEX.json; the artifact lives at receipts/QWEN80_CAPTURE_INDEX.json",
   "contract named receipts/headless/QWEN80_CAPTURE_SPEED.json; the artifact lives at receipts/QWEN80_CAPTURE_SPEED.json",
-  "tools/odyssey/model_specimen_seal.py is not in HEAD; specimen identity recovered from hcli/flash_next.py PINNED_REVISION and FLASH_NOETIC_ROUTER_SELECTION source_identity.model_lake_manifest",
   "FLASH_ATTENTION_ROUTE_UNION_PARITY.json is not in HEAD; route-union shape recovered from lab/operators/q80_capture_index.py key_(layer,expert) and receipts/QWEN80_CAPTURE_INDEX.json (24,355 of 24,576 LE pairs)",
   "FLASH_ROUTER_SENSITIVITY_MAP_L3_L4.json is not in HEAD; no L3/L4 Flash router sensitivity map was found under receipts/",
   "No GPU capture was executed. WorkUnits are pending. Existing teacher ledgers (GLM52 capsules, Qwen80 hidden files) were not re-read as row bytes because those capture blobs are not in this sparse worktree.",
-  "HEAD missing: tools/odyssey/model_specimen_seal.py",
   "HEAD missing: receipts/headless/QWEN80_CAPTURE_INDEX.json",
   "HEAD missing: receipts/headless/QWEN80_CAPTURE_SPEED.json",
   "HEAD missing: receipts/headless/FLASH_ATTENTION_ROUTE_UNION_PARITY.json",
@@ -567,9 +565,8 @@
  ],
  "purpose": "Teacher-corpus contract: bind every capture to specimen/layer/surface/provenance, compute diversity, dedup, and structurally refuse a corpus that only meets its sample-count threshold by duplication, resampling, or synthesis.",
  "recovered_implementation": {
-  "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+  "head": "448bbd79d6f9b3c4737d60191620bb4605a919e9",
   "missing_from_HEAD": [
-   "tools/odyssey/model_specimen_seal.py",
    "receipts/headless/QWEN80_CAPTURE_INDEX.json",
    "receipts/headless/QWEN80_CAPTURE_SPEED.json",
    "receipts/headless/FLASH_ATTENTION_ROUTE_UNION_PARITY.json",
@@ -588,7 +585,7 @@
     "path": "tools/odyssey/teacher_assess.py"
    },
    {
-    "in_HEAD": false,
+    "in_HEAD": true,
     "on_disk": true,
     "path": "tools/odyssey/model_specimen_seal.py"
    },
@@ -789,7 +786,7 @@
   "route_union_definition": "Sorted unique route_ids over all rows sharing (specimen, layer, surface). Membership is the intersection of the row's route_ids with that union. Recovered from Q80 key_(layer, expert), not from FLASH_ATTENTION_ROUTE_UNION_PARITY (that receipt is not in HEAD)."
  },
  "schema": "hawking.future.teacher_corpus.v1",
- "seal_sha256": "d82239625d670f682ce62ed52eca28d26d072187fff17d0e6722b6f53c48141a",
+ "seal_sha256": "5e5d7b714e1ae1ef22f02298e1fd4dccc9583b5388fd45e6a2ad682fa18dd01e",
  "selftest": {
   "dedup_collision_groups": 4,
   "dedup_kept_from_duplicated": 4,

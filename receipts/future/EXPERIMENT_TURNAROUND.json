@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T12:59:22Z",
+  "recorded_at": "2026-08-30T15:05:44Z",
   "recorded_by": "tools/future/turnaround.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -88,7 +88,7 @@
  "dominant_cost": {
   "among_measured_cpu_side": {
    "evidence": "largest median_ms among MEASURED_CPU_SIDE phases; process timings, not a GPU measurement",
-   "median_ms": 467.77,
+   "median_ms": 467.019,
    "phase": "verify"
   },
   "full_experiment_loop": {
@@ -134,56 +134,44 @@
   "Did not touch hcli/ledger.py; ledger timing is a tempfile JSONL analog"
  ],
  "phase_wall_ms_cpu_side": {
-  "ledger": 0.25,
-  "next_decision": 0.003,
-  "receipt": 0.911,
-  "source_discovery": 77.867,
-  "transform": 40.99,
-  "verify": 467.77
+  "ledger": 0.361,
+  "next_decision": 0.012,
+  "receipt": 1.292,
+  "source_discovery": 39.691,
+  "transform": 38.219,
+  "verify": 467.019
  },
  "phases": [
   {
-   "iqr_ms": 2.649,
-   "max_ms": 86.415,
+   "max_ms": 40.76,
    "measurement_kind": "git_ls_tree_full_inventory",
-   "median_ms": 77.867,
-   "min_ms": 61.64,
-   "n": 5,
+   "median_ms": 39.691,
+   "min_ms": 38.622,
+   "n": 2,
    "name": "source_discovery",
-   "phase_wall_ms_cpu_side": 77.867,
-   "q1_ms": 76.806,
-   "q3_ms": 79.455,
-   "range_ms": 24.775,
+   "phase_wall_ms_cpu_side": 39.691,
+   "range_ms": 2.138,
    "reason": null,
    "samples_ms": [
-    79.455,
-    76.806,
-    61.64,
-    86.415,
-    77.867
+    38.622,
+    40.76
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "iqr_ms": 1.792,
-   "max_ms": 43.642,
+   "max_ms": 38.47,
    "measurement_kind": "python_import_tools.future._common",
-   "median_ms": 40.99,
-   "min_ms": 39.154,
-   "n": 5,
+   "median_ms": 38.219,
+   "min_ms": 37.967,
+   "n": 2,
    "name": "transform",
-   "phase_wall_ms_cpu_side": 40.99,
-   "q1_ms": 39.504,
-   "q3_ms": 41.296,
-   "range_ms": 4.488,
+   "phase_wall_ms_cpu_side": 38.219,
+   "range_ms": 0.503,
    "reason": null,
    "samples_ms": [
-    43.642,
-    39.504,
-    41.296,
-    39.154,
-    40.99
+    38.47,
+    37.967
    ],
    "scoreboard_field": "transform_ns",
    "state": "MEASURED_CPU_SIDE"
@@ -259,93 +247,69 @@
    "state": "UNKNOWN"
   },
   {
-   "iqr_ms": 18.516,
-   "max_ms": 549.62,
+   "max_ms": 484.051,
    "measurement_kind": "pytest_collect_only_tools.future",
-   "median_ms": 467.77,
-   "min_ms": 447.02,
-   "n": 5,
+   "median_ms": 467.019,
+   "min_ms": 449.987,
+   "n": 2,
    "name": "verify",
-   "phase_wall_ms_cpu_side": 467.77,
-   "q1_ms": 449.691,
-   "q3_ms": 468.207,
-   "range_ms": 102.6,
+   "phase_wall_ms_cpu_side": 467.019,
+   "range_ms": 34.064,
    "reason": null,
    "samples_ms": [
-    549.62,
-    468.207,
-    449.691,
-    447.02,
-    467.77
+    484.051,
+    449.987
    ],
    "scoreboard_field": "verification_ns",
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "iqr_ms": 0.807,
-   "max_ms": 1.6,
+   "max_ms": 1.73,
    "measurement_kind": "serialize_seal_fsync_tempfile",
-   "median_ms": 0.911,
-   "min_ms": 0.53,
-   "n": 5,
+   "median_ms": 1.292,
+   "min_ms": 0.855,
+   "n": 2,
    "name": "receipt",
-   "phase_wall_ms_cpu_side": 0.911,
-   "q1_ms": 0.535,
-   "q3_ms": 1.342,
-   "range_ms": 1.07,
+   "phase_wall_ms_cpu_side": 1.292,
+   "range_ms": 0.875,
    "reason": null,
    "samples_ms": [
-    0.53,
-    1.6,
-    0.911,
-    0.535,
-    1.342
+    0.855,
+    1.73
    ],
    "scoreboard_field": "receipt_ns",
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "iqr_ms": 0.025,
-   "max_ms": 0.38,
+   "max_ms": 0.502,
    "measurement_kind": "jsonl_append_fsync_tempfile",
-   "median_ms": 0.25,
-   "min_ms": 0.221,
-   "n": 5,
+   "median_ms": 0.361,
+   "min_ms": 0.22,
+   "n": 2,
    "name": "ledger",
-   "phase_wall_ms_cpu_side": 0.25,
-   "q1_ms": 0.241,
-   "q3_ms": 0.266,
-   "range_ms": 0.159,
+   "phase_wall_ms_cpu_side": 0.361,
+   "range_ms": 0.282,
    "reason": null,
    "samples_ms": [
-    0.266,
-    0.221,
-    0.38,
-    0.25,
-    0.241
+    0.502,
+    0.22
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
   },
   {
-   "iqr_ms": 0.002,
-   "max_ms": 0.031,
+   "max_ms": 0.021,
    "measurement_kind": "dominant_cost_and_lever_selection",
-   "median_ms": 0.003,
-   "min_ms": 0.002,
-   "n": 5,
+   "median_ms": 0.012,
+   "min_ms": 0.004,
+   "n": 2,
    "name": "next_decision",
-   "phase_wall_ms_cpu_side": 0.003,
-   "q1_ms": 0.002,
-   "q3_ms": 0.004,
-   "range_ms": 0.029,
+   "phase_wall_ms_cpu_side": 0.012,
+   "range_ms": 0.017,
    "reason": null,
    "samples_ms": [
-    0.031,
-    0.004,
-    0.003,
-    0.002,
-    0.002
+    0.021,
+    0.004
    ],
    "scoreboard_field": null,
    "state": "MEASURED_CPU_SIDE"
@@ -384,7 +348,7 @@
    "what": "gitignored. On the parent checkout it sets build.target-dir = workspace/ops/build/rust. Shared cache is the contention this lane is forbidden from joining."
   }
  ],
- "repeats": 5,
+ "repeats": 2,
  "schema": "hawking.future.turnaround.v1",
  "scoreboard_presence": {
   "development_phases_keys": [
@@ -428,7 +392,7 @@
   },
   "values_in_this_receipt": "all null \u2014 CPU timings are not ns GPU/build quantities"
  },
- "seal_sha256": "5d291ce1196a1b638e311323b355166ce25078c383dffe1ea577bea0d7509448",
+ "seal_sha256": "ccc0802af73f7c723e7d748f8f181f4d771d819cf0670571cee9b9111569e774",
  "source_inventory": {
   "by_suffix": {
    ".bash": 1,
@@ -441,7 +405,7 @@
    ".db": 16,
    ".err": 5,
    ".example": 1,
-   ".f32": 8,
+   ".f32": 9,
    ".f32le": 2,
    ".gen_ids": 3,
    ".gravity": 1003,
@@ -455,7 +419,7 @@
    ".ico": 1,
    ".journal": 12,
    ".js": 1,
-   ".json": 7195,
+   ".json": 7199,
    ".jsonl": 134,
    ".lean": 2,
    ".lock": 24,
@@ -477,7 +441,7 @@
    ".pre-truncation-fix": 1,
    ".prompt_ids": 3,
    ".pt": 99,
-   ".py": 1804,
+   ".py": 1810,
    ".raw_module": 1,
    ".ref": 48,
    ".rs": 995,
@@ -502,12 +466,12 @@
    ".zsh": 1,
    "<none>": 95
   },
-  "file_count": 13015,
+  "file_count": 13026,
   "hawking_core_metal": 47,
   "hawking_core_rs": 503,
   "metal": 50,
   "note": "git ls-tree sees the full committed tree; os.walk of this worktree would undercount because of sparse checkout",
-  "python": 1804,
+  "python": 1810,
   "rust_rs": 995,
   "scan": "git ls-tree -r --name-only HEAD",
   "sparse_checkout": true,

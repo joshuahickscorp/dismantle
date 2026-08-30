@@ -1,0 +1,2602 @@
+{
+ "available_lanes": [
+  "CPU",
+  "ANALYSIS",
+  "SIMULATION",
+  "REPRESENTATION",
+  "TOOLING",
+  "ODYSSEY"
+ ],
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T15:10:38Z",
+  "recorded_by": "tools/future/trial_freeze.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "blocked_lanes": [
+  "GPU_PROTECTED",
+  "ANE",
+  "FPGA"
+ ],
+ "claim_boundary": "Static sidecar artifact. No hardware measurement.",
+ "driver": "tools/future/autonomy_run.py",
+ "evidence_class": "STATIC_ONLY",
+ "files_by_route": {
+  "driver": [
+   "tools/future/autonomy_run.py"
+  ],
+  "import": [
+   "tools/future/__init__.py",
+   "tools/future/_common.py",
+   "tools/future/autonomy_trial.py",
+   "tools/future/candidate_planner.py",
+   "tools/future/expert_bank_school.py",
+   "tools/future/flash_schools.py",
+   "tools/future/frontiers.py",
+   "tools/future/hardware_doctor.py",
+   "tools/future/mutation_surface.py",
+   "tools/future/negative_index.py",
+   "tools/future/ngram_school.py",
+   "tools/future/orchestration.py",
+   "tools/future/repro_science.py",
+   "tools/future/router_science.py",
+   "tools/future/specimen_verify.py",
+   "tools/future/workunit_species.py"
+  ],
+  "subprocess": [
+   "tools/future/integration_attack.py",
+   "tools/future/specimen_verify.py",
+   "tools/future/test_integration_attack.py"
+  ]
+ },
+ "files_found_by_both_routes": [
+  "tools/future/specimen_verify.py"
+ ],
+ "files_found_by_subprocess_only": [
+  "tools/future/integration_attack.py",
+  "tools/future/test_integration_attack.py"
+ ],
+ "freeze_time": "2026-08-30T15:10:38Z",
+ "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+ "frozen_builds": [
+  {
+   "argv_executed": [
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "argv_mentioned": [
+    "tools/future/test_integration_attack.py",
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "available_lanes": [
+    "CPU",
+    "ANALYSIS",
+    "SIMULATION",
+    "REPRESENTATION",
+    "TOOLING",
+    "ODYSSEY"
+   ],
+   "blocked_lanes": [
+    "GPU_PROTECTED",
+    "ANE",
+    "FPGA"
+   ],
+   "code_files": [
+    {
+     "path": "tools/future/__init__.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/_common.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "cacc92109ffa1f0d8f78a966a9797056286e984266b163808d739374412ceb23",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_run.py",
+     "routes": [
+      "driver"
+     ],
+     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_trial.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "3458751fc1226d852a9d766108480dcbf62e4546ce2f2eb943603366fba7d380",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/candidate_planner.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "d4f4142760cd56f1417ccf8d5b11fa2d29dfb906bd1fbfda88080170451ec0a3",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/expert_bank_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_schools.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "7d07e32d0dfffb5ee67510fc795a42432713f8a76ff7d5905ce14892d104e2c7",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/frontiers.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/hardware_doctor.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "73bb3dbfb3710e99ffe7a695bf667d817ad6779c8200efbda04e00f6f50be4f0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/mutation_surface.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ff8d548ba0ca034428699dfe4ab6e7811af10d461e0733a240ea370150812e44",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/negative_index.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ce16d60c5f4e46ee0d5a1a9c3391dbfc113dbb311cc40a6ee94027c67536a389",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/ngram_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f7dfd8e29a9b0a5a3968afbb9d3315a743cda96dadc4ee470b79da6a667bfa6d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/orchestration.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "83953dfb7e8b6f2f9c05b48015aaa5e340823eea03bb8c83780542c92d2566f1",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/repro_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f565c5df51465c7493d8016a6c2b03be92846779746dedb9184989f9d558e7b0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/router_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f142bed15bc0f7aa0dc591d3cbafe1a099b8d037a0750a5550b46f8d6e384ef9",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/specimen_verify.py",
+     "routes": [
+      "import",
+      "subprocess"
+     ],
+     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/test_integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workunit_species.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a1c3ea2205f46eecde21764f52265f8314cfeddc32dda27d7f9d9241437477c",
+     "state": "HASHED"
+    }
+   ],
+   "driver": "tools/future/autonomy_run.py",
+   "evidence_class": "STATIC_ONLY",
+   "freeze_time": "2026-08-30T15:10:38Z",
+   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "frontier_items": [
+    {
+     "id": "FT.ACTIVE_BYTES.hbm-rank",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ACTIVE_BYTES.measured",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.execution",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.preboard",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.compile-specs",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.device-run",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.install-dry-run",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.optimizer",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.disk-authority",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.open-question",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.DECODING.cost-model",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.DECODING.speculative",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.cargo",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.refresh",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.FPGA.engine-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.hardware-doctor",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.u50",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.flash-nx",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.ready-protected",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.static-warnings",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.emit-workunits",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.no-launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.LATENCY.cpu-turnaround",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.LATENCY.gpu-ns",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MEMORY.hbm",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MEMORY.hmf",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.tournament-refuse",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.complete-token",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.fusion-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.static-skeleton",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.ngram-school",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.teacher-capture",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.attacks",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.closed-loop",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.flash-qwen27",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.re-earn",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.campaign.F012",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.hwir-lower",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.p6-projection",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.STATE.coverage-audit",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.full-kv",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F009",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.freshness",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.frontiers-refill",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.propagate-skips",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.accepted-token-cost",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.protected-tps",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.VERIFICATION.campaign.F018",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.contamination",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.negative-index",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.VERIFICATION.repro",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    }
+   ],
+   "frontier_why": null,
+   "git": {
+    "branch": "odyssey-i",
+    "dirty": true,
+    "dirty_sample": [
+     " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ANE_PREBOARD.json",
+     " M receipts/future/AUTONOMY_MISSION_STATE.json",
+     " M receipts/future/AUTONOMY_RUN.json",
+     " M receipts/future/AUTONOMY_SCARS.json",
+     " M receipts/future/AUTONOMY_TRIALS.json",
+     " M receipts/future/CANDIDATE_STAGED_PLAN.json",
+     " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_MUTATION_SURFACE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+    ],
+    "dirty_scope": "tools/future + receipts/future",
+    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "why": null
+   },
+   "gpu_authority": false,
+   "graph_rule": "AST import graph from autonomy_run.py plus literal tools/future/<name>.py strings in that driver's subprocess argv lists; not tools/future/*.py",
+   "model_identity": {
+    "model_family": "qwen3.8",
+    "source": "tools.future.resident_identity.load",
+    "value": "qwen3.8-27b-sealed-3.14"
+   },
+   "n_code_files": 19,
+   "n_future_py_on_disk": 182,
+   "n_hashed": 19,
+   "resident_identity": {
+    "gpu_authority": false,
+    "model_family": "qwen3.8",
+    "nx_id": {
+     "model_id": "qwen3.8-27b-sealed-3.14",
+     "profile_schema": "hcli.provider.profile.v1",
+     "protocol": "hawking.qwen38.resident.v1",
+     "resident_identity": "sealed-3.14"
+    },
+    "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
+    "source": "tools.future.resident_identity.load"
+   },
+   "resident_model_process": {
+    "value": "UNAVAILABLE",
+    "why": "this sidecar does not start a resident model process; autonomy_run records resident_model_cognition UNAVAILABLE as a measurement of that fact, not as a quoted blocker"
+   },
+   "routes": {
+    "driver": [
+     "tools/future/autonomy_run.py"
+    ],
+    "import": [
+     "tools/future/__init__.py",
+     "tools/future/_common.py",
+     "tools/future/autonomy_trial.py",
+     "tools/future/candidate_planner.py",
+     "tools/future/expert_bank_school.py",
+     "tools/future/flash_schools.py",
+     "tools/future/frontiers.py",
+     "tools/future/hardware_doctor.py",
+     "tools/future/mutation_surface.py",
+     "tools/future/negative_index.py",
+     "tools/future/ngram_school.py",
+     "tools/future/orchestration.py",
+     "tools/future/repro_science.py",
+     "tools/future/router_science.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/workunit_species.py"
+    ],
+    "subprocess": [
+     "tools/future/integration_attack.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/test_integration_attack.py"
+    ]
+   },
+   "schema": "hawking.future.trial_freeze.v1",
+   "startup_receipts": [
+    {
+     "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     "role": "driver_startup_read",
+     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
+     "role": "driver_startup_read",
+     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/RESIDENT_IDENTITY.json",
+     "role": "driver_startup_read",
+     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "state": "HASHED"
+    }
+   ],
+   "trial_id": "15m",
+   "verdicts": [
+    "CLEAN",
+    "INVALIDATED_BY_SUBSTRATE_MUTATION"
+   ]
+  },
+  {
+   "argv_executed": [
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "argv_mentioned": [
+    "tools/future/test_integration_attack.py",
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "available_lanes": [
+    "CPU",
+    "ANALYSIS",
+    "SIMULATION",
+    "REPRESENTATION",
+    "TOOLING",
+    "ODYSSEY"
+   ],
+   "blocked_lanes": [
+    "GPU_PROTECTED",
+    "ANE",
+    "FPGA"
+   ],
+   "code_files": [
+    {
+     "path": "tools/future/__init__.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/_common.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "cacc92109ffa1f0d8f78a966a9797056286e984266b163808d739374412ceb23",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_run.py",
+     "routes": [
+      "driver"
+     ],
+     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_trial.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "3458751fc1226d852a9d766108480dcbf62e4546ce2f2eb943603366fba7d380",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/candidate_planner.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "d4f4142760cd56f1417ccf8d5b11fa2d29dfb906bd1fbfda88080170451ec0a3",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/expert_bank_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_schools.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "7d07e32d0dfffb5ee67510fc795a42432713f8a76ff7d5905ce14892d104e2c7",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/frontiers.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/hardware_doctor.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "73bb3dbfb3710e99ffe7a695bf667d817ad6779c8200efbda04e00f6f50be4f0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/mutation_surface.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ff8d548ba0ca034428699dfe4ab6e7811af10d461e0733a240ea370150812e44",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/negative_index.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ce16d60c5f4e46ee0d5a1a9c3391dbfc113dbb311cc40a6ee94027c67536a389",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/ngram_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f7dfd8e29a9b0a5a3968afbb9d3315a743cda96dadc4ee470b79da6a667bfa6d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/orchestration.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "83953dfb7e8b6f2f9c05b48015aaa5e340823eea03bb8c83780542c92d2566f1",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/repro_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f565c5df51465c7493d8016a6c2b03be92846779746dedb9184989f9d558e7b0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/router_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f142bed15bc0f7aa0dc591d3cbafe1a099b8d037a0750a5550b46f8d6e384ef9",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/specimen_verify.py",
+     "routes": [
+      "import",
+      "subprocess"
+     ],
+     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/test_integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workunit_species.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a1c3ea2205f46eecde21764f52265f8314cfeddc32dda27d7f9d9241437477c",
+     "state": "HASHED"
+    }
+   ],
+   "driver": "tools/future/autonomy_run.py",
+   "evidence_class": "STATIC_ONLY",
+   "freeze_time": "2026-08-30T15:10:38Z",
+   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "frontier_items": [
+    {
+     "id": "FT.ACTIVE_BYTES.hbm-rank",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ACTIVE_BYTES.measured",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.execution",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.preboard",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.compile-specs",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.device-run",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.install-dry-run",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.optimizer",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.disk-authority",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.open-question",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.DECODING.cost-model",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.DECODING.speculative",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.cargo",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.refresh",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.FPGA.engine-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.hardware-doctor",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.u50",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.flash-nx",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.ready-protected",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.static-warnings",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.emit-workunits",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.no-launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.LATENCY.cpu-turnaround",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.LATENCY.gpu-ns",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MEMORY.hbm",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MEMORY.hmf",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.tournament-refuse",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.complete-token",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.fusion-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.static-skeleton",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.ngram-school",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.teacher-capture",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.attacks",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.closed-loop",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.flash-qwen27",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.re-earn",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.campaign.F012",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.hwir-lower",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.p6-projection",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.STATE.coverage-audit",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.full-kv",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F009",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.freshness",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.frontiers-refill",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.propagate-skips",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.accepted-token-cost",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.protected-tps",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.VERIFICATION.campaign.F018",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.contamination",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.negative-index",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.VERIFICATION.repro",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    }
+   ],
+   "frontier_why": null,
+   "git": {
+    "branch": "odyssey-i",
+    "dirty": true,
+    "dirty_sample": [
+     " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ANE_PREBOARD.json",
+     " M receipts/future/AUTONOMY_MISSION_STATE.json",
+     " M receipts/future/AUTONOMY_RUN.json",
+     " M receipts/future/AUTONOMY_SCARS.json",
+     " M receipts/future/AUTONOMY_TRIALS.json",
+     " M receipts/future/CANDIDATE_STAGED_PLAN.json",
+     " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_MUTATION_SURFACE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+    ],
+    "dirty_scope": "tools/future + receipts/future",
+    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "why": null
+   },
+   "gpu_authority": false,
+   "graph_rule": "AST import graph from autonomy_run.py plus literal tools/future/<name>.py strings in that driver's subprocess argv lists; not tools/future/*.py",
+   "model_identity": {
+    "model_family": "qwen3.8",
+    "source": "tools.future.resident_identity.load",
+    "value": "qwen3.8-27b-sealed-3.14"
+   },
+   "n_code_files": 19,
+   "n_future_py_on_disk": 182,
+   "n_hashed": 19,
+   "resident_identity": {
+    "gpu_authority": false,
+    "model_family": "qwen3.8",
+    "nx_id": {
+     "model_id": "qwen3.8-27b-sealed-3.14",
+     "profile_schema": "hcli.provider.profile.v1",
+     "protocol": "hawking.qwen38.resident.v1",
+     "resident_identity": "sealed-3.14"
+    },
+    "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
+    "source": "tools.future.resident_identity.load"
+   },
+   "resident_model_process": {
+    "value": "UNAVAILABLE",
+    "why": "this sidecar does not start a resident model process; autonomy_run records resident_model_cognition UNAVAILABLE as a measurement of that fact, not as a quoted blocker"
+   },
+   "routes": {
+    "driver": [
+     "tools/future/autonomy_run.py"
+    ],
+    "import": [
+     "tools/future/__init__.py",
+     "tools/future/_common.py",
+     "tools/future/autonomy_trial.py",
+     "tools/future/candidate_planner.py",
+     "tools/future/expert_bank_school.py",
+     "tools/future/flash_schools.py",
+     "tools/future/frontiers.py",
+     "tools/future/hardware_doctor.py",
+     "tools/future/mutation_surface.py",
+     "tools/future/negative_index.py",
+     "tools/future/ngram_school.py",
+     "tools/future/orchestration.py",
+     "tools/future/repro_science.py",
+     "tools/future/router_science.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/workunit_species.py"
+    ],
+    "subprocess": [
+     "tools/future/integration_attack.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/test_integration_attack.py"
+    ]
+   },
+   "schema": "hawking.future.trial_freeze.v1",
+   "startup_receipts": [
+    {
+     "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     "role": "driver_startup_read",
+     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
+     "role": "driver_startup_read",
+     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/RESIDENT_IDENTITY.json",
+     "role": "driver_startup_read",
+     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "state": "HASHED"
+    }
+   ],
+   "trial_id": "1h",
+   "verdicts": [
+    "CLEAN",
+    "INVALIDATED_BY_SUBSTRATE_MUTATION"
+   ]
+  },
+  {
+   "argv_executed": [
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "argv_mentioned": [
+    "tools/future/test_integration_attack.py",
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "available_lanes": [
+    "CPU",
+    "ANALYSIS",
+    "SIMULATION",
+    "REPRESENTATION",
+    "TOOLING",
+    "ODYSSEY"
+   ],
+   "blocked_lanes": [
+    "GPU_PROTECTED",
+    "ANE",
+    "FPGA"
+   ],
+   "code_files": [
+    {
+     "path": "tools/future/__init__.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/_common.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "cacc92109ffa1f0d8f78a966a9797056286e984266b163808d739374412ceb23",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_run.py",
+     "routes": [
+      "driver"
+     ],
+     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_trial.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "3458751fc1226d852a9d766108480dcbf62e4546ce2f2eb943603366fba7d380",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/candidate_planner.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "d4f4142760cd56f1417ccf8d5b11fa2d29dfb906bd1fbfda88080170451ec0a3",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/expert_bank_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_schools.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "7d07e32d0dfffb5ee67510fc795a42432713f8a76ff7d5905ce14892d104e2c7",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/frontiers.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/hardware_doctor.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "73bb3dbfb3710e99ffe7a695bf667d817ad6779c8200efbda04e00f6f50be4f0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/mutation_surface.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ff8d548ba0ca034428699dfe4ab6e7811af10d461e0733a240ea370150812e44",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/negative_index.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ce16d60c5f4e46ee0d5a1a9c3391dbfc113dbb311cc40a6ee94027c67536a389",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/ngram_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f7dfd8e29a9b0a5a3968afbb9d3315a743cda96dadc4ee470b79da6a667bfa6d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/orchestration.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "83953dfb7e8b6f2f9c05b48015aaa5e340823eea03bb8c83780542c92d2566f1",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/repro_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f565c5df51465c7493d8016a6c2b03be92846779746dedb9184989f9d558e7b0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/router_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f142bed15bc0f7aa0dc591d3cbafe1a099b8d037a0750a5550b46f8d6e384ef9",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/specimen_verify.py",
+     "routes": [
+      "import",
+      "subprocess"
+     ],
+     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/test_integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workunit_species.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a1c3ea2205f46eecde21764f52265f8314cfeddc32dda27d7f9d9241437477c",
+     "state": "HASHED"
+    }
+   ],
+   "driver": "tools/future/autonomy_run.py",
+   "evidence_class": "STATIC_ONLY",
+   "freeze_time": "2026-08-30T15:10:38Z",
+   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "frontier_items": [
+    {
+     "id": "FT.ACTIVE_BYTES.hbm-rank",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ACTIVE_BYTES.measured",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.execution",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.preboard",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.compile-specs",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.device-run",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.install-dry-run",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.optimizer",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.disk-authority",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.open-question",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.DECODING.cost-model",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.DECODING.speculative",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.cargo",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.refresh",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.FPGA.engine-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.hardware-doctor",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.u50",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.flash-nx",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.ready-protected",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.static-warnings",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.emit-workunits",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.no-launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.LATENCY.cpu-turnaround",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.LATENCY.gpu-ns",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MEMORY.hbm",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MEMORY.hmf",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.tournament-refuse",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.complete-token",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.fusion-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.static-skeleton",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.ngram-school",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.teacher-capture",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.attacks",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.closed-loop",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.flash-qwen27",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.re-earn",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.campaign.F012",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.hwir-lower",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.p6-projection",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.STATE.coverage-audit",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.full-kv",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F009",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.freshness",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.frontiers-refill",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.propagate-skips",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.accepted-token-cost",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.protected-tps",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.VERIFICATION.campaign.F018",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.contamination",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.negative-index",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.VERIFICATION.repro",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    }
+   ],
+   "frontier_why": null,
+   "git": {
+    "branch": "odyssey-i",
+    "dirty": true,
+    "dirty_sample": [
+     " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ANE_PREBOARD.json",
+     " M receipts/future/AUTONOMY_MISSION_STATE.json",
+     " M receipts/future/AUTONOMY_RUN.json",
+     " M receipts/future/AUTONOMY_SCARS.json",
+     " M receipts/future/AUTONOMY_TRIALS.json",
+     " M receipts/future/CANDIDATE_STAGED_PLAN.json",
+     " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_MUTATION_SURFACE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+    ],
+    "dirty_scope": "tools/future + receipts/future",
+    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "why": null
+   },
+   "gpu_authority": false,
+   "graph_rule": "AST import graph from autonomy_run.py plus literal tools/future/<name>.py strings in that driver's subprocess argv lists; not tools/future/*.py",
+   "model_identity": {
+    "model_family": "qwen3.8",
+    "source": "tools.future.resident_identity.load",
+    "value": "qwen3.8-27b-sealed-3.14"
+   },
+   "n_code_files": 19,
+   "n_future_py_on_disk": 182,
+   "n_hashed": 19,
+   "resident_identity": {
+    "gpu_authority": false,
+    "model_family": "qwen3.8",
+    "nx_id": {
+     "model_id": "qwen3.8-27b-sealed-3.14",
+     "profile_schema": "hcli.provider.profile.v1",
+     "protocol": "hawking.qwen38.resident.v1",
+     "resident_identity": "sealed-3.14"
+    },
+    "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
+    "source": "tools.future.resident_identity.load"
+   },
+   "resident_model_process": {
+    "value": "UNAVAILABLE",
+    "why": "this sidecar does not start a resident model process; autonomy_run records resident_model_cognition UNAVAILABLE as a measurement of that fact, not as a quoted blocker"
+   },
+   "routes": {
+    "driver": [
+     "tools/future/autonomy_run.py"
+    ],
+    "import": [
+     "tools/future/__init__.py",
+     "tools/future/_common.py",
+     "tools/future/autonomy_trial.py",
+     "tools/future/candidate_planner.py",
+     "tools/future/expert_bank_school.py",
+     "tools/future/flash_schools.py",
+     "tools/future/frontiers.py",
+     "tools/future/hardware_doctor.py",
+     "tools/future/mutation_surface.py",
+     "tools/future/negative_index.py",
+     "tools/future/ngram_school.py",
+     "tools/future/orchestration.py",
+     "tools/future/repro_science.py",
+     "tools/future/router_science.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/workunit_species.py"
+    ],
+    "subprocess": [
+     "tools/future/integration_attack.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/test_integration_attack.py"
+    ]
+   },
+   "schema": "hawking.future.trial_freeze.v1",
+   "startup_receipts": [
+    {
+     "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     "role": "driver_startup_read",
+     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
+     "role": "driver_startup_read",
+     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/RESIDENT_IDENTITY.json",
+     "role": "driver_startup_read",
+     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "state": "HASHED"
+    }
+   ],
+   "trial_id": "3h",
+   "verdicts": [
+    "CLEAN",
+    "INVALIDATED_BY_SUBSTRATE_MUTATION"
+   ]
+  },
+  {
+   "argv_executed": [
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "argv_mentioned": [
+    "tools/future/test_integration_attack.py",
+    "tools/future/integration_attack.py",
+    "tools/future/specimen_verify.py"
+   ],
+   "available_lanes": [
+    "CPU",
+    "ANALYSIS",
+    "SIMULATION",
+    "REPRESENTATION",
+    "TOOLING",
+    "ODYSSEY"
+   ],
+   "blocked_lanes": [
+    "GPU_PROTECTED",
+    "ANE",
+    "FPGA"
+   ],
+   "code_files": [
+    {
+     "path": "tools/future/__init__.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/_common.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "cacc92109ffa1f0d8f78a966a9797056286e984266b163808d739374412ceb23",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_run.py",
+     "routes": [
+      "driver"
+     ],
+     "sha256": "f8a14b99132bcff20889251a704d165f4f7c15664876fd651a08b2724c48bda8",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/autonomy_trial.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "3458751fc1226d852a9d766108480dcbf62e4546ce2f2eb943603366fba7d380",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/candidate_planner.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "d4f4142760cd56f1417ccf8d5b11fa2d29dfb906bd1fbfda88080170451ec0a3",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/expert_bank_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "a8291a5da366c30367730f6358b3f286cc775014cf9960e71f8ef303e6c08cdf",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/flash_schools.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "7d07e32d0dfffb5ee67510fc795a42432713f8a76ff7d5905ce14892d104e2c7",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/frontiers.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "b6ef3453976ba4869c9558e470da6662a5676f0a77953d1152fa0fff5400e27a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/hardware_doctor.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "73bb3dbfb3710e99ffe7a695bf667d817ad6779c8200efbda04e00f6f50be4f0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "ab8a798df267066fa71716c85141fd1cae15333ae0870a4b10a5bdd74120736a",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/mutation_surface.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ff8d548ba0ca034428699dfe4ab6e7811af10d461e0733a240ea370150812e44",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/negative_index.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "ce16d60c5f4e46ee0d5a1a9c3391dbfc113dbb311cc40a6ee94027c67536a389",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/ngram_school.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f7dfd8e29a9b0a5a3968afbb9d3315a743cda96dadc4ee470b79da6a667bfa6d",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/orchestration.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "83953dfb7e8b6f2f9c05b48015aaa5e340823eea03bb8c83780542c92d2566f1",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/repro_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f565c5df51465c7493d8016a6c2b03be92846779746dedb9184989f9d558e7b0",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/router_science.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "f142bed15bc0f7aa0dc591d3cbafe1a099b8d037a0750a5550b46f8d6e384ef9",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/specimen_verify.py",
+     "routes": [
+      "import",
+      "subprocess"
+     ],
+     "sha256": "2364d4cd04d717fe97c36b071d398f926e7f31ab7cafc52e8dcf6b4c5a1e969e",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/test_integration_attack.py",
+     "routes": [
+      "subprocess"
+     ],
+     "sha256": "63d556ac2308628b17d7e795eb670b90212024d3f43c824187e43d1a57dafa9b",
+     "state": "HASHED"
+    },
+    {
+     "path": "tools/future/workunit_species.py",
+     "routes": [
+      "import"
+     ],
+     "sha256": "4a1c3ea2205f46eecde21764f52265f8314cfeddc32dda27d7f9d9241437477c",
+     "state": "HASHED"
+    }
+   ],
+   "driver": "tools/future/autonomy_run.py",
+   "evidence_class": "STATIC_ONLY",
+   "freeze_time": "2026-08-30T15:10:38Z",
+   "frontier_digest": "2e24cb2dad80ad583b893c6f75dd2a69be6c726fc13970fc29a9d698638b8b22",
+   "frontier_items": [
+    {
+     "id": "FT.ACTIVE_BYTES.hbm-rank",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ACTIVE_BYTES.measured",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.execution",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ANE.preboard",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.compile-specs",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ARCHITECTURE_REPATRIATION.device-run",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.install-dry-run",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.CHILD_RESIDENT.optimizer",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.disk-authority",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.CONTEXT.open-question",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.DECODING.cost-model",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.DECODING.speculative",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.cargo",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.EXPERIMENT_TURNAROUND.refresh",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.campaign.F020",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.FPGA.engine-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.hardware-doctor",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.FPGA.u50",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.flash-nx",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.ready-protected",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.GPU_KERNELS.static-warnings",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.emit-workunits",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.HCLI_SELF.no-launch",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.LATENCY.cpu-turnaround",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.LATENCY.gpu-ns",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MEMORY.hbm",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MEMORY.hmf",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.hard-gates",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_CAPABILITY.tournament-refuse",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.complete-token",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.fusion-sim",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_EXECUTION.static-skeleton",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.ngram-school",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.MODEL_REPRESENTATION.teacher-capture",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.attacks",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_ADVERSARY.closed-loop",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.campaign.F016",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.flash-qwen27",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.ODYSSEY_TRANSFER.re-earn",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.campaign.F012",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.hwir-lower",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.PHYSICAL_GRAPH.p6-projection",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.campaign.F019",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.STATE.coverage-audit",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.STATE.full-kv",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F007",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F009",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.campaign.F015",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.TOOLS.freshness",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.frontiers-refill",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TOOLS.propagate-skips",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.accepted-token-cost",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.TPS.protected-tps",
+     "kind": "BLOCKED",
+     "state": "SLEEPING"
+    },
+    {
+     "id": "FT.VERIFICATION.campaign.F018",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.contamination",
+     "kind": "OPEN_QUESTION",
+     "state": "OPEN_QUESTION"
+    },
+    {
+     "id": "FT.VERIFICATION.negative-index",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    },
+    {
+     "id": "FT.VERIFICATION.repro",
+     "kind": "NEXT_WORK",
+     "state": "NEXT_WORK"
+    }
+   ],
+   "frontier_why": null,
+   "git": {
+    "branch": "odyssey-i",
+    "dirty": true,
+    "dirty_sample": [
+     " M receipts/future/ABI_VERDICT_HARNESS.json",
+     " M receipts/future/ANE_PREBOARD.json",
+     " M receipts/future/AUTONOMY_MISSION_STATE.json",
+     " M receipts/future/AUTONOMY_RUN.json",
+     " M receipts/future/AUTONOMY_SCARS.json",
+     " M receipts/future/AUTONOMY_TRIALS.json",
+     " M receipts/future/CANDIDATE_STAGED_PLAN.json",
+     " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
+     " M receipts/future/CODEX_INGEST_STATE.json",
+     " M receipts/future/CODEX_MUTATION_SURFACE.json",
+     " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+    ],
+    "dirty_scope": "tools/future + receipts/future",
+    "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+    "why": null
+   },
+   "gpu_authority": false,
+   "graph_rule": "AST import graph from autonomy_run.py plus literal tools/future/<name>.py strings in that driver's subprocess argv lists; not tools/future/*.py",
+   "model_identity": {
+    "model_family": "qwen3.8",
+    "source": "tools.future.resident_identity.load",
+    "value": "qwen3.8-27b-sealed-3.14"
+   },
+   "n_code_files": 19,
+   "n_future_py_on_disk": 182,
+   "n_hashed": 19,
+   "resident_identity": {
+    "gpu_authority": false,
+    "model_family": "qwen3.8",
+    "nx_id": {
+     "model_id": "qwen3.8-27b-sealed-3.14",
+     "profile_schema": "hcli.provider.profile.v1",
+     "protocol": "hawking.qwen38.resident.v1",
+     "resident_identity": "sealed-3.14"
+    },
+    "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
+    "source": "tools.future.resident_identity.load"
+   },
+   "resident_model_process": {
+    "value": "UNAVAILABLE",
+    "why": "this sidecar does not start a resident model process; autonomy_run records resident_model_cognition UNAVAILABLE as a measurement of that fact, not as a quoted blocker"
+   },
+   "routes": {
+    "driver": [
+     "tools/future/autonomy_run.py"
+    ],
+    "import": [
+     "tools/future/__init__.py",
+     "tools/future/_common.py",
+     "tools/future/autonomy_trial.py",
+     "tools/future/candidate_planner.py",
+     "tools/future/expert_bank_school.py",
+     "tools/future/flash_schools.py",
+     "tools/future/frontiers.py",
+     "tools/future/hardware_doctor.py",
+     "tools/future/mutation_surface.py",
+     "tools/future/negative_index.py",
+     "tools/future/ngram_school.py",
+     "tools/future/orchestration.py",
+     "tools/future/repro_science.py",
+     "tools/future/router_science.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/workunit_species.py"
+    ],
+    "subprocess": [
+     "tools/future/integration_attack.py",
+     "tools/future/specimen_verify.py",
+     "tools/future/test_integration_attack.py"
+    ]
+   },
+   "schema": "hawking.future.trial_freeze.v1",
+   "startup_receipts": [
+    {
+     "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+     "role": "driver_startup_read",
+     "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
+     "role": "driver_startup_read",
+     "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+     "state": "HASHED"
+    },
+    {
+     "path": "receipts/future/RESIDENT_IDENTITY.json",
+     "role": "driver_startup_read",
+     "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+     "state": "HASHED"
+    }
+   ],
+   "trial_id": "6h",
+   "verdicts": [
+    "CLEAN",
+    "INVALIDATED_BY_SUBSTRATE_MUTATION"
+   ]
+  }
+ ],
+ "gaps_closed": [
+  "import-graph freeze of the autonomy driver (AST walk + subprocess argv literals)",
+  "verify_unchanged returns CLEAN or INVALIDATED_BY_SUBSTRATE_MUTATION with the exact moved paths",
+  "a graph file deleted between freeze and verify is reported, not skipped",
+  "a file the graph never named does not invalidate a trial",
+  "unknown trial_id and empty manifests refuse rather than look CLEAN"
+ ],
+ "git": {
+  "branch": "odyssey-i",
+  "dirty": true,
+  "dirty_sample": [
+   " M receipts/future/ABI_VERDICT_HARNESS.json",
+   " M receipts/future/ANE_PREBOARD.json",
+   " M receipts/future/AUTONOMY_MISSION_STATE.json",
+   " M receipts/future/AUTONOMY_RUN.json",
+   " M receipts/future/AUTONOMY_SCARS.json",
+   " M receipts/future/AUTONOMY_TRIALS.json",
+   " M receipts/future/CANDIDATE_STAGED_PLAN.json",
+   " M receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+   " M receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
+   " M receipts/future/CODEX_INGEST_STATE.json",
+   " M receipts/future/CODEX_MUTATION_SURFACE.json",
+   " M receipts/future/CODEX_WORKUNIT_SPECIES.json"
+  ],
+  "dirty_scope": "tools/future + receipts/future",
+  "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
+  "why": null
+ },
+ "glob_refused": "tools/future/*.py is 182 files; the driver graph is 19. A glob would false-invalidate on unrelated edits.",
+ "gpu_authority": false,
+ "graph_rule": "AST import graph from autonomy_run.py plus literal tools/future/<name>.py strings in that driver's subprocess argv lists; not tools/future/*.py",
+ "model_identity": {
+  "model_family": "qwen3.8",
+  "source": "tools.future.resident_identity.load",
+  "value": "qwen3.8-27b-sealed-3.14"
+ },
+ "n_code_files": 19,
+ "n_future_py_on_disk": 182,
+ "n_hashed": 19,
+ "negative_findings": [
+  "resident_model_process is UNAVAILABLE: this sidecar does not start a resident model process",
+  "startup receipt bytes are sealed at freeze; the loop itself rewrites some of them, so receipt drift is reported separately and is not by itself INVALIDATED_BY_SUBSTRATE_MUTATION",
+  "git dirty is scoped to tools/future + receipts/future; a timeout is UNAVAILABLE, never claimed clean",
+  "star-imports and importlib.import_module of formatted names are not static edges and are not followed",
+  "SAFE_CAPABILITIES is a declared invoke list, not executed reachability; naming a module there does not put it in this graph",
+  "this module is not in orchestration.BINDINGS (that table is outside this lane's WRITE list)"
+ ],
+ "purpose": "Seal the autonomy driver's reachable substrate so a trial cannot claim an interval whose code moved underneath it.",
+ "recovered_implementation": [
+  "tools/future/autonomy_run.py is the walk root; INVALIDATED_RUNS already names the 1h kill this freezer makes recomputable",
+  "tools/future/autonomy_trial.py TRIAL_IDS and FRONTIER_REL (startup receipt, not restated)",
+  "tools/future/resident_identity.py load()/collect() for identity; UNKNOWN/UNAVAILABLE where no model exists",
+  "tools/future/frontiers.py load_book() item ids+states; THIS_HOST_LANES and BLOCKED_ON_THIS_HOST, never a second lane list",
+  "tools/future/_common.py sha256_file / write_receipt / HARDWARE_FIELDS / git()",
+  "tools/future/evidence_snapshot.py pin-and-hash pattern was read, not forked; freeze hashes driver-startup receipts, not the snapshot corpus"
+ ],
+ "resident_callable": {
+  "entry_point": "tools.future.trial_freeze.freeze(trial_id) / verify_unchanged(manifest)",
+  "fails_closed": "unknown trial_id raises FreezeRefused; empty/malformed manifest is INVALIDATED_BY_SUBSTRATE_MUTATION not CLEAN; missing graph files are named; git timeout is UNAVAILABLE; no hardware field may be numeric",
+  "frontier": "FT.CHILD_RESIDENT.launch",
+  "receipt": "receipts/future/HCLI_AUTONOMY_BUILD.json",
+  "workunit": "one CPU_ANALYSIS unit; seal the autonomy driver substrate and refuse a moved graph"
+ },
+ "resident_identity": {
+  "gpu_authority": false,
+  "model_family": "qwen3.8",
+  "nx_id": {
+   "model_id": "qwen3.8-27b-sealed-3.14",
+   "profile_schema": "hcli.provider.profile.v1",
+   "protocol": "hawking.qwen38.resident.v1",
+   "resident_identity": "sealed-3.14"
+  },
+  "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
+  "source": "tools.future.resident_identity.load"
+ },
+ "resident_model_process": {
+  "value": "UNAVAILABLE",
+  "why": "this sidecar does not start a resident model process; autonomy_run records resident_model_cognition UNAVAILABLE as a measurement of that fact, not as a quoted blocker"
+ },
+ "schema": "hawking.future.trial_freeze.v1",
+ "seal_sha256": "a73e1373f2af4c270a7220c24d8a10171b28b989b95f61a30509e764e51fa216",
+ "startup_receipts": [
+  {
+   "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
+   "role": "driver_startup_read",
+   "sha256": "35daa9df710d9180cbb0a6e8ec185f31569a888b8135e2a951bb475cc72f74d0",
+   "state": "HASHED"
+  },
+  {
+   "path": "receipts/future/ORCHESTRATION_BINDINGS.json",
+   "role": "driver_startup_read",
+   "sha256": "09aac22f863f1210456992d4dbbf0d2f303737ba8bec1f0a6e1ea2032e8fcd5a",
+   "state": "HASHED"
+  },
+  {
+   "path": "receipts/future/RESIDENT_IDENTITY.json",
+   "role": "driver_startup_read",
+   "sha256": "7f4cac1e175115838a2519dbfcff207e2c8d630f8363ca926385a13f3a5130dc",
+   "state": "HASHED"
+  }
+ ],
+ "trial_ids": [
+  "15m",
+  "1h",
+  "3h",
+  "6h"
+ ],
+ "version": 1
+}

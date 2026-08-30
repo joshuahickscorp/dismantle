@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T14:16:50Z",
+  "recorded_at": "2026-08-30T15:10:45Z",
   "recorded_by": "tools/future/workgraph.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -45,7 +45,7 @@
    "CPU_VERIFY",
    "FPGA_SIM"
   ],
-  "sleeping_count": 56
+  "sleeping_count": 57
  },
  "durability_proof": {
   "after_reload_completed": "completed",
@@ -458,7 +458,7 @@
  "gpu_authority": false,
  "graph": {
   "completed_ids": [],
-  "edge_count": 29,
+  "edge_count": 30,
   "edges": [
    {
     "from": "accelerator.physical.flash-hc-staged-threadgroup",
@@ -509,6 +509,11 @@
     "from": "accelerator.physical.flash-p6-routed-fp4-gate-up-swiglu-fused",
     "kind": "dependency",
     "to": "accelerator.physical.flash-p6-routed-fp4-gate-up-swiglu-simd"
+   },
+   {
+    "from": "accelerator.physical.flash-p7-mhc-pre-simdgroup",
+    "kind": "dependency",
+    "to": "accelerator.physical.flash-device-mhc-state"
    },
    {
     "from": "accelerator.physical.flash-pipeline-cache-reuse",
@@ -606,7 +611,7 @@
     "to": "accelerator.physical.qwen27-q2f-splitk4-vec"
    }
   ],
-  "node_count": 64,
+  "node_count": 65,
   "note": "ready set is computed; the lists here are a snapshot. edge_count is derived from units, not a fixed bound. sleeping_ids may be truncated in the receipt; the durable document holds the full graph.",
   "ready_ids": [
    "future.green-machine.energy-contract",
@@ -690,7 +695,7 @@
   ],
   "rule": "blocked physical work becomes a SLEEPING WorkUnit; it never becomes a synthetic result. UNKNOWN is the correct hardware answer."
  },
- "head": "d6eb11c79f401d2d45080cfb3d4032296851250a",
+ "head": "db6ba56903f61fc4e13b41e24d96594dcbf7c748",
  "integration_points": [
   "hcli.scheduler.Scheduler.submit \u2014 consume emit_hcli_workunit() rows (hcli frozen)",
   "tools.future.wakeup \u2014 wake_sleeping(hardware_qualified=True) when Codex qualifies (sibling, not imported)",
@@ -1094,7 +1099,7 @@
   }
  },
  "schema": "hawking.future.workgraph.v1",
- "seal_sha256": "564f705c862631b24f75313c7b70c782eabc033f5c3984a095453f9c60449c04",
+ "seal_sha256": "a7bf8a3c15210f75cbcda54e6d8816b8c06b4a1137898d0731d2decc1a0a2cf5",
  "selection_rule": {
   "info_domain": [
    1,

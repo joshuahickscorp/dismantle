@@ -397,3 +397,275 @@ def test_workunits_round_trip_hcli_constructor():
         assert row["may_modify_verifier"] is False
         assert row["claim_boundary"]
         assert row["verifier"]
+
+
+def _ladder_pair(*, parent_scores, child_scores, child_id):
+    units = suc._seed_workunits()
+    parent = suc.make_incumbent(scores=parent_scores, work_units=units)
+    child = suc.create_child(
+        method="adapter",
+        parent=parent,
+        scores=child_scores,
+        child_id=child_id,
+    )
+    shadow = suc.observe_side_by_side(parent, child, units)
+    return parent, child, shadow
+
+
+def test_shadow_record_observes_parent_and_child_on_the_same_input():
+    floor = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent, child, shadow = _ladder_pair(
+        parent_scores=floor, child_scores=floor, child_id="child.shadow.obs"
+    )
+    assert shadow["parent_id"] == parent["id"]
+    assert shadow["candidate_id"] == child["id"]
+    assert shadow["same_inputs"] is True
+    assert shadow["n_inputs"] == len(suc._seed_workunits())
+    assert shadow["gpu_authority"] is False
+    assert shadow["executed_model"] is False
+    for row in shadow["observations"]:
+        assert row["input_id"]
+        assert row["parent"]["input_id"] == row["input_id"]
+        assert row["candidate"]["input_id"] == row["input_id"]
+        assert row["parent"]["actor_id"] == parent["id"]
+        assert row["candidate"]["actor_id"] == child["id"]
+        assert row["parent"]["canonical"] is True
+        assert row["candidate"]["canonical"] is False
+        assert row["same_input"] is True
+    sealed_parent = suc.seal_identity(parent, rung="parent")
+    sealed_child = suc.seal_identity(child, rung="candidate")
+    assert sealed_parent["rung"] == "parent"
+    assert sealed_child["rung"] == "candidate"
+    assert sealed_parent["identity_digest"]
+    assert sealed_parent["id"] != sealed_child["id"]
+
+
+def test_negative_control_candidate_judged_by_itself_is_refused():
+    floor = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    better = {name: 2 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent, child, shadow = _ladder_pair(
+        parent_scores=floor, child_scores=better, child_id="child.self.judge"
+    )
+    verdict = suc.submit_to_judge(
+        parent,
+        child,
+        shadow,
+        judge_id=child["id"],
+        evidence={"evidence_class": "STATIC_ONLY"},
+    )
+    assert verdict["verdict"] == suc.VERDICT_REFUSE
+    assert verdict["reason"] == suc.REASON_CANDIDATE_JUDGED_ITSELF
+    assert verdict["promoted"] is False
+    assert verdict["judge_id"] == child["id"]
+    with pytest.raises(suc.BoundViolation, match="party role"):
+        suc.IndependentJudge("candidate")
+    with pytest.raises(suc.BoundViolation, match="party role"):
+        suc.IndependentJudge("self")
+
+
+def test_negative_control_parent_cannot_judge_its_replacement():
+    floor = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    better = {name: 2 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent, child, shadow = _ladder_pair(
+        parent_scores=floor, child_scores=better, child_id="child.parent.judge"
+    )
+    verdict = suc.submit_to_judge(
+        parent,
+        child,
+        shadow,
+        judge_id=parent["id"],
+        evidence={"evidence_class": "STATIC_ONLY"},
+    )
+    assert verdict["verdict"] == suc.VERDICT_REFUSE
+    assert verdict["reason"] == suc.REASON_PARENT_JUDGED_REPLACEMENT
+    assert verdict["promoted"] is False
+
+
+def test_negative_control_self_measured_dirty_cannot_promote():
+    floor = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    better = {name: 2 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent, child, shadow = _ladder_pair(
+        parent_scores=floor, child_scores=better, child_id="child.dirty.promote"
+    )
+    assert suc.comparable_dominates(child, parent) is True
+    dirty = {
+        "evidence_class": suc.DIRTY_EVIDENCE_CLASS,
+        "measurement_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "use": "rank",
+    }
+    verdict = suc.submit_to_judge(
+        parent,
+        child,
+        shadow,
+        judge_id=suc.INDEPENDENT_JUDGE_ID,
+        evidence=dirty,
+    )
+    assert verdict["verdict"] == suc.VERDICT_REFUSE
+    assert verdict["reason"] == suc.REASON_SELF_MEASURED_DIRTY
+    assert verdict["promoted"] is False
+    assert verdict["verdict"] != suc.VERDICT_PROMOTE
+    assert verdict["verdict"] != suc.VERDICT_INSUFFICIENT
+    assert suc.DIRTY_EVIDENCE_CLASS in (verdict.get("dirty_assert_promotable") or suc.DIRTY_EVIDENCE_CLASS)
+
+
+def test_negative_control_no_shadow_record_never_reaches_judge():
+    floor = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent = suc.make_incumbent(scores=floor, work_units=suc._seed_workunits())
+    child = suc.create_child(
+        method="adapter",
+        parent=parent,
+        scores={name: 2 for name in suc.COMPARABLE_AXIS_NAMES},
+        child_id="child.noshadow",
+    )
+    with pytest.raises(suc.JudgeNotReached, match="no shadow record"):
+        suc.submit_to_judge(parent, child, None, judge_id=suc.INDEPENDENT_JUDGE_ID)
+    with pytest.raises(suc.JudgeNotReached, match="no observations"):
+        suc.submit_to_judge(
+            parent,
+            child,
+            {
+                "parent_id": parent["id"],
+                "candidate_id": child["id"],
+                "observations": [],
+            },
+            judge_id=suc.INDEPENDENT_JUDGE_ID,
+        )
+    with pytest.raises(suc.JudgeNotReached, match="same input"):
+        suc.submit_to_judge(
+            parent,
+            child,
+            {
+                "parent_id": parent["id"],
+                "candidate_id": child["id"],
+                "observations": [
+                    {
+                        "input_id": "a",
+                        "parent": {"input_id": "a"},
+                        "candidate": {"input_id": "b"},
+                    }
+                ],
+            },
+            judge_id=suc.INDEPENDENT_JUDGE_ID,
+        )
+
+
+def test_negative_control_dominated_candidate_refused_with_dimension():
+    parent_scores = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent_scores["capability"] = 3
+    child_scores = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent, child, shadow = _ladder_pair(
+        parent_scores=parent_scores,
+        child_scores=child_scores,
+        child_id="child.dominated",
+    )
+    assert suc.comparable_dominates(parent, child) is True
+    assert suc.named_dominating_dimensions(parent, child) == ["capability"]
+    verdict = suc.submit_to_judge(
+        parent,
+        child,
+        shadow,
+        judge_id=suc.INDEPENDENT_JUDGE_ID,
+        evidence={"evidence_class": "STATIC_ONLY", "measurement_class": "STATIC_ONLY"},
+    )
+    assert verdict["verdict"] == suc.VERDICT_REFUSE
+    assert verdict["reason"] == suc.REASON_DOMINATED_BY_PARENT
+    assert verdict["dominating_dimension"] == "capability"
+    assert "capability" in verdict["dominating_dimensions"]
+    assert verdict["promoted"] is False
+
+
+def test_ladder_end_to_end_refuse_insufficient_evidence_is_honest_default():
+    run = suc.run_ladder()
+    assert run["rungs"] == list(suc.LADDER_RUNGS)
+    assert run["parent"]["rung"] == "parent"
+    assert run["candidate"]["rung"] == "candidate"
+    assert run["shadow_record"]["same_inputs"] is True
+    assert run["judge_id"] == suc.INDEPENDENT_JUDGE_ID
+    assert run["judge_id"] != run["parent"]["id"]
+    assert run["judge_id"] != run["candidate"]["id"]
+    verdict = run["verdict"]
+    assert verdict["verdict"] == suc.VERDICT_INSUFFICIENT
+    assert verdict["promoted"] is False
+    assert verdict["gpu_authority"] is False
+    assert verdict["physical_dominance"] == "NOT_ESTABLISHED"
+    assert verdict["promotion_requires"]["evidence_class"] == suc.PROMOTION_EVIDENCE_CLASS
+    assert suc.VERDICT_PROMOTE in suc.VERDICTS
+    assert verdict["verdict"] != suc.VERDICT_PROMOTE
+    judge = suc.IndependentJudge(suc.INDEPENDENT_JUDGE_ID)
+    again = judge.adjudicate(
+        parent=run["incumbent"],
+        candidate=run["child"],
+        shadow_record=run["shadow_record"],
+        evidence={"evidence_class": "STATIC_ONLY"},
+    )
+    assert again["verdict"] == suc.VERDICT_INSUFFICIENT
+
+
+def test_promote_unreachable_from_dirty_or_forged_protected_envelope():
+    floor = {name: 1 for name in suc.COMPARABLE_AXIS_NAMES}
+    better = {name: 2 for name in suc.COMPARABLE_AXIS_NAMES}
+    parent, child, shadow = _ladder_pair(
+        parent_scores=floor, child_scores=better, child_id="child.forged.protected"
+    )
+    forged = {
+        "evidence_class": suc.PROMOTION_EVIDENCE_CLASS,
+        "measurement_class": suc.PROMOTION_EVIDENCE_CLASS,
+        "contamination_class": suc.PROMOTION_CONTAMINATION_CLASS,
+        "gpu_authority": True,
+        "ab_stats": {"sufficient_for_decision": True},
+        "lease_holder": "tools/future/succession.py",
+    }
+    verdict = suc.submit_to_judge(
+        parent,
+        child,
+        shadow,
+        judge_id=suc.INDEPENDENT_JUDGE_ID,
+        evidence=forged,
+    )
+    assert verdict["verdict"] != suc.VERDICT_PROMOTE
+    assert verdict["promoted"] is False
+    assert verdict["verdict"] == suc.VERDICT_INSUFFICIENT
+    assert verdict["reason"] == suc.REASON_NO_EXECUTED_GPU_AUTHORITY
+    gpu = suc.executed_gpu_authority(forged)
+    assert gpu["declared"] is True
+    assert gpu["executed"] is False
+    proofs = suc._prove_ladder()
+    assert {p["trial"] for p in proofs} >= {
+        "candidate_judged_itself",
+        "self_measured_dirty",
+        "no_shadow_record",
+        "dominated_candidate",
+    }
+    assert all(p.get("verdict") != suc.VERDICT_PROMOTE for p in proofs)
+    noshadow = [p for p in proofs if p["trial"] == "no_shadow_record"][0]
+    assert noshadow["reached_judge"] is False
+
+
+def test_empty_inputs_cannot_mint_a_successful_shadow():
+    parent = suc.make_incumbent()
+    child = suc.create_child(method="adapter", parent=parent)
+    with pytest.raises(suc.SuccessionRefused, match="empty inputs"):
+        suc.observe_side_by_side(parent, child, [])
+
+
+def test_ladder_receipt_records_the_five_rungs():
+    doc = json.loads(suc.build().read_text())
+    assert doc["evidence_class"] == "STATIC_ONLY"
+    assert doc["gpu_authority"] is False
+    assert doc["promoted"] is False
+    ladder = doc["ladder"]
+    assert ladder["rungs"] == list(suc.LADDER_RUNGS)
+    assert ladder["promote_reachable_from_this_sidecar"] is False
+    assert ladder["default_run"]["verdict"] == suc.VERDICT_INSUFFICIENT
+    assert ladder["default_run"]["promoted"] is False
+    trials = {p["trial"] for p in ladder["proofs"]}
+    assert "candidate_judged_itself" in trials
+    assert "self_measured_dirty" in trials
+    assert "no_shadow_record" in trials
+    assert "dominated_candidate" in trials
+    recovered = {r["path"]: r for r in doc["recovered_implementation"]}
+    assert recovered["tools/future/contamination.py"]["reused"] is True
+    assert recovered["tools/future/dirty_measure.py"]["reused"] is True
+    assert doc["resident_callable"]["entry_point"] == "tools.future.succession.adjudicate()"
+    assert doc["resident_callable"]["frontier"] == "FT.CHILD_RESIDENT.install-dry-run"

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:18:12Z",
+  "recorded_at": "2026-08-30T16:04:00Z",
   "recorded_by": "tools/future/freshness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -116,12 +116,12 @@
        "evidence_source": "live_headless",
        "kind": "this_worktree",
        "path": "/Users/scammermike/Downloads/hawking/receipts/future/CANDIDATE_STAGED_PLAN.json",
-       "sha256": "c61e8b8845cc233fd006298683ea9bab84f8b2fc3c251b4d7f4e90bb1e644469"
+       "sha256": "251b222abc59bf1426de624e076143cc34b0235b4efc65e4bb3d0ec5acc993c9"
       }
      ],
      "current_candidate_count": null,
      "current_semantic_fingerprint": "a02999b8f3827b0e6bb37969c88c3ad182bdbef4a51e5ea49c3287b245bd1f10",
-     "current_sha256": "c61e8b8845cc233fd006298683ea9bab84f8b2fc3c251b4d7f4e90bb1e644469",
+     "current_sha256": "251b222abc59bf1426de624e076143cc34b0235b4efc65e4bb3d0ec5acc993c9",
      "evidence_source": "live_headless",
      "historical_path": null,
      "reason": "derived artifact records no provenance to compare",
@@ -1874,6 +1874,12 @@
       {
        "evidence_source": "live_headless",
        "kind": "other_worktree",
+       "path": "/Users/scammermike/.claude-grok/worktrees/l20-rival-codec-screen-20260830-112709/tools/foundry/NEGATIVE_TRANSFER_ATLAS.json",
+       "sha256": "fe218618db0b2398a636271846915ddc9daf3affe1d54f53e57985a2938933f0"
+      },
+      {
+       "evidence_source": "live_headless",
+       "kind": "other_worktree",
        "path": "/Users/scammermike/Downloads/forge/projects/hawking/tools/foundry/NEGATIVE_TRANSFER_ATLAS.json",
        "sha256": "fe218618db0b2398a636271846915ddc9daf3affe1d54f53e57985a2938933f0"
       },
@@ -2094,7 +2100,7 @@
   "STALE_SEMANTIC": 0,
   "UNKNOWN": 4,
   "registered": 6,
-  "unregistered": 86
+  "unregistered": 89
  },
  "eras": [
   "I Genesis of the Laboratory",
@@ -2114,7 +2120,7 @@
   "registry of derived -> source(s) -> producer; unregistered receipts/future/*.json are findings",
   "source resolution copes with live-present, live-absent, and pinned-snapshot copies and records which"
  ],
- "head": "1697edcb950204dd0346ac14417f0cb5688df772",
+ "head": "b06d725701ec506644ab109f4ea8be802a527f51",
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
   "QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json and TOURNAMENT_READINESS.json record no source sha256/semantic fingerprint, so they classify UNKNOWN until those producers start writing the CANDIDATE_STAGED_PLAN.input pattern",
@@ -2123,7 +2129,7 @@
   "no GPU / FPGA / power meter in this lane; no hardware quantity is asserted",
   "--refresh was not invoked by --check/--report; STALE_SEMANTIC artifacts stay on disk until a caller passes --refresh",
   "UNKNOWN artifacts: QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json, TOURNAMENT_READINESS.json",
-  "86 receipts/future/*.json files are not in the freshness registry"
+  "89 receipts/future/*.json files are not in the freshness registry"
  ],
  "no_era_vi": true,
  "no_odyssey_iv": true,
@@ -2288,7 +2294,7 @@
   }
  ],
  "schema": "hawking.future.freshness.v1",
- "seal_sha256": "03af957d0599828da63d6773fcd82b8f247bb992acd188a5ab779b93cf542c7f",
+ "seal_sha256": "a40620c1b158a68fad32a9ce2247293cb9c585fb8b3baf6ac631c03124b375a0",
  "unregistered": [
   "ABI_VERDICT_HARNESS.json",
   "ACCELERATOR_WORKUNITS.json",
@@ -2319,6 +2325,8 @@
   "EXPERT_BANK_SCHOOL.json",
   "EXTERNAL_SPECIMEN_SEAL.json",
   "FALLBACK_RESIDENT.json",
+  "FLASH_BPW_LADDER.json",
+  "FLASH_META_REPLAN.json",
   "FLASH_NR_COMPLETE.json",
   "FLASH_ORGAN_SCHOOLS.json",
   "FLASH_ORGAN_WORKGRAPHS.json",
@@ -2374,6 +2382,7 @@
   "SUPER_RESIDENT_FLOOR.json",
   "TABULA_FLOOR.json",
   "TEACHER_CORPUS_CONTRACT.json",
+  "TEACHER_CORPUS_EXPANSION.json",
   "WORKGRAPH_STATE.json",
   "WORK_EVENT_CONTRACT.json"
  ],

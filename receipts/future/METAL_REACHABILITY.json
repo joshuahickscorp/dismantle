@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:19:50Z",
+  "recorded_at": "2026-08-30T15:46:08Z",
   "recorded_by": "tools/future/metal_reachability.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -71,7 +71,7 @@
   "workunit": "one CPU_ANALYSIS unit; cheap; no GPU authority"
  },
  "schema": "hawking.future.metal_reachability.v1",
- "seal_sha256": "edc43ff1cffca77d8268f4f1364b65025703a82f89bb4874bd92c4a75e01e631",
+ "seal_sha256": "0c12510bdef007e13465069d38128daa55e510e775739f563afd10198832b73d",
  "verdict": {
   "claim": "this host has no Metal-capable GPU",
   "different_remedies": {

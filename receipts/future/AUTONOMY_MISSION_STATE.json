@@ -1,7 +1,23 @@
 {
- "trial": "15m",
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T16:04:29Z",
+  "recorded_by": "tools/future/autonomy_run.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Durable autonomy evidence. No hardware measurement. Sealed so a later edit is detectable.",
+ "elapsed_s": 63,
+ "evidence_class": "STATIC_ONLY",
+ "gpu_authority": false,
  "mission_id": "AUTONOMY.15m",
+ "next_action": "drain queue then refill from frontiers",
  "phase": "running",
+ "schema": "hawking.future.autonomy_mission_state.v1",
+ "seal_sha256": "c26d08c71407c8d164f1b2c8cc0640b7d5ed219a5f8d30e22b37a98480571da2",
+ "trial": "15m",
  "units": [
   "WU.AUTONOMY.generate.1",
   "WU.AUTONOMY.generate.2",
@@ -69,22 +85,6 @@
   "WU.AUTONOMY.frontiers.64",
   "WU.AUTONOMY.fusion_sim.65",
   "WU.AUTONOMY.git_lock_doctor.66",
-  "WU.AUTONOMY.global_frontier.67",
-  "WU.AUTONOMY.green_machine.68",
-  "WU.AUTONOMY.hardware_doctor.69",
-  "WU.AUTONOMY.hbm_doctor.70",
-  "WU.AUTONOMY.hmf_objects.71",
-  "WU.AUTONOMY.hwir.72",
-  "WU.AUTONOMY.lpc_dataset.73",
-  "WU.AUTONOMY.meta_ready.74",
-  "WU.AUTONOMY.moe_physical_school.75",
-  "WU.AUTONOMY.negative_index.76",
-  "WU.AUTONOMY.ngram_school.77",
-  "WU.AUTONOMY.odyssey_launch.78",
-  "WU.AUTONOMY.p6_projection.79",
-  "WU.AUTONOMY.physical_primitives.80",
-  "WU.AUTONOMY.protected_window.81"
- ],
- "next_action": "drain queue then refill from frontiers",
- "elapsed_s": 219
+  "WU.AUTONOMY.global_frontier.67"
+ ]
 }

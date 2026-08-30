@@ -1347,7 +1347,13 @@ def _resident_schedulable(owned: Sequence[str]) -> dict[str, Any]:
         try:
             result["refill"] = any(
                 str(item.get("id")) == frontier_id
-                for item in (_fr.refill(("CPU_ANALYSIS", "CPU_VERIFY", "CPU_REPRESENTATION")) or [])
+                # The frontier's own lane vocabulary, not a second list. These
+                # were spelled CPU_ANALYSIS / CPU_VERIFY / CPU_REPRESENTATION,
+                # which match no frontier item, so the refill probe could only
+                # ever return empty and refill was structurally unreachable. The
+                # same defect was fixed in the autonomy driver and survived here
+                # -- which is exactly why the scar says derive, never restate.
+                for item in (_fr.refill(_fr.THIS_HOST_LANES) or [])
             )
         except Exception:
             result["refill"] = False

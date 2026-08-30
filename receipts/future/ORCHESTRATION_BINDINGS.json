@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:25:38Z",
+  "recorded_at": "2026-08-30T16:06:51Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -346,6 +346,12 @@
    "species": "ODYSSEY_LAUNCH_GATE"
   },
   {
+   "frontier_item": "FT.MODEL_CAPABILITY.hard-gates",
+   "module": "odyssey_tool_driver.py",
+   "receipt": "ODYSSEY_TOOL_DRIVER.json",
+   "species": "ODYSSEY_TOOL_DRIVER"
+  },
+  {
    "frontier_item": "FT.PHYSICAL_GRAPH.p6-projection",
    "module": "p6_projection.py",
    "receipt": "P6_PRIMITIVE_PROJECTION.json",
@@ -547,12 +553,12 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 89,
+  "bound": 90,
   "broken": 0,
   "distinct_frontier_items": 40,
-  "distinct_species": 58,
+  "distinct_species": 59,
   "infrastructure_excluded": 5,
-  "unbound_production": 1
+  "unbound_production": 2
  },
  "frontier_view_keys": [
   "ABI_VERDICT_HARNESS.json",
@@ -615,6 +621,7 @@
   "ODYSSEY_CONSOLIDATED_RUN.json",
   "ODYSSEY_LAUNCH_GATE.json",
   "ODYSSEY_LAUNCH_SPRINT_PROFILE.json",
+  "ODYSSEY_TOOL_DRIVER.json",
   "P6_PRIMITIVE_PROJECTION.json",
   "PHASE_LISTENERS.json",
   "PHYSICAL_PRIMITIVES.json",
@@ -657,7 +664,7 @@
   "orchestration.py"
  ],
  "negative_findings": [
-  "1 production modules remain unbound and are NOT credited",
+  "2 production modules remain unbound and are NOT credited",
   "0 bindings are broken and credit nothing",
   "binding a module does not make its science correct; it makes the module reachable and its result routable"
  ],
@@ -676,9 +683,10 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "199f7b28864d83b299e07178c7c3dcec61179c5898136b5553ae7f4533714a61",
+ "seal_sha256": "ab5cb2dec514ed0fc68864ee25c69886b3f1ac8e7ad6780699dabfd129a9af51",
  "unbound_production": [
-  "autonomy_run.py"
+  "autonomy_run.py",
+  "trial_workload.py"
  ],
  "version": 1
 }

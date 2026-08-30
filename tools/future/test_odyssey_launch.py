@@ -485,7 +485,19 @@ def test_negative_control_the_gate_cannot_certify_itself_as_the_driver():
     """
     sched = ol._resident_schedulable(["tools/odyssey/doctor_tournament.py"])
     assert sched.get("driver_module") != "odyssey_launch.py"
-    assert sched["schedule"] is False, "a declaration is not a schedule"
+    # A real driver now exists (odyssey_tool_driver.py), so schedule is true --
+    # but it must be true because a module DRIVES the tool, never because this
+    # gate names it in an `owned = [...]` literal. That is the invariant; the
+    # boolean was only ever a proxy for it while no driver existed.
+    if sched["schedule"]:
+        driver = sched["driver_module"]
+        src = (ol.REPO / "tools" / "future" / driver).read_text(errors="replace")
+        tree = ast.parse(src)
+        in_call = any(
+            isinstance(n, ast.Call) and "doctor_tournament.py" in ast.dump(n)
+            for n in ast.walk(tree)
+        )
+        assert in_call, f"{driver} names the tool but never calls it"
 
 
 def test_a_retired_patient_needs_BOTH_the_prior_seal_and_fresh_verification():

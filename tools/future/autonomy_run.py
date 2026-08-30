@@ -43,9 +43,10 @@ from tools.future import flash_schools as fs
 from tools.future import frontiers as fr
 from tools.future import negative_index as ni
 from tools.future import orchestration as orch
-from tools.future._common import REPO, RECEIPTS, write_receipt
+from tools.future._common import REPO, RECEIPTS, bench_block, seal, write_receipt
 
 RECEIPT = "AUTONOMY_RUN.json"
+RECORDED_BY = "tools/future/autonomy_run.py"
 SCHEMA = "hawking.future.autonomy_run.v1"
 
 MISSION_STATE = RECEIPTS / "AUTONOMY_MISSION_STATE.json"
@@ -167,6 +168,28 @@ SAFE_CAPABILITIES = (
     "flash_nr_complete.py",
     "git_lock_doctor.py",
 )
+
+
+def _sealed(doc: dict[str, Any], recorded_by: str) -> dict[str, Any]:
+    """Seal a durable artifact that is not a receipt but is read as evidence.
+
+    The trial timeline and the mission state are written straight to disk rather
+    than through write_receipt, and so carried no seal, no bench block and no
+    gpu_authority field. The adversarial attacker flagged all three as P0 and it
+    was right: the judge's entire verdict rests on the timeline, and an unsealed
+    timeline can be edited afterwards -- by anyone, including the process being
+    judged -- without the judge being able to tell.
+    """
+    doc.setdefault("bench", bench_block(recorded_by))
+    doc.setdefault("gpu_authority", False)
+    doc.setdefault("evidence_class", "STATIC_ONLY")
+    doc.setdefault(
+        "claim_boundary",
+        "Durable autonomy evidence. No hardware measurement. Sealed so a later "
+        "edit is detectable.",
+    )
+    doc.pop("seal_sha256", None)  # reseal over the final content, never a stale hash
+    return seal(doc)
 
 
 def _metal_why() -> str:
@@ -596,12 +619,13 @@ def run(trial: str = "15m", timeline: Path | None = None,
                 "error": f"{type(exc).__name__}: {exc}",
             }, t_s=t())
 
-        MISSION_STATE.write_text(json.dumps({
+        MISSION_STATE.write_text(json.dumps(_sealed({
+            "schema": "hawking.future.autonomy_mission_state.v1",
             "trial": trial, "mission_id": f"AUTONOMY.{trial}",
             "phase": "running", "units": launched,
             "next_action": "drain queue then refill from frontiers",
             "elapsed_s": int(time.time() - started),
-        }, indent=1))
+        }, RECORDED_BY), indent=1, sort_keys=True))
         doc = _emit(doc, "mission_state_written", {
             "path": "receipts/future/AUTONOMY_MISSION_STATE.json",
             "mission_id": f"AUTONOMY.{trial}",
@@ -641,7 +665,7 @@ def run(trial: str = "15m", timeline: Path | None = None,
         "resident_model_cognition": "UNAVAILABLE",
     }
     tl_path.parent.mkdir(parents=True, exist_ok=True)
-    tl_path.write_text(json.dumps(doc, indent=1))
+    tl_path.write_text(json.dumps(_sealed(doc, RECORDED_BY), indent=1, sort_keys=True))
     try:
         shown = str(tl_path.relative_to(REPO))
     except ValueError:

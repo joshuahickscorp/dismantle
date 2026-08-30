@@ -371,6 +371,31 @@ def _catalog() -> tuple[dict[str, Any], ...]:
     hd = "receipts/headless"
     return (
         _item(
+            id="FT.MODEL_CAPABILITY.hard-gates",
+            frontier="MODEL_CAPABILITY",
+            kind="NEXT_WORK",
+            title="Drive the Odyssey Doctor and Gravity tools from the resident and route their receipts",
+            detail=(
+                "This frontier carried only an OPEN_QUESTION, so refill could "
+                "never yield work on it and doctor_callable / gravity_callable "
+                "were structurally unreachable. That is no longer the state: "
+                "odyssey_tool_driver.py invokes doctor_seal for real and routes "
+                "the receipt, and the remaining tools have named, checkable "
+                "blockers rather than unknown ones -- doctor_tournament needs "
+                "torch importable in the resident interpreter for its 52GB SVD, "
+                "and the gravity mains need prior measurement files that are "
+                "absent and must not be invented. The pending CPU work is to "
+                "drive what can be driven and record the refusal for the rest."
+            ),
+            required_lanes=(LANE_CPU, LANE_ANALYSIS),
+            gain=INFO_HIGH,
+            species="odyssey_tool_invocation",
+            verifier="future.odyssey_tool_driver.invoke",
+            evidence=(f"{ev}/ODYSSEY_TOOL_DRIVER.json", f"{ev}/ODYSSEY_LAUNCH_GATE.json"),
+            hypothesis_family="resident_tool_operation",
+            source_f="F007",
+        ),
+        _item(
             id="FT.MODEL_REPRESENTATION.meta-gates-3-9",
             frontier="MODEL_REPRESENTATION",
             kind="NEXT_WORK",

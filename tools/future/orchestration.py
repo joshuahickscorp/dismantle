@@ -143,6 +143,7 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "hcli_self_profile.py":       ("FT.LATENCY.cpu-turnaround", "HCLI_SELF_OPTIMIZATION"),
     "flash_organ_workgraphs.py":  ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "ORGAN_WORKGRAPH"),
     "external_specimen_seal.py":  ("FT.MODEL_CAPABILITY.hard-gates", "EXTERNAL_SPECIMEN"),
+    "odyssey_tool_driver.py":     ("FT.MODEL_CAPABILITY.hard-gates", "ODYSSEY_TOOL_DRIVER"),
     "sprint_profile.py":          ("FT.EXPERIMENT_TURNAROUND.refresh", "WALL_ATTRIBUTION"),
     "resident_health.py":         ("FT.HCLI_SELF.no-launch", "RESIDENT_TELEMETRY"),
     "flash_meta_replan.py":       ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "META_REPLAN"),

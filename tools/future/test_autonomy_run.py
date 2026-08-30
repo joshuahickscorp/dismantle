@@ -173,3 +173,44 @@ def test_an_invalidated_run_is_recorded_and_never_reported_as_a_result():
     for row in rows:
         assert row["verdict"] == "INVALIDATED_BY_SUBSTRATE_MUTATION"
         assert row["why"] and row["kept"], "say what was lost and what survives"
+
+
+def test_the_timeline_the_judge_reads_is_sealed(tmp_path):
+    """An unsealed timeline can be edited after the fact by the thing being judged.
+
+    The trial timeline and the mission state were written straight to disk, so
+    they carried no seal, no bench block and no gpu_authority field. The
+    adversarial attacker flagged all three as P0. The verdict of every autonomy
+    trial rests on this file.
+    """
+    from tools.future._common import seal
+
+    tl = tmp_path / "tl.json"
+    ar.run(trial="15m", duration_s=40, timeline=tl)
+    doc = json.loads(tl.read_text())
+
+    assert doc.get("seal_sha256"), "the timeline is unsealed"
+    assert doc["bench"]["state"] == "UNKNOWN"
+    assert doc["gpu_authority"] is False
+    assert doc["evidence_class"] == "STATIC_ONLY"
+
+    claimed = doc["seal_sha256"]
+    body = {k: v for k, v in doc.items() if k != "seal_sha256"}
+    assert seal(dict(body))["seal_sha256"] == claimed, "the seal does not verify"
+
+    # NEGATIVE CONTROL: the seal must actually detect an edit, or it is decoration.
+    body["summary"] = dict(body["summary"], launched=99999)
+    assert seal(dict(body))["seal_sha256"] != claimed, "an edited timeline still verified"
+
+
+def test_mission_state_is_sealed_too():
+    from tools.future._common import RECEIPTS, seal
+
+    p = RECEIPTS / "AUTONOMY_MISSION_STATE.json"
+    if not p.is_file():
+        return  # written by a run; the timeline test above carries the guarantee
+    doc = json.loads(p.read_text())
+    assert doc.get("seal_sha256"), "mission state is unsealed"
+    assert doc["bench"]["state"] == "UNKNOWN"
+    body = {k: v for k, v in doc.items() if k != "seal_sha256"}
+    assert seal(dict(body))["seal_sha256"] == doc["seal_sha256"]

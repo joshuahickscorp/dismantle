@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:20:04Z",
+  "recorded_at": "2026-08-30T16:07:30Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -700,25 +700,26 @@
       "receipts/odyssey-i/O006_DOCTOR_SEAL.json"
      ],
      "resident_schedulable": {
-      "frontier": null,
-      "refill": false,
-      "schedule": false,
-      "why": "no orchestration binding drives this tool"
+      "driver_module": "odyssey_tool_driver.py",
+      "frontier": "FT.MODEL_CAPABILITY.hard-gates",
+      "refill": true,
+      "schedule": true,
+      "why": "bound via orchestration"
      },
      "stale_declared_paths": []
     }
    ],
    "id": "doctor_callable",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
+     "frontier": true,
      "invoke": true,
      "persist": true,
-     "refill": false,
-     "schedule": false,
+     "refill": true,
+     "schedule": true,
      "verify": true
     },
     "notes": {
@@ -727,9 +728,9 @@
      "integration": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits + tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
      "stale_declared_paths": "none"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "Doctor is recovered (n_prior=5) but is not resident-operational. Unmet: schedule, frontier, refill. A CLI a human can run is not enough."
+   "reason": "Doctor is resident-operational"
   },
   {
    "evidence": [
@@ -882,25 +883,26 @@
       "receipts/odyssey-i/O006_GRAVITY_q4-g64.json"
      ],
      "resident_schedulable": {
-      "frontier": null,
-      "refill": false,
-      "schedule": false,
-      "why": "no orchestration binding drives this tool"
+      "driver_module": "odyssey_tool_driver.py",
+      "frontier": "FT.MODEL_CAPABILITY.hard-gates",
+      "refill": true,
+      "schedule": true,
+      "why": "bound via orchestration"
      },
      "stale_declared_paths": []
     }
    ],
    "id": "gravity_callable",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
+     "frontier": true,
      "invoke": true,
      "persist": true,
-     "refill": false,
-     "schedule": false,
+     "refill": true,
+     "schedule": true,
      "verify": true
     },
     "notes": {
@@ -909,9 +911,9 @@
      "integration": "tools/future/workgraph.py \u2014 WorkGraph runtime that admits, schedules and verifies the units this gate emits + tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
      "stale_declared_paths": "none"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "Gravity is recovered (n_prior=108) but is not resident-operational. Unmet: schedule, frontier, refill. A CLI a human can run is not enough."
+   "reason": "Gravity is resident-operational"
   },
   {
    "evidence": [
@@ -1340,7 +1342,7 @@
   {
    "evidence": [
     {
-     "n_json": 93,
+     "n_json": 99,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
@@ -1363,7 +1365,7 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=93 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=99 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2105,8 +2107,6 @@
   "unmet": [
    "resident_autonomy_trial_pass",
    "specimen_curriculum_ready",
-   "doctor_callable",
-   "gravity_callable",
    "nr_nx_path_callable",
    "protected_scheduling"
   ],
@@ -2116,7 +2116,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "1697edcb950204dd0346ac14417f0cb5688df772",
+ "head": "b06d725701ec506644ab109f4ea8be802a527f51",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -3533,6 +3533,8 @@
    "allowed": false,
    "met": [
     "modellake_identity",
+    "doctor_callable",
+    "gravity_callable",
     "evidence_hierarchy",
     "negative_science",
     "workgraphs",
@@ -3544,14 +3546,12 @@
     "receipts"
    ],
    "n_criteria": 16,
-   "n_met": 10,
-   "n_unmet": 6,
+   "n_met": 12,
+   "n_unmet": 4,
    "rule": "every unmet criterion is named; the first failure does not hide the rest",
    "unmet": [
     "resident_autonomy_trial_pass",
     "specimen_curriculum_ready",
-    "doctor_callable",
-    "gravity_callable",
     "nr_nx_path_callable",
     "protected_scheduling"
    ],
@@ -3567,7 +3567,7 @@
  },
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
-  "verdict=REFUSED n_unmet=6 unmet=['resident_autonomy_trial_pass', 'specimen_curriculum_ready', 'doctor_callable', 'gravity_callable', 'nr_nx_path_callable', 'protected_scheduling']",
+  "verdict=REFUSED n_unmet=4 unmet=['resident_autonomy_trial_pass', 'specimen_curriculum_ready', 'nr_nx_path_callable', 'protected_scheduling']",
   "A gate that passed today would mistake 'Odyssey infrastructure ready' for 'Odyssey started'.",
   "physical blocker sleep.no-gpu-authority: Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
   "physical blocker sleep.metal-compiler: xcrun -f metal did not locate the Metal compiler",
@@ -3818,7 +3818,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "42dd98fc74b8eb58933acac783b6ddecd057525097cf41944fcd1b23d587a8b9",
+ "seal_sha256": "21d00b591c0901f023b30a16c587884b5924b4be87b4f0b1634d0a9ab50e5cfe",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -4578,6 +4578,8 @@
   "allowed": false,
   "met": [
    "modellake_identity",
+   "doctor_callable",
+   "gravity_callable",
    "evidence_hierarchy",
    "negative_science",
    "workgraphs",
@@ -4589,14 +4591,12 @@
    "receipts"
   ],
   "n_criteria": 16,
-  "n_met": 10,
-  "n_unmet": 6,
+  "n_met": 12,
+  "n_unmet": 4,
   "rule": "every unmet criterion is named; the first failure does not hide the rest",
   "unmet": [
    "resident_autonomy_trial_pass",
    "specimen_curriculum_ready",
-   "doctor_callable",
-   "gravity_callable",
    "nr_nx_path_callable",
    "protected_scheduling"
   ],

@@ -425,3 +425,136 @@ def test_thirteen_conditions_are_exactly_the_named_set():
     assert set(at.THIRTEEN_ACCEPTANCE) <= set(at.REQUIRED_CONDITIONS["6h"])
     assert "verified_scientific_progress" in at.REQUIRED_CONDITIONS["6h"]
     assert "verified_scientific_progress" not in at.THIRTEEN_ACCEPTANCE
+
+
+def test_verify_cli_persists_verdict_into_owned_receipt(tmp_path, monkeypatch):
+    """--verify must persist, not only print. The timeline file is untouched."""
+    dest = tmp_path / "AUTONOMY_TRIALS.json"
+    monkeypatch.setattr(at, "_owned_receipt_path", lambda: dest)
+    # persist_verdict still calls write_receipt which lands in receipts/future/.
+    # Route the write through dest so the live receipt is not the test's sink.
+    captured: dict = {}
+
+    def spy(name, doc, recorded_by):
+        captured["name"] = name
+        captured["doc"] = doc
+        dest.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
+        return dest
+
+    monkeypatch.setattr(at, "write_receipt", spy)
+    timeline = tmp_path / "t.json"
+    timeline.write_text(json.dumps(at.build_passing_timeline("15m"), indent=1, sort_keys=True) + "\n")
+    before = timeline.read_bytes()
+    rc = at.main(["--verify", "15m", "--timeline", str(timeline)])
+    assert rc == 0
+    assert timeline.read_bytes() == before
+    assert "verdict" not in json.loads(before)
+    doc = json.loads(dest.read_text())
+    rec = doc["persisted_verdicts_by_trial"]["15m"]
+    assert rec["verdict"] == "PASS"
+    assert rec["trial"] == "15m"
+    assert rec["timeline_seal_digest"]
+    assert rec["timeline_path"]
+    assert rec["resident_orchestration"] is True
+    assert rec["resident_model_cognition"] == at.COGNITION_UNAVAILABLE
+    assert rec["orchestration_is_not_cognition"] is True
+    assert captured["name"] == "AUTONOMY_TRIALS.json"
+
+
+def test_fail_verdict_is_persisted_as_fail(tmp_path, monkeypatch):
+    """NEGATIVE CONTROL: FAIL is stored as FAIL, never rounded into PASS."""
+    dest = tmp_path / "AUTONOMY_TRIALS.json"
+    monkeypatch.setattr(at, "_owned_receipt_path", lambda: dest)
+
+    def spy(name, doc, recorded_by):
+        dest.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
+        return dest
+
+    monkeypatch.setattr(at, "write_receipt", spy)
+    timeline = tmp_path / "bad.json"
+    timeline.write_text(json.dumps(at.fixture_duration_without_workunit("1h"), indent=1, sort_keys=True) + "\n")
+    rc = at.main(["--verify", "1h", "--timeline", str(timeline)])
+    assert rc == 1
+    rec = json.loads(dest.read_text())["persisted_verdicts_by_trial"]["1h"]
+    assert rec["verdict"] == "FAIL"
+    assert rec["resident_orchestration"] is False
+    assert "launch_valid_workunit" in rec["conditions_unmet"]
+    cand = at.launch_candidate_from_receipt(json.loads(dest.read_text()))
+    assert cand["verdict"] == "FAIL"
+
+
+def test_persist_does_not_write_verdict_onto_the_timeline(tmp_path, monkeypatch):
+    dest = tmp_path / "AUTONOMY_TRIALS.json"
+    monkeypatch.setattr(at, "_owned_receipt_path", lambda: dest)
+    monkeypatch.setattr(at, "write_receipt", lambda n, d, r: dest.write_text(json.dumps(d)) or dest)
+    timeline = tmp_path / "t.json"
+    body = at.build_passing_timeline("1h")
+    timeline.write_text(json.dumps(body, indent=1, sort_keys=True) + "\n")
+    verdict = at.verify("1h", timeline)
+    at.persist_verdict(verdict, timeline)
+    judged = json.loads(timeline.read_text())
+    assert "verdict" not in judged or judged.get("schema") == at.TIMELINE_SCHEMA
+    assert judged["schema"] == at.TIMELINE_SCHEMA
+
+
+def test_timeline_digest_mismatch_is_refused(tmp_path):
+    """NEGATIVE CONTROL: a seal nobody has watched fail is not a seal."""
+    timeline = tmp_path / "t.json"
+    timeline.write_text(json.dumps(at.build_passing_timeline("1h"), indent=1, sort_keys=True) + "\n")
+    digest = at.timeline_file_digest(timeline)
+    ok = at.verify_timeline_digest(timeline, digest)
+    assert ok["verifies"] is True
+    timeline.write_text(timeline.read_text() + " ")
+    bad = at.verify_timeline_digest(timeline, digest)
+    assert bad["verifies"] is False
+    missing = at.verify_timeline_digest(None, digest)
+    assert missing["verifies"] is False
+    empty = at.verify_timeline_digest(timeline, None)
+    assert empty["verifies"] is False
+
+
+def test_orchestration_and_cognition_are_independent():
+    """HCLI loop without a model is orchestration true, cognition UNAVAILABLE."""
+    live = RECEIPTS / "AUTONOMY_TIMELINE_1h.json"
+    if live.is_file():
+        facts = at.extract_orchestration_and_cognition(at.load_timeline(live))
+        assert facts["resident_orchestration"] is True
+        assert facts["resident_model_cognition"] == at.COGNITION_UNAVAILABLE
+        assert facts["orchestration_is_not_cognition"] is True
+        assert facts["fields_are_independent"] is True
+        assert "model" in facts["resident_model_cognition_reason"].lower() or "cognition" in facts["resident_model_cognition_reason"].lower()
+    empty = at.extract_orchestration_and_cognition({"events": []})
+    assert empty["resident_orchestration"] is False
+    assert empty["resident_model_cognition"] == at.COGNITION_UNAVAILABLE
+    assert "infer" in empty["resident_model_cognition_reason"]
+
+
+def test_live_1h_timeline_still_passes_and_is_launch_eligible():
+    live = RECEIPTS / "AUTONOMY_TIMELINE_1h.json"
+    assert "1h" in at.LAUNCH_ELIGIBLE_TRIALS
+    assert "15m" not in at.LAUNCH_ELIGIBLE_TRIALS
+    if live.is_file():
+        verdict = at.verify("1h", live)
+        assert verdict["verdict"] == "PASS"
+        assert verdict["unmet"] == []
+        facts = at.extract_orchestration_and_cognition(at.load_timeline(live))
+        assert facts["resident_orchestration"] is True
+        assert facts["resident_model_cognition"] == at.COGNITION_UNAVAILABLE
+    else:
+        with pytest.raises(FailClosed) as ei:
+            at.verify("1h", live)
+        assert ei.value.fault == "missing_timeline"
+
+
+def test_launch_candidate_ignores_fifteen_minute_pass():
+    doc = {
+        "persisted_verdicts_by_trial": {
+            "15m": {"trial": "15m", "verdict": "PASS"},
+        },
+        "last_persisted_verdict": {"trial": "15m", "verdict": "PASS"},
+    }
+    assert at.launch_candidate_from_receipt(doc) is None
+    doc["persisted_verdicts_by_trial"]["1h"] = {"trial": "1h", "verdict": "FAIL"}
+    cand = at.launch_candidate_from_receipt(doc)
+    assert cand["trial"] == "1h"
+    assert cand["verdict"] == "FAIL"

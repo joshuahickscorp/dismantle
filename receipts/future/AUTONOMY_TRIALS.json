@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:43:20Z",
+  "recorded_at": "2026-08-30T21:10:14Z",
   "recorded_by": "tools/future/autonomy_trial.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -59,7 +59,10 @@
   "Self-reported PASS on a timeline is ignored.",
   "Blocked physical work becomes a SLEEPING WorkUnit and never a synthetic hardware result.",
   "Verdicts cite timeline seqs, WorkUnit ids, receipts, rejected ideas, frontier deltas.",
-  "Resident-callable CLI + HCLI-shaped WorkUnits + AUTONOMY_TRIALS.json receipt."
+  "Resident-callable CLI + HCLI-shaped WorkUnits + AUTONOMY_TRIALS.json receipt.",
+  "--verify persists trial id, verdict, met/unmet conditions, timeline path + file digest, and freeze digest into AUTONOMY_TRIALS.json.",
+  "resident_orchestration and resident_model_cognition are persisted as separate fields; orchestration true is not cognition.",
+  "A FAIL verdict is persisted as FAIL. A timeline digest mismatch is a refusal."
  ],
  "gpu_authority": false,
  "hardware_blockers": [
@@ -142,7 +145,7 @@
    "path_taken": "disk:receipts/future/QUALIFICATION_PIPELINE.json"
   }
  ],
- "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+ "head": "f9f8c7d390e368bd6d7688537b9aae3cfc94ed6b",
  "integration_points": {
   "codex_behaviors.py": "Codex blocker list is data in CODEX_REPORTED_BLOCKERS plus pinned evidence.",
   "debugger.py": "Process recovery is judged from process_failed/completed + process_recovered.",
@@ -163,6 +166,65 @@
   "tabula.py": "Mission state is a timeline payload, not a tabula store.",
   "wakeup.py": "Blocked physical work is a SLEEPING WorkUnit; this harness never synthesizes a result.",
   "workgraph.py": "Queue identity / busywork uses local work_identity over launched units."
+ },
+ "last_persisted_verdict": {
+  "automatic_failures": [],
+  "claim_boundary": "Persisted timeline judgement. resident_orchestration true does not mean a model was thinking. A FAIL is stored as FAIL.",
+  "conditions_met": [
+   "recover_state",
+   "identify_live_frontier",
+   "launch_valid_workunit",
+   "durable_mission_state",
+   "leave_next_work",
+   "maintain_multiple_fronts",
+   "ingest_completed_result",
+   "reject_bad_idea_on_evidence",
+   "refill_work",
+   "never_conversational_wait"
+  ],
+  "conditions_unmet": [],
+  "duration_s": 3600,
+  "elapsed_is_not_a_pass": true,
+  "elapsed_meets_duration": true,
+  "elapsed_s": 3629,
+  "evidence_class": "STATIC_ONLY",
+  "fields_are_independent": true,
+  "frozen_build": {
+   "available": true,
+   "digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+   "freeze_receipt": "receipts/future/HCLI_AUTONOMY_BUILD.json",
+   "freeze_receipt_seal": "bdc0c729826e3669defa62f0ddf1cd5b9b346c2d8f57235f984a798217a14da3",
+   "path_taken": "disk:receipts/future/HCLI_AUTONOMY_BUILD.json",
+   "substrate_verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
+   "trial": "1h",
+   "why": "3 code path(s) moved"
+  },
+  "frozen_build_manifest_digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+  "gpu_authority": false,
+  "launch_eligible_trial": true,
+  "n_conditions": 10,
+  "n_events": 836,
+  "n_results_ingested": 130,
+  "n_workunits_launched": 175,
+  "orchestration_is_not_cognition": true,
+  "reason": "all 10 required conditions met on timeline evidence",
+  "resident_model_cognition": "UNAVAILABLE",
+  "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
+  "resident_orchestration": true,
+  "resident_orchestration_reason": "HCLI loop launched 175 workunit(s) and ingested 130 result(s)",
+  "schema": "hawking.future.autonomy_trial.persisted_verdict.v1",
+  "timeline_internal_seal": {
+   "expected": "fc89eaaf6db4db8176802579508c5a29376402cb5b9cf38eedbc38ca7d9f2708",
+   "present": true,
+   "recomputed": "fc89eaaf6db4db8176802579508c5a29376402cb5b9cf38eedbc38ca7d9f2708",
+   "verifies": true,
+   "why": "internal seal_sha256 matches body"
+  },
+  "timeline_not_rewritten": true,
+  "timeline_path": "receipts/future/AUTONOMY_TIMELINE_1h.json",
+  "timeline_seal_digest": "72f00ec20f958aa83f30e2346839ddbeb4e5e31679f91235eb8775952bd7f011",
+  "trial": "1h",
+  "verdict": "PASS"
  },
  "negative_controls_watched": [
   {
@@ -210,7 +272,9 @@
   "Machine HEAVY and lock-holder-unproven are recovered from QUALIFICATION_PIPELINE.json / Path.is_file, not by flock or by signalling workers.",
   "Metal GPU absence and xcrun Metal-compiler absence were not re-probed; re-measuring would be a hardware claim this sidecar must not make.",
   "A PASS on a recorded fixture is not a PASS of a live 6h resident run. No live multi-hour trial was executed here.",
-  "FPGA remains Accelerator/Physical Compiler/Fusion; this harness does not build an FPGA backend."
+  "FPGA remains Accelerator/Physical Compiler/Fusion; this harness does not build an FPGA backend.",
+  "The 1h loop that passed is HCLI orchestration; resident_model_cognition is UNAVAILABLE throughout. Those facts are stored separately.",
+  "This module writes AUTONOMY_TRIALS.json (plural). AUTONOMY_TRIAL.json (singular) is not this receipt and is not written."
  ],
  "next_workunits": [
   {
@@ -280,8 +344,123 @@
    "verdict": "FAIL"
   }
  ],
+ "persisted_verdicts_by_trial": {
+  "15m": {
+   "automatic_failures": [],
+   "claim_boundary": "Persisted timeline judgement. resident_orchestration true does not mean a model was thinking. A FAIL is stored as FAIL.",
+   "conditions_met": [
+    "recover_state",
+    "identify_live_frontier"
+   ],
+   "conditions_unmet": [
+    "launch_valid_workunit",
+    "durable_mission_state",
+    "leave_next_work"
+   ],
+   "duration_s": 900,
+   "elapsed_is_not_a_pass": true,
+   "elapsed_meets_duration": true,
+   "elapsed_s": 900,
+   "evidence_class": "STATIC_ONLY",
+   "fields_are_independent": true,
+   "frozen_build": {
+    "available": true,
+    "digest": "81cc861a4128ffe843ae687db95ef60db8edeb3a0ecd94d07ca56bf4b5d43230",
+    "freeze_receipt": "receipts/future/HCLI_AUTONOMY_BUILD.json",
+    "freeze_receipt_seal": "bdc0c729826e3669defa62f0ddf1cd5b9b346c2d8f57235f984a798217a14da3",
+    "path_taken": "disk:receipts/future/HCLI_AUTONOMY_BUILD.json",
+    "substrate_verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
+    "trial": "15m",
+    "why": "3 code path(s) moved"
+   },
+   "frozen_build_manifest_digest": "81cc861a4128ffe843ae687db95ef60db8edeb3a0ecd94d07ca56bf4b5d43230",
+   "gpu_authority": false,
+   "launch_eligible_trial": false,
+   "n_conditions": 5,
+   "n_events": 3,
+   "n_results_ingested": 0,
+   "n_workunits_launched": 0,
+   "orchestration_is_not_cognition": true,
+   "reason": "unmet: launch_valid_workunit, durable_mission_state, leave_next_work (duration elapsed is not a pass)",
+   "resident_model_cognition": "UNAVAILABLE",
+   "resident_model_cognition_reason": "timeline did not record resident_model_cognition; refusing to infer a model was thinking",
+   "resident_orchestration": false,
+   "resident_orchestration_reason": "no HCLI orchestration evidence: launched=0 ingested=0 bindings_present=False",
+   "schema": "hawking.future.autonomy_trial.persisted_verdict.v1",
+   "timeline_internal_seal": {
+    "present": false,
+    "verifies": null,
+    "why": "timeline has no internal seal_sha256; file digest is the transcript seal"
+   },
+   "timeline_not_rewritten": true,
+   "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-1451/test_cli_verify_exit_codes0/bad.json",
+   "timeline_seal_digest": "7d1f761ef6230cda5d7bfb9195a57087c3766a1a7d2a737d3ed5357aa4623484",
+   "trial": "15m",
+   "verdict": "FAIL"
+  },
+  "1h": {
+   "automatic_failures": [],
+   "claim_boundary": "Persisted timeline judgement. resident_orchestration true does not mean a model was thinking. A FAIL is stored as FAIL.",
+   "conditions_met": [
+    "recover_state",
+    "identify_live_frontier",
+    "launch_valid_workunit",
+    "durable_mission_state",
+    "leave_next_work",
+    "maintain_multiple_fronts",
+    "ingest_completed_result",
+    "reject_bad_idea_on_evidence",
+    "refill_work",
+    "never_conversational_wait"
+   ],
+   "conditions_unmet": [],
+   "duration_s": 3600,
+   "elapsed_is_not_a_pass": true,
+   "elapsed_meets_duration": true,
+   "elapsed_s": 3629,
+   "evidence_class": "STATIC_ONLY",
+   "fields_are_independent": true,
+   "frozen_build": {
+    "available": true,
+    "digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+    "freeze_receipt": "receipts/future/HCLI_AUTONOMY_BUILD.json",
+    "freeze_receipt_seal": "bdc0c729826e3669defa62f0ddf1cd5b9b346c2d8f57235f984a798217a14da3",
+    "path_taken": "disk:receipts/future/HCLI_AUTONOMY_BUILD.json",
+    "substrate_verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
+    "trial": "1h",
+    "why": "3 code path(s) moved"
+   },
+   "frozen_build_manifest_digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+   "gpu_authority": false,
+   "launch_eligible_trial": true,
+   "n_conditions": 10,
+   "n_events": 836,
+   "n_results_ingested": 130,
+   "n_workunits_launched": 175,
+   "orchestration_is_not_cognition": true,
+   "reason": "all 10 required conditions met on timeline evidence",
+   "resident_model_cognition": "UNAVAILABLE",
+   "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
+   "resident_orchestration": true,
+   "resident_orchestration_reason": "HCLI loop launched 175 workunit(s) and ingested 130 result(s)",
+   "schema": "hawking.future.autonomy_trial.persisted_verdict.v1",
+   "timeline_internal_seal": {
+    "expected": "fc89eaaf6db4db8176802579508c5a29376402cb5b9cf38eedbc38ca7d9f2708",
+    "present": true,
+    "recomputed": "fc89eaaf6db4db8176802579508c5a29376402cb5b9cf38eedbc38ca7d9f2708",
+    "verifies": true,
+    "why": "internal seal_sha256 matches body"
+   },
+   "timeline_not_rewritten": true,
+   "timeline_path": "receipts/future/AUTONOMY_TIMELINE_1h.json",
+   "timeline_seal_digest": "72f00ec20f958aa83f30e2346839ddbeb4e5e31679f91235eb8775952bd7f011",
+   "trial": "1h",
+   "verdict": "PASS"
+  }
+ },
  "purpose": "Harness that runs and judges progressive autonomy trials (15m, 1h, 3h, 6h) from recorded timelines. A timer is not a pass.",
- "record_verify_split": "--record writes a timeline and never judges it; --verify reads a timeline and never records passing events onto it. Combined invocation is FailClosed.",
+ "receipt_name": "AUTONOMY_TRIALS.json",
+ "record_verify_split": "--record writes a timeline and never judges it; --verify reads a timeline and never records passing events onto it. Combined invocation is FailClosed. --verify DOES persist the judgement into AUTONOMY_TRIALS.json, which is this module's receipt, not the timeline.",
  "recovered_implementation": [
   {
    "path": "hcli/agentos/runtime.py",
@@ -309,6 +488,15 @@
   {
    "path": "tools/future/repro_science.py",
    "what": "FailClosed; skip is not pass; a guard unseen to fail is not a guard"
+  },
+  {
+   "path": "tools/future/trial_freeze.py",
+   "what": "Freeze manifest digest is copied into the persisted verdict when HCLI_AUTONOMY_BUILD.json names this trial; absence is UNAVAILABLE, not CLEAN"
+  },
+  {
+   "path": "receipts/future/AUTONOMY_TIMELINE_1h.json",
+   "present_in_this_checkout": true,
+   "what": "Live 1h timeline. --verify persists the judgement into AUTONOMY_TRIALS.json; the timeline file is not rewritten."
   },
   {
    "path": "tools/future/integration_attack.py",
@@ -347,12 +535,15 @@
    "unmet required condition",
    "automatic failure (awaiting / hardware-idle / busywork)",
    "self-reported PASS ignored",
-   "negative-control guard that does not fire aborts --selftest"
+   "negative-control guard that does not fire aborts --selftest",
+   "timeline digest mismatch on a persisted verdict",
+   "collapsing resident_orchestration into resident_model_cognition"
   ],
   "frontier_fed": "Verdict citations and next_workunits. A PASS does not retire a frontier entry (this lane cannot promote). A FAIL names unmet conditions and automatic failures as remaining work. Sleeping GPU units stay SLEEPING.",
   "how_it_fails_closed": "verify() raises FailClosed when it cannot judge, and returns verdict=FAIL when it can judge and a condition or automatic failure is unmet. CLI exit status is 1 in both cases. Duration elapsed never flips FAIL to PASS.",
   "invoke": {
    "emit": "tools.future.autonomy_trial.emit_trial_workunits()",
+   "persist_verdict": "tools.future.autonomy_trial.persist_verdict(verdict, timeline_path)",
    "record": "tools.future.autonomy_trial.record(trial, path, init=..., event=...)",
    "verify": "tools.future.autonomy_trial.verify(trial, timeline) -> verdict dict"
   },
@@ -372,7 +563,7 @@
   ]
  },
  "schema": "hawking.future.autonomy_trial.v1",
- "seal_sha256": "e9c5cdbf03c9f41d5f8a19cf738063ee5f045522137f74e3968c96c1998b2095",
+ "seal_sha256": "3de9fd69d804ca9b3ef67c144eaba68c690b3eef52ccfc6f9077d7fde1c26e72",
  "thirteen_acceptance_conditions": [
   "recover_state",
   "identify_live_frontier",
@@ -457,6 +648,7 @@
    ]
   }
  },
+ "verify_persists_verdict": true,
  "version": 1,
  "vocabulary": {
   "disk_state_is_authority": true,

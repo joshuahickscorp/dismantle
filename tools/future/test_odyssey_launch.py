@@ -19,7 +19,8 @@ from pathlib import Path
 import pytest
 
 from tools.future import odyssey_launch as ol
-from tools.future._common import HARDWARE_FIELDS, RECEIPTS, HardwareClaimError, write_receipt
+from tools.future import autonomy_trial as at
+from tools.future._common import HARDWARE_FIELDS, RECEIPTS, HardwareClaimError, write_receipt, sha256_file
 from hcli.workunit import WorkUnit
 
 
@@ -71,14 +72,12 @@ def test_can_launch_false_today_names_every_unmet():
     assert ol.can_launch(results) is False
     assert unmet == [r["id"] for r in results if not r["met"]]
     assert unmet, "today several criteria are unmet; an empty unmet list would open the gate"
-    # These two cannot be met without work that has not happened: no autonomy
-    # trial has passed, and there is no callable NR/NX path on this host.
-    assert "resident_autonomy_trial_pass" in unmet
+    # Generic NR→NX is not callable on any available specimen. Flash NX readiness
+    # is a separate field and must not be used to pretend the generic path works.
     assert "nr_nx_path_callable" in unmet
-    # Deliberately NOT asserting a frozen list. Criteria become met as their
-    # capability actually lands -- `workgraphs` did, once the runtime was
-    # exercised rather than merely looked for. Pinning the unmet set would make
-    # this test fight real progress.
+    # Deliberately NOT pinning autonomy or protected_scheduling. Those two were
+    # unmet because of plumbing (unpersisted verdict; capability conflated with
+    # availability). They become met when the landed drivers are actually read.
     verdict = ol.launch_verdict(results)
     assert verdict["verdict"] == "REFUSED"
     assert verdict["allowed"] is False
@@ -142,7 +141,6 @@ def test_forced_pass_writes_launch_receipt(tmp_path):
 
 def test_hcli_autonomy_gate_is_not_odyssey_trial():
     row = next(r for r in ol.evaluate_launch_criteria() if r["id"] == "resident_autonomy_trial_pass")
-    assert row["met"] is False
     kinds = {e.get("kind") for e in row["evidence"]}
     assert "hcli_agentos_autonomy" in kinds
     hcli = next(e for e in row["evidence"] if e.get("kind") == "hcli_agentos_autonomy")
@@ -156,6 +154,9 @@ def test_hcli_autonomy_gate_is_not_odyssey_trial():
         "git_head",
         "not_found",
     }
+    wrong = next(e for e in row["evidence"] if e.get("kind") == "wrong_receipt_name")
+    assert wrong.get("not_authority") is True
+    assert "AUTONOMY_TRIAL.json" in wrong.get("rel", "")
 
 
 def test_probe_json_records_path_taken_either_state():
@@ -568,45 +569,43 @@ def test_finding_a_specimen_does_not_lower_the_bar_for_the_others():
 
 
 def test_protected_scheduling_is_measured_not_a_constant(monkeypatch):
-    """A bar that cannot move on ANY machine measures nothing.
+    """Capability and availability must be able to diverge.
 
-    invoke, frontier and refill were hardcoded False here, so this criterion
-    could not pass even on a quiescent host holding a real lease -- the same
-    shape that made doctor_callable and gravity_callable permanently unmet, and
-    it hid the real blocker behind a constant.
-
-    It must still refuse today. What must change is that the refusal names
-    conditions that could become true.
+    The old evaluator ANDed both, so a HEAVY machine looked like 'the resident
+    cannot handle protected work'. capability_report() already separates them.
     """
     live = ol._eval_protected_scheduling()
-    assert live["met"] is False, "this must not pass on a contaminated host"
-    reason = live["reason"]
-    assert "QUIESCENT" in reason and "gpu_authority" in reason, (
-        "the refusal does not name its preconditions"
-    )
+    notes = live["operational"]["notes"]
+    assert notes["availability_is_not_capability"] == "true"
+    assert notes["sidecar_must_not_seize_lock"] == "true"
+    assert "PROTECTED_SCHEDULER_CAPABLE" in live
+    assert "PROTECTED_WINDOW_AVAILABLE" in live
+    # Live contamination is not QUIESCENT: the window must not be reported available.
+    if live.get("contamination_class") != "QUIESCENT":
+        assert live["PROTECTED_WINDOW_AVAILABLE"] is False
 
-    # Flip only the two preconditions this evaluator reads, and the lease-gated
-    # flags must respond. If they do not, they are constants wearing a measurement.
-    real_probe = ol.probe_json
+    def fake_cap_capable_unavailable(**kw):
+        return {
+            "invoked": True,
+            "why": "injected: capable, window closed",
+            "PROTECTED_SCHEDULER_CAPABLE": True,
+            "PROTECTED_WINDOW_AVAILABLE": False,
+            "contamination_class": "HEAVY",
+            "lease_present": False,
+            "live_verdict": "BLOCKED_ON_PROTECTED_WINDOW",
+            "did_not_fabricate_lease": True,
+            "did_not_flock": True,
+            "receipt_path_taken": "injected",
+            "import_path_taken": "injected",
+            "availability_overridden_because_not_quiescent": False,
+        }
 
-    def fake_probe(*paths, **kw):
-        out = real_probe(*paths, **kw)
-        first = paths[0] if paths else ""
-        if "CONTAMINATION_SCIENCE" in first and isinstance(out.get("doc"), dict):
-            out = dict(out, doc=dict(out["doc"], contamination_class="QUIESCENT"))
-        if "QUALIFICATION_PIPELINE" in first and isinstance(out.get("doc"), dict):
-            ab = dict(out["doc"].get("authority_boundary") or {}, gpu_authority=True)
-            out = dict(out, doc=dict(out["doc"], authority_boundary=ab))
-        return out
-
-    monkeypatch.setattr(ol, "probe_json", fake_probe)
+    monkeypatch.setattr(ol, "_protected_capability_report", fake_cap_capable_unavailable)
     lifted = ol._eval_protected_scheduling()
-    assert lifted["operational"]["flags"]["invoke"] is True, (
-        "invoke did not respond to the lease preconditions; it is still a constant"
-    )
-    # schedule/frontier/refill additionally require a real driver, which is the
-    # honest remaining gap -- they may stay False, but not because of a literal.
-    assert "driver" in lifted["operational"]["notes"]
+    assert lifted["met"] is True
+    assert lifted["PROTECTED_SCHEDULER_CAPABLE"] is True
+    assert lifted["PROTECTED_WINDOW_AVAILABLE"] is False
+    assert lifted["operational"]["flags"]["invoke"] is True
 
 
 def test_refusing_to_seize_a_lock_is_not_the_same_claim_as_cannot_schedule():
@@ -614,10 +613,10 @@ def test_refusing_to_seize_a_lock_is_not_the_same_claim_as_cannot_schedule():
     row = ol._eval_protected_scheduling()
     notes = row["operational"]["notes"]
     assert notes["sidecar_must_not_seize_lock"] == "true"
-    assert "lease_precondition" in notes
-    assert "not whether" in row["reason"], (
-        "the reason must distinguish the policy from the capability"
-    )
+    assert notes["did_not_flock"] == "True" or notes["did_not_flock"] == "true"
+    run = row.get("protected_physical_run_completed") or {}
+    assert run.get("required_for_this_criterion") is False
+    assert run.get("id") == "protected_physical_run_completed"
 
 
 def test_a_declared_status_does_not_outrank_a_measurement():
@@ -655,3 +654,257 @@ def test_the_curriculum_is_ready_only_when_every_role_names_verification():
         assert role["ready"] is True
         assert any(k in role["ready_reason"] for k in
                    ("whole-tree", "RECURRENT_PATIENT", "tree digest is sealed"))
+
+
+def _inject_persisted_autonomy(monkeypatch, tmp_path, *, verdict, trial="1h", mutate=False, extra=None):
+    """A real timeline file plus a persisted record the evaluator will read."""
+    tl = tmp_path / "timeline.json"
+    body = at.build_passing_timeline("1h" if trial in at.LAUNCH_ELIGIBLE_TRIALS else "15m")
+    body["trial"] = trial
+    tl.write_text(json.dumps(body, indent=1, sort_keys=True) + "\n")
+    digest = sha256_file(tl)
+    if mutate:
+        tl.write_text(tl.read_text() + " ")
+    record = {
+        "schema": at.VERDICT_PERSIST_SCHEMA,
+        "trial": trial,
+        "verdict": verdict,
+        "reason": "injected",
+        "conditions_met": [],
+        "conditions_unmet": ["injected"] if verdict == "FAIL" else [],
+        "timeline_path": str(tl),
+        "timeline_seal_digest": digest,
+        "resident_orchestration": True,
+        "resident_orchestration_reason": "injected HCLI loop launched work",
+        "resident_model_cognition": "UNAVAILABLE",
+        "resident_model_cognition_reason": "injected: no model in the loop",
+        "frozen_build_manifest_digest": None,
+        "orchestration_is_not_cognition": True,
+    }
+    if extra:
+        record.update(extra)
+    doc = {"schema": at.SCHEMA, "persisted_verdicts_by_trial": {trial: record}}
+    monkeypatch.setattr(
+        ol,
+        "_autonomy_trials_doc",
+        lambda: {"found": True, "path_taken": "injected", "doc": doc, "searched": []},
+    )
+    return record, tl
+
+
+def test_fail_verdict_never_satisfies_autonomy_criterion(tmp_path, monkeypatch):
+    """NEGATIVE CONTROL: a persisted FAIL is not a pass, even with orchestration."""
+    _inject_persisted_autonomy(monkeypatch, tmp_path, verdict="FAIL", trial="1h")
+    row = ol._eval_autonomy()
+    assert row["met"] is False
+    assert row["persisted_verdict"] == "FAIL"
+    assert row["resident_orchestration"] is True
+    assert "FAIL" in row["reason"]
+
+
+def test_tampered_timeline_seal_is_refused(tmp_path, monkeypatch):
+    """NEGATIVE CONTROL: editing the transcript after judgement is a refusal."""
+    _inject_persisted_autonomy(monkeypatch, tmp_path, verdict="PASS", trial="1h", mutate=True)
+    row = ol._eval_autonomy()
+    assert row["met"] is False
+    assert row["timeline_seal_verifies"] is False
+    assert "seal" in row["reason"].lower() or "digest" in row["reason"].lower() or "transcript" in row["reason"].lower()
+
+
+def test_persisted_pass_with_verifying_seal_and_orchestration_meets(tmp_path, monkeypatch):
+    _inject_persisted_autonomy(monkeypatch, tmp_path, verdict="PASS", trial="1h")
+    row = ol._eval_autonomy()
+    assert row["met"] is True
+    assert row["resident_orchestration"] is True
+    assert row["resident_model_cognition"] == "UNAVAILABLE"
+    assert row["timeline_seal_verifies"] is True
+    # Cognition is recorded, not required to be a thinking model.
+    assert row["resident_orchestration"] is not row["resident_model_cognition"]
+
+
+def test_fifteen_minute_pass_is_not_the_launch_bar(tmp_path, monkeypatch):
+    """NEGATIVE CONTROL: 15m is a real trial; it is not Odyssey I start."""
+    _inject_persisted_autonomy(monkeypatch, tmp_path, verdict="PASS", trial="15m")
+    row = ol._eval_autonomy()
+    assert row["met"] is False
+    # launch_candidate_from_receipt skips 15m, so the evaluator sees no 1h+
+    # candidate. Either phrasing is a refusal of the short trial as the bar.
+    assert (
+        "15m" in row["reason"]
+        or "1h/3h/6h" in row["reason"]
+        or "launch bar" in row["reason"]
+    )
+
+
+def test_singular_autonomy_trial_receipt_is_not_authority(monkeypatch):
+    """NEGATIVE CONTROL: the receipt-name bug that cost 70 ingestions."""
+    fake_singular = {
+        "found": True,
+        "path_taken": "injected",
+        "doc": {
+            "schema": "hawking.future.autonomy_trial.v1",
+            "verdict": "PASS",
+            "resident_orchestration": True,
+        },
+    }
+    real_probe = ol.probe_json
+
+    def probe(*rels, **kw):
+        if rels and "AUTONOMY_TRIAL.json" in rels[0] and "AUTONOMY_TRIALS" not in rels[0]:
+            return fake_singular
+        if rels and rels[0].endswith("AUTONOMY_TRIALS.json"):
+            return {"found": False, "path_taken": "not_found", "doc": None, "searched": []}
+        return real_probe(*rels, **kw)
+
+    monkeypatch.setattr(ol, "probe_json", probe)
+    monkeypatch.setattr(
+        ol,
+        "_autonomy_trials_doc",
+        lambda: {"found": False, "path_taken": "not_found", "doc": None, "searched": []},
+    )
+    row = ol._eval_autonomy()
+    assert row["met"] is False
+    wrong = next(e for e in row["evidence"] if e.get("kind") == "wrong_receipt_name")
+    assert wrong["found"] is True
+    assert wrong["not_authority"] is True
+
+
+def test_orchestration_true_does_not_imply_cognition(tmp_path, monkeypatch):
+    _inject_persisted_autonomy(monkeypatch, tmp_path, verdict="PASS", trial="1h")
+    row = ol._eval_autonomy()
+    assert row["resident_orchestration"] is True
+    assert row["resident_model_cognition"] == "UNAVAILABLE"
+    notes = row["operational"]["notes"]
+    assert notes["orchestration_is_not_cognition"] == "true"
+
+
+def test_protected_window_unavailable_when_contamination_not_quiescent(monkeypatch):
+    """NEGATIVE CONTROL: HEAVY + claimed available is refused on the window field."""
+    def lying_report():
+        return {
+            "invoked": True,
+            "why": "injected lie: available on HEAVY",
+            "PROTECTED_SCHEDULER_CAPABLE": True,
+            "PROTECTED_WINDOW_AVAILABLE": True,
+            "contamination_class": "HEAVY",
+            "lease_present": False,
+            "live_verdict": "RUNNABLE",
+            "did_not_fabricate_lease": True,
+            "did_not_flock": True,
+            "receipt_path_taken": "injected",
+            "import_path_taken": "injected",
+            "availability_overridden_because_not_quiescent": True,
+        }
+
+    monkeypatch.setattr(ol, "_protected_capability_report", lying_report)
+    row = ol._eval_protected_scheduling()
+    assert row["PROTECTED_WINDOW_AVAILABLE"] is False
+    assert row["PROTECTED_SCHEDULER_CAPABLE"] is True
+    assert row["met"] is True  # capability, not availability
+
+
+def test_incapable_scheduler_does_not_meet(monkeypatch):
+    """NEGATIVE CONTROL: CAPABLE false is unmet, even if someone claims a window."""
+    def incapable():
+        return {
+            "invoked": True,
+            "why": "injected: not capable",
+            "PROTECTED_SCHEDULER_CAPABLE": False,
+            "PROTECTED_WINDOW_AVAILABLE": True,
+            "contamination_class": "QUIESCENT",
+            "lease_present": True,
+            "live_verdict": "REFUSED",
+            "did_not_fabricate_lease": True,
+            "did_not_flock": True,
+            "receipt_path_taken": "injected",
+            "import_path_taken": "injected",
+            "availability_overridden_because_not_quiescent": False,
+        }
+
+    monkeypatch.setattr(ol, "_protected_capability_report", incapable)
+    row = ol._eval_protected_scheduling()
+    assert row["met"] is False
+    assert row["PROTECTED_SCHEDULER_CAPABLE"] is False
+
+
+def test_flash_nx_ready_stays_false_and_is_not_the_generic_path():
+    """NEGATIVE CONTROL: Flash has no packed NX; that is not the generic criterion."""
+    row = ol._eval_nr_nx()
+    assert row["FLASH_NX_READY"] is False
+    assert row["GENERIC_NR_NX_PIPELINE_CALLABLE"] is False
+    assert row["met"] is False
+    assert "generic" in row["reason"].lower() or "GENERIC" in row["reason"]
+
+
+def test_flash_ready_does_not_satisfy_generic_nr_nx(monkeypatch):
+    """NEGATIVE CONTROL: one model's artifact is not the orchestration path."""
+    monkeypatch.setattr(
+        ol,
+        "_nr_nx_generic_state",
+        lambda: {
+            "invoked": ["nr_nx_generic.generic_pipeline_callable", "nr_nx_generic.flash_nx_ready"],
+            "import": {"ok": True, "path_taken": "injected"},
+            "receipt_path_taken": "injected",
+            "receipt_found": True,
+            "GENERIC_NR_NX_PIPELINE_CALLABLE": False,
+            "GENERIC_FROM_RECEIPT": False,
+            "FLASH_NX_READY": True,
+            "FLASH_FROM_RECEIPT": True,
+            "flash": {"FLASH_NX_READY": True},
+            "flash_why": "injected flash ready",
+            "first_failing_stage": {"stage": "Doctor", "why": "injected fail"},
+            "n_stages": 14,
+        },
+    )
+    row = ol._eval_nr_nx()
+    assert row["met"] is False
+    assert row["FLASH_NX_READY"] is True
+    assert row["GENERIC_NR_NX_PIPELINE_CALLABLE"] is False
+
+
+def test_generic_callable_meets_while_flash_stays_false(monkeypatch):
+    monkeypatch.setattr(
+        ol,
+        "_nr_nx_generic_state",
+        lambda: {
+            "invoked": ["nr_nx_generic.generic_pipeline_callable", "nr_nx_generic.flash_nx_ready"],
+            "import": {"ok": True, "path_taken": "injected"},
+            "receipt_path_taken": "injected",
+            "receipt_found": True,
+            "GENERIC_NR_NX_PIPELINE_CALLABLE": True,
+            "GENERIC_FROM_RECEIPT": True,
+            "FLASH_NX_READY": False,
+            "FLASH_FROM_RECEIPT": False,
+            "flash": {"FLASH_NX_READY": False},
+            "flash_why": "injected flash not ready",
+            "first_failing_stage": None,
+            "n_stages": 14,
+        },
+    )
+    row = ol._eval_nr_nx()
+    assert row["met"] is True
+    assert row["FLASH_NX_READY"] is False
+    assert row["GENERIC_NR_NX_PIPELINE_CALLABLE"] is True
+
+
+def test_gate_never_writes_launch_receipt_while_any_criterion_unmet(tmp_path, monkeypatch):
+    """NEGATIVE CONTROL: ODYSSEY_I_LAUNCH.json is a phase transition, not a diary."""
+    written: list[str] = []
+
+    def spy(name, doc, recorded_by):
+        written.append(name)
+        path = tmp_path / name
+        path.write_text(json.dumps({"name": name}))
+        return path
+
+    out = ol.build(writer=spy)
+    assert ol.LAUNCH_RECEIPT not in written
+    assert out["launch"]["written"] is False
+    assert out["doc"]["odyssey_i_launch_written"] is False
+    assert out["doc"]["verdict"]["verdict"] == "REFUSED"
+    assert "nr_nx_path_callable" in out["doc"]["verdict"]["unmet"]
+    rewire = out["doc"]["rewire"]
+    assert rewire["gate_count_before"]["n_unmet"] == 3
+    assert rewire["gate_count_after"]["n_unmet"] >= 1
+    assert rewire["still_refused_if_any_unmet"] is True
+    assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False

@@ -5,6 +5,14 @@ of WorkUnits, receipts, refusals and frontier deltas. Three behaviours are
 automatic FAILURES: idling while safe work remains, idling because one
 hardware lane is blocked, and flooding the queue with busywork.
 
+`--verify` prints the verdict AND persists it into AUTONOMY_TRIALS.json (the
+receipt this module already owns). A printed PASS that is not on disk is how
+the launch gate stayed unmet after a real 1h pass. The persisted record keeps
+resident_orchestration and resident_model_cognition as separate fields: the
+HCLI loop can have orchestrated work while no model was thinking. Collapsing
+those into one boolean is the exact overclaim this campaign spent a day
+removing. The timeline is never rewritten; its file digest is the seal.
+
     python3 tools/future/autonomy_trial.py --selftest
     python3 tools/future/autonomy_trial.py --build
     python3 tools/future/autonomy_trial.py --record --trial 15m --timeline PATH --init
@@ -18,9 +26,10 @@ from __future__ import annotations
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 
-from tools.future._common import write_receipt, load_json, REPO
+from tools.future._common import write_receipt, load_json, REPO, RECEIPTS, sha256_file
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -33,8 +42,13 @@ from tools.future.repro_science import FailClosed
 RECEIPT = "AUTONOMY_TRIALS.json"
 SCHEMA = "hawking.future.autonomy_trial.v1"
 TIMELINE_SCHEMA = "hawking.future.autonomy_trial.timeline.v1"
+VERDICT_PERSIST_SCHEMA = "hawking.future.autonomy_trial.persisted_verdict.v1"
 VERSION = 1
 RECORDED_BY = "tools/future/autonomy_trial.py"
+FREEZE_RECEIPT_REL = "receipts/future/HCLI_AUTONOMY_BUILD.json"
+COGNITION_UNAVAILABLE = "UNAVAILABLE"
+# 15m is a real trial; it is not the launch bar. Odyssey I reads 1h or longer.
+LAUNCH_ELIGIBLE_TRIALS = frozenset({"1h", "3h", "6h"})
 
 FRONTIER_REL = "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
 QUAL_RECEIPT_REL = "receipts/future/QUALIFICATION_PIPELINE.json"
@@ -1301,6 +1315,395 @@ def verify(trial: str, timeline: Mapping[str, Any] | str | Path) -> dict[str, An
 
 
 # ---------------------------------------------------------------------------
+# Persist — --verify used to print and write nothing. The launch gate then
+# probed AUTONOMY_TRIAL.json (singular) while this module wrote AUTONOMY_TRIALS.json
+# (plural). A PASS that exists only on stdout is not a PASS the gate can read.
+# The timeline file is never mutated: its raw sha256 is the seal.
+# ---------------------------------------------------------------------------
+
+
+def _owned_receipt_path() -> Path:
+    return RECEIPTS / RECEIPT
+
+
+def _repo_rel(path: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(REPO.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
+def load_owned_receipt() -> dict[str, Any]:
+    """Read AUTONOMY_TRIALS.json if it exists. Absent is empty, not a fabricated PASS."""
+    path = _owned_receipt_path()
+    if not path.is_file():
+        return {}
+    try:
+        doc = json.loads(path.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {}
+    return doc if isinstance(doc, dict) else {}
+
+
+def timeline_file_digest(path: Path) -> str:
+    if not path.is_file():
+        _fail("missing_timeline", f"cannot digest absent timeline: {path}")
+    return sha256_file(path)
+
+
+def timeline_internal_seal_state(doc: Mapping[str, Any]) -> dict[str, Any]:
+    """If the timeline carries seal_sha256, recompute it. Absent is recorded, not forged."""
+    seal = doc.get("seal_sha256")
+    if not isinstance(seal, str) or not seal:
+        return {
+            "present": False,
+            "verifies": None,
+            "why": "timeline has no internal seal_sha256; file digest is the transcript seal",
+        }
+    body = {k: v for k, v in doc.items() if k != "seal_sha256"}
+    blob = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    recomputed = hashlib.sha256(blob).hexdigest()
+    ok = recomputed == seal
+    return {
+        "present": True,
+        "verifies": ok,
+        "expected": seal,
+        "recomputed": recomputed,
+        "why": (
+            "internal seal_sha256 matches body"
+            if ok
+            else "internal seal_sha256 does not match body; transcript was edited after sealing"
+        ),
+    }
+
+
+def verify_timeline_digest(path: Path | str | None, expected: str | None) -> dict[str, Any]:
+    """Re-hash the timeline. A mismatch is a refusal, not a warning.
+
+    The judged process must not be able to edit the transcript after the fact.
+    """
+    if not expected or not isinstance(expected, str):
+        return {
+            "verifies": False,
+            "why": "persisted verdict has no timeline_seal_digest; refusing",
+            "path": None,
+            "expected": expected,
+            "actual": None,
+        }
+    if path is None:
+        return {
+            "verifies": False,
+            "why": "persisted verdict has no timeline_path; refusing",
+            "path": None,
+            "expected": expected,
+            "actual": None,
+        }
+    raw = Path(path)
+    candidates = [raw]
+    if not raw.is_absolute():
+        candidates.append(REPO / raw)
+        common = git("rev-parse", "--git-common-dir")
+        if common:
+            git_path = Path(common)
+            if not git_path.is_absolute():
+                git_path = (REPO / git_path).resolve()
+            parent = git_path.parent if git_path.name == ".git" else git_path.parent
+            candidates.append(parent / raw)
+    found: Path | None = None
+    searched: list[str] = []
+    for cand in candidates:
+        searched.append(str(cand))
+        if cand.is_file():
+            found = cand
+            break
+    if found is None:
+        return {
+            "verifies": False,
+            "why": f"timeline not found for re-hash; searched={searched}",
+            "path": str(path),
+            "expected": expected,
+            "actual": None,
+            "searched": searched,
+        }
+    actual = sha256_file(found)
+    if actual != expected:
+        return {
+            "verifies": False,
+            "why": (
+                "timeline file digest does not match the persisted seal; "
+                "the judged process edited the transcript after the fact, or "
+                "the verdict was attached to a different file"
+            ),
+            "path": str(found),
+            "expected": expected,
+            "actual": actual,
+        }
+    internal = timeline_internal_seal_state(load_timeline(found))
+    if internal.get("present") and internal.get("verifies") is False:
+        return {
+            "verifies": False,
+            "why": internal.get("why"),
+            "path": str(found),
+            "expected": expected,
+            "actual": actual,
+            "internal_seal": internal,
+        }
+    return {
+        "verifies": True,
+        "why": "timeline file digest matches the persisted seal",
+        "path": str(found),
+        "expected": expected,
+        "actual": actual,
+        "internal_seal": internal,
+    }
+
+
+def extract_orchestration_and_cognition(timeline: Mapping[str, Any]) -> dict[str, Any]:
+    """Two facts, never one boolean.
+
+    The 1h loop that passed is HCLI orchestration with no model in it. Writing
+    resident_orchestration true is not a way of implying a model was thinking.
+    """
+    events = timeline.get("events") if isinstance(timeline.get("events"), list) else []
+    cognition_values: list[str] = []
+    cognition_reasons: list[str] = []
+    n_launched = 0
+    n_ingested = 0
+    bindings_present = False
+    said_hcli_loop = False
+    for event in events:
+        if not isinstance(event, Mapping):
+            continue
+        kind = str(event.get("kind") or "")
+        payload = event.get("payload") if isinstance(event.get("payload"), Mapping) else {}
+        if kind == "workunit_launched":
+            n_launched += 1
+        if kind == "result_ingested":
+            n_ingested += 1
+        if payload.get("bindings_present") is True:
+            bindings_present = True
+        cog = payload.get("resident_model_cognition")
+        if cog is not None:
+            cognition_values.append(str(cog))
+        why = str(payload.get("why") or "")
+        if why and (cog is not None or "cognition" in why.lower() or "orchestr" in why.lower()):
+            cognition_reasons.append(why)
+        lowered = why.lower()
+        if "hcli orchestration" in lowered or "not model cognition" in lowered:
+            said_hcli_loop = True
+
+    if cognition_values:
+        unique = list(dict.fromkeys(cognition_values))
+        if all(v.upper() == COGNITION_UNAVAILABLE for v in unique):
+            cognition = COGNITION_UNAVAILABLE
+        elif len(unique) == 1:
+            cognition = unique[0]
+        else:
+            cognition = "MIXED:" + ",".join(unique)
+    else:
+        cognition = COGNITION_UNAVAILABLE
+        cognition_reasons.append(
+            "timeline did not record resident_model_cognition; refusing to infer a model was thinking"
+        )
+    reason = cognition_reasons[0] if cognition_reasons else (
+        "resident_model_cognition is UNAVAILABLE and no measured reason was attached"
+    )
+    orchestration = n_launched > 0
+    orch_reason = (
+        f"HCLI loop launched {n_launched} workunit(s) and ingested {n_ingested} result(s)"
+        if orchestration
+        else (
+            f"no HCLI orchestration evidence: launched={n_launched} ingested={n_ingested} "
+            f"bindings_present={bindings_present}"
+        )
+    )
+    return {
+        "resident_orchestration": orchestration,
+        "resident_orchestration_reason": orch_reason,
+        "resident_model_cognition": cognition,
+        "resident_model_cognition_reason": reason,
+        "n_workunits_launched": n_launched,
+        "n_results_ingested": n_ingested,
+        "bindings_present": bindings_present,
+        "said_hcli_loop": said_hcli_loop,
+        "fields_are_independent": True,
+        "orchestration_is_not_cognition": True,
+    }
+
+
+def frozen_manifest_record(trial: str) -> dict[str, Any]:
+    """Digest of the freeze for this trial, if a freeze receipt exists.
+
+    Live verify_unchanged is recorded as of persist time. Later edits of the
+    driver do not get rewritten as CLEAN, and absence is UNAVAILABLE, not CLEAN.
+    """
+    doc, taken = _read_json_coping(FREEZE_RECEIPT_REL)
+    if doc is None:
+        return {
+            "available": False,
+            "digest": None,
+            "substrate_verdict": "UNAVAILABLE",
+            "why": f"freeze receipt not found ({taken})",
+            "path_taken": taken,
+            "trial": trial,
+        }
+    builds = doc.get("frozen_builds") if isinstance(doc.get("frozen_builds"), list) else []
+    match: Mapping[str, Any] | None = None
+    for row in builds:
+        if isinstance(row, Mapping) and str(row.get("trial") or row.get("trial_id") or "") == trial:
+            match = row
+            break
+    if match is None:
+        return {
+            "available": False,
+            "digest": None,
+            "substrate_verdict": "UNAVAILABLE",
+            "why": f"HCLI_AUTONOMY_BUILD.json has no frozen_builds entry for trial={trial!r}",
+            "path_taken": taken,
+            "trial": trial,
+            "freeze_receipt_seal": doc.get("seal_sha256"),
+        }
+    blob = json.dumps(dict(match), sort_keys=True, separators=(",", ":")).encode()
+    digest = hashlib.sha256(blob).hexdigest()
+    live_verdict = "UNAVAILABLE"
+    live_why = "trial_freeze.verify_unchanged was not invoked"
+    try:
+        from tools.future.trial_freeze import verify_unchanged
+
+        live = verify_unchanged(match)
+        live_verdict = str(live.get("verdict") or "UNAVAILABLE")
+        live_why = str(live.get("why") or live_verdict)
+    except Exception as exc:
+        live_verdict = "UNAVAILABLE"
+        live_why = f"trial_freeze.verify_unchanged raised {type(exc).__name__}: {exc}"
+    return {
+        "available": True,
+        "digest": digest,
+        "substrate_verdict": live_verdict,
+        "why": live_why,
+        "path_taken": taken,
+        "trial": trial,
+        "freeze_receipt_seal": doc.get("seal_sha256"),
+        "freeze_receipt": FREEZE_RECEIPT_REL,
+    }
+
+
+def compose_persisted_verdict(
+    verdict: Mapping[str, Any],
+    timeline_path: Path,
+    *,
+    timeline_doc: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the record --verify must persist. Does not write."""
+    path = Path(timeline_path)
+    if not path.is_file():
+        _fail("missing_timeline", f"--verify persist requires a real timeline file: {path}")
+    digest = timeline_file_digest(path)
+    doc = timeline_doc if isinstance(timeline_doc, Mapping) else load_timeline(path)
+    facts = extract_orchestration_and_cognition(doc)
+    internal = timeline_internal_seal_state(doc)
+    freeze = frozen_manifest_record(str(verdict.get("trial") or ""))
+    conditions = list(verdict.get("conditions") or [])
+    met_ids = [str(c.get("id")) for c in conditions if c.get("met")]
+    unmet_ids = [str(c.get("id")) for c in conditions if not c.get("met")]
+    if verdict.get("unmet") and not unmet_ids:
+        unmet_ids = [str(x) for x in verdict.get("unmet") or []]
+    return {
+        "schema": VERDICT_PERSIST_SCHEMA,
+        "trial": verdict.get("trial"),
+        "verdict": verdict.get("verdict"),
+        "reason": verdict.get("reason"),
+        "conditions_met": met_ids,
+        "conditions_unmet": unmet_ids,
+        "n_conditions": len(conditions),
+        "automatic_failures": [f.get("id") for f in (verdict.get("automatic_failures") or [])],
+        "timeline_path": _repo_rel(path),
+        "timeline_seal_digest": digest,
+        "timeline_internal_seal": internal,
+        "frozen_build_manifest_digest": freeze.get("digest"),
+        "frozen_build": freeze,
+        "resident_orchestration": facts["resident_orchestration"],
+        "resident_orchestration_reason": facts["resident_orchestration_reason"],
+        "resident_model_cognition": facts["resident_model_cognition"],
+        "resident_model_cognition_reason": facts["resident_model_cognition_reason"],
+        "orchestration_is_not_cognition": True,
+        "fields_are_independent": True,
+        "n_workunits_launched": facts["n_workunits_launched"],
+        "n_results_ingested": facts["n_results_ingested"],
+        "elapsed_s": verdict.get("elapsed_s"),
+        "duration_s": verdict.get("duration_s"),
+        "elapsed_meets_duration": verdict.get("elapsed_meets_duration"),
+        "elapsed_is_not_a_pass": True,
+        "n_events": verdict.get("n_events"),
+        "launch_eligible_trial": str(verdict.get("trial") or "") in LAUNCH_ELIGIBLE_TRIALS,
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "timeline_not_rewritten": True,
+        "claim_boundary": (
+            "Persisted timeline judgement. resident_orchestration true does not "
+            "mean a model was thinking. A FAIL is stored as FAIL."
+        ),
+    }
+
+
+def persist_verdict(
+    verdict: Mapping[str, Any],
+    timeline_path: Path | str,
+    *,
+    timeline_doc: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Write the verdict into AUTONOMY_TRIALS.json. Never writes onto the timeline."""
+    path = Path(timeline_path)
+    if path.resolve() == _owned_receipt_path().resolve():
+        _fail(
+            "timeline_is_receipt",
+            "refusing to treat AUTONOMY_TRIALS.json as a timeline; persist must not write onto the judged file",
+        )
+    before = path.read_bytes() if path.is_file() else b""
+    record = compose_persisted_verdict(verdict, path, timeline_doc=timeline_doc)
+    existing = load_owned_receipt()
+    by = dict(existing.get("persisted_verdicts_by_trial") or {})
+    trial = str(record.get("trial") or "")
+    if not trial:
+        _fail("unknown_trial", "cannot persist a verdict with no trial id")
+    by[trial] = record
+    existing["persisted_verdicts_by_trial"] = by
+    existing["last_persisted_verdict"] = record
+    existing.setdefault("schema", SCHEMA)
+    existing.setdefault("version", VERSION)
+    existing.setdefault(
+        "purpose",
+        "Harness that runs and judges progressive autonomy trials from recorded timelines.",
+    )
+    existing["evidence_class"] = "STATIC_ONLY"
+    existing["gpu_authority"] = False
+    existing["verify_persists_verdict"] = True
+    existing["receipt_name"] = RECEIPT
+    written = write_receipt(RECEIPT, existing, RECORDED_BY)
+    after = path.read_bytes() if path.is_file() else b""
+    if after != before:
+        _fail("timeline_mutated", "persist_verdict must not edit the timeline it judged")
+    return {"path": str(written), "record": record, "receipt": RECEIPT}
+
+
+def launch_candidate_from_receipt(doc: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """The 1h-or-longer persisted verdict the launch gate should read. 15m is not enough."""
+    if not isinstance(doc, Mapping):
+        return None
+    by = doc.get("persisted_verdicts_by_trial")
+    if isinstance(by, Mapping):
+        for trial in ("6h", "3h", "1h"):
+            row = by.get(trial)
+            if isinstance(row, Mapping):
+                return dict(row)
+    last = doc.get("last_persisted_verdict")
+    if isinstance(last, Mapping) and str(last.get("trial") or "") in LAUNCH_ELIGIBLE_TRIALS:
+        return dict(last)
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Record — captures a timeline. Never calls verify.
 # ---------------------------------------------------------------------------
 
@@ -2039,6 +2442,21 @@ def recovered_implementation() -> list[dict[str, Any]]:
             "what": "FailClosed; skip is not pass; a guard unseen to fail is not a guard",
         },
         {
+            "path": "tools/future/trial_freeze.py",
+            "what": (
+                "Freeze manifest digest is copied into the persisted verdict when "
+                "HCLI_AUTONOMY_BUILD.json names this trial; absence is UNAVAILABLE, not CLEAN"
+            ),
+        },
+        {
+            "path": "receipts/future/AUTONOMY_TIMELINE_1h.json",
+            "what": (
+                "Live 1h timeline. --verify persists the judgement into AUTONOMY_TRIALS.json; "
+                "the timeline file is not rewritten."
+            ),
+            "present_in_this_checkout": (REPO / "receipts/future/AUTONOMY_TIMELINE_1h.json").is_file(),
+        },
+        {
             "path": "tools/future/integration_attack.py",
             "what": "Adversarial completion attack. Trial verdicts hunt reasons to FAIL.",
         },
@@ -2075,6 +2493,9 @@ def gaps_closed() -> list[str]:
         "Blocked physical work becomes a SLEEPING WorkUnit and never a synthetic hardware result.",
         "Verdicts cite timeline seqs, WorkUnit ids, receipts, rejected ideas, frontier deltas.",
         "Resident-callable CLI + HCLI-shaped WorkUnits + AUTONOMY_TRIALS.json receipt.",
+        "--verify persists trial id, verdict, met/unmet conditions, timeline path + file digest, and freeze digest into AUTONOMY_TRIALS.json.",
+        "resident_orchestration and resident_model_cognition are persisted as separate fields; orchestration true is not cognition.",
+        "A FAIL verdict is persisted as FAIL. A timeline digest mismatch is a refusal.",
     ]
 
 
@@ -2088,6 +2509,8 @@ def negative_findings() -> list[str]:
         "Metal GPU absence and xcrun Metal-compiler absence were not re-probed; re-measuring would be a hardware claim this sidecar must not make.",
         "A PASS on a recorded fixture is not a PASS of a live 6h resident run. No live multi-hour trial was executed here.",
         "FPGA remains Accelerator/Physical Compiler/Fusion; this harness does not build an FPGA backend.",
+        "The 1h loop that passed is HCLI orchestration; resident_model_cognition is UNAVAILABLE throughout. Those facts are stored separately.",
+        "This module writes AUTONOMY_TRIALS.json (plural). AUTONOMY_TRIAL.json (singular) is not this receipt and is not written.",
     ]
 
 
@@ -2101,6 +2524,7 @@ def resident_callable(units: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         ],
         "invoke": {
             "verify": "tools.future.autonomy_trial.verify(trial, timeline) -> verdict dict",
+            "persist_verdict": "tools.future.autonomy_trial.persist_verdict(verdict, timeline_path)",
             "record": "tools.future.autonomy_trial.record(trial, path, init=..., event=...)",
             "emit": "tools.future.autonomy_trial.emit_trial_workunits()",
         },
@@ -2120,6 +2544,8 @@ def resident_callable(units: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "automatic failure (awaiting / hardware-idle / busywork)",
             "self-reported PASS ignored",
             "negative-control guard that does not fire aborts --selftest",
+            "timeline digest mismatch on a persisted verdict",
+            "collapsing resident_orchestration into resident_model_cognition",
         ],
         "how_it_fails_closed": (
             "verify() raises FailClosed when it cannot judge, and returns verdict=FAIL "
@@ -2153,6 +2579,9 @@ def next_workunits(frontier: Mapping[str, Any]) -> list[dict[str, str]]:
 
 
 def build() -> Path:
+    prior = load_owned_receipt()
+    persisted_by = dict(prior.get("persisted_verdicts_by_trial") or {})
+    last_persisted = prior.get("last_persisted_verdict")
     proofs = prove_negative_controls()
     passing = prove_passing_timelines()
     units = emit_trial_workunits()
@@ -2193,8 +2622,14 @@ def build() -> Path:
         "timer_is_not_a_pass": True,
         "record_verify_split": (
             "--record writes a timeline and never judges it; --verify reads a timeline "
-            "and never records passing events onto it. Combined invocation is FailClosed."
+            "and never records passing events onto it. Combined invocation is FailClosed. "
+            "--verify DOES persist the judgement into AUTONOMY_TRIALS.json, which is this "
+            "module's receipt, not the timeline."
         ),
+        "verify_persists_verdict": True,
+        "receipt_name": RECEIPT,
+        "persisted_verdicts_by_trial": persisted_by,
+        "last_persisted_verdict": last_persisted,
         "frontier_census": {
             "path_taken": frontier.get("path_taken"),
             "present": frontier.get("present"),
@@ -2282,7 +2717,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.timeline is None:
                 _fail("missing_timeline", "--verify requires --timeline")
             verdict = verify(args.verify, args.timeline)
+            persisted = persist_verdict(verdict, args.timeline)
             _print_verdict(verdict)
+            print(
+                f"persisted={persisted['path']} "
+                f"trial={persisted['record']['trial']} "
+                f"verdict={persisted['record']['verdict']} "
+                f"timeline_seal_digest={persisted['record']['timeline_seal_digest']} "
+                f"resident_orchestration={persisted['record']['resident_orchestration']} "
+                f"resident_model_cognition={persisted['record']['resident_model_cognition']}"
+            )
             return 0 if verdict["verdict"] == "PASS" else 1
         if args.record:
             trial = args.trial

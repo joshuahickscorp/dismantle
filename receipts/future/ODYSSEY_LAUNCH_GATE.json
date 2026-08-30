@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T20:38:40Z",
+  "recorded_at": "2026-08-30T21:11:08Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -15,10 +15,28 @@
   {
    "evidence": [
     {
+     "found": true,
+     "frozen_build_manifest_digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+     "kind": "persisted_odyssey_trial",
+     "launch_eligible": true,
+     "path_taken": "worktree",
+     "resident_model_cognition": "UNAVAILABLE",
+     "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
+     "resident_orchestration": true,
+     "schema": "hawking.future.autonomy_trial.v1",
+     "timeline_path": "receipts/future/AUTONOMY_TIMELINE_1h.json",
+     "timeline_seal_digest": "72f00ec20f958aa83f30e2346839ddbeb4e5e31679f91235eb8775952bd7f011",
+     "timeline_seal_verifies": true,
+     "timeline_seal_why": "timeline file digest matches the persisted seal",
+     "trial": "1h",
+     "verdict": "PASS"
+    },
+    {
      "found": false,
-     "kind": "odyssey_trial",
+     "kind": "wrong_receipt_name",
+     "not_authority": true,
      "path_taken": "not_found",
-     "schema": null
+     "rel": "receipts/future/AUTONOMY_TRIAL.json"
     },
     {
      "all_requested_stages_passed": true,
@@ -30,24 +48,33 @@
     }
    ],
    "id": "resident_autonomy_trial_pass",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
-     "invoke": false,
+     "frontier": true,
+     "invoke": true,
      "persist": true,
-     "refill": false,
-     "schedule": false,
+     "refill": true,
+     "schedule": true,
      "verify": true
     },
     "notes": {
-     "hcli_control_plane_is_not_odyssey_i": "true"
+     "does_not_read": "receipts/future/AUTONOMY_TRIAL.json",
+     "hcli_control_plane_is_not_odyssey_i": "true",
+     "orchestration_is_not_cognition": "true",
+     "reads": "receipts/future/AUTONOMY_TRIALS.json"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "No Odyssey I resident-orchestration autonomy trial has passed. HCLI AgentOS autonomy gate path_taken='worktree' schema='hcli.agentos.autonomy_gate.v1' all_requested_stages_passed=True: that receipt proves LIVE_AGENTOS_AUTONOMY_CONTROL_PLANE, not Odyssey I start. Odyssey trial receipt path_taken='not_found' schema=None. Integration point: tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt."
+   "persisted_trial": "1h",
+   "persisted_verdict": "PASS",
+   "reason": "Odyssey I resident-orchestration autonomy trial 1h persisted PASS in AUTONOMY_TRIALS.json; timeline seal verifies; resident_orchestration=true; resident_model_cognition='UNAVAILABLE'",
+   "resident_model_cognition": "UNAVAILABLE",
+   "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
+   "resident_orchestration": true,
+   "timeline_seal_verifies": true
   },
   {
    "curriculum": {
@@ -1096,107 +1123,54 @@
    "reason": "Gravity is resident-operational"
   },
   {
+   "FLASH_NX_READY": false,
+   "GENERIC_NR_NX_PIPELINE_CALLABLE": false,
    "evidence": [
     {
-     "audit_path_taken": "worktree",
-     "nr_v2": {
-      "generation": "v2",
-      "kernel_requirements": [
-       {
-        "applies_to": "exact fallback organs",
-        "requires": "source_bf16_gemv_family"
-       },
-       {
-        "applies_to": "future compact routed-expert candidates only",
-        "requires": "grouped_absmax_decoder"
-       },
-       {
-        "applies_to": "routed expert family",
-        "requires": "route_conditioned_expert_selection"
-       },
-       {
-        "applies_to": "linear-attention state",
-        "requires": "gated_delta_recurrence"
-       },
-       {
-        "applies_to": "full-attention state",
-        "requires": "causal_attention_kv_state"
-       }
-      ],
-      "negative_science": [
-       {
-        "finding": 0.003477525221917917,
-        "law": "do not assume routed experts share a low-dimensional basis; sampled gate-up expert cosine was near zero",
-        "receipt": "receipts/headless/FLASH_DOCTOR_EXPERT_BANK_SCREEN.json"
-       },
-       {
-        "finding": 0.0013096139929922714,
-        "law": "do not assume n-gram shards share a low-dimensional basis; shard-row similarity was near zero",
-        "receipt": "receipts/headless/FLASH_DOCTOR_NGRAM_SCREEN.json"
-       }
-      ],
-      "next": "compile exact-control NX first, then replace only Pareto-surviving organs and measure complete accepted-token impact",
-      "path": "receipts/headless/FLASH_COMPLETE_V2.nr.json",
-      "promotion": {
-       "allowed": false,
-       "blockers": [
-        "complete accepted-token session",
-        "complete candidate byte ledger",
-        "capability suite",
-        "machine-bound NX compilation"
-       ]
-      },
-      "schema": "hawking.flash.complete_nr.v2",
-      "status": "COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION"
+     "FLASH_FROM_RECEIPT": false,
+     "FLASH_NX_READY": false,
+     "GENERIC_FROM_RECEIPT": false,
+     "GENERIC_NR_NX_PIPELINE_CALLABLE": false,
+     "first_failing_stage": {
+      "error": "parameterized_on_wrong_parent",
+      "stage": "Doctor",
+      "status": "FAILED",
+      "why": "tools.odyssey.doctor_tournament is parameterized on a hardcoded PARENT (/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16) with Qwen3.8-27B tensor names; 12/12 probe tensors are absent from this specimen. probes() was not run: it imports torch+safetensors and would load the wrong model"
      },
-     "nx_v0_path_taken": "worktree",
-     "nx_v0_status": "SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
-     "real_checker": {
-      "failed_requirements": [
-       "complete_byte_ledger",
-       "self_contained_dependencies",
-       "accepted_generation",
-       "capability",
-       "reproducibility",
-       "protected_performance",
-       "no_forbidden_fallback"
-      ],
-      "promotable": false,
-      "reasons": [
-       "status is SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
-       "complete_byte_ledger: bound ledger is exact-control / I/O profile only; complete candidate ledger remains open (cited qualification.byte_ledger -> status/promotion_allowed={'path': 'receipts/headless/FLASH_COMPLETE_V0.BYTE_LEDGER.json', 'status': 'MEASURED_EXACT_CONTROL_WITH_ROUTE_IO_PROFILE', 'promotion_allowed': False, 'routed_expert_sensitivity.complete_storage_bytes': None})",
-       "self_contained_dependencies: NX is a metadata seal, not a self-contained executable (cited status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION')",
-       "accepted_generation: no multi-token accepted generation; a single terminal argmax is not accepted generation (cited qualification.accepted_multitoken_tps=None)",
-       "capability: no capability suite result on the NX (cited capability=None)",
-       "reproducibility: no executable closure hash; metadata hashes of source files are not byte reproducibility (cited reproducibility=None)",
-       "protected_performance: bench.state is UNKNOWN; DIAGNOSTIC_RELATIVE and metadata seals do not decide (cited bench.state='UNKNOWN')",
-       "no_forbidden_fallback: fallback_count is undisclosed; missing is not zero (cited fallback_count={'fallback_count': None, 'dense_rematerialization': None, 'source_independent': None})",
-       "qualification.resident_promotion is false"
-      ],
-      "status": "SEALED_METADATA_ONLY_NOT_FOR_PROMOTION"
-     },
-     "seven_all_met": false
+     "flash_why": "FLASH_COMPLETE_V0.nx status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION'; check_nx.promotable=False",
+     "import_ok": true,
+     "import_path_taken": "import",
+     "invoked": [
+      "nr_nx_generic.flash_nx_ready",
+      "nr_nx_generic.generic_pipeline_callable"
+     ],
+     "kind": "nr_nx_generic",
+     "n_stages": 14,
+     "receipt_path_taken": "worktree"
     }
    ],
+   "facts_are_independent": true,
    "id": "nr_nx_path_callable",
    "met": false,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
-     "invoke": false,
+     "frontier": true,
+     "invoke": true,
      "persist": true,
      "refill": false,
-     "schedule": false,
+     "schedule": true,
      "verify": true
     },
     "notes": {
-     "flash_nx_scaffold_only": "True"
+     "FLASH_NX_READY": "False",
+     "FLASH_NX_READY_is_not_this_criterion": "true",
+     "generic_pipeline_callable": "False"
     },
     "resident_operational": false
    },
-   "reason": "NR/NX path is not callable. seven_all_met=False FLASH_COMPLETE_V0.nx status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. Flash source-independent NX is SCAFFOLD_ONLY / metadata, not qualified."
+   "reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage='Doctor: tools.odyssey.doctor_tournament is parameterized on a hardcoded PARENT (/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16) with Qwen3.8-27B tensor names; 12/12 probe tensors are absent from this specimen. probes() was not run: it imports torch+safetensors and would load the wrong model'. invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path."
   },
   {
    "evidence": [
@@ -1384,47 +1358,70 @@
    "reason": "dirty measurement is resident-operational"
   },
   {
+   "PROTECTED_SCHEDULER_CAPABLE": true,
+   "PROTECTED_WINDOW_AVAILABLE": false,
+   "contamination_class": "HEAVY",
    "evidence": [
     {
+     "PROTECTED_SCHEDULER_CAPABLE": true,
+     "PROTECTED_WINDOW_AVAILABLE": false,
+     "availability_overridden_because_not_quiescent": false,
      "contamination_class": "HEAVY",
+     "did_not_fabricate_lease": true,
+     "did_not_flock": true,
      "future_protected_window": {
       "path_taken": "worktree",
       "present": true,
       "rel": "tools/future/protected_window.py",
       "resolved": "/Users/scammermike/Downloads/hawking/tools/future/protected_window.py"
      },
+     "import_path_taken": "import",
+     "invoked": true,
+     "kind": "protected_scheduler.capability_report",
+     "lease_present": false,
+     "live_verdict": "BLOCKED_ON_PROTECTED_WINDOW",
      "odyssey_protected_window": {
       "path_taken": "worktree",
       "present": true,
       "rel": "tools/odyssey/protected_window.py",
       "resolved": "/Users/scammermike/Downloads/hawking/tools/odyssey/protected_window.py"
      },
-     "qualification_path_taken": "worktree"
+     "receipt_path_taken": "worktree"
     }
    ],
    "id": "protected_scheduling",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
-     "invoke": false,
+     "frontier": true,
+     "invoke": true,
      "persist": true,
-     "refill": false,
-     "schedule": false,
+     "refill": true,
+     "schedule": true,
      "verify": true
     },
     "notes": {
-     "driver": "none",
-     "integration": "tools/future/protected_window.py \u2014 protected scheduling that does not seize Codex's GPU lock",
-     "lease_precondition": "contamination must be QUIESCENT (is 'HEAVY') and qualification gpu_authority must be true (is False)",
-     "prior_odyssey_protected_window": "worktree",
+     "PROTECTED_SCHEDULER_CAPABLE": "True",
+     "PROTECTED_WINDOW_AVAILABLE": "False",
+     "availability_is_not_capability": "true",
+     "contamination_class": "HEAVY",
+     "did_not_fabricate_lease": "True",
+     "did_not_flock": "True",
+     "integration": "tools/future/protected_scheduler.py \u2014 PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE",
      "sidecar_must_not_seize_lock": "true"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "protected scheduling cannot start: contamination_class='HEAVY' (needs QUIESCENT), qualification gpu_authority=False (needs true), driver=none. Every unmet flag is measured: invoke, schedule, frontier, refill. The sidecar will not flock a contested bench lock, and that policy is separate from this criterion -- these flags describe whether a lease-holding resident COULD schedule protected work, not whether this process may take a lock."
+   "protected_physical_run_completed": {
+    "id": "protected_physical_run_completed",
+    "required_for_odyssey_i_start": false,
+    "required_for_this_criterion": false,
+    "status": "NOT_THIS_CRITERION",
+    "why": "A completed protected physical run would be PROTECTED_ABSOLUTE evidence this sidecar cannot produce. Odyssey I start needs a capable protected scheduler, not a finished protected bench. This field is named so it cannot be smuggled into CAPABLE."
+   },
+   "reason": "protected scheduler is CAPABLE; window AVAILABLE=False (contamination_class='HEAVY'). Capability is not availability; no lock was seized"
   },
   {
    "evidence": [
@@ -2255,7 +2252,10 @@
   "First WorkGraphs emitted as real HCLI WorkUnits with dependencies and resource lanes.",
   "Phase II transfer and Phase III attack both depend on Phase I laws and not on each other \u2014 no global barrier.",
   "Physical blockers become SLEEPING WorkUnits; they never become synthetic results.",
-  "HCLI AgentOS autonomy A1\u2013A5 is recovered and explicitly not this criterion."
+  "HCLI AgentOS autonomy A1\u2013A5 is recovered and explicitly not this criterion.",
+  "resident_autonomy_trial_pass reads AUTONOMY_TRIALS.json (plural) persisted --verify; AUTONOMY_TRIAL.json is not authority.",
+  "protected_scheduling reads PROTECTED_SCHEDULER_CAPABLE; PROTECTED_WINDOW_AVAILABLE is a separate field.",
+  "nr_nx_path_callable reads GENERIC_NR_NX_PIPELINE_CALLABLE; FLASH_NX_READY is a separate field."
  ],
  "gate_workunit": {
   "assigned_backend": null,
@@ -2287,9 +2287,7 @@
   "running_at": null,
   "status": "completed",
   "unmet": [
-   "resident_autonomy_trial_pass",
-   "nr_nx_path_callable",
-   "protected_scheduling"
+   "nr_nx_path_callable"
   ],
   "verdict": "REFUSED",
   "verification": null,
@@ -2297,13 +2295,15 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "90898c763efc31a881112982070874c68de317f1",
+ "head": "f9f8c7d390e368bd6d7688537b9aae3cfc94ed6b",
  "integration_points": {
-  "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
+  "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
   "evidence_dag": "tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG",
   "frontiers": "tools/future/frontiers.py \u2014 frontier objects a result must change, and the refill that follows",
-  "protected_window": "tools/future/protected_window.py \u2014 protected scheduling that does not seize Codex's GPU lock",
+  "nr_nx_generic": "tools/future/nr_nx_generic.py \u2014 GENERIC_NR_NX_PIPELINE_CALLABLE vs FLASH_NX_READY",
+  "protected_scheduler": "tools/future/protected_scheduler.py \u2014 PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE",
+  "protected_window": "tools/future/protected_window.py \u2014 lock observation; does not seize Codex's GPU lock",
   "resident_api": "tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
   "resident_identity": "tools/future/resident_identity.py \u2014 canonical resident declaration the launch receipt binds",
   "sandbox": "tools/future/sandbox.py \u2014 orchestrator sandbox identity the resident operates",
@@ -2316,10 +2316,28 @@
   "autonomy_status": {
    "evidence": [
     {
+     "found": true,
+     "frozen_build_manifest_digest": "032f6aa1496bfc69a7d6427c9df754742fbd08bf670084b8e4ab1abdf019dc43",
+     "kind": "persisted_odyssey_trial",
+     "launch_eligible": true,
+     "path_taken": "worktree",
+     "resident_model_cognition": "UNAVAILABLE",
+     "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
+     "resident_orchestration": true,
+     "schema": "hawking.future.autonomy_trial.v1",
+     "timeline_path": "receipts/future/AUTONOMY_TIMELINE_1h.json",
+     "timeline_seal_digest": "72f00ec20f958aa83f30e2346839ddbeb4e5e31679f91235eb8775952bd7f011",
+     "timeline_seal_verifies": true,
+     "timeline_seal_why": "timeline file digest matches the persisted seal",
+     "trial": "1h",
+     "verdict": "PASS"
+    },
+    {
      "found": false,
-     "kind": "odyssey_trial",
+     "kind": "wrong_receipt_name",
+     "not_authority": true,
      "path_taken": "not_found",
-     "schema": null
+     "rel": "receipts/future/AUTONOMY_TRIAL.json"
     },
     {
      "all_requested_stages_passed": true,
@@ -2331,24 +2349,33 @@
     }
    ],
    "id": "resident_autonomy_trial_pass",
-   "met": false,
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
      "discover": true,
-     "frontier": false,
-     "invoke": false,
+     "frontier": true,
+     "invoke": true,
      "persist": true,
-     "refill": false,
-     "schedule": false,
+     "refill": true,
+     "schedule": true,
      "verify": true
     },
     "notes": {
-     "hcli_control_plane_is_not_odyssey_i": "true"
+     "does_not_read": "receipts/future/AUTONOMY_TRIAL.json",
+     "hcli_control_plane_is_not_odyssey_i": "true",
+     "orchestration_is_not_cognition": "true",
+     "reads": "receipts/future/AUTONOMY_TRIALS.json"
     },
-    "resident_operational": false
+    "resident_operational": true
    },
-   "reason": "No Odyssey I resident-orchestration autonomy trial has passed. HCLI AgentOS autonomy gate path_taken='worktree' schema='hcli.agentos.autonomy_gate.v1' all_requested_stages_passed=True: that receipt proves LIVE_AGENTOS_AUTONOMY_CONTROL_PLANE, not Odyssey I start. Odyssey trial receipt path_taken='not_found' schema=None. Integration point: tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt."
+   "persisted_trial": "1h",
+   "persisted_verdict": "PASS",
+   "reason": "Odyssey I resident-orchestration autonomy trial 1h persisted PASS in AUTONOMY_TRIALS.json; timeline seal verifies; resident_orchestration=true; resident_model_cognition='UNAVAILABLE'",
+   "resident_model_cognition": "UNAVAILABLE",
+   "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
+   "resident_orchestration": true,
+   "timeline_seal_verifies": true
   },
   "claim_boundary": "Static sidecar artifact. No hardware measurement. A launch-gate REFUSED receipt is not Odyssey started. ODYSSEY_I_LAUNCH.json is the only phase-transition receipt and is written only when every criterion is met.",
   "eras": [
@@ -3896,6 +3923,7 @@
   "verdict": {
    "allowed": false,
    "met": [
+    "resident_autonomy_trial_pass",
     "specimen_curriculum_ready",
     "modellake_identity",
     "doctor_callable",
@@ -3905,19 +3933,18 @@
     "workgraphs",
     "self_refill",
     "dirty_measurement",
+    "protected_scheduling",
     "transfer_substrate",
     "adversary_substrate",
     "crash_recovery",
     "receipts"
    ],
    "n_criteria": 16,
-   "n_met": 13,
-   "n_unmet": 3,
+   "n_met": 15,
+   "n_unmet": 1,
    "rule": "every unmet criterion is named; the first failure does not hide the rest",
    "unmet": [
-    "resident_autonomy_trial_pass",
-    "nr_nx_path_callable",
-    "protected_scheduling"
+    "nr_nx_path_callable"
    ],
    "verdict": "REFUSED"
   },
@@ -3931,7 +3958,7 @@
  },
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
-  "verdict=REFUSED n_unmet=3 unmet=['resident_autonomy_trial_pass', 'nr_nx_path_callable', 'protected_scheduling']",
+  "verdict=REFUSED n_unmet=1 unmet=['nr_nx_path_callable']",
   "A gate that passed today would mistake 'Odyssey infrastructure ready' for 'Odyssey started'.",
   "physical blocker sleep.no-gpu-authority: Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
   "physical blocker sleep.metal-compiler: xcrun -f metal did not locate the Metal compiler",
@@ -3939,7 +3966,7 @@
   "physical blocker sleep.machine-heavy: contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
   "physical blocker sleep.flash-nx-scaffold: FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
   "physical blocker sleep.teacher-capture: teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
-  "this-wave siblings are not imported; local interfaces are the integration points autonomy_trial, dirty_measure, evidence_dag, frontiers, protected_window, resident_api, resident_identity, sandbox, succession, super_resident, wakeup, workgraph"
+  "autonomy_trial / protected_scheduler / nr_nx_generic are imported when present; other this-wave siblings remain named integration points: autonomy_trial, dirty_measure, evidence_dag, frontiers, nr_nx_generic, protected_scheduler, protected_window, resident_api, resident_identity, sandbox, succession, super_resident, wakeup, workgraph"
  ],
  "no_era_vi": true,
  "no_odyssey_iv": true,
@@ -4042,7 +4069,7 @@
   }
  ],
  "recovered_implementation": {
-  "fork_decision": "extend nothing that already gated Odyssey I start; the package fence is a different campaign",
+  "fork_decision": "EXTENDED the three remaining evaluators in this file. Did not fork parallel modules. protected_scheduler.py, nr_nx_generic.py, autonomy_trial.py are the landed drivers.",
   "hcli": {
    "autonomy_gate": "hcli/agentos/autonomy_gate.py \u2014 control-plane A1\u2013A5, not Odyssey I start",
    "doctor_gravity_markers": "hcli/doctor, hcli/gravity ownership markers",
@@ -4053,12 +4080,15 @@
   },
   "landed_future": {
    "_common.write_receipt": "HardwareClaimError on numeric hardware fields",
+   "autonomy_trial": "AUTONOMY_TRIALS.json persisted --verify verdict; EXTENDED the evaluator to read the file that is actually written",
    "contamination": "machine-state class, HEAVY on this host",
    "evidence_snapshot": "pinned Codex receipts",
-   "flash_nx_audit": "NR/NX completeness",
+   "flash_nx_audit": "NR/NX completeness (Flash-specific; not this criterion's authority)",
    "negative_index": "negative science",
+   "nr_nx_generic": "GENERIC_NR_NX_PIPELINE_CALLABLE vs FLASH_NX_READY; EXTENDED the evaluator to read it",
    "odyssey2_law_store": "transfer substrate",
    "odyssey3_adversary": "adversary substrate",
+   "protected_scheduler": "PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE; EXTENDED the evaluator to read it",
    "qualification_pipeline": "protected lease fail-closed",
    "repro_science": "crash/fault fail-closed",
    "resident_optimizer": "propose/rank, never promote",
@@ -4070,18 +4100,20 @@
    "receipts": "receipts/odyssey-i/ patient/doctor/gravity/nx seals \u2014 recovered, not duplicated",
    "tools": "tools/odyssey/ (READ-ONLY): doctor_tournament, decoding_gravity, state_gravity, modellake, resident_seal, protected_window, pareto_archive, noetic_compiler"
   },
-  "this_module_existed": false
+  "this_module_existed": true
  },
  "resident_callable": {
   "entry_point": "python3 tools/future/odyssey_launch.py --verify",
   "fail_closed": "can_launch() is False while any criterion is unmet; unmet_criteria() names every unmet id; write_launch_if_passed() does not call write_receipt for ODYSSEY_I_LAUNCH.json on refuse; --launch exits 1; HardwareClaimError on numeric hardware fields; GPU units stay SLEEPING rather than inventing a result.",
   "frontier_fed": "Odyssey I start frontier: a REFUSED gate keeps the frontier at NOT_STARTED; a pass would write ODYSSEY_I_LAUNCH.json and that is the only start mark. Next refill trigger is a criterion flip or a SLEEPING wakeup.",
   "integration_points": {
-   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
+   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
    "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
    "evidence_dag": "tools/future/evidence_dag.py \u2014 evidence DAG the resident walks; lattice alone is not the DAG",
    "frontiers": "tools/future/frontiers.py \u2014 frontier objects a result must change, and the refill that follows",
-   "protected_window": "tools/future/protected_window.py \u2014 protected scheduling that does not seize Codex's GPU lock",
+   "nr_nx_generic": "tools/future/nr_nx_generic.py \u2014 GENERIC_NR_NX_PIPELINE_CALLABLE vs FLASH_NX_READY",
+   "protected_scheduler": "tools/future/protected_scheduler.py \u2014 PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE",
+   "protected_window": "tools/future/protected_window.py \u2014 lock observation; does not seize Codex's GPU lock",
    "resident_api": "tools/future/resident_api.py \u2014 discover/invoke surface HCLI uses instead of a human CLI",
    "resident_identity": "tools/future/resident_identity.py \u2014 canonical resident declaration the launch receipt binds",
    "sandbox": "tools/future/sandbox.py \u2014 orchestrator sandbox identity the resident operates",
@@ -4112,7 +4144,9 @@
    "super_resident",
    "tabula",
    "debugger",
-   "autonomy_trial"
+   "autonomy_trial",
+   "protected_scheduler",
+   "nr_nx_generic"
   ],
   "verdict_now": "REFUSED",
   "workunit_emitted": "odyssey-i.launch-gate plus first WorkGraph units and SLEEPING physical blockers"
@@ -4180,8 +4214,83 @@
   "gpu_authority": false,
   "sleeping_are_not_results": true
  },
+ "rewire": {
+  "criteria_rewired": [
+   {
+    "after_met": true,
+    "before_met": false,
+    "id": "resident_autonomy_trial_pass",
+    "live_reason": "Odyssey I resident-orchestration autonomy trial 1h persisted PASS in AUTONOMY_TRIALS.json; timeline seal verifies; resident_orchestration=true; resident_model_cognition='UNAVAILABLE'",
+    "why": "now reads AUTONOMY_TRIALS.json persisted --verify (plural) with orchestration/cognition split and timeline-seal verify; used to probe AUTONOMY_TRIAL.json which was never written"
+   },
+   {
+    "after_met": false,
+    "before_met": false,
+    "id": "nr_nx_path_callable",
+    "live_reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage='Doctor: tools.odyssey.doctor_tournament is parameterized on a hardcoded PARENT (/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16) with Qwen3.8-27B tensor names; 12/12 probe tensors are absent from this specimen. probes() was not run: it imports torch+safetensors and would load the wrong model'. invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path.",
+    "why": "now reads nr_nx_generic GENERIC_NR_NX_PIPELINE_CALLABLE; used to key on FLASH_NX_COMPLETENESS_AUDIT / Flash NX metadata"
+   },
+   {
+    "after_met": true,
+    "before_met": false,
+    "id": "protected_scheduling",
+    "live_reason": "protected scheduler is CAPABLE; window AVAILABLE=False (contamination_class='HEAVY'). Capability is not availability; no lock was seized",
+    "why": "now reads protected_scheduler.capability_report() CAPABLE vs AVAILABLE; used to AND capability with QUIESCENT+gpu_authority so a HEAVY machine looked incapable"
+   }
+  ],
+  "gate_count_after": {
+   "met": [
+    "resident_autonomy_trial_pass",
+    "specimen_curriculum_ready",
+    "modellake_identity",
+    "doctor_callable",
+    "gravity_callable",
+    "evidence_hierarchy",
+    "negative_science",
+    "workgraphs",
+    "self_refill",
+    "dirty_measurement",
+    "protected_scheduling",
+    "transfer_substrate",
+    "adversary_substrate",
+    "crash_recovery",
+    "receipts"
+   ],
+   "n_criteria": 16,
+   "n_met": 15,
+   "n_unmet": 1,
+   "unmet": [
+    "nr_nx_path_callable"
+   ],
+   "verdict": "REFUSED"
+  },
+  "gate_count_before": {
+   "n_criteria": 16,
+   "n_met": 13,
+   "n_unmet": 3,
+   "source": "ODYSSEY_LAUNCH_GATE.json before L31: autonomy probed AUTONOMY_TRIAL.json (singular) while the module wrote AUTONOMY_TRIALS.json; protected_scheduling ANDed capability with window availability; nr_nx_path_callable keyed on Flash NX completeness instead of the generic pipeline",
+   "unmet": [
+    "resident_autonomy_trial_pass",
+    "nr_nx_path_callable",
+    "protected_scheduling"
+   ]
+  },
+  "none_lowered": true,
+  "rewired_net": {
+   "became_met": [
+    "resident_autonomy_trial_pass",
+    "protected_scheduling"
+   ],
+   "stayed_met": [],
+   "stayed_unmet": [
+    "nr_nx_path_callable"
+   ]
+  },
+  "still_refused_if_any_unmet": true,
+  "unmet_not_from_this_rewire": []
+ },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "5cde8c5dcae606bba149a941b39fc40b9e925d22df75c9c97c6088dac16d09c1",
+ "seal_sha256": "35ebd8524c27bfc989a38688fab5d9f51231b9a9f9872d4ab8d43a0467c80226",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -5118,11 +5227,14 @@
   "super_resident",
   "tabula",
   "debugger",
-  "autonomy_trial"
+  "autonomy_trial",
+  "protected_scheduler",
+  "nr_nx_generic"
  ],
  "verdict": {
   "allowed": false,
   "met": [
+   "resident_autonomy_trial_pass",
    "specimen_curriculum_ready",
    "modellake_identity",
    "doctor_callable",
@@ -5132,19 +5244,18 @@
    "workgraphs",
    "self_refill",
    "dirty_measurement",
+   "protected_scheduling",
    "transfer_substrate",
    "adversary_substrate",
    "crash_recovery",
    "receipts"
   ],
   "n_criteria": 16,
-  "n_met": 13,
-  "n_unmet": 3,
+  "n_met": 15,
+  "n_unmet": 1,
   "rule": "every unmet criterion is named; the first failure does not hide the rest",
   "unmet": [
-   "resident_autonomy_trial_pass",
-   "nr_nx_path_callable",
-   "protected_scheduling"
+   "nr_nx_path_callable"
   ],
   "verdict": "REFUSED"
  },

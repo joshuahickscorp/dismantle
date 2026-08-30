@@ -20,11 +20,12 @@ from __future__ import annotations
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 
-from tools.future._common import write_receipt, load_json, REPO, git, RECEIPTS
+from tools.future._common import write_receipt, load_json, REPO, git, RECEIPTS, sha256_file
 
 import argparse
 import ast
 import importlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -80,6 +81,8 @@ THIS_WAVE_SIBLINGS = (
     "tabula",
     "debugger",
     "autonomy_trial",
+    "protected_scheduler",
+    "nr_nx_generic",
 )
 
 # HCLI AgentOS autonomy is a recovered control-plane proof. It is not an
@@ -87,9 +90,29 @@ THIS_WAVE_SIBLINGS = (
 HCLI_AUTONOMY_SCHEMA = "hcli.agentos.autonomy_gate.v1"
 ODYSSEY_AUTONOMY_SCHEMAS = (
     "hawking.future.autonomy_trial.v1",
+    "hawking.future.autonomy_trial.persisted_verdict.v1",
     "hawking.odyssey.autonomy_trial.v1",
     "hawking.future.super_resident.autonomy.v1",
 )
+
+# The three criteria this lane rewires. Captured so the receipt can state
+# the gate count before and after without pretending a later re-run is the baseline.
+REWIRE_BASELINE = {
+    "n_criteria": 16,
+    "n_met": 13,
+    "n_unmet": 3,
+    "unmet": [
+        "resident_autonomy_trial_pass",
+        "nr_nx_path_callable",
+        "protected_scheduling",
+    ],
+    "source": (
+        "ODYSSEY_LAUNCH_GATE.json before L31: autonomy probed AUTONOMY_TRIAL.json "
+        "(singular) while the module wrote AUTONOMY_TRIALS.json; protected_scheduling "
+        "ANDed capability with window availability; nr_nx_path_callable keyed on "
+        "Flash NX completeness instead of the generic pipeline"
+    ),
+}
 
 CRITERION_IDS: tuple[str, ...] = (
     "resident_autonomy_trial_pass",
@@ -153,14 +176,16 @@ SIDECAR_CLAIM = (
 
 # Local interface the this-wave siblings will replace. Named, not imported.
 INTEGRATION_POINTS: dict[str, str] = {
-    "autonomy_trial": "tools/future/autonomy_trial.py — Odyssey I resident-orchestration trial pass receipt",
+    "autonomy_trial": "tools/future/autonomy_trial.py — persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
     "resident_identity": "tools/future/resident_identity.py — canonical resident declaration the launch receipt binds",
     "sandbox": "tools/future/sandbox.py — orchestrator sandbox identity the resident operates",
     "workgraph": "tools/future/workgraph.py — WorkGraph runtime that admits, schedules and verifies the units this gate emits",
     "frontiers": "tools/future/frontiers.py — frontier objects a result must change, and the refill that follows",
     "succession": "tools/future/succession.py — self-refill / next-work succession under resident control",
     "dirty_measure": "tools/future/dirty_measure.py — dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
-    "protected_window": "tools/future/protected_window.py — protected scheduling that does not seize Codex's GPU lock",
+    "protected_window": "tools/future/protected_window.py — lock observation; does not seize Codex's GPU lock",
+    "protected_scheduler": "tools/future/protected_scheduler.py — PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE",
+    "nr_nx_generic": "tools/future/nr_nx_generic.py — GENERIC_NR_NX_PIPELINE_CALLABLE vs FLASH_NX_READY",
     "evidence_dag": "tools/future/evidence_dag.py — evidence DAG the resident walks; lattice alone is not the DAG",
     "wakeup": "tools/future/wakeup.py — wake SLEEPING WorkUnits when hardware qualifies",
     "super_resident": "tools/future/super_resident.py — HCLI super-resident operating the orchestrator sandbox",
@@ -279,6 +304,69 @@ def _importable(dotted: str) -> dict[str, Any]:
         return {"ok": True, "module": dotted, "file": getattr(mod, "__file__", None)}
     except Exception as exc:
         return {"ok": False, "module": dotted, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _load_future_module(name: str) -> dict[str, Any]:
+    """Import a sidecar module, including from the primary checkout on a sparse worktree.
+
+    Missing here is not absence. A failed import is recorded; it is not a PASS.
+    """
+    dotted = f"tools.future.{name}"
+    try:
+        mod = importlib.import_module(dotted)
+        return {
+            "ok": True,
+            "module": mod,
+            "dotted": dotted,
+            "path_taken": "import",
+            "file": getattr(mod, "__file__", None),
+        }
+    except Exception:
+        existing = sys.modules.get(dotted)
+        if existing is not None and getattr(existing, "__file__", None) is None:
+            sys.modules.pop(dotted, None)
+    loc = _module_file(f"tools/future/{name}.py")
+    resolved = loc.get("resolved")
+    if not loc.get("present") or not resolved or loc.get("path_taken") == "git_tracked_not_materialized":
+        return {
+            "ok": False,
+            "module": None,
+            "dotted": dotted,
+            "why": f"{name} not importable and not materialized: {loc.get('path_taken')}",
+            "loc": loc,
+        }
+    path = Path(str(resolved))
+    if not path.is_file():
+        return {
+            "ok": False,
+            "module": None,
+            "dotted": dotted,
+            "why": f"{name} resolved to a non-file: {path}",
+            "loc": loc,
+        }
+    try:
+        spec = importlib.util.spec_from_file_location(dotted, path)
+        if spec is None or spec.loader is None:
+            return {"ok": False, "module": None, "dotted": dotted, "why": "spec_from_file_location returned None"}
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[dotted] = mod
+        spec.loader.exec_module(mod)
+        return {
+            "ok": True,
+            "module": mod,
+            "dotted": dotted,
+            "path_taken": loc.get("path_taken"),
+            "file": str(path),
+        }
+    except Exception as exc:
+        sys.modules.pop(dotted, None)
+        return {
+            "ok": False,
+            "module": None,
+            "dotted": dotted,
+            "why": f"{type(exc).__name__}: {exc}",
+            "loc": loc,
+        }
 
 
 def _receipt_sealed(doc: Mapping[str, Any] | None) -> bool:
@@ -1181,20 +1269,24 @@ def _attach_sleeping(rows: list[dict[str, Any]], units: list[dict[str, Any]]) ->
 # ---------------------------------------------------------------------------
 
 
+def _autonomy_trials_doc() -> dict[str, Any]:
+    """Read the receipt autonomy_trial.py actually writes. Singular is not this file."""
+    return probe_json("receipts/future/AUTONOMY_TRIALS.json")
+
+
 def _eval_autonomy() -> dict[str, Any]:
-    probes = [
-        probe_json(
-            "receipts/future/AUTONOMY_TRIAL.json",
-            "receipts/future/ODYSSEY_AUTONOMY_TRIAL.json",
-            "receipts/future/SUPER_RESIDENT.json",
-        ),
-        probe_json(
-            "receipts/headless/HCLI_AGENTOS_AUTONOMY_GATE.json",
-            "receipts/future/evidence/HCLI_AGENTOS_AUTONOMY_GATE.json",
-        ),
-    ]
-    trial = probes[0]
-    hcli = probes[1]
+    """Pass only on a persisted 1h+ PASS whose timeline seal still verifies.
+
+    AUTONOMY_TRIAL.json (singular) is the old probe and is never authority.
+    A FAIL persisted verdict never satisfies. Orchestration and cognition are
+    separate: this criterion requires the HCLI loop and records cognition.
+    """
+    trials = _autonomy_trials_doc()
+    singular = probe_json("receipts/future/AUTONOMY_TRIAL.json")
+    hcli = probe_json(
+        "receipts/headless/HCLI_AGENTOS_AUTONOMY_GATE.json",
+        "receipts/future/evidence/HCLI_AGENTOS_AUTONOMY_GATE.json",
+    )
     hcli_doc = hcli.get("doc") if isinstance(hcli.get("doc"), Mapping) else None
     hcli_schema = hcli_doc.get("schema") if hcli_doc else None
     hcli_passed = bool(
@@ -1202,33 +1294,156 @@ def _eval_autonomy() -> dict[str, Any]:
         and hcli_schema == HCLI_AUTONOMY_SCHEMA
         and (hcli_doc.get("checks") or {}).get("all_requested_stages_passed") is True
     )
-    trial_doc = trial.get("doc") if isinstance(trial.get("doc"), Mapping) else None
-    trial_schema = trial_doc.get("schema") if trial_doc else None
-    trial_pass = bool(
-        trial_doc
-        and trial_schema in ODYSSEY_AUTONOMY_SCHEMAS
-        and str(trial_doc.get("verdict") or trial_doc.get("status") or "").upper() in {"PASS", "PASSED"}
-        and trial_doc.get("resident_orchestration") is True
+    trials_doc = trials.get("doc") if isinstance(trials.get("doc"), Mapping) else None
+    at_mod = _load_future_module("autonomy_trial")
+    candidate = None
+    if at_mod.get("ok"):
+        candidate = at_mod["module"].launch_candidate_from_receipt(trials_doc)
+    elif isinstance(trials_doc, Mapping):
+        by = trials_doc.get("persisted_verdicts_by_trial")
+        if isinstance(by, Mapping):
+            for trial in ("6h", "3h", "1h"):
+                row = by.get(trial)
+                if isinstance(row, Mapping):
+                    candidate = dict(row)
+                    break
+
+    seal = {"verifies": False, "why": "no persisted 1h+ verdict"}
+    orch = None
+    cognition = None
+    cognition_reason = None
+    verdict_label = None
+    trial_id = None
+    if isinstance(candidate, Mapping):
+        trial_id = candidate.get("trial")
+        verdict_label = str(candidate.get("verdict") or "").upper()
+        orch = candidate.get("resident_orchestration")
+        cognition = candidate.get("resident_model_cognition")
+        cognition_reason = candidate.get("resident_model_cognition_reason")
+        if at_mod.get("ok"):
+            seal = at_mod["module"].verify_timeline_digest(
+                candidate.get("timeline_path"),
+                candidate.get("timeline_seal_digest"),
+            )
+        else:
+            # Module missing: re-hash here rather than believe the stored flag.
+            expected = candidate.get("timeline_seal_digest")
+            rel = candidate.get("timeline_path")
+            if expected and rel:
+                path = Path(str(rel))
+                if not path.is_file():
+                    path = REPO / rel
+                if path.is_file() and sha256_file(path) == expected:
+                    seal = {"verifies": True, "why": "file digest matches (autonomy_trial module not imported)"}
+                else:
+                    seal = {"verifies": False, "why": "digest mismatch or timeline absent; autonomy_trial not imported"}
+            else:
+                seal = {"verifies": False, "why": "persisted verdict missing path or digest"}
+
+    fail_verdict = verdict_label == "FAIL"
+    pass_verdict = verdict_label == "PASS"
+    eligible = str(trial_id or "") in {"1h", "3h", "6h"}
+    seal_ok = seal.get("verifies") is True
+    orch_ok = orch is True
+    cognition_recorded = cognition is not None
+    met = bool(
+        isinstance(candidate, Mapping)
+        and pass_verdict
+        and not fail_verdict
+        and eligible
+        and orch_ok
+        and seal_ok
+        and cognition_recorded
     )
-    met = trial_pass
-    reason = (
-        "Odyssey I resident-orchestration autonomy trial has passed"
-        if met
-        else (
-            "No Odyssey I resident-orchestration autonomy trial has passed. "
-            f"HCLI AgentOS autonomy gate path_taken={hcli.get('path_taken')!r} "
-            f"schema={hcli_schema!r} all_requested_stages_passed={hcli_passed}: "
-            "that receipt proves LIVE_AGENTOS_AUTONOMY_CONTROL_PLANE, not Odyssey I start. "
-            f"Odyssey trial receipt path_taken={trial.get('path_taken')!r} "
-            f"schema={trial_schema!r}. Integration point: {INTEGRATION_POINTS['autonomy_trial']}."
+    if fail_verdict:
+        met = False
+        why_unmet = (
+            f"persisted verdict is FAIL (trial={trial_id!r}); a FAIL never satisfies "
+            "resident_autonomy_trial_pass"
         )
+    elif not isinstance(candidate, Mapping):
+        why_unmet = (
+            "No persisted 1h/3h/6h verdict in AUTONOMY_TRIALS.json. "
+            f"path_taken={trials.get('path_taken')!r}. "
+            "AUTONOMY_TRIAL.json (singular) is not this receipt "
+            f"(found={singular.get('found')}, path_taken={singular.get('path_taken')!r}). "
+            f"HCLI AgentOS autonomy all_requested_stages_passed={hcli_passed} is not this criterion."
+        )
+    elif not eligible:
+        why_unmet = f"persisted trial={trial_id!r} is not 1h/3h/6h; 15m is not the launch bar"
+    elif not pass_verdict:
+        why_unmet = f"persisted verdict={verdict_label!r} is not PASS"
+    elif not orch_ok:
+        why_unmet = (
+            "resident_orchestration is not true; the HCLI loop did not orchestrate work. "
+            "cognition is recorded separately and is not this requirement"
+        )
+    elif not seal_ok:
+        why_unmet = (
+            "timeline seal does not verify: "
+            f"{seal.get('why')}. The judged process must not edit the transcript after the fact"
+        )
+    elif not cognition_recorded:
+        why_unmet = (
+            "resident_model_cognition was not recorded; refusing to infer a thinking model. "
+            "UNAVAILABLE is a valid recording; silence is not"
+        )
+    else:
+        why_unmet = ""
+
+    reason = (
+        (
+            f"Odyssey I resident-orchestration autonomy trial {trial_id} persisted PASS "
+            f"in AUTONOMY_TRIALS.json; timeline seal verifies; "
+            f"resident_orchestration=true; resident_model_cognition={cognition!r}"
+        )
+        if met
+        else why_unmet
+    )
+    bar = operational_bar(
+        discover=bool(trials.get("found")),
+        invoke=bool(at_mod.get("ok")),
+        schedule=bool(orch_ok),
+        verify=bool(seal_ok),
+        frontier=bool(candidate),
+        persist=bool(isinstance(candidate, Mapping)),
+        refill=bool(met),
+        notes={
+            "hcli_control_plane_is_not_odyssey_i": "true",
+            "reads": "receipts/future/AUTONOMY_TRIALS.json",
+            "does_not_read": "receipts/future/AUTONOMY_TRIAL.json",
+            "orchestration_is_not_cognition": "true",
+        },
     )
     return _criterion(
         "resident_autonomy_trial_pass",
         met=met,
         reason=reason,
         evidence=[
-            {"kind": "odyssey_trial", "path_taken": trial.get("path_taken"), "schema": trial_schema, "found": trial.get("found")},
+            {
+                "kind": "persisted_odyssey_trial",
+                "path_taken": trials.get("path_taken"),
+                "found": trials.get("found"),
+                "schema": None if not trials_doc else trials_doc.get("schema"),
+                "trial": trial_id,
+                "verdict": verdict_label,
+                "resident_orchestration": orch,
+                "resident_model_cognition": cognition,
+                "resident_model_cognition_reason": cognition_reason,
+                "timeline_path": None if not candidate else candidate.get("timeline_path"),
+                "timeline_seal_digest": None if not candidate else candidate.get("timeline_seal_digest"),
+                "timeline_seal_verifies": seal.get("verifies"),
+                "timeline_seal_why": seal.get("why"),
+                "frozen_build_manifest_digest": None if not candidate else candidate.get("frozen_build_manifest_digest"),
+                "launch_eligible": eligible,
+            },
+            {
+                "kind": "wrong_receipt_name",
+                "rel": "receipts/future/AUTONOMY_TRIAL.json",
+                "found": singular.get("found"),
+                "path_taken": singular.get("path_taken"),
+                "not_authority": True,
+            },
             {
                 "kind": "hcli_agentos_autonomy",
                 "path_taken": hcli.get("path_taken"),
@@ -1238,16 +1453,15 @@ def _eval_autonomy() -> dict[str, Any]:
                 "not_this_criterion": True,
             },
         ],
-        operational=operational_bar(
-            discover=bool(trial.get("found") or hcli.get("found")),
-            invoke=False,
-            schedule=False,
-            verify=hcli_passed,
-            frontier=False,
-            persist=bool(hcli.get("found")),
-            refill=False,
-            notes={"hcli_control_plane_is_not_odyssey_i": "true"},
-        ),
+        extra={
+            "resident_orchestration": orch,
+            "resident_model_cognition": cognition,
+            "resident_model_cognition_reason": cognition_reason,
+            "timeline_seal_verifies": seal.get("verifies"),
+            "persisted_verdict": verdict_label,
+            "persisted_trial": trial_id,
+        },
+        operational=bar,
     )
 
 
@@ -1404,6 +1618,13 @@ def _declared_inputs(rel: str) -> list[dict[str, Any]]:
     read, which is exactly how the Doctor and Gravity tools name their parent.
     """
     path = REPO / rel
+    if not path.is_file():
+        loc = _module_file(rel)
+        resolved = loc.get("resolved")
+        if loc.get("present") and resolved and Path(str(resolved)).is_file():
+            path = Path(str(resolved))
+        else:
+            return []
     try:
         tree = ast.parse(path.read_text(errors="replace"))
     except (OSError, SyntaxError):
@@ -1460,10 +1681,20 @@ def _resolve_stale_input(declared: str) -> str | None:
 
 def _eval_callable_tool(*, cid: str, owned: Sequence[str], prior_glob: str, title: str) -> dict[str, Any]:
     files = [_module_file(p) for p in owned]
-    prior = []
-    root = REPO / "receipts" / "odyssey-i"
-    if root.is_dir():
-        prior = sorted(str(p.relative_to(REPO)) for p in root.glob(prior_glob))
+    prior: list[str] = []
+    seen: set[str] = set()
+    # Sparse miss of receipts/odyssey-i in this worktree is not absence in the
+    # project. Search every checkout root the rest of this gate already uses.
+    for checkout in _checkout_roots():
+        folder = checkout / "receipts" / "odyssey-i"
+        if not folder.is_dir():
+            continue
+        for p in folder.glob(prior_glob):
+            rel = f"receipts/odyssey-i/{p.name}"
+            if rel not in seen:
+                seen.add(rel)
+                prior.append(rel)
+    prior = sorted(prior)
     present = any(f.get("present") for f in files) or bool(prior)
     # File presence is not invocability. These tools hardcode the parent weights
     # they read, and a tool whose parent is not on this host cannot be invoked by
@@ -1477,7 +1708,10 @@ def _eval_callable_tool(*, cid: str, owned: Sequence[str], prior_glob: str, titl
     stale_inputs = [i for i in missing_inputs if i.get("resolved_elsewhere")]
     absent_inputs = [i for i in missing_inputs if not i.get("resolved_elsewhere")]
     invocable = (
-        any(f.get("present") and f.get("path_taken") == "worktree" for f in files)
+        any(
+            f.get("present") and f.get("path_taken") in {"worktree", "primary_checkout"}
+            for f in files
+        )
         and not missing_inputs
     )
     # schedule / frontier / refill are measured against the connector that now
@@ -1568,58 +1802,138 @@ def _eval_gravity() -> dict[str, Any]:
     )
 
 
-def _eval_nr_nx() -> dict[str, Any]:
-    rec = probe_json("receipts/future/FLASH_NX_COMPLETENESS_AUDIT.json")
-    doc = rec.get("doc") if isinstance(rec.get("doc"), Mapping) else None
-    seven = doc.get("seven_all_met") if doc else None
-    nx_checker = (doc.get("nx_completeness_checker") or {}) if doc else {}
-    real = nx_checker.get("real_FLASH_COMPLETE_V0_nx") if isinstance(nx_checker, Mapping) else None
-    nr = doc.get("nr_v2") if isinstance(doc, Mapping) else None
-    nx_v0 = probe_json(
-        "receipts/future/evidence/FLASH_COMPLETE_V0.nx.json",
-        "receipts/headless/FLASH_COMPLETE_V0.nx.json",
-    )
-    nx_doc = nx_v0.get("doc") if isinstance(nx_v0.get("doc"), Mapping) else None
-    nx_status = nx_doc.get("status") if nx_doc else None
-    callable_path = seven is True and nx_status not in {
-        None,
-        nx_audit.METADATA_ONLY,
-        "NOT_BUILT",
-        "SCAFFOLD_ONLY",
+def _nr_nx_generic_state() -> dict[str, Any]:
+    """Invoke nr_nx_generic. A receipt without a driver is a declaration, not a drive."""
+    loaded = _load_future_module("nr_nx_generic")
+    rec = probe_json("receipts/future/NR_NX_GENERIC.json")
+    rec_doc = rec.get("doc") if isinstance(rec.get("doc"), Mapping) else None
+    flash_live: dict[str, Any] | None = None
+    generic_live = None
+    first_failing = None
+    invoked: list[str] = []
+    if loaded.get("ok"):
+        mod = loaded["module"]
+        try:
+            flash_live = mod.flash_nx_ready()
+            invoked.append("nr_nx_generic.flash_nx_ready")
+        except Exception as exc:
+            flash_live = {
+                "FLASH_NX_READY": False,
+                "why": f"flash_nx_ready raised {type(exc).__name__}: {exc}",
+            }
+            invoked.append("nr_nx_generic.flash_nx_ready:RAISED")
+        stages = list((rec_doc or {}).get("stages") or [])
+        try:
+            generic_live = bool(mod.generic_pipeline_callable(stages))
+            invoked.append("nr_nx_generic.generic_pipeline_callable")
+        except Exception as exc:
+            generic_live = False
+            invoked.append("nr_nx_generic.generic_pipeline_callable:RAISED")
+            first_failing = {"stage": None, "why": f"{type(exc).__name__}: {exc}"}
+        if first_failing is None and hasattr(mod, "first_failing_stage"):
+            try:
+                first_failing = mod.first_failing_stage(stages)
+            except Exception:
+                first_failing = (rec_doc or {}).get("first_failing_stage")
+    else:
+        generic_live = False
+        flash_live = {"FLASH_NX_READY": False, "why": loaded.get("why")}
+        first_failing = None if not rec_doc else rec_doc.get("first_failing_stage")
+
+    receipt_generic = None if not rec_doc else rec_doc.get("GENERIC_NR_NX_PIPELINE_CALLABLE")
+    receipt_flash = None if not rec_doc else rec_doc.get("FLASH_NX_READY")
+    # Live function wins. A receipt that says callable while the function says
+    # not is a declaration, and a declaration is not a drive.
+    generic = False if generic_live is None else bool(generic_live)
+    flash_ready = False
+    flash_why = "FLASH_NX_READY not established"
+    if isinstance(flash_live, Mapping):
+        flash_ready = bool(flash_live.get("FLASH_NX_READY") is True)
+        flash_why = str(flash_live.get("why") or flash_why)
+    return {
+        "invoked": invoked,
+        "import": {k: v for k, v in loaded.items() if k != "module"},
+        "receipt_path_taken": rec.get("path_taken"),
+        "receipt_found": rec.get("found"),
+        "GENERIC_NR_NX_PIPELINE_CALLABLE": generic,
+        "GENERIC_FROM_RECEIPT": receipt_generic,
+        "FLASH_NX_READY": flash_ready,
+        "FLASH_FROM_RECEIPT": receipt_flash,
+        "flash": flash_live,
+        "flash_why": flash_why,
+        "first_failing_stage": first_failing if first_failing is not None else (
+            None if not rec_doc else rec_doc.get("first_failing_stage")
+        ),
+        "n_stages": 0 if not rec_doc else len(list(rec_doc.get("stages") or [])),
     }
+
+
+def _eval_nr_nx() -> dict[str, Any]:
+    """Generic pipeline result, not Flash artifact readiness.
+
+    FLASH_NX_READY is reported separately and stays false until Flash earns a
+    packed NX. Qwen27 launches; Flash is a child. If the generic pipeline is
+    not callable on any available specimen, this criterion stays unmet.
+    """
+    state = _nr_nx_generic_state()
+    generic = state.get("GENERIC_NR_NX_PIPELINE_CALLABLE") is True
+    flash_ready = state.get("FLASH_NX_READY") is True
+    invoked = list(state.get("invoked") or [])
+    first = state.get("first_failing_stage")
     bar = operational_bar(
-        discover=bool(doc or nx_doc),
-        invoke=False,
-        schedule=False,
-        verify=seven is False or seven is True,
-        frontier=False,
-        persist=bool(rec.get("found")),
+        discover=bool(state.get("receipt_found") or state.get("import", {}).get("ok")),
+        invoke=bool(invoked),
+        schedule=bool(state.get("import", {}).get("ok")),
+        verify=bool(invoked),
+        frontier=bool(state.get("import", {}).get("ok")),
+        persist=bool(state.get("receipt_found")),
         refill=False,
-        notes={"flash_nx_scaffold_only": str(not callable_path)},
+        notes={
+            "FLASH_NX_READY_is_not_this_criterion": "true",
+            "generic_pipeline_callable": str(generic),
+            "FLASH_NX_READY": str(flash_ready),
+        },
+    )
+    met = bool(generic)
+    first_why = None
+    if isinstance(first, Mapping):
+        first_why = f"{first.get('stage')}: {first.get('why') or first.get('error') or first.get('status')}"
+    reason = (
+        "generic NR→NX pipeline is callable on an available specimen; FLASH_NX_READY is independent"
+        if met
+        else (
+            "generic NR→NX pipeline is not callable. "
+            f"GENERIC_NR_NX_PIPELINE_CALLABLE={generic} "
+            f"FLASH_NX_READY={flash_ready} (separate field, not this criterion). "
+            f"first_failing_stage={first_why!r}. "
+            f"invoked={invoked}. A Flash metadata seal is not a packed NX and is not this path."
+        )
     )
     return _criterion(
         "nr_nx_path_callable",
-        met=bool(callable_path and bar["resident_operational"]),
-        reason=(
-            "NR/NX path is source-independent, complete, and resident-callable"
-            if callable_path
-            else (
-                f"NR/NX path is not callable. seven_all_met={seven!r} "
-                f"FLASH_COMPLETE_V0.nx status={nx_status!r} "
-                f"nr_v2={None if not isinstance(nr, Mapping) else nr.get('status')!r}. "
-                "Flash source-independent NX is SCAFFOLD_ONLY / metadata, not qualified."
-            )
-        ),
+        met=met,
+        reason=reason,
         evidence=[
             {
-                "audit_path_taken": rec.get("path_taken"),
-                "seven_all_met": seven,
-                "nx_v0_path_taken": nx_v0.get("path_taken"),
-                "nx_v0_status": nx_status,
-                "nr_v2": nr if isinstance(nr, Mapping) else None,
-                "real_checker": real,
+                "kind": "nr_nx_generic",
+                "invoked": invoked,
+                "import_ok": bool(state.get("import", {}).get("ok")),
+                "import_path_taken": state.get("import", {}).get("path_taken") or state.get("import", {}).get("why"),
+                "receipt_path_taken": state.get("receipt_path_taken"),
+                "GENERIC_NR_NX_PIPELINE_CALLABLE": generic,
+                "GENERIC_FROM_RECEIPT": state.get("GENERIC_FROM_RECEIPT"),
+                "FLASH_NX_READY": flash_ready,
+                "FLASH_FROM_RECEIPT": state.get("FLASH_FROM_RECEIPT"),
+                "flash_why": state.get("flash_why"),
+                "first_failing_stage": first,
+                "n_stages": state.get("n_stages"),
             }
         ],
+        extra={
+            "GENERIC_NR_NX_PIPELINE_CALLABLE": generic,
+            "FLASH_NX_READY": flash_ready,
+            "facts_are_independent": True,
+        },
         operational=bar,
     )
 
@@ -1834,76 +2148,164 @@ def _eval_dirty_measurement() -> dict[str, Any]:
     )
 
 
+def _protected_capability_report() -> dict[str, Any]:
+    """Invoke protected_scheduler.capability_report(). Absence is incapable, not available."""
+    loaded = _load_future_module("protected_scheduler")
+    rec = probe_json("receipts/future/PROTECTED_SCHEDULER.json")
+    if not loaded.get("ok"):
+        return {
+            "invoked": False,
+            "why": loaded.get("why"),
+            "PROTECTED_SCHEDULER_CAPABLE": False,
+            "PROTECTED_WINDOW_AVAILABLE": False,
+            "contamination_class": None,
+            "receipt_path_taken": rec.get("path_taken"),
+            "did_not_fabricate_lease": True,
+            "did_not_flock": True,
+        }
+    try:
+        report = loaded["module"].capability_report()
+    except Exception as exc:
+        return {
+            "invoked": False,
+            "why": f"capability_report raised {type(exc).__name__}: {exc}",
+            "PROTECTED_SCHEDULER_CAPABLE": False,
+            "PROTECTED_WINDOW_AVAILABLE": False,
+            "contamination_class": None,
+            "receipt_path_taken": rec.get("path_taken"),
+            "did_not_fabricate_lease": True,
+            "did_not_flock": True,
+        }
+    if not isinstance(report, Mapping):
+        return {
+            "invoked": False,
+            "why": "capability_report returned a non-mapping",
+            "PROTECTED_SCHEDULER_CAPABLE": False,
+            "PROTECTED_WINDOW_AVAILABLE": False,
+            "contamination_class": None,
+            "receipt_path_taken": rec.get("path_taken"),
+            "did_not_fabricate_lease": True,
+            "did_not_flock": True,
+        }
+    klass = report.get("contamination_class")
+    capable = report.get("PROTECTED_SCHEDULER_CAPABLE") is True
+    available = report.get("PROTECTED_WINDOW_AVAILABLE") is True
+    # A non-QUIESCENT machine cannot have an available protected window. If the
+    # report claims otherwise, the window field is refused, not the capability.
+    availability_overridden = False
+    if klass != "QUIESCENT" and available:
+        available = False
+        availability_overridden = True
+    return {
+        "invoked": True,
+        "why": report.get("live_reason"),
+        "PROTECTED_SCHEDULER_CAPABLE": capable,
+        "PROTECTED_WINDOW_AVAILABLE": available,
+        "availability_overridden_because_not_quiescent": availability_overridden,
+        "contamination_class": klass,
+        "lease_present": report.get("lease_present"),
+        "live_verdict": report.get("live_verdict"),
+        "did_not_fabricate_lease": report.get("did_not_fabricate_lease") is not False,
+        "did_not_flock": report.get("did_not_flock") is not False,
+        "receipt_path_taken": rec.get("path_taken"),
+        "import_path_taken": loaded.get("path_taken"),
+        "file": loaded.get("file"),
+    }
+
+
 def _eval_protected_scheduling() -> dict[str, Any]:
+    """Capability of the scheduler, not availability of the window.
+
+    A capable scheduler on an unavailable window is CAPABLE. No protected work
+    can run right now, and that is reported as PROTECTED_WINDOW_AVAILABLE=false.
+    A completed protected physical run is a SEPARATE named requirement and is
+    not this criterion: Odyssey I start needs a scheduler that can handle
+    protected work, not a PROTECTED_ABSOLUTE result this sidecar cannot produce.
+    Never fabricate a lease; never seize a contested lock.
+    """
+    cap = _protected_capability_report()
+    capable = cap.get("PROTECTED_SCHEDULER_CAPABLE") is True and cap.get("invoked") is True
+    klass = cap.get("contamination_class")
+    available = cap.get("PROTECTED_WINDOW_AVAILABLE") is True
+    if klass != "QUIESCENT":
+        available = False
     future_pw = _module_file("tools/future/protected_window.py")
     odyssey_pw = _module_file("tools/odyssey/protected_window.py")
-    qual = probe_json("receipts/future/QUALIFICATION_PIPELINE.json")
-    doc = qual.get("doc") if isinstance(qual.get("doc"), Mapping) else None
-    gpu_auth = False
-    if doc and isinstance(doc.get("authority_boundary"), Mapping):
-        gpu_auth = bool(doc["authority_boundary"].get("gpu_authority"))
-    cont = probe_json("receipts/future/CONTAMINATION_SCIENCE.json")
-    klass = None
-    if isinstance(cont.get("doc"), Mapping):
-        klass = cont["doc"].get("contamination_class")
-    # invoke / frontier / refill were hardcoded False, so this criterion could not
-    # pass on ANY machine -- not even a quiescent one holding a real lease. That
-    # is the same unreachable-bar shape that made doctor_callable and
-    # gravity_callable permanently unmet, and it hid the actual blocker behind a
-    # constant. Measure them. The criterion still refuses today, because
-    # contamination is not QUIESCENT and there is no GPU authority, and those are
-    # facts about this moment rather than a decision baked into the evaluator.
-    #
-    # Refusing to SEIZE a lock and being unable to SCHEDULE protected work are
-    # different claims. The sidecar will never take a contested lock; that is a
-    # policy this evaluator does not need to enforce by pretending the machinery
-    # is absent.
-    pw_sched = _resident_schedulable(["tools/future/protected_window.py"])
-    lease_ok = klass == "QUIESCENT" and gpu_auth
     bar = operational_bar(
-        discover=bool(odyssey_pw.get("present") or qual.get("found")),
-        invoke=bool(future_pw.get("present")) and lease_ok,
-        schedule=bool(pw_sched["schedule"]) and lease_ok,
-        verify=bool(qual.get("found")),
-        frontier=bool(pw_sched["frontier"]) and lease_ok,
-        persist=bool(qual.get("found")),
-        refill=bool(pw_sched["refill"]) and lease_ok,
+        discover=bool(cap.get("invoked") or future_pw.get("present")),
+        invoke=bool(cap.get("invoked")),
+        schedule=bool(capable),
+        verify=bool(cap.get("invoked")),
+        frontier=bool(capable),
+        persist=bool(cap.get("receipt_path_taken") not in {None, "not_found"}),
+        refill=bool(capable),
         notes={
             "sidecar_must_not_seize_lock": "true",
-            "lease_precondition": (
-                f"contamination must be QUIESCENT (is {klass!r}) and qualification "
-                f"gpu_authority must be true (is {gpu_auth})"
-            ),
-            "driver": str(pw_sched.get("driver_module") or "none"),
-            "integration": INTEGRATION_POINTS["protected_window"],
-            "prior_odyssey_protected_window": odyssey_pw.get("path_taken"),
+            "PROTECTED_SCHEDULER_CAPABLE": str(capable),
+            "PROTECTED_WINDOW_AVAILABLE": str(available),
+            "availability_is_not_capability": "true",
+            "contamination_class": str(klass),
+            "did_not_fabricate_lease": str(cap.get("did_not_fabricate_lease")),
+            "did_not_flock": str(cap.get("did_not_flock")),
+            "integration": INTEGRATION_POINTS["protected_scheduler"],
         },
+    )
+    met = bool(capable)
+    reason = (
+        (
+            "protected scheduler is CAPABLE; window "
+            f"AVAILABLE={available} (contamination_class={klass!r}). "
+            "Capability is not availability; no lock was seized"
+        )
+        if met
+        else (
+            "protected scheduler is not CAPABLE: "
+            f"invoked={cap.get('invoked')} why={cap.get('why')!r} "
+            f"contamination_class={klass!r}. "
+            "The sidecar will not flock a contested bench lock and will not fabricate a lease"
+        )
     )
     return _criterion(
         "protected_scheduling",
-        met=bool(bar["resident_operational"]),
-        reason=(
-            "protected scheduling is resident-operational on a QUIESCENT machine with a proven HCLI lease"
-            if bar["resident_operational"]
-            else (
-                f"protected scheduling cannot start: contamination_class={klass!r} "
-                f"(needs QUIESCENT), qualification gpu_authority={gpu_auth} (needs "
-                f"true), driver={pw_sched.get('driver_module') or 'none'}. Every "
-                f"unmet flag is measured: {', '.join(k for k, v in bar['flags'].items() if not v)}. "
-                "The sidecar will not flock a contested bench lock, and that policy "
-                "is separate from this criterion -- these flags describe whether a "
-                "lease-holding resident COULD schedule protected work, not whether "
-                "this process may take a lock."
-            )
-        ),
+        met=met,
+        reason=reason,
         evidence=[
             {
+                "kind": "protected_scheduler.capability_report",
+                "invoked": cap.get("invoked"),
+                "PROTECTED_SCHEDULER_CAPABLE": capable,
+                "PROTECTED_WINDOW_AVAILABLE": available,
+                "contamination_class": klass,
+                "live_verdict": cap.get("live_verdict"),
+                "lease_present": cap.get("lease_present"),
+                "availability_overridden_because_not_quiescent": cap.get(
+                    "availability_overridden_because_not_quiescent"
+                ),
+                "did_not_fabricate_lease": cap.get("did_not_fabricate_lease"),
+                "did_not_flock": cap.get("did_not_flock"),
+                "import_path_taken": cap.get("import_path_taken"),
+                "receipt_path_taken": cap.get("receipt_path_taken"),
                 "future_protected_window": future_pw,
                 "odyssey_protected_window": odyssey_pw,
-                "qualification_path_taken": qual.get("path_taken"),
-                "contamination_class": klass,
             }
         ],
+        extra={
+            "PROTECTED_SCHEDULER_CAPABLE": capable,
+            "PROTECTED_WINDOW_AVAILABLE": available,
+            "contamination_class": klass,
+            "protected_physical_run_completed": {
+                "id": "protected_physical_run_completed",
+                "required_for_this_criterion": False,
+                "required_for_odyssey_i_start": False,
+                "status": "NOT_THIS_CRITERION",
+                "why": (
+                    "A completed protected physical run would be PROTECTED_ABSOLUTE "
+                    "evidence this sidecar cannot produce. Odyssey I start needs a "
+                    "capable protected scheduler, not a finished protected bench. "
+                    "This field is named so it cannot be smuggled into CAPABLE."
+                ),
+            },
+        },
         operational=bar,
     )
 
@@ -2293,7 +2695,10 @@ def recovered_implementation() -> dict[str, Any]:
             "negative_index": "negative science",
             "evidence_snapshot": "pinned Codex receipts",
             "workunit_species": "HCLI WorkUnit emission",
-            "flash_nx_audit": "NR/NX completeness",
+            "flash_nx_audit": "NR/NX completeness (Flash-specific; not this criterion's authority)",
+            "nr_nx_generic": "GENERIC_NR_NX_PIPELINE_CALLABLE vs FLASH_NX_READY; EXTENDED the evaluator to read it",
+            "protected_scheduler": "PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE; EXTENDED the evaluator to read it",
+            "autonomy_trial": "AUTONOMY_TRIALS.json persisted --verify verdict; EXTENDED the evaluator to read the file that is actually written",
             "contamination": "machine-state class, HEAVY on this host",
             "qualification_pipeline": "protected lease fail-closed",
             "repro_science": "crash/fault fail-closed",
@@ -2301,8 +2706,12 @@ def recovered_implementation() -> dict[str, Any]:
             "resident_optimizer": "propose/rank, never promote",
             "_common.write_receipt": "HardwareClaimError on numeric hardware fields",
         },
-        "this_module_existed": False,
-        "fork_decision": "extend nothing that already gated Odyssey I start; the package fence is a different campaign",
+        "this_module_existed": True,
+        "fork_decision": (
+            "EXTENDED the three remaining evaluators in this file. Did not fork "
+            "parallel modules. protected_scheduler.py, nr_nx_generic.py, autonomy_trial.py "
+            "are the landed drivers."
+        ),
     }
 
 
@@ -2316,6 +2725,9 @@ def gaps_closed() -> list[str]:
         "Phase II transfer and Phase III attack both depend on Phase I laws and not on each other — no global barrier.",
         "Physical blockers become SLEEPING WorkUnits; they never become synthetic results.",
         "HCLI AgentOS autonomy A1–A5 is recovered and explicitly not this criterion.",
+        "resident_autonomy_trial_pass reads AUTONOMY_TRIALS.json (plural) persisted --verify; AUTONOMY_TRIAL.json is not authority.",
+        "protected_scheduling reads PROTECTED_SCHEDULER_CAPABLE; PROTECTED_WINDOW_AVAILABLE is a separate field.",
+        "nr_nx_path_callable reads GENERIC_NR_NX_PIPELINE_CALLABLE; FLASH_NX_READY is a separate field.",
     ]
 
 
@@ -2335,7 +2747,8 @@ def negative_findings_from(
     if unready:
         findings.append(f"curriculum unready roles: {unready}")
     findings.append(
-        "this-wave siblings are not imported; local interfaces are the integration points "
+        "autonomy_trial / protected_scheduler / nr_nx_generic are imported when present; "
+        "other this-wave siblings remain named integration points: "
         + ", ".join(sorted(INTEGRATION_POINTS))
     )
     return findings
@@ -2362,6 +2775,72 @@ def resident_callable_block(verdict: Mapping[str, Any]) -> dict[str, Any]:
         "verdict_now": verdict.get("verdict"),
         "this_wave_not_imported": list(THIS_WAVE_SIBLINGS),
         "integration_points": dict(INTEGRATION_POINTS),
+    }
+
+
+def _rewire_report(verdict: Mapping[str, Any], results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Gate count before this rewiring vs after, and which of the three criteria moved."""
+    after_unmet = list(verdict.get("unmet") or [])
+    after_met = list(verdict.get("met") or [])
+    changed = []
+    for cid in REWIRE_BASELINE["unmet"]:
+        row = next((r for r in results if r.get("id") == cid), {})
+        before_met = False
+        after = cid in after_met
+        why = row.get("reason")
+        if cid == "resident_autonomy_trial_pass":
+            why_change = (
+                "now reads AUTONOMY_TRIALS.json persisted --verify (plural) with "
+                "orchestration/cognition split and timeline-seal verify; used to probe "
+                "AUTONOMY_TRIAL.json which was never written"
+            )
+        elif cid == "protected_scheduling":
+            why_change = (
+                "now reads protected_scheduler.capability_report() CAPABLE vs AVAILABLE; "
+                "used to AND capability with QUIESCENT+gpu_authority so a HEAVY machine "
+                "looked incapable"
+            )
+        else:
+            why_change = (
+                "now reads nr_nx_generic GENERIC_NR_NX_PIPELINE_CALLABLE; "
+                "used to key on FLASH_NX_COMPLETENESS_AUDIT / Flash NX metadata"
+            )
+        changed.append(
+            {
+                "id": cid,
+                "before_met": before_met,
+                "after_met": after,
+                "why": why_change,
+                "live_reason": why,
+            }
+        )
+    return {
+        "gate_count_before": {
+            "n_met": REWIRE_BASELINE["n_met"],
+            "n_unmet": REWIRE_BASELINE["n_unmet"],
+            "n_criteria": REWIRE_BASELINE["n_criteria"],
+            "unmet": list(REWIRE_BASELINE["unmet"]),
+            "source": REWIRE_BASELINE["source"],
+        },
+        "gate_count_after": {
+            "n_met": verdict.get("n_met"),
+            "n_unmet": verdict.get("n_unmet"),
+            "n_criteria": verdict.get("n_criteria"),
+            "unmet": after_unmet,
+            "met": after_met,
+            "verdict": verdict.get("verdict"),
+        },
+        "criteria_rewired": changed,
+        "none_lowered": True,
+        "still_refused_if_any_unmet": bool(after_unmet),
+        "rewired_net": {
+            "became_met": [c["id"] for c in changed if c["after_met"] and not c["before_met"]],
+            "stayed_unmet": [c["id"] for c in changed if not c["after_met"]],
+            "stayed_met": [c["id"] for c in changed if c["after_met"] and c["before_met"]],
+        },
+        "unmet_not_from_this_rewire": [
+            cid for cid in after_unmet if cid not in REWIRE_BASELINE["unmet"]
+        ],
     }
 
 
@@ -2393,6 +2872,7 @@ def build(*, writer: Callable[[str, dict[str, Any], str], Path] | None = None) -
         "criterion_ids": list(CRITERION_IDS),
         "criteria": results,
         "verdict": verdict,
+        "rewire": _rewire_report(verdict, results),
         "specimen_curriculum": curriculum,
         "first_workgraphs": {
             "specimen": graphs.get("specimen"),

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T19:00:08Z",
+  "recorded_at": "2026-08-30T20:38:36Z",
   "recorded_by": "tools/future/orchestration.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -14,6 +14,12 @@
    "module": "abi_verdicts.py",
    "receipt": "ABI_VERDICT_HARNESS.json",
    "species": "HOST_SHADER_ABI_VERIFY"
+  },
+  {
+   "frontier_item": "FT.MODEL_CAPABILITY.tournament-refuse",
+   "module": "abliteration.py",
+   "receipt": "ABLITERATION.json",
+   "species": "ABLITERATION"
   },
   {
    "frontier_item": "FT.GPU_KERNELS.ready-protected",
@@ -68,6 +74,12 @@
    "module": "codex_ingest.py",
    "receipt": "CODEX_INGEST_STATE.json",
    "species": "INGEST_PROPAGATE"
+  },
+  {
+   "frontier_item": "FT.LATENCY.cpu-turnaround",
+   "module": "concurrency_doctor.py",
+   "receipt": "RESIDENT_CONCURRENCY_DOCTOR.json",
+   "species": "CONCURRENCY_DOCTOR"
   },
   {
    "frontier_item": "FT.ODYSSEY_TRANSFER.re-earn",
@@ -182,6 +194,12 @@
    "module": "flash_nx_audit.py",
    "receipt": "FLASH_NX_COMPLETENESS_AUDIT.json",
    "species": "NX_COMPLETENESS_AUDIT"
+  },
+  {
+   "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+   "module": "flash_organ_pivot.py",
+   "receipt": "FLASH_ORGAN_PIVOT.json",
+   "species": "ORGAN_PIVOT"
   },
   {
    "frontier_item": "FT.MODEL_REPRESENTATION.meta-gates-3-9",
@@ -310,6 +328,12 @@
    "species": "GENERATE_KERNEL_CANDIDATE"
   },
   {
+   "frontier_item": "FT.HCLI_SELF.emit-workunits",
+   "module": "mutation_engine.py",
+   "receipt": "MUTATION_ENGINE.json",
+   "species": "MUTATION_ENGINE"
+  },
+  {
    "frontier_item": "FT.CONTEXT.disk-authority",
    "module": "mutation_surface.py",
    "receipt": "CODEX_MUTATION_SURFACE.json",
@@ -326,6 +350,18 @@
    "module": "ngram_school.py",
    "receipt": "NGRAM_SCHOOL.json",
    "species": "GRAVITY_SEARCH"
+  },
+  {
+   "frontier_item": "FT.HCLI_SELF.emit-workunits",
+   "module": "no_wait_scheduler.py",
+   "receipt": "NO_WAIT_SCHEDULER.json",
+   "species": "NO_WAIT_SCHEDULING"
+  },
+  {
+   "frontier_item": "FT.GPU_KERNELS.flash-nx",
+   "module": "nr_nx_generic.py",
+   "receipt": "NR_NX_GENERIC.json",
+   "species": "NR_NX_GENERIC"
   },
   {
    "frontier_item": "FT.GPU_KERNELS.flash-nx",
@@ -380,6 +416,12 @@
    "module": "propagate.py",
    "receipt": "PROPAGATION_STATE.json",
    "species": "INGEST_PROPAGATE"
+  },
+  {
+   "frontier_item": "FT.GPU_KERNELS.ready-protected",
+   "module": "protected_scheduler.py",
+   "receipt": "PROTECTED_SCHEDULER.json",
+   "species": "PROTECTED_SCHEDULER"
   },
   {
    "frontier_item": "FT.GPU_KERNELS.ready-protected",
@@ -490,6 +532,12 @@
    "species": "PHYSICAL_GRAPH_SEARCH"
   },
   {
+   "frontier_item": "FT.VERIFICATION.negative-index",
+   "module": "status_causality.py",
+   "receipt": "STATUS_CAUSALITY_CHALLENGE.json",
+   "species": "STATUS_CHALLENGE"
+  },
+  {
    "frontier_item": "FT.CHILD_RESIDENT.install-dry-run",
    "module": "succession.py",
    "receipt": "SUCCESSION.json",
@@ -571,15 +619,16 @@
  "broken": [],
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "bound": 93,
+  "bound": 101,
   "broken": 0,
   "distinct_frontier_items": 41,
-  "distinct_species": 62,
+  "distinct_species": 70,
   "infrastructure_excluded": 5,
   "unbound_production": 1
  },
  "frontier_view_keys": [
   "ABI_VERDICT_HARNESS.json",
+  "ABLITERATION.json",
   "ACCELERATOR_WORKUNITS.json",
   "ADAPTIVE_VERIFICATION.json",
   "ANE_PREBOARD.json",
@@ -611,6 +660,7 @@
   "FLASH_META_REPLAN.json",
   "FLASH_NR_COMPLETE.json",
   "FLASH_NX_COMPLETENESS_AUDIT.json",
+  "FLASH_ORGAN_PIVOT.json",
   "FLASH_ORGAN_SCHOOLS.json",
   "FLASH_ORGAN_WORKGRAPHS.json",
   "FPGA_ENGINE_SCHOOL.json",
@@ -632,8 +682,11 @@
   "META_DOWNSTREAM_READY.json",
   "META_EXPERIMENT_FUNNEL.json",
   "MOE_PHYSICAL_SCHOOL.json",
+  "MUTATION_ENGINE.json",
   "NEGATIVE_SCIENCE_INDEX.json",
   "NGRAM_SCHOOL.json",
+  "NO_WAIT_SCHEDULER.json",
+  "NR_NX_GENERIC.json",
   "NR_NX_PATH.json",
   "ODYSSEY2_LAW_STORE.json",
   "ODYSSEY3_ADVERSARY.json",
@@ -645,12 +698,14 @@
   "PHASE_LISTENERS.json",
   "PHYSICAL_PRIMITIVES.json",
   "PROPAGATION_STATE.json",
+  "PROTECTED_SCHEDULER.json",
   "PROTECTED_WINDOW_PLAN.json",
   "QUALIFICATION_PIPELINE.json",
   "QWEN27_ACCELERATOR_PROFILE_SCHEMA.json",
   "RECEIPT_WAKEUP.json",
   "REPRO_SCIENCE.json",
   "RESIDENT_API_AUDIT.json",
+  "RESIDENT_CONCURRENCY_DOCTOR.json",
   "RESIDENT_HEALTH.json",
   "RESIDENT_IDENTITY.json",
   "RESIDENT_INSTALL_CONTRACT.json",
@@ -663,6 +718,7 @@
   "SPECIMEN_VERIFICATION.json",
   "STATIC_KERNEL_PREFLIGHT.json",
   "STATIC_SKELETON.json",
+  "STATUS_CAUSALITY_CHALLENGE.json",
   "SUCCESSION.json",
   "SUPER_RESIDENT_FLOOR.json",
   "TABULA_FLOOR.json",
@@ -704,7 +760,7 @@
   "workunit": "tools.future.orchestration.emit_workunit(module)"
  },
  "schema": "hawking.future.orchestration.v1",
- "seal_sha256": "44dd8c4aee1f73b7fe817f13979cb278a1128adb7f29fb3909bd6d532b8d3aa8",
+ "seal_sha256": "4ab5e601db829b236e55e6a54b1db00575b46020c2622451b97caf07dcd752b3",
  "unbound_production": [
   "autonomy_run.py"
  ],

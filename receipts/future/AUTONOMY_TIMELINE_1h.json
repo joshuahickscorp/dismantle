@@ -1,5 +1,16 @@
 {
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T20:17:45Z",
+  "recorded_by": "tools/future/autonomy_run.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Durable autonomy evidence. No hardware measurement. Sealed so a later edit is detectable.",
  "duration_s": 3600,
+ "elapsed_s": 3629,
  "events": [
   {
    "cites": [
@@ -18663,8 +18674,556 @@
    },
    "seq": 810,
    "t_s": 2421
+  },
+  {
+   "cites": [
+    "receipts/future/SPECIMEN_VERIFICATION.json",
+    "WU.AUTONOMY.verify.170"
+   ],
+   "kind": "result_ingested",
+   "payload": {
+    "exit_code": 0,
+    "receipt": "receipts/future/SPECIMEN_VERIFICATION.json",
+    "routed_to_frontier": "FT.MODEL_CAPABILITY.hard-gates",
+    "summary": "/Users/scammermike/Downloads/hawking/receipts/future/SPECIMEN_VERIFICATION.json",
+    "unit_id": "WU.AUTONOMY.verify.170"
+   },
+   "seq": 811,
+   "t_s": 2602
+  },
+  {
+   "kind": "frontier_delta",
+   "payload": {
+    "entry_id": "FT.MODEL_CAPABILITY.hard-gates",
+    "verification_exit": 0
+   },
+   "seq": 812,
+   "t_s": 2602
+  },
+  {
+   "kind": "next_work_left",
+   "payload": {
+    "ids": [],
+    "n": 0,
+    "source": "frontiers.refill",
+    "unit_ids": []
+   },
+   "seq": 813,
+   "t_s": 2603
+  },
+  {
+   "kind": "workunit_launched",
+   "payload": {
+    "capability": "python3",
+    "unit": {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "claim_boundary": "Static sidecar artifact. No hardware measurement. Cannot promote, weaken a verifier, choose the Singularity, or perform a destructive mutation.",
+     "classification": "STATIC_ONLY",
+     "content_hash": "b49fe0742a19bd3b2fed8b05f8b0f557def94f15fddda85d0bf9f5311f6ae3d5",
+     "dependencies": [],
+     "description": "recompute every published digest for specimen allenai--Olmo-3-1025-7B@a81bae42db39 and decide whole-tree verification offline",
+     "effect_class": "READ_ONLY",
+     "evidence_parents": [
+      "frontier:FT.MODEL_CAPABILITY.hard-gates",
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+     ],
+     "failure_context": null,
+     "finished_at": null,
+     "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
+     "id": "WU.AUTONOMY.verify.171",
+     "preferred_backend": null,
+     "provider": "future.autonomy_trial",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "independent_reproduction",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.integration_attack.adversarial",
+     "workspace": "repo-root"
+    }
+   },
+   "seq": 814,
+   "t_s": 2603
+  },
+  {
+   "cites": [
+    "receipts/future/SPECIMEN_VERIFICATION.json",
+    "WU.AUTONOMY.verify.171"
+   ],
+   "kind": "result_ingested",
+   "payload": {
+    "exit_code": 0,
+    "receipt": "receipts/future/SPECIMEN_VERIFICATION.json",
+    "routed_to_frontier": "FT.MODEL_CAPABILITY.hard-gates",
+    "summary": "/Users/scammermike/Downloads/hawking/receipts/future/SPECIMEN_VERIFICATION.json",
+    "unit_id": "WU.AUTONOMY.verify.171"
+   },
+   "seq": 815,
+   "t_s": 2729
+  },
+  {
+   "kind": "frontier_delta",
+   "payload": {
+    "entry_id": "FT.MODEL_CAPABILITY.hard-gates",
+    "verification_exit": 0
+   },
+   "seq": 816,
+   "t_s": 2729
+  },
+  {
+   "kind": "next_work_left",
+   "payload": {
+    "ids": [],
+    "n": 0,
+    "source": "frontiers.refill",
+    "unit_ids": []
+   },
+   "seq": 817,
+   "t_s": 2730
+  },
+  {
+   "kind": "workunit_launched",
+   "payload": {
+    "capability": "python3",
+    "unit": {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "claim_boundary": "Static sidecar artifact. No hardware measurement. Cannot promote, weaken a verifier, choose the Singularity, or perform a destructive mutation.",
+     "classification": "STATIC_ONLY",
+     "content_hash": "1ec30f109f24f43e81b3d8c7fafc84d1499dfc144802f06fc70fd5851a51a3b4",
+     "dependencies": [],
+     "description": "recompute every published digest for specimen tiiuae--Falcon-H1-7B-Instruct@41e72f27effb and decide whole-tree verification offline",
+     "effect_class": "READ_ONLY",
+     "evidence_parents": [
+      "frontier:FT.MODEL_CAPABILITY.hard-gates",
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+     ],
+     "failure_context": null,
+     "finished_at": null,
+     "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
+     "id": "WU.AUTONOMY.verify.172",
+     "preferred_backend": null,
+     "provider": "future.autonomy_trial",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "independent_reproduction",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.integration_attack.adversarial",
+     "workspace": "repo-root"
+    }
+   },
+   "seq": 818,
+   "t_s": 2730
+  },
+  {
+   "cites": [
+    "receipts/future/SPECIMEN_VERIFICATION.json",
+    "WU.AUTONOMY.verify.172"
+   ],
+   "kind": "result_ingested",
+   "payload": {
+    "exit_code": 0,
+    "receipt": "receipts/future/SPECIMEN_VERIFICATION.json",
+    "routed_to_frontier": "FT.MODEL_CAPABILITY.hard-gates",
+    "summary": "/Users/scammermike/Downloads/hawking/receipts/future/SPECIMEN_VERIFICATION.json",
+    "unit_id": "WU.AUTONOMY.verify.172"
+   },
+   "seq": 819,
+   "t_s": 2983
+  },
+  {
+   "kind": "frontier_delta",
+   "payload": {
+    "entry_id": "FT.MODEL_CAPABILITY.hard-gates",
+    "verification_exit": 0
+   },
+   "seq": 820,
+   "t_s": 2983
+  },
+  {
+   "kind": "next_work_left",
+   "payload": {
+    "ids": [],
+    "n": 0,
+    "source": "frontiers.refill",
+    "unit_ids": []
+   },
+   "seq": 821,
+   "t_s": 2983
+  },
+  {
+   "kind": "workunit_launched",
+   "payload": {
+    "capability": "python3",
+    "unit": {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "claim_boundary": "Static sidecar artifact. No hardware measurement. Cannot promote, weaken a verifier, choose the Singularity, or perform a destructive mutation.",
+     "classification": "STATIC_ONLY",
+     "content_hash": "4b41446b67fd9b5e2539f59176d086bc06bcfafc01f3b2d90c49c289a17cc3ad",
+     "dependencies": [],
+     "description": "recompute every published digest for specimen Dream-org--Dream-v0-Instruct-7B@05334cb9faaf and decide whole-tree verification offline",
+     "effect_class": "READ_ONLY",
+     "evidence_parents": [
+      "frontier:FT.MODEL_CAPABILITY.hard-gates",
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+     ],
+     "failure_context": null,
+     "finished_at": null,
+     "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
+     "id": "WU.AUTONOMY.verify.173",
+     "preferred_backend": null,
+     "provider": "future.autonomy_trial",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "independent_reproduction",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.integration_attack.adversarial",
+     "workspace": "repo-root"
+    }
+   },
+   "seq": 822,
+   "t_s": 2983
+  },
+  {
+   "cites": [
+    "receipts/future/SPECIMEN_VERIFICATION.json",
+    "WU.AUTONOMY.verify.173"
+   ],
+   "kind": "result_ingested",
+   "payload": {
+    "exit_code": 0,
+    "receipt": "receipts/future/SPECIMEN_VERIFICATION.json",
+    "routed_to_frontier": "FT.MODEL_CAPABILITY.hard-gates",
+    "summary": "/Users/scammermike/Downloads/hawking/receipts/future/SPECIMEN_VERIFICATION.json",
+    "unit_id": "WU.AUTONOMY.verify.173"
+   },
+   "seq": 823,
+   "t_s": 3281
+  },
+  {
+   "kind": "frontier_delta",
+   "payload": {
+    "entry_id": "FT.MODEL_CAPABILITY.hard-gates",
+    "verification_exit": 0
+   },
+   "seq": 824,
+   "t_s": 3281
+  },
+  {
+   "kind": "next_work_left",
+   "payload": {
+    "ids": [],
+    "n": 0,
+    "source": "frontiers.refill",
+    "unit_ids": []
+   },
+   "seq": 825,
+   "t_s": 3281
+  },
+  {
+   "kind": "workunit_launched",
+   "payload": {
+    "capability": "python3",
+    "unit": {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "claim_boundary": "Static sidecar artifact. No hardware measurement. Cannot promote, weaken a verifier, choose the Singularity, or perform a destructive mutation.",
+     "classification": "STATIC_ONLY",
+     "content_hash": "ab3750c2e0f8ffba053acc9b5e00641fc268b93dddd0942f4af1a9ef73d859d3",
+     "dependencies": [],
+     "description": "recompute every published digest for specimen kyutai--moshika-pytorch-bf16@a49141e28b3d and decide whole-tree verification offline",
+     "effect_class": "READ_ONLY",
+     "evidence_parents": [
+      "frontier:FT.MODEL_CAPABILITY.hard-gates",
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+     ],
+     "failure_context": null,
+     "finished_at": null,
+     "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
+     "id": "WU.AUTONOMY.verify.174",
+     "preferred_backend": null,
+     "provider": "future.autonomy_trial",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "independent_reproduction",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.integration_attack.adversarial",
+     "workspace": "repo-root"
+    }
+   },
+   "seq": 826,
+   "t_s": 3281
+  },
+  {
+   "cites": [
+    "receipts/future/SPECIMEN_VERIFICATION.json",
+    "WU.AUTONOMY.verify.174"
+   ],
+   "kind": "result_ingested",
+   "payload": {
+    "exit_code": 0,
+    "receipt": "receipts/future/SPECIMEN_VERIFICATION.json",
+    "routed_to_frontier": "FT.MODEL_CAPABILITY.hard-gates",
+    "summary": "/Users/scammermike/Downloads/hawking/receipts/future/SPECIMEN_VERIFICATION.json",
+    "unit_id": "WU.AUTONOMY.verify.174"
+   },
+   "seq": 827,
+   "t_s": 3524
+  },
+  {
+   "kind": "frontier_delta",
+   "payload": {
+    "entry_id": "FT.MODEL_CAPABILITY.hard-gates",
+    "verification_exit": 0
+   },
+   "seq": 828,
+   "t_s": 3524
+  },
+  {
+   "kind": "next_work_left",
+   "payload": {
+    "ids": [],
+    "n": 0,
+    "source": "frontiers.refill",
+    "unit_ids": []
+   },
+   "seq": 829,
+   "t_s": 3525
+  },
+  {
+   "kind": "workunit_launched",
+   "payload": {
+    "capability": "python3",
+    "unit": {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "claim_boundary": "Static sidecar artifact. No hardware measurement. Cannot promote, weaken a verifier, choose the Singularity, or perform a destructive mutation.",
+     "classification": "STATIC_ONLY",
+     "content_hash": "e71cfe527692eb261905cbbb3c3b070c09f4831f415101f21764bdda8fd06d9c",
+     "dependencies": [],
+     "description": "recompute every published digest for specimen GSAI-ML--iLLaDA-8B-Base@a1b5b5f8a31a and decide whole-tree verification offline",
+     "effect_class": "READ_ONLY",
+     "evidence_parents": [
+      "frontier:FT.MODEL_CAPABILITY.hard-gates",
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+     ],
+     "failure_context": null,
+     "finished_at": null,
+     "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
+     "id": "WU.AUTONOMY.verify.175",
+     "preferred_backend": null,
+     "provider": "future.autonomy_trial",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "independent_reproduction",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.integration_attack.adversarial",
+     "workspace": "repo-root"
+    }
+   },
+   "seq": 830,
+   "t_s": 3525
+  },
+  {
+   "kind": "process_failed",
+   "payload": {
+    "error": "verification exceeded the trial window",
+    "unit_id": "WU.AUTONOMY.verify.175"
+   },
+   "seq": 831,
+   "t_s": 3599
+  },
+  {
+   "kind": "next_work_left",
+   "payload": {
+    "ids": [],
+    "n": 0,
+    "source": "frontiers.refill",
+    "unit_ids": []
+   },
+   "seq": 832,
+   "t_s": 3599
+  },
+  {
+   "kind": "workunit_launched",
+   "payload": {
+    "capability": "python3",
+    "unit": {
+     "assigned_backend": null,
+     "assigned_runtime": null,
+     "attempts": 0,
+     "backend_task_id": null,
+     "claim_boundary": "Static sidecar artifact. No hardware measurement. Cannot promote, weaken a verifier, choose the Singularity, or perform a destructive mutation.",
+     "classification": "STATIC_ONLY",
+     "content_hash": "d70644141b621c361c8d9fcb730fd5b7c5c99fbd3b242649331489376877693e",
+     "dependencies": [],
+     "description": "recompute every published digest for specimen RWKV--RWKV7-13.3B-20260805@64ffe5934178 and decide whole-tree verification offline",
+     "effect_class": "READ_ONLY",
+     "evidence_parents": [
+      "frontier:FT.MODEL_CAPABILITY.hard-gates",
+      "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
+     ],
+     "failure_context": null,
+     "finished_at": null,
+     "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
+     "id": "WU.AUTONOMY.verify.176",
+     "preferred_backend": null,
+     "provider": "future.autonomy_trial",
+     "ready_at": null,
+     "repair_depth": 0,
+     "repair_exhausted": false,
+     "repair_reason": null,
+     "repair_root": null,
+     "repairs": null,
+     "requires_quiescence": false,
+     "resource_class": "STATIC_ANALYSIS",
+     "role": "science",
+     "running_at": null,
+     "species": "independent_reproduction",
+     "status": "pending",
+     "verification": null,
+     "verifier": "future.integration_attack.adversarial",
+     "workspace": "repo-root"
+    }
+   },
+   "seq": 833,
+   "t_s": 3599
+  },
+  {
+   "kind": "process_failed",
+   "payload": {
+    "error": "verification exceeded the trial window",
+    "unit_id": "WU.AUTONOMY.verify.176"
+   },
+   "seq": 834,
+   "t_s": 3629
+  },
+  {
+   "kind": "next_work_left",
+   "payload": {
+    "entry_ids": [
+     "FT.ACTIVE_BYTES.hbm-rank",
+     "FT.CHILD_RESIDENT.install-dry-run",
+     "FT.CONTEXT.disk-authority",
+     "FT.DECODING.cost-model",
+     "FT.FPGA.engine-sim",
+     "FT.GPU_KERNELS.static-warnings",
+     "FT.HCLI_SELF.emit-workunits",
+     "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+     "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+     "FT.ODYSSEY_ADVERSARY.attacks",
+     "FT.ODYSSEY_TRANSFER.re-earn",
+     "FT.PHYSICAL_GRAPH.p6-projection"
+    ],
+    "ids": [
+     "FT.ACTIVE_BYTES.hbm-rank",
+     "FT.CHILD_RESIDENT.install-dry-run",
+     "FT.CONTEXT.disk-authority",
+     "FT.DECODING.cost-model",
+     "FT.FPGA.engine-sim",
+     "FT.GPU_KERNELS.static-warnings",
+     "FT.HCLI_SELF.emit-workunits",
+     "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+     "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+     "FT.ODYSSEY_ADVERSARY.attacks",
+     "FT.ODYSSEY_TRANSFER.re-earn",
+     "FT.PHYSICAL_GRAPH.p6-projection"
+    ],
+    "n": 32,
+    "note": "the loop stops on the clock, never because work ran out",
+    "source": "frontiers.next_work + live frontier entries",
+    "unit_ids": [
+     "FT.ACTIVE_BYTES.hbm-rank",
+     "FT.CHILD_RESIDENT.install-dry-run",
+     "FT.CONTEXT.disk-authority",
+     "FT.DECODING.cost-model",
+     "FT.FPGA.engine-sim",
+     "FT.GPU_KERNELS.static-warnings",
+     "FT.HCLI_SELF.emit-workunits",
+     "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+     "FT.MODEL_REPRESENTATION.meta-gates-3-9",
+     "FT.ODYSSEY_ADVERSARY.attacks",
+     "FT.ODYSSEY_TRANSFER.re-earn",
+     "FT.PHYSICAL_GRAPH.p6-projection"
+    ]
+   },
+   "seq": 835,
+   "t_s": 3629
   }
  ],
- "partial": true,
+ "evidence_class": "STATIC_ONLY",
+ "gpu_authority": false,
+ "seal_sha256": "fc89eaaf6db4db8176802579508c5a29376402cb5b9cf38eedbc38ca7d9f2708",
+ "summary": {
+  "blocked_lanes_parked": [
+   "ANE",
+   "FPGA",
+   "GPU_PROTECTED"
+  ],
+  "composed_replan_pairs": 1,
+  "hypotheses_proposed": 1701,
+  "hypotheses_still_live": 1479,
+  "launched": 175,
+  "receipts_ingested": 100,
+  "refused_on_evidence": 222,
+  "resident_model_cognition": "UNAVAILABLE",
+  "scars_consulted": 1802
+ },
  "trial": "1h"
 }

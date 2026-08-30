@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T19:19:49Z",
+  "recorded_at": "2026-08-30T20:38:37Z",
   "recorded_by": "tools/future/resident_api.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,14 +11,14 @@
  "bench_state": "UNKNOWN",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "capabilities": 125,
-  "discovered_python": 196,
-  "human_cli_only": 97,
+  "capabilities": 133,
+  "discovered_python": 212,
+  "human_cli_only": 105,
   "import_failures": 0,
   "not_operational": 6,
-  "operational": 93,
-  "scored": 99,
-  "tests": 97,
+  "operational": 101,
+  "scored": 107,
+  "tests": 105,
   "work_units": 6
  },
  "five_questions": [
@@ -33,6 +33,9 @@
    "tools/future/abi_verdicts.py": [
     "F018",
     "FT.GPU_KERNELS.static-warnings"
+   ],
+   "tools/future/abliteration.py": [
+    "FT.MODEL_CAPABILITY.tournament-refuse"
    ],
    "tools/future/accelerator_workunits.py": [
     "FT.GPU_KERNELS.ready-protected"
@@ -62,6 +65,9 @@
    "tools/future/codex_ingest.py": [
     "F015",
     "FT.TOOLS.propagate-skips"
+   ],
+   "tools/future/concurrency_doctor.py": [
+    "FT.LATENCY.cpu-turnaround"
    ],
    "tools/future/consolidated_run.py": [
     "FT.ODYSSEY_TRANSFER.re-earn"
@@ -121,6 +127,9 @@
    "tools/future/flash_nx_audit.py": [
     "F001",
     "FT.MODEL_EXECUTION.complete-token"
+   ],
+   "tools/future/flash_organ_pivot.py": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
    "tools/future/flash_organ_workgraphs.py": [
     "FT.MODEL_REPRESENTATION.meta-gates-3-9"
@@ -193,6 +202,9 @@
    "tools/future/moe_physical_school.py": [
     "FT.GPU_KERNELS.flash-nx"
    ],
+   "tools/future/mutation_engine.py": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
    "tools/future/mutation_surface.py": [
     "FT.CONTEXT.disk-authority"
    ],
@@ -202,6 +214,12 @@
    ],
    "tools/future/ngram_school.py": [
     "FT.MODEL_REPRESENTATION.ngram-school"
+   ],
+   "tools/future/no_wait_scheduler.py": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "tools/future/nr_nx_generic.py": [
+    "FT.GPU_KERNELS.flash-nx"
    ],
    "tools/future/nr_nx_path.py": [
     "FT.GPU_KERNELS.flash-nx"
@@ -233,6 +251,9 @@
    "tools/future/propagate.py": [
     "F016",
     "FT.TOOLS.propagate-skips"
+   ],
+   "tools/future/protected_scheduler.py": [
+    "FT.GPU_KERNELS.ready-protected"
    ],
    "tools/future/protected_window.py": [
     "FT.GPU_KERNELS.ready-protected"
@@ -292,6 +313,9 @@
    "tools/future/static_skeleton.py": [
     "FT.MODEL_EXECUTION.static-skeleton"
    ],
+   "tools/future/status_causality.py": [
+    "FT.VERIFICATION.negative-index"
+   ],
    "tools/future/succession.py": [
     "FT.CHILD_RESIDENT.install-dry-run"
    ],
@@ -336,6 +360,9 @@
   "by_probe_receipt": {
    "ABI_VERDICT_HARNESS.json": [
     "FT.GPU_KERNELS.static-warnings"
+   ],
+   "ABLITERATION.json": [
+    "FT.MODEL_CAPABILITY.tournament-refuse"
    ],
    "ACCELERATOR_WORKUNITS.json": [
     "FT.GPU_KERNELS.ready-protected"
@@ -432,6 +459,9 @@
    "FLASH_NX_COMPLETENESS_AUDIT.json": [
     "FT.MODEL_EXECUTION.complete-token"
    ],
+   "FLASH_ORGAN_PIVOT.json": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
    "FLASH_ORGAN_SCHOOLS.json": [
     "FT.MODEL_REPRESENTATION.meta-gates-3-9"
    ],
@@ -495,11 +525,20 @@
    "MOE_PHYSICAL_SCHOOL.json": [
     "FT.GPU_KERNELS.flash-nx"
    ],
+   "MUTATION_ENGINE.json": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
    "NEGATIVE_SCIENCE_INDEX.json": [
     "FT.VERIFICATION.negative-index"
    ],
    "NGRAM_SCHOOL.json": [
     "FT.MODEL_REPRESENTATION.ngram-school"
+   ],
+   "NO_WAIT_SCHEDULER.json": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "NR_NX_GENERIC.json": [
+    "FT.GPU_KERNELS.flash-nx"
    ],
    "NR_NX_PATH.json": [
     "FT.GPU_KERNELS.flash-nx"
@@ -534,6 +573,9 @@
    "PROPAGATION_STATE.json": [
     "FT.TOOLS.propagate-skips"
    ],
+   "PROTECTED_SCHEDULER.json": [
+    "FT.GPU_KERNELS.ready-protected"
+   ],
    "PROTECTED_WINDOW_PLAN.json": [
     "FT.GPU_KERNELS.ready-protected"
    ],
@@ -551,6 +593,9 @@
    ],
    "RESIDENT_API_AUDIT.json": [
     "FT.HCLI_SELF.emit-workunits"
+   ],
+   "RESIDENT_CONCURRENCY_DOCTOR.json": [
+    "FT.LATENCY.cpu-turnaround"
    ],
    "RESIDENT_HEALTH.json": [
     "FT.HCLI_SELF.no-launch"
@@ -588,6 +633,9 @@
    ],
    "STATIC_SKELETON.json": [
     "FT.MODEL_EXECUTION.static-skeleton"
+   ],
+   "STATUS_CAUSALITY_CHALLENGE.json": [
+    "FT.VERIFICATION.negative-index"
    ],
    "SUCCESSION.json": [
     "FT.CHILD_RESIDENT.install-dry-run"
@@ -784,7 +832,7 @@
   ],
   "tool_registry_present": true
  },
- "honest_scoring": "93 operational / 6 not operational / 99 scored. A human CLI is not an operational subsystem.",
+ "honest_scoring": "101 operational / 6 not operational / 107 scored. A human CLI is not an operational subsystem.",
  "law": "A subsystem is not operational until the RESIDENT can discover it, invoke it, schedule it and verify it; its result changes a frontier; the result persists; and next work refills. 'It has a CLI a human can run' is NOT enough.",
  "measurement_class": "STATIC_ONLY",
  "modules": [
@@ -1108,6 +1156,132 @@
    "status": "OPERATIONAL",
    "stem": "abi_verdicts",
    "workunit_constructs": []
+  },
+  {
+   "capabilities": [
+    "future.abliteration"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "ABLITERATION \u2014 generate candidate refusal-direction transforms, never an uncensoring switch. Tabula already owns the behavioural-surgery floor: left-null projection, independent evaluation, lineage, and the authority lattice. This module d\u2026",
+   "filename": "abliteration.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "select_by_refusal_suppression_alone",
+    "select",
+    "orthogonalize_against",
+    "scoped_layers",
+    "classify_specimen",
+    "require_full_weight",
+    "contracts",
+    "claim_boundary",
+    "admit_result",
+    "method",
+    "smallest_eligible",
+    "plan",
+    "run",
+    "apply_to_weights",
+    "projection_reuses_tabula",
+    "emit_workunits",
+    "resident_callable",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [
+       "emit_hcli_workunit"
+      ],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 31,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.MODEL_CAPABILITY.tournament-refuse"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_CAPABILITY.tournament-refuse"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "select_by_refusal_suppression_alone",
+       "select",
+       "orthogonalize_against",
+       "scoped_layers",
+       "classify_specimen",
+       "require_full_weight",
+       "contracts",
+       "claim_boundary",
+       "admit_result",
+       "method",
+       "smallest_eligible",
+       "plan",
+       "run",
+       "apply_to_weights",
+       "projection_reuses_tabula",
+       "emit_workunits",
+       "resident_callable",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "ABLITERATION.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "ABLITERATION.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 31,
+   "receipt": "ABLITERATION.json",
+   "relpath": "tools/future/abliteration.py",
+   "status": "OPERATIONAL",
+   "stem": "abliteration",
+   "workunit_constructs": [
+    "emit_hcli_workunit"
+   ]
   },
   {
    "capabilities": [
@@ -2394,6 +2568,138 @@
    "status": "OPERATIONAL",
    "stem": "codex_ingest",
    "workunit_constructs": []
+  },
+  {
+   "capabilities": [
+    "future.concurrency_doctor"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "RESIDENT CONCURRENCY DOCTOR \u2014 settle whether a second stream earns more useful work. The machine may show partial GPU occupancy while the resident waits on a subprocess. That occupancy is a HYPOTHESIS about usable headroom, not available c\u2026",
+   "filename": "concurrency_doctor.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "refuse_hardware_named_number",
+    "refuse_hardware_tree",
+    "occupancy_class_from_pct",
+    "unknown_slots",
+    "plan",
+    "host_capability",
+    "emit_sleeping_workunit",
+    "decide",
+    "make_synthetic_observation",
+    "observe",
+    "public_observation",
+    "useful_work_delta_class",
+    "advance",
+    "verdict",
+    "seal_law",
+    "prove_synthetic",
+    "recovered_implementation",
+    "gaps_closed",
+    "negative_findings",
+    "build",
+    "selftest",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [
+       "emit_hcli_workunit"
+      ],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 29,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.LATENCY.cpu-turnaround"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.LATENCY.cpu-turnaround"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "refuse_hardware_named_number",
+       "refuse_hardware_tree",
+       "occupancy_class_from_pct",
+       "unknown_slots",
+       "plan",
+       "host_capability",
+       "emit_sleeping_workunit",
+       "decide",
+       "make_synthetic_observation",
+       "observe",
+       "public_observation",
+       "useful_work_delta_class",
+       "advance",
+       "verdict",
+       "seal_law",
+       "prove_synthetic",
+       "recovered_implementation",
+       "gaps_closed",
+       "negative_findings",
+       "build",
+       "selftest",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "RESIDENT_CONCURRENCY_DOCTOR.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "RESIDENT_CONCURRENCY_DOCTOR.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 29,
+   "receipt": "RESIDENT_CONCURRENCY_DOCTOR.json",
+   "relpath": "tools/future/concurrency_doctor.py",
+   "status": "OPERATIONAL",
+   "stem": "concurrency_doctor",
+   "workunit_constructs": [
+    "emit_hcli_workunit"
+   ]
   },
   {
    "capabilities": [
@@ -4926,6 +5232,136 @@
    "relpath": "tools/future/flash_nx_audit.py",
    "status": "OPERATIONAL",
    "stem": "flash_nx_audit",
+   "workunit_constructs": []
+  },
+  {
+   "capabilities": [
+    "future.flash_organ_pivot"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "FLASH_ORGAN_PIVOT \u2014 leave the exhausted gate_up surface; rank remaining organs by expected information gain per cost. The rival-codec screen spent 1024 real teacher rows on layer_4.routed_experts.gate_up_proj and killed every tested family\u2026",
+   "filename": "flash_organ_pivot.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "load_named",
+    "load_inventory",
+    "census_bytes_for",
+    "killed_families_from_screen",
+    "scoped_scar",
+    "on_exhausted_surface",
+    "match_killed_family",
+    "restatement_verdict",
+    "refuse_if_restatement",
+    "require_census_bytes",
+    "expected_ig_per_cost_milli",
+    "rank_school",
+    "classify_candidate",
+    "restatement_probes",
+    "live_mechanism_rows",
+    "rank_all",
+    "prove_negative_controls",
+    "next_workunits",
+    "recovered_implementation",
+    "gaps_closed",
+    "negative_findings",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 6,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "load_named",
+       "load_inventory",
+       "census_bytes_for",
+       "killed_families_from_screen",
+       "scoped_scar",
+       "on_exhausted_surface",
+       "match_killed_family",
+       "restatement_verdict",
+       "refuse_if_restatement",
+       "require_census_bytes",
+       "expected_ig_per_cost_milli",
+       "rank_school",
+       "classify_candidate",
+       "restatement_probes",
+       "live_mechanism_rows",
+       "rank_all",
+       "prove_negative_controls",
+       "next_workunits",
+       "recovered_implementation",
+       "gaps_closed",
+       "negative_findings",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "FLASH_ORGAN_PIVOT.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "FLASH_ORGAN_PIVOT.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 6,
+   "receipt": "FLASH_ORGAN_PIVOT.json",
+   "relpath": "tools/future/flash_organ_pivot.py",
+   "status": "OPERATIONAL",
+   "stem": "flash_organ_pivot",
    "workunit_constructs": []
   },
   {
@@ -7842,6 +8278,122 @@
   },
   {
    "capabilities": [
+    "future.mutation_engine"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "MUTATION ENGINE \u2014 propose, apply, measure, and roll back a real change. The frozen 1-hour autonomy trial produced 823 events and mutated nothing. autonomy_run.py is a verifier: every unit is read-only analysis emitting a receipt. A verifie\u2026",
+   "filename": "mutation_engine.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "bind",
+    "unbind",
+    "recovered_pipeline_policy",
+    "simulate_trial_refills",
+    "simulate_scar_replays",
+    "classify_frontier",
+    "refuse_if_outside_partition",
+    "refuse_protected_lease",
+    "propose",
+    "apply",
+    "evidence",
+    "rollback",
+    "verdict",
+    "pipeline_self_cycle",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 28,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "bind",
+       "unbind",
+       "recovered_pipeline_policy",
+       "simulate_trial_refills",
+       "simulate_scar_replays",
+       "classify_frontier",
+       "refuse_if_outside_partition",
+       "refuse_protected_lease",
+       "propose",
+       "apply",
+       "evidence",
+       "rollback",
+       "verdict",
+       "pipeline_self_cycle",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "MUTATION_ENGINE.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "MUTATION_ENGINE.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 28,
+   "receipt": "MUTATION_ENGINE.json",
+   "relpath": "tools/future/mutation_engine.py",
+   "status": "OPERATIONAL",
+   "stem": "mutation_engine",
+   "workunit_constructs": []
+  },
+  {
+   "capabilities": [
     "future.mutation_surface",
     "future.codex_mutation_surface"
    ],
@@ -8252,6 +8804,270 @@
    "status": "OPERATIONAL",
    "stem": "ngram_school",
    "workunit_constructs": []
+  },
+  {
+   "capabilities": [
+    "future.no_wait_scheduler"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "NO-WAIT SCHEDULER \u2014 keep the resident moving while a detached unit is unfinished. The autonomy loop calls subprocess.run and sits inside it. During a real 1-hour trial that was tens of minutes inside one hashing call with runnable work sit\u2026",
+   "filename": "no_wait_scheduler.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "expected_receipt",
+    "runnable_now",
+    "launch_detached",
+    "poll",
+    "ingest_ready",
+    "cancel",
+    "rediscover",
+    "prove_overlap_interval",
+    "prove_cancel_stops",
+    "prove_blocked_names_dependency",
+    "prove_missing_receipt_is_process_failed",
+    "prove_rediscover_adopts",
+    "run_all_proofs",
+    "emit_resident_workunit",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [
+       "WorkUnit"
+      ],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 22,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.HCLI_SELF.emit-workunits"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "expected_receipt",
+       "runnable_now",
+       "launch_detached",
+       "poll",
+       "ingest_ready",
+       "cancel",
+       "rediscover",
+       "prove_overlap_interval",
+       "prove_cancel_stops",
+       "prove_blocked_names_dependency",
+       "prove_missing_receipt_is_process_failed",
+       "prove_rediscover_adopts",
+       "run_all_proofs",
+       "emit_resident_workunit",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "NO_WAIT_SCHEDULER.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "NO_WAIT_SCHEDULER.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 22,
+   "receipt": "NO_WAIT_SCHEDULER.json",
+   "relpath": "tools/future/no_wait_scheduler.py",
+   "status": "OPERATIONAL",
+   "stem": "no_wait_scheduler",
+   "workunit_constructs": [
+    "WorkUnit"
+   ]
+  },
+  {
+   "capabilities": [
+    "future.nr_nx_generic"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "NR_NX_GENERIC \u2014 prove the generic NR\u2192NX pipeline on a real small specimen. nr_nx_path_callable currently fails because Flash has no packed final NX. That conflates a generic orchestration capability with one model's artifact readiness, and\u2026",
+   "filename": "nr_nx_generic.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "record_physical_ebpw",
+    "assert_no_physical_ebpw",
+    "generic_pipeline_callable",
+    "declare_pipeline_callable",
+    "source_independence",
+    "choose_specimen",
+    "organ_library",
+    "native_engine_architectures",
+    "stage_specimen_select",
+    "stage_specimen_present",
+    "stage_architecture_recognizer",
+    "stage_organ_graph",
+    "stage_nr_identify",
+    "stage_doctor",
+    "stage_representation_planner",
+    "stage_physical_graph_compiler",
+    "stage_kernel_planner",
+    "stage_device_compiler",
+    "stage_noetic_executable",
+    "stage_source_independence",
+    "stage_dependency_accounting",
+    "stage_verifier",
+    "first_failing_stage",
+    "flash_nx_ready",
+    "emit_sleeping_lower",
+    "assemble",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [
+       "emit_hcli_workunit"
+      ],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 10,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.GPU_KERNELS.flash-nx"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.GPU_KERNELS.flash-nx"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "record_physical_ebpw",
+       "assert_no_physical_ebpw",
+       "generic_pipeline_callable",
+       "declare_pipeline_callable",
+       "source_independence",
+       "choose_specimen",
+       "organ_library",
+       "native_engine_architectures",
+       "stage_specimen_select",
+       "stage_specimen_present",
+       "stage_architecture_recognizer",
+       "stage_organ_graph",
+       "stage_nr_identify",
+       "stage_doctor",
+       "stage_representation_planner",
+       "stage_physical_graph_compiler",
+       "stage_kernel_planner",
+       "stage_device_compiler",
+       "stage_noetic_executable",
+       "stage_source_independence",
+       "stage_dependency_accounting",
+       "stage_verifier",
+       "first_failing_stage",
+       "flash_nx_ready",
+       "emit_sleeping_lower",
+       "assemble",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "NR_NX_GENERIC.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "NR_NX_GENERIC.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 10,
+   "receipt": "NR_NX_GENERIC.json",
+   "relpath": "tools/future/nr_nx_generic.py",
+   "status": "OPERATIONAL",
+   "stem": "nr_nx_generic",
+   "workunit_constructs": [
+    "emit_hcli_workunit"
+   ]
   },
   {
    "capabilities": [
@@ -9518,6 +10334,132 @@
    "relpath": "tools/future/propagate.py",
    "status": "OPERATIONAL",
    "stem": "propagate",
+   "workunit_constructs": [
+    "emit_hcli_workunit"
+   ]
+  },
+  {
+   "capabilities": [
+    "future.protected_scheduler"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ]
+   ],
+   "docstring": "PROTECTED_SCHEDULER \u2014 decide protected work without a window. A busy GPU and a missing lease make the WINDOW unavailable. They do not make the SCHEDULER incapable. `_eval_protected_scheduling` currently ANDs `contamination == QUIESCENT` an\u2026",
+   "filename": "protected_scheduler.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "refuse_flock",
+    "refuse_create_lease",
+    "refuse_start_benchmark",
+    "acquire_lease",
+    "seize_lease",
+    "recognize",
+    "inspect_contamination",
+    "inspect_lease",
+    "window_available",
+    "decide",
+    "park",
+    "continue_with",
+    "drive",
+    "capability_report",
+    "recovered_implementation",
+    "gaps_closed",
+    "negative_findings",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [
+       "emit_hcli_workunit"
+      ],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 3,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.GPU_KERNELS.ready-protected"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.GPU_KERNELS.ready-protected"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "refuse_flock",
+       "refuse_create_lease",
+       "refuse_start_benchmark",
+       "acquire_lease",
+       "seize_lease",
+       "recognize",
+       "inspect_contamination",
+       "inspect_lease",
+       "window_available",
+       "decide",
+       "park",
+       "continue_with",
+       "drive",
+       "capability_report",
+       "recovered_implementation",
+       "gaps_closed",
+       "negative_findings",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "PROTECTED_SCHEDULER.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "PROTECTED_SCHEDULER.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 3,
+   "receipt": "PROTECTED_SCHEDULER.json",
+   "relpath": "tools/future/protected_scheduler.py",
+   "status": "OPERATIONAL",
+   "stem": "protected_scheduler",
    "workunit_constructs": [
     "emit_hcli_workunit"
    ]
@@ -11915,6 +12857,114 @@
   },
   {
    "capabilities": [
+    "future.status_causality"
+   ],
+   "cli_flags": [
+    [
+     "--build"
+    ],
+    [
+     "--challenge"
+    ],
+    [
+     "--scan"
+    ]
+   ],
+   "docstring": "STATUS CAUSALITY \u2014 challenge a blocker on what its probe actually established. One failure mode produced five blockers in a day, each accurate about the check and wrong about the cause. The law, already recorded as scar STATUS_LABEL_LAUNDE\u2026",
+   "filename": "status_causality.py",
+   "gaps": [],
+   "has_if_main": true,
+   "has_main": true,
+   "hcli_tool_registered": false,
+   "human_cli_only": true,
+   "import_error": null,
+   "import_ok": true,
+   "kind": "production",
+   "preferred_callable": "build",
+   "public_callables": [
+    "historical_cases",
+    "supported_fixtures",
+    "challenge",
+    "verdict",
+    "scan",
+    "challenge_historical",
+    "challenge_supported",
+    "build",
+    "main"
+   ],
+   "questions": {
+    "emits_workunit": {
+     "evidence": {
+      "constructs": [],
+      "emitted_by_orchestration_connector": true
+     },
+     "pass": true
+    },
+    "fail_closed": {
+     "evidence": {
+      "raise_count": 6,
+      "rule": "fail closed means raise (or write_receipt's HardwareClaimError) rather than returning a silent default",
+      "uses_write_receipt": true
+     },
+     "pass": true
+    },
+    "feeds_named_frontier": {
+     "evidence": {
+      "frontier_present": true,
+      "named_as_integration_target": [
+       "FT.VERIFICATION.negative-index"
+      ],
+      "receipt_is_frontier_probe": [
+       "FT.VERIFICATION.negative-index"
+      ],
+      "writes_frontier_document": false
+     },
+     "pass": true
+    },
+    "hcli_invoke": {
+     "evidence": {
+      "has_if_main": true,
+      "has_main": true,
+      "hcli_future_tools": [],
+      "hcli_tool_count": 32,
+      "hcli_tool_registered": false,
+      "import_error": null,
+      "import_ok": true,
+      "preferred_callable": "build",
+      "public_callables": [
+       "historical_cases",
+       "supported_fixtures",
+       "challenge",
+       "verdict",
+       "scan",
+       "challenge_historical",
+       "challenge_supported",
+       "build",
+       "main"
+      ]
+     },
+     "pass": true
+    },
+    "produces_receipt": {
+     "evidence": {
+      "receipt": "STATUS_CAUSALITY_CHALLENGE.json",
+      "uses_write_receipt": true,
+      "write_receipt_names": [
+       "STATUS_CAUSALITY_CHALLENGE.json"
+      ]
+     },
+     "pass": true
+    }
+   },
+   "raise_count": 6,
+   "receipt": "STATUS_CAUSALITY_CHALLENGE.json",
+   "relpath": "tools/future/status_causality.py",
+   "status": "OPERATIONAL",
+   "stem": "status_causality",
+   "workunit_constructs": []
+  },
+  {
+   "capabilities": [
     "future.succession"
    ],
    "cli_flags": [
@@ -13531,8 +14581,8 @@
   }
  ],
  "negative_findings": [
-  "6 of 99 scored modules are NOT_OPERATIONAL; operational=93. Not rounded up.",
-  "97 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
+  "6 of 107 scored modules are NOT_OPERATIONAL; operational=101. Not rounded up.",
+  "105 scored modules are human-CLI-callable (argparse / __main__) and are not registered in HCLI ToolRegistry.",
   "hcli/tool_registry.py default_tool_registry lists 32 tools and 0 future.* tools. AgentOS cannot discover the sidecar.",
   "HCLI ToolRegistry.invoke returns ToolResult(ok=False, UNKNOWN_TOOL) instead of raising; resident_api.invoke raises. Fail-closed is this surface, not HCLI's.",
   "Most modules persist a receipt a human can regenerate with `python3 tools/future/<mod>.py --build` but do not emit a WorkUnit and do not feed CLAUDE_GLOBAL_FRONTIER.json.",
@@ -13552,6 +14602,7 @@
  ],
  "operational_stems": [
   "abi_verdicts",
+  "abliteration",
   "accelerator_workunits",
   "adaptive_verification",
   "ane_preboard",
@@ -13561,6 +14612,7 @@
   "claude_abi_adjudication",
   "codex_behaviors",
   "codex_ingest",
+  "concurrency_doctor",
   "consolidated_run",
   "contamination",
   "cuda_lowbit_hypotheses",
@@ -13580,6 +14632,7 @@
   "flash_meta_replan",
   "flash_nr_complete",
   "flash_nx_audit",
+  "flash_organ_pivot",
   "flash_organ_workgraphs",
   "flash_schools",
   "fpga_engines",
@@ -13601,9 +14654,12 @@
   "meta_ready",
   "metal_reachability",
   "moe_physical_school",
+  "mutation_engine",
   "mutation_surface",
   "negative_index",
   "ngram_school",
+  "no_wait_scheduler",
+  "nr_nx_generic",
   "nr_nx_path",
   "odyssey2_law_store",
   "odyssey3_adversary",
@@ -13613,6 +14669,7 @@
   "phase_listeners",
   "physical_primitives",
   "propagate",
+  "protected_scheduler",
   "protected_window",
   "qualification_pipeline",
   "qwen27_profile_schema",
@@ -13631,6 +14688,7 @@
   "sprint_profile",
   "static_kernel_verify",
   "static_skeleton",
+  "status_causality",
   "succession",
   "super_resident",
   "tabula",
@@ -13738,6 +14796,32 @@
    "import_error": null,
    "module": "tools/future/abi_verdicts.py",
    "receipt": "ABI_VERDICT_HARNESS.json",
+   "status": "OPERATIONAL"
+  },
+  "future.abliteration": {
+   "aliases": [
+    "future.abliteration"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.MODEL_CAPABILITY.tournament-refuse"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/abliteration.py",
+   "receipt": "ABLITERATION.json",
    "status": "OPERATIONAL"
   },
   "future.accelerator_workunits": {
@@ -14320,6 +15404,32 @@
    "import_error": null,
    "module": "tools/future/codex_ingest.py",
    "receipt": "CODEX_INGEST_STATE.json",
+   "status": "OPERATIONAL"
+  },
+  "future.concurrency_doctor": {
+   "aliases": [
+    "future.concurrency_doctor"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.LATENCY.cpu-turnaround"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/concurrency_doctor.py",
+   "receipt": "RESIDENT_CONCURRENCY_DOCTOR.json",
    "status": "OPERATIONAL"
   },
   "future.consolidated_run": {
@@ -15297,6 +16407,32 @@
    "import_error": null,
    "module": "tools/future/flash_nx_audit.py",
    "receipt": "FLASH_NX_COMPLETENESS_AUDIT.json",
+   "status": "OPERATIONAL"
+  },
+  "future.flash_organ_pivot": {
+   "aliases": [
+    "future.flash_organ_pivot"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.MODEL_REPRESENTATION.meta-gates-3-9"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/flash_organ_pivot.py",
+   "receipt": "FLASH_ORGAN_PIVOT.json",
    "status": "OPERATIONAL"
   },
   "future.flash_organ_workgraphs": {
@@ -16626,6 +17762,32 @@
    "receipt": "MOE_PHYSICAL_SCHOOL.json",
    "status": "OPERATIONAL"
   },
+  "future.mutation_engine": {
+   "aliases": [
+    "future.mutation_engine"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/mutation_engine.py",
+   "receipt": "MUTATION_ENGINE.json",
+   "status": "OPERATIONAL"
+  },
   "future.mutation_surface": {
    "aliases": [
     "future.mutation_surface",
@@ -16855,6 +18017,58 @@
    "import_error": null,
    "module": "tools/future/ngram_school.py",
    "receipt": "NGRAM_SCHOOL.json",
+   "status": "OPERATIONAL"
+  },
+  "future.no_wait_scheduler": {
+   "aliases": [
+    "future.no_wait_scheduler"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.HCLI_SELF.emit-workunits"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/no_wait_scheduler.py",
+   "receipt": "NO_WAIT_SCHEDULER.json",
+   "status": "OPERATIONAL"
+  },
+  "future.nr_nx_generic": {
+   "aliases": [
+    "future.nr_nx_generic"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.GPU_KERNELS.flash-nx"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/nr_nx_generic.py",
+   "receipt": "NR_NX_GENERIC.json",
    "status": "OPERATIONAL"
   },
   "future.nr_nx_path": {
@@ -17449,6 +18663,32 @@
    "import_error": null,
    "module": "tools/future/propagate.py",
    "receipt": "PROPAGATION_STATE.json",
+   "status": "OPERATIONAL"
+  },
+  "future.protected_scheduler": {
+   "aliases": [
+    "future.protected_scheduler"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.GPU_KERNELS.ready-protected"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/protected_scheduler.py",
+   "receipt": "PROTECTED_SCHEDULER.json",
    "status": "OPERATIONAL"
   },
   "future.protected_window": {
@@ -18253,6 +19493,44 @@
    "receipt": "STATIC_SKELETON.json",
    "status": "OPERATIONAL"
   },
+  "future.status_causality": {
+   "aliases": [
+    "future.status_causality"
+   ],
+   "argument_contract": {
+    "bindable": true,
+    "cli_flags": [
+     {
+      "dest": null,
+      "flags": [
+       "--build"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--challenge"
+      ]
+     },
+     {
+      "dest": null,
+      "flags": [
+       "--scan"
+      ]
+     }
+    ],
+    "params": []
+   },
+   "callable": "build",
+   "frontier": [
+    "FT.VERIFICATION.negative-index"
+   ],
+   "gaps": [],
+   "import_error": null,
+   "module": "tools/future/status_causality.py",
+   "receipt": "STATUS_CAUSALITY_CHALLENGE.json",
+   "status": "OPERATIONAL"
+  },
   "future.succession": {
    "aliases": [
     "future.succession"
@@ -18755,7 +20033,7 @@
   ]
  },
  "schema": "hawking.future.resident_api.v1",
- "seal_sha256": "6e3aa3bbe2e1ecb2c35eddc13ef7361774e0164eb869d88974981e0188eae0c4",
+ "seal_sha256": "21044f02e832ffc3259b64b1d3df7aa9e2e86e938ab58094baed465b6e4b43a2",
  "version": 1,
  "work_units": [
   {

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T19:20:37Z",
+  "recorded_at": "2026-08-30T20:38:39Z",
   "recorded_by": "tools/future/workgraph.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -695,7 +695,7 @@
   ],
   "rule": "blocked physical work becomes a SLEEPING WorkUnit; it never becomes a synthetic result. UNKNOWN is the correct hardware answer."
  },
- "head": "c5962d8bbd97fab99ce2fd66ed5fb3916793b8d0",
+ "head": "90898c763efc31a881112982070874c68de317f1",
  "integration_points": [
   "hcli.scheduler.Scheduler.submit \u2014 consume emit_hcli_workunit() rows (hcli frozen)",
   "tools.future.wakeup \u2014 wake_sleeping(hardware_qualified=True) when Codex qualifies (sibling, not imported)",
@@ -1099,7 +1099,7 @@
   }
  },
  "schema": "hawking.future.workgraph.v1",
- "seal_sha256": "7d40e4459ff11683475ec14e1e533ff52304a87cf5eeeb90641cd3a046cbcc9b",
+ "seal_sha256": "0fb4ab47d203211c1a498afafa158fdbe1540782630c1905205bb035d95d1a35",
  "selection_rule": {
   "info_domain": [
    1,

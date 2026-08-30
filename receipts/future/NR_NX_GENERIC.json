@@ -1,0 +1,778 @@
+{
+ "FLASH_NX_READY": false,
+ "GENERIC_NR_NX_PIPELINE_CALLABLE": false,
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-30T20:37:01Z",
+  "recorded_by": "tools/future/nr_nx_generic.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Static sidecar artifact. No hardware measurement.",
+ "compiler_entry_points": {
+  "ArchitectureRecognizer": "tools/odyssey/arch_recognizer.py:recognize",
+  "DeviceCompiler": "NO CALLABLE; tools/odyssey/noetic_compiler.py BLOCKED map",
+  "Doctor": "tools/odyssey/doctor_tournament.py (PARENT hardcoded to Qwen3.8-27B)",
+  "KernelPlanner": "receipts/headless/KERNEL_LIBRARY.json (no specimen field)",
+  "NoeticExecutable": "tools/headless/first_noetic_executable.py (Qwen38 27B only)",
+  "OrganGraph": "tools/odyssey/physical_graph_compiler.py:organ_graph",
+  "PhysicalGraphCompiler": "tools/odyssey/physical_graph_compiler.py:main",
+  "RepresentationPlanner": "tools/odyssey/transfer_rehearsal.py:rehearse",
+  "native_loader": "crates/hawking-core/src/model/mod.rs",
+  "nx_verifier": "tools/future/flash_nx_audit.py:check_nx"
+ },
+ "evidence_class": "STATIC_ONLY",
+ "facts_are_independent": true,
+ "first_failing_stage": {
+  "error": "parameterized_on_wrong_parent",
+  "stage": "Doctor",
+  "status": "FAILED",
+  "why": "tools.odyssey.doctor_tournament is parameterized on a hardcoded PARENT (/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16) with Qwen3.8-27B tensor names; 12/12 probe tensors are absent from this specimen. probes() was not run: it imports torch+safetensors and would load the wrong model"
+ },
+ "first_nx_lower_failure": {
+  "error": "FileNotFoundError: [Errno 2] No such file or directory: '/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0/model.safetensors.index.json'",
+  "stage": "PhysicalGraphCompiler",
+  "status": "FAILED",
+  "why": "invoked tools/odyssey/physical_graph_compiler.py --model-dir <specimen>. returncode=1. main() requires model.safetensors.index.json (present=False) and an X_layer capture, and the collapse looks up MoE expert tensors this dense specimen does not have"
+ },
+ "flash": {
+  "FLASH_NX_READY": false,
+  "failed_requirements": [
+   "complete_byte_ledger",
+   "self_contained_dependencies",
+   "accepted_generation",
+   "capability",
+   "reproducibility",
+   "protected_performance",
+   "no_forbidden_fallback"
+  ],
+  "metadata_only": true,
+  "path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_V0.nx.json",
+  "promotable": false,
+  "status": "SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
+  "why": "FLASH_COMPLETE_V0.nx status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION'; check_nx.promotable=False"
+ },
+ "gaps_closed": [
+  "generic NR\u2192NX stages driven on a real specimen instead of inferred from Flash's missing NX",
+  "GENERIC_NR_NX_PIPELINE_CALLABLE and FLASH_NX_READY recorded as separate facts",
+  "source-independence checker that fails a runtime read into the source tree and a renamed source pointer",
+  "PhysicalGraphCompiler live invocation captured: FileNotFoundError on model.safetensors.index.json",
+  "pipeline_callable refuses SKIPPED stages and refuses a pass without a packed NX"
+ ],
+ "gpu_authority": false,
+ "is_a_measurement": false,
+ "launch_criterion_still_flash_specific": "odyssey_launch._eval_nr_nx still keys nr_nx_path_callable on FLASH_NX_COMPLETENESS_AUDIT.seven_all_met and FLASH_COMPLETE_V0.nx status. That criterion is Flash-specific. This lane does not rewrite it. The bootstrap architecture (Qwen27 launches Odyssey; Flash is an evolving child) says the generic path should be enough; the generic path is not callable today, so the Flash-specific gate stays standing for two independent reasons, not one collapsed reason",
+ "measurement_class": "STATIC_ONLY",
+ "native_engine": {
+  "architectures": [
+   "llama",
+   "llama",
+   "llama2",
+   "llama3",
+   "llama3.1",
+   "llama3.2",
+   "mistral",
+   "deepseek2",
+   "deepseek-v2",
+   "deepseek2-lite",
+   "qwen2",
+   "qwen2.5",
+   "qwen",
+   "qwen2moe",
+   "qwen3moe",
+   "qwen-moe",
+   "rwkv7",
+   "rwkv-7"
+  ],
+  "includes_falcon_h1": false,
+  "includes_qwen2": true,
+  "includes_qwen3_dense": false,
+  "includes_qwen3moe": true,
+  "ok": true,
+  "path": "crates/hawking-core/src/model/mod.rs"
+ },
+ "negative_findings": [
+  "GENERIC_NR_NX_PIPELINE_CALLABLE is False on Qwen3-0.6B",
+  "FLASH_NX_READY is False; FLASH_COMPLETE_V0.nx remains SEALED_METADATA_ONLY_NOT_FOR_PROMOTION",
+  "PhysicalGraphCompiler cannot run on a dense single-shard specimen",
+  "Doctor is hardcoded to Qwen3.8-27B tensor names",
+  "RepresentationPlanner cannot import tools/headless/representation_library in this checkout",
+  "native engine match arms include qwen2 and qwen3moe, not dense qwen3, not falcon_h1",
+  "no generic NX packer; first_noetic_executable is a 27B mix",
+  "no physical EBPW was written"
+ ],
+ "next_workunits": [
+  {
+   "id": "WU.CPU.nr-nx-generic.parameterize-physical-graph-compiler",
+   "owner": "Codex (tools/odyssey/physical_graph_compiler.py is Codex-owned)",
+   "schedule": "CPU_NEXT",
+   "wake": "accept dense single-shard specimens and dense mlp.gate_proj paths"
+  },
+  {
+   "id": "future.nr-nx-generic.sleep.nx-lower",
+   "schedule": "SLEEPING",
+   "wake_unmet": [
+    "physical_graph_compiler_accepts_dense_single_shard",
+    "native_engine_match_arm_includes_qwen3_dense",
+    "device_compiler_entry_point_exists",
+    "generic_packer_accepts_this_specimen",
+    "packed_source_independent_nx_on_disk"
+   ]
+  }
+ ],
+ "physical_ebpw": null,
+ "physical_ebpw_written": false,
+ "purpose": "Drive the real NR\u2192NX compiler stages on the cheapest whole-tree-verified specimen and keep GENERIC_NR_NX_PIPELINE_CALLABLE separate from FLASH_NX_READY",
+ "recovered_implementation": [
+  "tools/future/nr_nx_path.py \u2014 seven-requirement map, SLEEPING units, physical_ebpw refusal; EXTENDED, not forked",
+  "tools/future/flash_nx_audit.py \u2014 check_nx, evidence_path, METADATA_ONLY, synthetic_promotable_nx",
+  "tools/future/flash_nr_complete.py \u2014 composition NR is not serialized_nr_information",
+  "tools/future/ebpw_categories.py \u2014 typed EBPW; physical remains unwritten",
+  "tools/future/specimen_verify.py \u2014 WHOLE_TREE_VERIFIED list; ModelLake not mutated",
+  "tools/odyssey/arch_recognizer.py \u2014 invoked on local config+names, no network, no weights",
+  "tools/odyssey/physical_graph_compiler.py \u2014 organ_graph invoked; main() subprocessed and failed",
+  "tools/odyssey/doctor_tournament.py \u2014 PARENT/PROBE_TENSORS read, probes() not called",
+  "tools/odyssey/transfer_rehearsal.py \u2014 rehearse() invoked, ModuleNotFoundError recorded",
+  "tools/odyssey/noetic_compiler.py \u2014 BLOCKED map cited as a note, not as a drive of 0.6B",
+  "crates/hawking-core/src/model/mod.rs \u2014 shipping GGUF match arms",
+  "tools/future/odyssey_launch.py _eval_nr_nx \u2014 Flash-specific launch criterion, read not rewritten",
+  "tools/future/workunit_species.py emit_hcli_workunit \u2014 SLEEPING unit, never pending"
+ ],
+ "resident_callable": {
+  "entry_point": "tools.future.nr_nx_generic.build()",
+  "fails_closed": "absent specimen/config is REFUSED; a stage that cannot run is FAILED/BLOCKED by name, never SKIPPED; source independence fails on a source-tree read; GENERIC_NR_NX_PIPELINE_CALLABLE cannot be True if any stage was skipped or no packed NX exists; physical_ebpw cannot be written",
+  "frontier": "FT.MODEL_EXECUTION.complete-token",
+  "receipt": "receipts/future/NR_NX_GENERIC.json",
+  "workunit": "one CPU_ANALYSIS unit; drive compiler stages on a real specimen; no GPU authority; no packer"
+ },
+ "schema": "hawking.future.nr_nx_generic.v1",
+ "seal_sha256": "a00a6a397b45f68d09346fdc1f6cbe5ec1a01fdd561415c27f802c95f135c25a",
+ "sleeping_workunit": {
+  "blocked_reason": "NX_LOWER blocked at stage PhysicalGraphCompiler: FileNotFoundError: [Errno 2] No such file or directory: '/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0/model.safetensors.index.json'",
+  "classification": "SLEEPING",
+  "exact_error": "FileNotFoundError: [Errno 2] No such file or directory: '/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0/model.safetensors.index.json'",
+  "first_failing_stage": "PhysicalGraphCompiler",
+  "id": "future.nr-nx-generic.sleep.nx-lower",
+  "resource_class": "COMPILE",
+  "status": "sleeping",
+  "synthetic_result_forbidden": true,
+  "verifier": "future.nr_nx_generic.source_independence",
+  "wake_conditions": [
+   {
+    "evidence": "PhysicalGraphCompiler.main requires model.safetensors.index.json and MoE expert tensors; Qwen3-0.6B is a single-shard dense checkpoint",
+    "holds": false,
+    "id": "physical_graph_compiler_accepts_dense_single_shard"
+   },
+   {
+    "evidence": "architectures=['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']",
+    "holds": false,
+    "id": "native_engine_match_arm_includes_qwen3_dense"
+   },
+   {
+    "evidence": "no DeviceCompiler callable; noetic_compiler.BLOCKED is a note, not a driver",
+    "holds": false,
+    "id": "device_compiler_entry_point_exists"
+   },
+   {
+    "evidence": "first_noetic_executable.py is Qwen3.8-27B-specific",
+    "holds": false,
+    "id": "generic_packer_accepts_this_specimen"
+   },
+   {
+    "evidence": "no NX body for Qwen3-0.6B; FLASH_COMPLETE_V0.nx is a metadata seal of a different model",
+    "holds": false,
+    "id": "packed_source_independent_nx_on_disk"
+   }
+  ],
+  "wake_unmet": [
+   "physical_graph_compiler_accepts_dense_single_shard",
+   "native_engine_match_arm_includes_qwen3_dense",
+   "device_compiler_entry_point_exists",
+   "generic_packer_accepts_this_specimen",
+   "packed_source_independent_nx_on_disk"
+  ]
+ },
+ "specimen": {
+  "architectures_expected": [
+   "Qwen3ForCausalLM"
+  ],
+  "bytes_hashed": 1519209243,
+  "falcon_present": true,
+  "falcon_verified": true,
+  "family": "dense_transformer",
+  "id": "Qwen--Qwen3-0.6B@c1899de289a0",
+  "lake_mounted": true,
+  "n_files": 10,
+  "ok": true,
+  "repo": "Qwen/Qwen3-0.6B",
+  "revision": "c1899de289a0",
+  "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
+  "verification_status": "WHOLE_TREE_VERIFIED",
+  "verification_via": "/Users/scammermike/Downloads/hawking/receipts/future/SPECIMEN_VERIFICATION.json",
+  "why_chosen": "cheapest whole-tree-verified specimen the ArchitectureRecognizer can run on without loading weights: dense Qwen3, 28 layers, single 1.50GB shard, 311 tensors. Closest shipping runtime is qwen_dense (GGUF qwen2/qwen), which is still not a qwen3 match arm",
+  "why_not_falcon": "Falcon-H1-7B is whole-tree verified (~15.18GB, 751 tensors, recurrent_state) and sits in ArchitectureRecognizer's O001 blind set, but the shipping engine match arm has no falcon_h1/mamba2, PhysicalGraphCompiler is MoE-hardcoded, and a procedure question does not need a 10\u00d7 heavier hybrid"
+ },
+ "stages": [
+  {
+   "error": null,
+   "evidence": {
+    "bytes_hashed": 1519209243,
+    "id": "Qwen--Qwen3-0.6B@c1899de289a0",
+    "repo": "Qwen/Qwen3-0.6B",
+    "why_not_falcon": "Falcon-H1-7B is whole-tree verified (~15.18GB, 751 tensors, recurrent_state) and sits in ArchitectureRecognizer's O001 blind set, but the shipping engine match arm has no falcon_h1/mamba2, PhysicalGraphCompiler is MoE-hardcoded, and a procedure question does not need a 10\u00d7 heavier hybrid"
+   },
+   "invoked": true,
+   "stage": "SpecimenSelect",
+   "status": "PASSED",
+   "why": "cheapest whole-tree-verified specimen the ArchitectureRecognizer can run on without loading weights: dense Qwen3, 28 layers, single 1.50GB shard, 311 tensors. Closest shipping runtime is qwen_dense (GGUF qwen2/qwen), which is still not a qwen3 match arm"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "config": true,
+    "index_json": false,
+    "model_safetensors_bytes": 1503300328,
+    "path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
+    "single_shard": true
+   },
+   "invoked": true,
+   "stage": "SpecimenPresent",
+   "status": "PASSED",
+   "why": "specimen directory, config.json, and weight shard/index are on disk"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "architectures": [
+     "Qwen3ForCausalLM"
+    ],
+    "compiler_as_invoked_novelty": {
+     "n_unrecognized_clusters": 0,
+     "new_scale_regime": 28,
+     "novel_axes": [],
+     "novel_organs": [
+      "lm_head",
+      "rmsnorm"
+     ],
+     "transfer_test_value": 1.0
+    },
+    "compiler_known_organs_empty_in_this_checkout": false,
+    "did_not_fetch_network": true,
+    "folded_organ": null,
+    "library_present": true,
+    "library_via": "/Users/scammermike/Downloads/hawking/receipts/headless/ORGAN_FRONTIER_MATRIX.json",
+    "loaded_weights": false,
+    "model_type": "qwen3",
+    "n_tensors": 311,
+    "n_unmatched": 0,
+    "names_via": "model.safetensors header",
+    "organs": [
+     {
+      "confidence": 0.32,
+      "example": [
+       "model.embed_tokens.weight"
+      ],
+      "n_layers": 0,
+      "n_tensors": 1,
+      "organ": "embed",
+      "status": "KNOWN"
+     },
+     {
+      "confidence": 0.98,
+      "example": [
+       "model.layers.0.self_attn.k_proj.weight",
+       "model.layers.0.self_attn.o_proj.weight"
+      ],
+      "n_layers": 28,
+      "n_tensors": 112,
+      "organ": "gqa_attention",
+      "status": "KNOWN"
+     },
+     {
+      "confidence": 0.32,
+      "example": [
+       "lm_head.weight"
+      ],
+      "n_layers": 0,
+      "n_tensors": 1,
+      "organ": "lm_head",
+      "status": "DECLARED_UNMEASURED"
+     },
+     {
+      "confidence": 0.98,
+      "example": [
+       "model.layers.0.mlp.down_proj.weight",
+       "model.layers.1.mlp.down_proj.weight"
+      ],
+      "n_layers": 28,
+      "n_tensors": 28,
+      "organ": "mlp_down",
+      "status": "KNOWN"
+     },
+     {
+      "confidence": 0.98,
+      "example": [
+       "model.layers.0.mlp.gate_proj.weight",
+       "model.layers.0.mlp.up_proj.weight"
+      ],
+      "n_layers": 28,
+      "n_tensors": 56,
+      "organ": "mlp_gate_up",
+      "status": "KNOWN"
+     },
+     {
+      "confidence": 0.98,
+      "example": [
+       "model.layers.0.input_layernorm.weight",
+       "model.layers.0.post_attention_layernorm.weight"
+      ],
+      "n_layers": 28,
+      "n_tensors": 113,
+      "organ": "rmsnorm",
+      "status": "DECLARED_UNMEASURED"
+     }
+    ],
+    "repo": "Qwen/Qwen3-0.6B",
+    "revision": "c1899de289a0",
+    "unrecognized": []
+   },
+   "invoked": true,
+   "loaded_weights": false,
+   "stage": "ArchitectureRecognizer",
+   "status": "PASSED",
+   "why": "invoked tools.odyssey.arch_recognizer.recognize on local config+tensor names (model.safetensors header); 6 organs, unmatched=0; weights were not loaded"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "folded_organ": null,
+    "law": "an organ is a ROLE, not a tensor name; feed_forward.w1 and mlp.gate_proj are the same node",
+    "n_nodes": 6,
+    "n_unrecognized": 0,
+    "nodes": [
+     {
+      "n_layers": 0,
+      "n_tensors": 1,
+      "organ": "embed",
+      "status": "KNOWN"
+     },
+     {
+      "n_layers": 28,
+      "n_tensors": 112,
+      "organ": "gqa_attention",
+      "status": "KNOWN"
+     },
+     {
+      "n_layers": 0,
+      "n_tensors": 1,
+      "organ": "lm_head",
+      "status": "DECLARED_UNMEASURED"
+     },
+     {
+      "n_layers": 28,
+      "n_tensors": 28,
+      "organ": "mlp_down",
+      "status": "KNOWN"
+     },
+     {
+      "n_layers": 28,
+      "n_tensors": 56,
+      "organ": "mlp_gate_up",
+      "status": "KNOWN"
+     },
+     {
+      "n_layers": 28,
+      "n_tensors": 113,
+      "organ": "rmsnorm",
+      "status": "DECLARED_UNMEASURED"
+     }
+    ]
+   },
+   "invoked": true,
+   "stage": "OrganGraph",
+   "status": "PASSED",
+   "why": "invoked tools.odyssey.physical_graph_compiler.organ_graph (CPU, no weight load)"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "claim_boundary": "exact-control occupying per organ. COMPILE_TIME_SCIENCE_ONLY. Not a packed NR. Not physical EBPW",
+    "flash_nr_is_this_specimen": false,
+    "flash_nr_v2_path": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_V2.nr.json",
+    "flash_nr_v2_status": "COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION",
+    "kind": "COMPOSITION_ORGAN_INVENTORY",
+    "organ_count": 6,
+    "organs": [
+     {
+      "n_tensors": 1,
+      "occupying": {
+       "kind": "EXACT_CONTROL_FALLBACK",
+       "representation": "source_bf16_exact",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
+      },
+      "organ": "embed",
+      "packed_nr_information": false
+     },
+     {
+      "n_tensors": 112,
+      "occupying": {
+       "kind": "EXACT_CONTROL_FALLBACK",
+       "representation": "source_bf16_exact",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
+      },
+      "organ": "gqa_attention",
+      "packed_nr_information": false
+     },
+     {
+      "n_tensors": 1,
+      "occupying": {
+       "kind": "EXACT_CONTROL_FALLBACK",
+       "representation": "source_bf16_exact",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
+      },
+      "organ": "lm_head",
+      "packed_nr_information": false
+     },
+     {
+      "n_tensors": 28,
+      "occupying": {
+       "kind": "EXACT_CONTROL_FALLBACK",
+       "representation": "source_bf16_exact",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
+      },
+      "organ": "mlp_down",
+      "packed_nr_information": false
+     },
+     {
+      "n_tensors": 56,
+      "occupying": {
+       "kind": "EXACT_CONTROL_FALLBACK",
+       "representation": "source_bf16_exact",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
+      },
+      "organ": "mlp_gate_up",
+      "packed_nr_information": false
+     },
+     {
+      "n_tensors": 113,
+      "occupying": {
+       "kind": "EXACT_CONTROL_FALLBACK",
+       "representation": "source_bf16_exact",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
+      },
+      "organ": "rmsnorm",
+      "packed_nr_information": false
+     }
+    ],
+    "packed": false,
+    "specimen": "Qwen--Qwen3-0.6B@c1899de289a0"
+   },
+   "invoked": true,
+   "stage": "NrIdentifyOrCreate",
+   "status": "PASSED",
+   "why": "identified a composition organ inventory for this specimen. Packed NR information payload is NOT_BUILT; composition bytes are not serialized_nr_information. Flash NR V2 is a different model"
+  },
+  {
+   "error": "parameterized_on_wrong_parent",
+   "evidence": {
+    "did_not_call_probes": true,
+    "did_not_load_weights": true,
+    "entry_point": "tools/odyssey/doctor_tournament.py",
+    "hardcoded_parent": "/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16",
+    "parent_is_this_specimen": false,
+    "probe_tensors": [
+     "model.language_model.layers.2.mlp.gate_proj.weight",
+     "model.language_model.layers.30.mlp.gate_proj.weight",
+     "model.language_model.layers.58.mlp.gate_proj.weight",
+     "model.language_model.layers.2.mlp.down_proj.weight",
+     "model.language_model.layers.30.mlp.down_proj.weight",
+     "model.language_model.layers.58.mlp.down_proj.weight",
+     "model.language_model.layers.3.self_attn.q_proj.weight",
+     "model.language_model.layers.31.self_attn.q_proj.weight",
+     "model.language_model.layers.59.self_attn.q_proj.weight",
+     "model.language_model.layers.2.linear_attn.out_proj.weight",
+     "model.language_model.layers.30.linear_attn.out_proj.weight",
+     "model.language_model.layers.58.linear_attn.out_proj.weight"
+    ],
+    "probe_tensors_missing_from_specimen": [
+     "model.language_model.layers.2.mlp.gate_proj.weight",
+     "model.language_model.layers.30.mlp.gate_proj.weight",
+     "model.language_model.layers.58.mlp.gate_proj.weight",
+     "model.language_model.layers.2.mlp.down_proj.weight",
+     "model.language_model.layers.30.mlp.down_proj.weight",
+     "model.language_model.layers.58.mlp.down_proj.weight",
+     "model.language_model.layers.3.self_attn.q_proj.weight",
+     "model.language_model.layers.31.self_attn.q_proj.weight",
+     "model.language_model.layers.59.self_attn.q_proj.weight",
+     "model.language_model.layers.2.linear_attn.out_proj.weight",
+     "model.language_model.layers.30.linear_attn.out_proj.weight",
+     "model.language_model.layers.58.linear_attn.out_proj.weight"
+    ]
+   },
+   "invoked": true,
+   "stage": "Doctor",
+   "status": "FAILED",
+   "why": "tools.odyssey.doctor_tournament is parameterized on a hardcoded PARENT (/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16) with Qwen3.8-27B tensor names; 12/12 probe tensors are absent from this specimen. probes() was not run: it imports torch+safetensors and would load the wrong model"
+  },
+  {
+   "error": null,
+   "evidence": null,
+   "invoked": true,
+   "stage": "RepresentationPlanner",
+   "status": "FAILED",
+   "why": "rehearse() returned without raising but this specimen is not in ARCHITECTURE_RECOGNIZER_FIXTURES; a returned plan for the wrong model is not a plan for this specimen"
+  },
+  {
+   "error": "FileNotFoundError: [Errno 2] No such file or directory: '/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0/model.safetensors.index.json'",
+   "evidence": {
+    "collapse_tensors_absent": [
+     "model.layers.0.mlp.experts.0.gate_proj.weight",
+     "model.layers.0.mlp.experts.0.up_proj.weight",
+     "model.layers.0.mlp.experts.0.down_proj.weight",
+     "model.layers.0.mlp.gate.weight"
+    ],
+    "collapse_tensors_present": [],
+    "emit_written": false,
+    "entry_point": "tools/odyssey/physical_graph_compiler.py:main",
+    "index_json_present": false,
+    "returncode": 1,
+    "stderr_tail": "Traceback (most recent call last):\n  File \"/Users/scammermike/Downloads/hawking/tools/odyssey/physical_graph_compiler.py\", line 219, in <module>\n    raise SystemExit(main())\n                     ~~~~^^\n  File \"/Users/scammermike/Downloads/hawking/tools/odyssey/physical_graph_compiler.py\", line 128, in main\n    idx = json.load(open(md / \"model.safetensors.index.json\"))[\"weight_map\"]\n                    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0/model.safetensors.index.json'\n",
+    "stdout_tail": ""
+   },
+   "invoked": true,
+   "stage": "PhysicalGraphCompiler",
+   "status": "FAILED",
+   "why": "invoked tools/odyssey/physical_graph_compiler.py --model-dir <specimen>. returncode=1. main() requires model.safetensors.index.json (present=False) and an X_layer capture, and the collapse looks up MoE expert tensors this dense specimen does not have"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "n_kernels": 17,
+    "names_this_specimen": false,
+    "organs": [
+     "deltanet",
+     "gqa_attention",
+     "mlp_down",
+     "mlp_gate_up"
+    ],
+    "path": "/Users/scammermike/Downloads/hawking/receipts/headless/KERNEL_LIBRARY.json",
+    "specimen_field": null
+   },
+   "invoked": true,
+   "stage": "KernelPlanner",
+   "status": "FAILED",
+   "why": "KERNEL_LIBRARY.json exists and was read, but it has no specimen field and catalogues qwen38 organs. The G023 stage audit already recorded treating this as AUTOMATIC-on-model-#2 as overstated. Reading the library is not a kernel plan for Qwen3-0.6B"
+  },
+  {
+   "error": "no_entry_point",
+   "evidence": {
+    "copied_as_this_specimen": false,
+    "entry_points_searched": [
+     "tools/odyssey/noetic_compiler.py (BLOCKED map, not a compiler)",
+     "crates/hawking-core/src/model/mod.rs",
+     "hcli/agentos/flash_executable.py (Flash scaffold, Codex-owned)"
+    ],
+    "native": {
+     "architectures": [
+      "llama",
+      "llama",
+      "llama2",
+      "llama3",
+      "llama3.1",
+      "llama3.2",
+      "mistral",
+      "deepseek2",
+      "deepseek-v2",
+      "deepseek2-lite",
+      "qwen2",
+      "qwen2.5",
+      "qwen",
+      "qwen2moe",
+      "qwen3moe",
+      "qwen-moe",
+      "rwkv7",
+      "rwkv-7"
+     ],
+     "includes_falcon_h1": false,
+     "includes_qwen2": true,
+     "includes_qwen3_dense": false,
+     "includes_qwen3moe": true,
+     "path": "crates/hawking-core/src/model/mod.rs"
+    },
+    "noetic_compiler_blocked_why": "the DeviceCompiler emits a Metal genome for an architecture the runtime can read. crates/hawking-core has a qwen38 reader and no qwen3_moe reader, so there is nothing to compile a device genome against for this specimen.",
+    "noetic_compiler_missing_capability": "a qwen3_moe artifact reader in the native runtime"
+   },
+   "invoked": true,
+   "stage": "DeviceCompiler",
+   "status": "BLOCKED",
+   "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family)"
+  },
+  {
+   "error": "no_generic_packer",
+   "evidence": {
+    "did_not_execute_first_noetic_executable": true,
+    "did_not_load_27b": true,
+    "parent_line": "PARENT_BF16 = Path(",
+    "producer": "tools/headless/first_noetic_executable.py",
+    "producer_in_git": true,
+    "producer_on_disk": true
+   },
+   "invoked": true,
+   "stage": "NoeticExecutable",
+   "status": "BLOCKED",
+   "why": "the only packed-NX producer in git is tools/headless/first_noetic_executable.py, which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen. It is not materialized in this sparse checkout. No generic DeviceCompiler\u2192NX entry exists. No packed NX for Qwen3-0.6B is on disk"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "hits": [],
+    "ok": false,
+    "why": "no NX document; absence is not source independence"
+   },
+   "invoked": true,
+   "stage": "SourceIndependence",
+   "status": "FAILED",
+   "why": "no NX document; absence is not source independence"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "dependencies": [
+     {
+      "need": "serialized_nx_body",
+      "present": false
+     },
+     {
+      "need": "physical_loader",
+      "present": false
+     },
+     {
+      "need": "native_kernel_catalog",
+      "present": false
+     },
+     {
+      "need": "byte_ledger_closed",
+      "present": false
+     },
+     {
+      "need": "runtime_genome_digests",
+      "present": false
+     }
+    ],
+    "missing": [
+     "serialized_nx_body",
+     "physical_loader",
+     "native_kernel_catalog",
+     "byte_ledger_closed",
+     "runtime_genome_digests"
+    ],
+    "packed_nx_present": false
+   },
+   "invoked": true,
+   "stage": "ExecutableDependencyAccounting",
+   "status": "FAILED",
+   "why": "accounted the executable dependencies a lowered NX would have to carry; missing=['serialized_nx_body', 'physical_loader', 'native_kernel_catalog', 'byte_ledger_closed', 'runtime_genome_digests']"
+  },
+  {
+   "error": null,
+   "evidence": {
+    "failed_requirements": [
+     "complete_byte_ledger",
+     "self_contained_dependencies",
+     "accepted_generation",
+     "capability",
+     "reproducibility",
+     "protected_performance",
+     "no_forbidden_fallback"
+    ],
+    "promotable": false,
+    "reasons": [
+     "complete_byte_ledger: no complete-system byte ledger on the NX (cited byte_ledger=None)",
+     "self_contained_dependencies: missing serialized artifact and/or source-independent loader/kernel; source-bound executors are not a self-contained NX (cited serialized_artifact=None)",
+     "accepted_generation: no multi-token accepted generation; a single terminal argmax is not accepted generation (cited qualification.accepted_multitoken_tps=None)",
+     "capability: no capability suite result on the NX (cited capability=None)",
+     "reproducibility: no executable closure hash; metadata hashes of source files are not byte reproducibility (cited reproducibility=None)",
+     "protected_performance: no PROTECTED_ABSOLUTE complete-token measurement (cited bench.state=None)",
+     "no_forbidden_fallback: fallback_count is undisclosed; missing is not zero (cited fallback_count={'fallback_count': None, 'dense_rematerialization': None, 'source_independent': None})"
+    ],
+    "requirements": {
+     "accepted_generation": {
+      "cited_field": "qualification.accepted_multitoken_tps",
+      "cited_value": null,
+      "ok": false,
+      "requirement": "accepted_generation",
+      "state": "NOT_MET",
+      "why": "no multi-token accepted generation; a single terminal argmax is not accepted generation"
+     },
+     "capability": {
+      "cited_field": "capability",
+      "cited_value": null,
+      "ok": false,
+      "requirement": "capability",
+      "state": "NOT_MET",
+      "why": "no capability suite result on the NX"
+     },
+     "complete_byte_ledger": {
+      "cited_field": "byte_ledger",
+      "cited_value": null,
+      "ok": false,
+      "requirement": "complete_byte_ledger",
+      "state": "NOT_MET",
+      "why": "no complete-system byte ledger on the NX"
+     },
+     "no_forbidden_fallback": {
+      "cited_field": "fallback_count",
+      "cited_value": {
+       "dense_rematerialization": null,
+       "fallback_count": null,
+       "source_independent": null
+      },
+      "ok": false,
+      "requirement": "no_forbidden_fallback",
+      "state": "NOT_MET",
+      "why": "fallback_count is undisclosed; missing is not zero"
+     },
+     "protected_performance": {
+      "cited_field": "bench.state",
+      "cited_value": null,
+      "ok": false,
+      "requirement": "protected_performance",
+      "state": "NOT_MET",
+      "why": "no PROTECTED_ABSOLUTE complete-token measurement"
+     },
+     "reproducibility": {
+      "cited_field": "reproducibility",
+      "cited_value": null,
+      "ok": false,
+      "requirement": "reproducibility",
+      "state": "NOT_MET",
+      "why": "no executable closure hash; metadata hashes of source files are not byte reproducibility"
+     },
+     "self_contained_dependencies": {
+      "cited_field": "serialized_artifact",
+      "cited_value": null,
+      "ok": false,
+      "requirement": "self_contained_dependencies",
+      "state": "NOT_MET",
+      "why": "missing serialized artifact and/or source-independent loader/kernel; source-bound executors are not a self-contained NX"
+     }
+    },
+    "status": null
+   },
+   "invoked": true,
+   "stage": "Verifier",
+   "status": "FAILED",
+   "why": "invoked flash_nx_audit.check_nx; there is no NX document to verify"
+  }
+ ],
+ "version": 1,
+ "what_this_cannot_establish": [
+  "a packed source-independent NX for Qwen3-0.6B, Falcon-H1, or Flash",
+  "that parameterizing PhysicalGraphCompiler for dense MLP would produce a correct collapse",
+  "that adding a qwen3 GGUF match arm would load this safetensors specimen",
+  "protected complete-token performance or physical EBPW",
+  "that Odyssey I can launch; the Flash-specific criterion still stands"
+ ]
+}

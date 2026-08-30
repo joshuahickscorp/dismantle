@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:07:31Z",
+  "recorded_at": "2026-08-30T16:41:20Z",
   "recorded_by": "tools/future/trial_workload.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -211,7 +211,7 @@
     },
     {
      "cause_frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
-     "cause_id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Qwen3.8-Flash-Next",
+     "cause_id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Kimi-K3",
      "cause_module": "specimen_verify.py",
      "derived_from": "recovered_mechanism:odyssey_launch.CRITERION_IDS",
      "effect_frontier_id": "FT.ODYSSEY_TRANSFER.re-earn",
@@ -304,14 +304,14 @@
      "worth_doing_anyway": "attack specs are STATIC_ONLY and worth having before any measurement; a law that emits none is a bug"
     },
     {
-     "description": "recompute every published digest for specimen Qwen--Qwen3.8-Flash-Next@34567a4712bc and decide whole-tree verification offline",
+     "description": "recompute every published digest for specimen moonshotai--Kimi-K3@9f62e4e9fffb and decide whole-tree verification offline",
      "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
-     "id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Qwen3.8-Flash-Next",
+     "id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Kimi-K3",
      "mix_role": "LONG_SPECIMEN_VERIFY",
      "module": "specimen_verify.py",
      "resource_class": "IO_HEAVY",
      "species": "SPECIMEN_VERIFY",
-     "specimen": "Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+     "specimen": "moonshotai--Kimi-K3@9f62e4e9fffb",
      "status": "pending",
      "worth_doing_anyway": "a completed large-specimen receipt is the work Odyssey I still needs; it stands if the clock runs out"
     },
@@ -401,7 +401,7 @@
     },
     {
      "cause_frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
-     "cause_id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Qwen3.8-Flash-Next",
+     "cause_id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Kimi-K3",
      "cause_module": "specimen_verify.py",
      "derived_from": "recovered_mechanism:odyssey_launch.CRITERION_IDS",
      "effect_frontier_id": "FT.ODYSSEY_TRANSFER.re-earn",
@@ -494,14 +494,14 @@
      "worth_doing_anyway": "attack specs are STATIC_ONLY and worth having before any measurement; a law that emits none is a bug"
     },
     {
-     "description": "recompute every published digest for specimen Qwen--Qwen3.8-Flash-Next@34567a4712bc and decide whole-tree verification offline",
+     "description": "recompute every published digest for specimen moonshotai--Kimi-K3@9f62e4e9fffb and decide whole-tree verification offline",
      "frontier_id": "FT.MODEL_CAPABILITY.hard-gates",
-     "id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Qwen3.8-Flash-Next",
+     "id": "WU.TRIAL.LONG_SPECIMEN_VERIFY.specimen_verify.Kimi-K3",
      "mix_role": "LONG_SPECIMEN_VERIFY",
      "module": "specimen_verify.py",
      "resource_class": "IO_HEAVY",
      "species": "SPECIMEN_VERIFY",
-     "specimen": "Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+     "specimen": "moonshotai--Kimi-K3@9f62e4e9fffb",
      "status": "pending",
      "worth_doing_anyway": "a completed large-specimen receipt is the work Odyssey I still needs; it stands if the clock runs out"
     },
@@ -831,7 +831,7 @@
   "workunit": "one CPU_ANALYSIS unit; compose the mixed real-frontier workload for a named autonomy trial and refuse a 3h/6h set with no replan pair"
  },
  "schema": "hawking.future.trial_workload.v1",
- "seal_sha256": "c4894197300a76852b19ad0a3f4b73971491a77c789bdb1027832daa0164ac37",
+ "seal_sha256": "ecec4995f2705b729eb9248561e34321919f2aad1765263188a22aca1878d782",
  "trial_ids": [
   "15m",
   "1h",

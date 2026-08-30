@@ -307,6 +307,43 @@ def run(trial: str = "15m", timeline: Path | None = None,
     # so re-running the same capability against the same frontier item is a copy,
     # however many distinct ids it is given.
     queue: list[dict[str, Any]] = []
+    # The COMPOSED workload first. A trial whose queue is whatever the connector
+    # happens to expose is a checklist; trial_workload composes a declared mix of
+    # real current frontier work -- fast specimen science, a genuinely long unit,
+    # a negative-science query that can refuse, a multi-fidelity screen, an HCLI
+    # self-optimization unit, an Odyssey-II transfer and an Odyssey-III attack --
+    # and, for the longer trials, pairs where one unit's RESULT legitimately
+    # reprioritizes another. Replanning is what separates a resident from an
+    # executor, and it cannot be demonstrated on work that has no dependencies.
+    composed_replan_pairs: list[dict[str, Any]] = []
+    try:
+        from tools.future import trial_workload as twl
+
+        composed = twl.compose(trial)
+        composed_replan_pairs = list(composed.get("replan_pairs") or [])
+        for unit in composed.get("units") or []:
+            module = unit.get("module") or ""
+            if module and module in orch.BINDINGS:
+                queue.append({
+                    "capability": module,
+                    "frontier_id": unit.get("frontier_id") or orch.BINDINGS[module][0],
+                    "description": str(unit.get("description") or "")[:180],
+                    "composed_unit_id": unit.get("id"),
+                    "mix_role": unit.get("mix_role"),
+                })
+        for unit in composed.get("sleeping") or []:
+            doc = _emit(doc, "workunit_sleeping", {
+                "unit_id": unit.get("id"),
+                "resource_class": unit.get("resource_class"),
+                "wake_condition": unit.get("wake_condition")
+                                  or "the resource this unit needs is not available here",
+                "why": "composed into the mix, parked rather than dropped",
+            }, t_s=t())
+    except Exception as exc:
+        doc = _emit(doc, "workunit_refused", {
+            "reason": f"workload_compose_failed:{type(exc).__name__}: {exc}",
+        }, t_s=t())
+
     # Candidate GENERATION, then the scar filter. Neither the frontier nor the
     # Codex candidate queue ever contains already-dead work -- both are pruned
     # before the sidecar sees them -- so a loop that only CONSUMES those can
@@ -659,6 +696,7 @@ def run(trial: str = "15m", timeline: Path | None = None,
         "receipts_ingested": len(ingested),
         "refused_on_evidence": len(refused),
         "scars_consulted": scars_consulted,
+        "composed_replan_pairs": len(composed_replan_pairs),
         "hypotheses_proposed": len(proposed),
         "hypotheses_still_live": len(survivors),
         "blocked_lanes_parked": list(BLOCKED_LANES),

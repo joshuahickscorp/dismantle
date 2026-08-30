@@ -214,3 +214,47 @@ def test_mission_state_is_sealed_too():
     assert doc["bench"]["state"] == "UNKNOWN"
     body = {k: v for k, v in doc.items() if k != "seal_sha256"}
     assert seal(dict(body))["seal_sha256"] == doc["seal_sha256"]
+
+
+def test_the_trial_queue_is_a_composed_mix_not_whatever_the_connector_exposes():
+    """A queue of every bound capability is a checklist, not a trial.
+
+    trial_workload composes a declared mix -- fast specimen science, one
+    genuinely long unit, a negative-science query that can refuse, a
+    multi-fidelity screen, an HCLI self-optimization unit, an Odyssey-II
+    transfer and an Odyssey-III attack -- plus, for the longer trials, pairs
+    where one unit's result legitimately reprioritizes another. Replanning is
+    what separates a resident from an executor and cannot be demonstrated on
+    work that has no dependencies.
+    """
+    from tools.future import trial_workload as twl
+
+    for trial in ("1h", "3h", "6h"):
+        composed = twl.compose(trial)
+        units = composed["units"]
+        assert units, f"{trial} composed no units"
+        # every composed unit must name a module the connector can actually run
+        for unit in units:
+            module = unit.get("module")
+            if module:
+                assert module in ar.orch.BINDINGS, (
+                    f"{trial} composed {module}, which no binding names"
+                )
+        roles = {u.get("mix_role") for u in units}
+        assert len(roles) > 1, f"{trial} mix collapsed to a single role: {roles}"
+
+    # The longer trials must be able to demonstrate replanning at all.
+    assert twl.compose("3h")["n_replan_pairs"] > 0
+    assert twl.compose("6h")["n_replan_pairs"] > 0
+
+
+def test_a_composed_unit_that_needs_a_blocked_resource_sleeps(monkeypatch):
+    """Parked, never dropped, and never quietly run anyway."""
+    from tools.future import trial_workload as twl
+
+    composed = twl.compose("6h")
+    for unit in composed.get("sleeping") or []:
+        assert unit.get("resource_class") or unit.get("required_lanes")
+        assert unit.get("id")
+    for unit in composed["units"]:
+        assert not unit.get("gpu_authority"), "a runnable composed unit claimed GPU authority"

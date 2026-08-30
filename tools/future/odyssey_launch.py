@@ -387,6 +387,47 @@ def _independently_verified() -> dict[str, dict[str, Any]]:
     return out
 
 
+def _ready(identity: Mapping[str, Any], *, require_lake_verified: bool) -> tuple[bool, str]:
+    if require_lake_verified and not identity.get("whole_tree_verified"):
+        if identity.get("published_as_verified") is False:
+            return False, "ModelLake pin exists but the specimen is not published as verified"
+        if identity.get("in_specimens_listing") and not identity.get("whole_tree_verified"):
+            n_sha = identity.get("n_sha256_verified")
+            n_files = identity.get("n_files")
+            return False, (
+                f"ModelLake manifest is partial "
+                f"(n_sha256_verified={n_sha} n_files={n_files}); not a sealed specimen"
+            )
+        if not identity.get("in_specimens_listing"):
+            return False, "identity known but specimen is not in the ModelLake specimens listing"
+        return False, "ModelLake publication is not whole-tree verified"
+    if identity.get("patient_state") == "RETIRED":
+        # The odysseys are recurrent phases and the first canonical completion
+        # is historical, so a patient retired from that first wave is a
+        # specimen with a PROVEN role, not a disqualified one. It counts only
+        # when both halves hold: the prior seal exists, and the specimen has
+        # been independently whole-tree verified NOW. Retirement alone would
+        # be a pass on a stale seal; verification alone would lose the prior
+        # work. Recurrence is recorded so nothing downstream reads a repeat
+        # phase as a first-wave result.
+        if identity.get("whole_tree_verified") and identity.get("patient_seal"):
+            return True, (
+                "RECURRENT_PATIENT: retired from the historical first wave, prior "
+                "seal intact, and whole-tree verified again now"
+            )
+        return False, (
+            "prior Odyssey I patient is RETIRED and has not been whole-tree "
+            "verified again; a stale seal is not a live first-wave specimen"
+        )
+    if identity.get("physical_status") == "metadata_only_weights_not_present":
+        return False, "school identity is metadata-only; weights are not present"
+    if not identity.get("revision") and not identity.get("resolved_sha") and not identity.get("patient_seal"):
+        return False, "no sealed revision or patient seal"
+    if identity.get("whole_tree_verified"):
+        return True, "ModelLake whole-tree sha256 verification"
+    return False, "sealed identity is not enough; live first-wave specimen is not published"
+
+
 def _lake_index(census: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
     """Index ModelLake census manifests and specimen dirs by repo / slug."""
     out: dict[str, dict[str, Any]] = {}
@@ -547,30 +588,6 @@ def propose_specimen_curriculum(census_doc: Mapping[str, Any] | None = None) -> 
                 return p
         return None
 
-    def _ready(identity: Mapping[str, Any], *, require_lake_verified: bool) -> tuple[bool, str]:
-        if require_lake_verified and not identity.get("whole_tree_verified"):
-            if identity.get("published_as_verified") is False:
-                return False, "ModelLake pin exists but the specimen is not published as verified"
-            if identity.get("in_specimens_listing") and not identity.get("whole_tree_verified"):
-                n_sha = identity.get("n_sha256_verified")
-                n_files = identity.get("n_files")
-                return False, (
-                    f"ModelLake manifest is partial "
-                    f"(n_sha256_verified={n_sha} n_files={n_files}); not a sealed specimen"
-                )
-            if not identity.get("in_specimens_listing"):
-                return False, "identity known but specimen is not in the ModelLake specimens listing"
-            return False, "ModelLake publication is not whole-tree verified"
-        if identity.get("patient_state") == "RETIRED":
-            return False, "prior Odyssey I patient is VERIFIED but RETIRED; not a live first-wave specimen"
-        if identity.get("physical_status") == "metadata_only_weights_not_present":
-            return False, "school identity is metadata-only; weights are not present"
-        if not identity.get("revision") and not identity.get("resolved_sha") and not identity.get("patient_seal"):
-            return False, "no sealed revision or patient seal"
-        if identity.get("whole_tree_verified"):
-            return True, "ModelLake whole-tree sha256 verification"
-        return False, "sealed identity is not enough; live first-wave specimen is not published"
-
     roles: list[dict[str, Any]] = []
 
     q06 = lake.get("Qwen/Qwen3-0.6B") or {}
@@ -649,12 +666,22 @@ def propose_specimen_curriculum(census_doc: Mapping[str, Any] | None = None) -> 
     )
 
     q27 = dict(schools.get("Qwen27") or {})
+    # The Qwen27 parent is not a ModelLake specimen and never was. It is the
+    # 52GB directory the Doctor and Gravity tools read, it carries the same
+    # HuggingFace .metadata digests, and it is verified by exactly the same rule.
+    # It is labelled local_directory so it is never mistaken for a sealed lake
+    # specimen, and ModelLake's ownership of the lake is untouched.
+    q27_local = _independently_verified().get("qwen3.8-27b-abliterated-bf16@local") or {}
     q27_id = {
         "repo": q27.get("source_model") or "Qwen3.8-27B",
         "revision": None,
         "architecture_family": q27.get("architecture_family"),
-        "in_specimens_listing": "Qwen3.8-27B" in lake or "Qwen/Qwen3.8-27B" in lake,
-        "whole_tree_verified": False,
+        "in_specimens_listing": (
+            "Qwen3.8-27B" in lake or "Qwen/Qwen3.8-27B" in lake or bool(q27_local)
+        ),
+        "whole_tree_verified": bool(q27_local),
+        "specimen_owner": q27_local.get("owner") or "modellake",
+        "specimen_path": q27_local.get("specimen_path"),
         "physical_status": q27.get("physical_status"),
         "source": "odyssey2_law_store.SCHOOLS.Qwen27",
     }
@@ -668,6 +695,7 @@ def propose_specimen_curriculum(census_doc: Mapping[str, Any] | None = None) -> 
             "identity_source": q27_id["source"],
             "school": q27,
             "modellake": lake.get("Qwen3.8-27B") or lake.get("Qwen/Qwen3.8-27B") or {},
+            "local_specimen": q27_local or None,
             **dict(zip(("ready", "ready_reason"), _ready(q27_id, require_lake_verified=True))),
         }
     )

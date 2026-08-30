@@ -59,6 +59,22 @@ MANIFESTS = LAKE / "manifests"
 # are not part of the specimen's source identity.
 LAKE_OWN_FILES = {"MODEL_LAKE_SPECIMEN_SEAL.json", "MODEL_LAKE_SPECIMEN_SEAL.sha256"}
 
+# Specimens that live outside ModelLake. ModelLake still owns the lake; these are
+# named explicitly, verified by exactly the same rule, and labelled with a
+# different owner so nothing downstream can mistake one for a sealed lake
+# specimen. The Qwen3.8-27B parent is here because it is the model the Doctor and
+# Gravity tools read, it carries the same HuggingFace .metadata sidecars, and it
+# is not in the lake.
+EXTRA_SPECIMENS: dict[str, Path] = {
+    "qwen3.8-27b-abliterated-bf16@local": Path(
+        "/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16"
+    ),
+}
+
+# Written by the local mirror, not published by the source repo. crc32.txt covers
+# only the small files here and never the weights, so it is not a digest source.
+LOCAL_OWN_FILES = {"crc32.txt"}
+
 CHUNK = 8 << 20
 
 
@@ -76,10 +92,23 @@ def available() -> dict[str, Any]:
     }
 
 
+def specimen_dir(name: str) -> Path:
+    """Where this specimen lives. The lake first, then named local directories."""
+    if name in EXTRA_SPECIMENS:
+        return EXTRA_SPECIMENS[name]
+    return SPECIMENS / name
+
+
+def specimen_owner(name: str) -> str:
+    return "local_directory" if name in EXTRA_SPECIMENS else "modellake"
+
+
 def list_specimens() -> list[str]:
-    if not SPECIMENS.is_dir():
-        return []
-    return sorted(p.name for p in SPECIMENS.iterdir() if p.is_dir())
+    names = []
+    if SPECIMENS.is_dir():
+        names.extend(p.name for p in SPECIMENS.iterdir() if p.is_dir())
+    names.extend(n for n, d in EXTRA_SPECIMENS.items() if d.is_dir())
+    return sorted(set(names))
 
 
 def _read_metadata(spec_dir: Path, rel: str) -> dict[str, Any] | None:
@@ -119,10 +148,11 @@ def _git_blob_sha1(path: Path) -> str:
 
 
 def specimen_files(name: str) -> list[Path]:
-    d = SPECIMENS / name
+    d = specimen_dir(name)
     if not d.is_dir():
         raise SpecimenError(f"specimen not present: {name}")
-    return sorted(p for p in d.iterdir() if p.is_file() and p.name not in LAKE_OWN_FILES)
+    skip = LAKE_OWN_FILES | LOCAL_OWN_FILES
+    return sorted(p for p in d.iterdir() if p.is_file() and p.name not in skip)
 
 
 def verify_specimen(name: str, *, max_seconds: float | None = None) -> dict[str, Any]:
@@ -138,7 +168,7 @@ def verify_specimen(name: str, *, max_seconds: float | None = None) -> dict[str,
             skipped += 1
             rows.append({"file": path.name, "verdict": "SKIPPED_TIME_BUDGET"})
             continue
-        meta = _read_metadata(SPECIMENS / name, path.name)
+        meta = _read_metadata(specimen_dir(name), path.name)
         size = path.stat().st_size
         if meta is None:
             no_digest += 1
@@ -177,6 +207,8 @@ def verify_specimen(name: str, *, max_seconds: float | None = None) -> dict[str,
 
     return {
         "specimen": name,
+        "owner": specimen_owner(name),
+        "specimen_path": str(specimen_dir(name)),
         "n_files": n,
         "verified": matched,
         "mismatched": mismatched,
@@ -188,6 +220,7 @@ def verify_specimen(name: str, *, max_seconds: float | None = None) -> dict[str,
         "status": status,
         "whole_tree_verified": whole_tree,
         "modellake_mutated": False,
+        "source_mutated": False,
         "files": rows,
     }
 

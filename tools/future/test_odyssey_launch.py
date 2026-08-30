@@ -486,3 +486,33 @@ def test_negative_control_the_gate_cannot_certify_itself_as_the_driver():
     sched = ol._resident_schedulable(["tools/odyssey/doctor_tournament.py"])
     assert sched.get("driver_module") != "odyssey_launch.py"
     assert sched["schedule"] is False, "a declaration is not a schedule"
+
+
+def test_a_retired_patient_needs_BOTH_the_prior_seal_and_fresh_verification():
+    """Recurrence is earned twice over, or it is a pass on a stale seal.
+
+    The odysseys are recurrent phases and the first completion is historical, so
+    a patient retired from that wave is a specimen with a proven role. But
+    retirement alone would let a years-old seal stand in for verification, and
+    verification alone would throw away the prior work.
+    """
+    verified_and_sealed = {
+        "patient_state": "RETIRED", "patient_seal": "sha256:abc",
+        "whole_tree_verified": True, "revision": "r1",
+    }
+    ready, why = ol._ready(verified_and_sealed, require_lake_verified=True)
+    assert ready is True
+    assert "RECURRENT_PATIENT" in why
+
+    for missing in ("patient_seal", "whole_tree_verified"):
+        row = dict(verified_and_sealed)
+        row[missing] = None if missing == "patient_seal" else False
+        ready, why = ol._ready(row, require_lake_verified=True)
+        assert ready is False, f"a retired patient passed without {missing}"
+
+
+def test_recurrence_is_labelled_so_it_is_not_read_as_a_first_wave_result():
+    cur = ol.propose_specimen_curriculum()
+    for role in cur["roles"]:
+        if role.get("ready") and "RETIRED" in str(role.get("modellake", {}).get("patient_state", "")):
+            assert "RECURRENT_PATIENT" in role["ready_reason"]

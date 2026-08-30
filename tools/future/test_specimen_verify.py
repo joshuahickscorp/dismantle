@@ -195,3 +195,38 @@ def test_real_falcon_result_is_recorded_and_is_a_recomputation():
             assert row["bytes_hashed"] > 0, "claimed verified without hashing anything"
             assert row["mismatched"] == 0
             assert row["no_remote_digest"] == 0
+
+
+def test_a_non_lake_specimen_is_labelled_not_disguised():
+    """ModelLake still owns the lake. A local directory must say so."""
+    for name in sv.EXTRA_SPECIMENS:
+        assert sv.specimen_owner(name) == "local_directory"
+        assert name.endswith("@local"), "a non-lake specimen must be visibly named"
+    lake_names = [n for n in sv.list_specimens() if n not in sv.EXTRA_SPECIMENS]
+    for name in lake_names:
+        assert sv.specimen_owner(name) == "modellake"
+
+
+def test_the_local_mirrors_own_checksum_file_is_not_a_digest_source():
+    """crc32.txt is written by the mirror and covers 8 small files, never the weights.
+
+    Counting it would verify the tokenizer and call the 52GB of weights checked.
+    """
+    assert "crc32.txt" in sv.LOCAL_OWN_FILES
+    name = "qwen3.8-27b-abliterated-bf16@local"
+    if not sv.specimen_dir(name).is_dir():
+        return
+    assert "crc32.txt" not in {p.name for p in sv.specimen_files(name)}
+
+
+def test_the_local_specimen_verifies_by_exactly_the_same_rule():
+    """Same digests, same recomputation, same refusals -- only the owner differs."""
+    name = "qwen3.8-27b-abliterated-bf16@local"
+    if not sv.specimen_dir(name).is_dir():
+        return
+    files = sv.specimen_files(name)
+    assert files, "the local specimen has no files"
+    digested = [f for f in files if sv._read_metadata(sv.specimen_dir(name), f.name)]
+    assert digested, "no HuggingFace .metadata sidecars; it cannot be verified this way"
+    meta = sv._read_metadata(sv.specimen_dir(name), digested[0].name)
+    assert meta["digest_kind"] in {"sha256", "git_blob_sha1"}

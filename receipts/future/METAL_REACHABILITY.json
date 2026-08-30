@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T11:53:54Z",
+  "recorded_at": "2026-08-30T11:55:39Z",
   "recorded_by": "tools/future/metal_reachability.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -51,6 +51,11 @@
   "system_default": "Apple M3 Ultra",
   "unified_memory": true
  },
+ "observed_runtime_binding": {
+  "metal_crate_version": "0.29.0",
+  "n_devices": 1,
+  "system_default": "Apple M3 Ultra"
+ },
  "purpose": "Test the campaign-wide claim that this host has no Metal-capable GPU, because a host property and a process property have different remedies.",
  "recovered_implementation": [
   "crates/hawking-core/src/metal/mod.rs raises Error::Metal on Device::system_default() returning None",
@@ -64,12 +69,25 @@
   "workunit": "one CPU_ANALYSIS unit; cheap; no GPU authority"
  },
  "schema": "hawking.future.metal_reachability.v1",
- "seal_sha256": "0958f4a12201298b417ea016adf7dd764d5ccd76d65bbf4cf8e707e585e9d7b0",
+ "seal_sha256": "25702403a28865e1c6c23b2744ec60539f03d343696167e54ab48bd373f28d2d",
  "verdict": {
   "claim": "this host has no Metal-capable GPU",
   "different_remedies": {
    "a process that cannot see a present GPU": "change how the process is launched, then re-run the capture",
    "if the host had no GPU": "acquire hardware; nothing else helps"
+  },
+  "runtime_binding": {
+   "claim": "this host has no Metal-capable GPU",
+   "different_remedies": {
+    "a process that cannot see a present GPU": "change how the process is launched, then re-run the capture",
+    "if the host had no GPU": "acquire hardware; nothing else helps"
+   },
+   "verdict": "FALSIFIED_AS_A_HOST_PROPERTY",
+   "what_this_does_not_establish": [
+    "that the blocked capture will now succeed; that binary was not run here",
+    "the cause of the process-side failure; sandbox, launch context and build target are all consistent with what was observed and nothing here distinguishes them"
+   ],
+   "why": "metal crate 0.29.0 -- the same crate and the same Device::system_default() call the runtime uses -- returned 'Apple M3 Ultra' here. The language binding is not the suspect; it is the binding that failed in the blocked run."
   },
   "verdict": "FALSIFIED_AS_A_HOST_PROPERTY",
   "what_this_does_not_establish": [

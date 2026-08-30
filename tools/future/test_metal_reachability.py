@@ -71,3 +71,38 @@ def test_the_hardcoded_boundary_status_is_recorded_as_a_negative_finding():
     doc = json.loads((RECEIPTS / mr.RECEIPT).read_text())
     findings = " ".join(doc["negative_findings"])
     assert "ANY" in findings and "BLOCKED_NO_METAL_GPU" in findings
+
+
+def test_the_rust_probe_uses_the_version_the_runtime_resolves():
+    """Testing a different crate version would prove nothing about the runtime."""
+    version = mr._runtime_metal_crate_version()
+    assert version, "Cargo.lock must resolve a metal crate version"
+    doc = json.loads((RECEIPTS / mr.RECEIPT).read_text())
+    observed = doc.get("observed_runtime_binding")
+    if observed:
+        assert observed["metal_crate_version"] == version
+
+
+def test_the_rust_probe_also_creates_no_command_queue():
+    assert "new_command_queue" not in mr.PROBE_RUST_MAIN
+    assert "Device::system_default()" in mr.PROBE_RUST_MAIN
+
+
+def test_the_rust_probe_builds_out_of_tree():
+    """A campaign is running. Nothing here may touch the repo's build state."""
+    import inspect
+
+    src = inspect.getsource(mr.probe_rust)
+    assert "CARGO_TARGET_DIR" in src, "the probe must not share the repo target dir"
+    assert "--offline" in src, "a probe that reaches the network is not a local probe"
+    assert "TemporaryDirectory" in src
+
+
+def test_runtime_binding_verdict_is_reported_separately():
+    """Host and binding are different claims and must not be merged into one."""
+    doc = json.loads((RECEIPTS / mr.RECEIPT).read_text())
+    v = doc["verdict"]
+    assert "runtime_binding" in v
+    assert v["runtime_binding"]["verdict"] in {
+        "FALSIFIED_AS_A_HOST_PROPERTY", "CONFIRMED", "UNTESTED"
+    }

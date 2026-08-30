@@ -75,6 +75,37 @@ print(String(data: data, encoding: .utf8)!)
 '''
 
 
+# The same crate and the same call the runtime uses. Enumeration only again --
+# no command queue, no shader library, nothing submitted. This is the probe that
+# matters: it removes the language binding as a suspect, because it IS the
+# binding that failed.
+PROBE_RUST_MAIN = '''use metal::Device;
+fn main() {
+    match Device::system_default() {
+        Some(d) => println!("system_default={}", d.name()),
+        None => println!("system_default=NONE"),
+    }
+    let all = Device::all();
+    println!("all_devices={}", all.len());
+}
+'''
+
+
+def _runtime_metal_crate_version() -> str:
+    """The metal crate version hawking-core actually resolves, from Cargo.lock."""
+    lock = REPO / "Cargo.lock"
+    if not lock.is_file():
+        return ""
+    seen = []
+    lines = lock.read_text(errors="replace").splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() == 'name = "metal"' and i + 1 < len(lines):
+            v = lines[i + 1].strip()
+            if v.startswith("version = "):
+                seen.append(v.split('"')[1])
+    return max(seen) if seen else ""
+
+
 class ProbeUnavailable(Exception):
     pass
 
@@ -96,6 +127,42 @@ def probe() -> dict[str, Any]:
         if run.returncode != 0:
             raise ProbeUnavailable(f"probe did not run: {run.stderr.strip()[:300]}")
         return json.loads(run.stdout.strip())
+
+
+def probe_rust() -> dict[str, Any]:
+    """Ask the SAME crate the runtime uses. Built out of tree, offline.
+
+    Built in a temporary directory with its own CARGO_TARGET_DIR so nothing
+    touches the repository's build state while a campaign is running.
+    """
+    cargo = shutil.which("cargo")
+    if not cargo:
+        raise ProbeUnavailable("cargo is not on PATH; the runtime binding cannot be tested")
+    version = _runtime_metal_crate_version()
+    if not version:
+        raise ProbeUnavailable("Cargo.lock does not resolve a metal crate version")
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "probe"
+        (root / "src").mkdir(parents=True)
+        (root / "Cargo.toml").write_text(
+            '[package]\nname = "metalprobe"\nversion = "0.0.0"\nedition = "2021"\n'
+            f'\n[dependencies]\nmetal = "{version}"\n'
+        )
+        (root / "src" / "main.rs").write_text(PROBE_RUST_MAIN)
+        env = dict(_os.environ, CARGO_TARGET_DIR=str(Path(tmp) / "target"))
+        run = subprocess.run([cargo, "run", "--release", "--offline", "-q"],
+                             cwd=root, env=env, capture_output=True, text=True,
+                             timeout=900)
+        if run.returncode != 0:
+            raise ProbeUnavailable(f"crate probe failed: {run.stderr.strip()[-300:]}")
+        out: dict[str, Any] = {"metal_crate_version": version}
+        for line in run.stdout.splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "system_default":
+                out["system_default"] = None if value.strip() == "NONE" else value.strip()
+            elif key.strip() == "all_devices":
+                out["n_devices"] = int(value.strip())
+        return out
 
 
 def verdict(observed: dict[str, Any] | None, why_unavailable: str = "") -> dict[str, Any]:
@@ -161,7 +228,22 @@ def build() -> Path:
     except (ProbeUnavailable, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
         why = f"{type(exc).__name__}: {exc}"
 
+    runtime_binding: dict[str, Any] | None = None
+    runtime_why = ""
+    try:
+        runtime_binding = probe_rust()
+    except (ProbeUnavailable, subprocess.TimeoutExpired, ValueError) as exc:
+        runtime_why = f"{type(exc).__name__}: {exc}"
+
     v = verdict(observed, why)
+    v["runtime_binding"] = verdict(runtime_binding, runtime_why)
+    if runtime_binding and runtime_binding.get("system_default"):
+        v["runtime_binding"]["why"] = (
+            f"metal crate {runtime_binding['metal_crate_version']} -- the same crate and "
+            f"the same Device::system_default() call the runtime uses -- returned "
+            f"{runtime_binding['system_default']!r} here. The language binding is not "
+            f"the suspect; it is the binding that failed in the blocked run."
+        )
     doc = {
         "schema": SCHEMA,
         "version": 1,
@@ -177,6 +259,7 @@ def build() -> Path:
         ),
         "gpu_authority": False,
         "observed": observed,
+        "observed_runtime_binding": runtime_binding,
         "verdict": v,
         "claim_sites": claim_sites(),
         "blocked_downstream_if_true": [

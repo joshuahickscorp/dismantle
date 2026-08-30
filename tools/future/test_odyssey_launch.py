@@ -337,3 +337,152 @@ def test_verify_cli_refuses_and_keeps_phase_not_started():
     assert doc["odyssey_i_launch_written"] is False
     assert doc["phase_transition"] == "NOT_STARTED"
     assert doc["launch_receipt"]["written"] is False
+
+
+# ---------------------------------------------------------------------------
+# Specimen readiness may be EARNED, but it must never be rounded up to.
+# ---------------------------------------------------------------------------
+
+
+def test_specimen_dirs_on_disk_copes_when_the_lake_is_not_mounted(monkeypatch):
+    """ModelLake is an external volume. An unmounted lake is not an error."""
+    assert isinstance(ol._specimen_dirs_on_disk(), set)
+
+
+def test_disk_is_authority_over_the_census_cache():
+    """A specimen the census never recorded still exists.
+
+    Reading only the census reported Mistral-Small-24B as absent from the
+    ModelLake specimens listing while its directory sat in that listing.
+    """
+    dirs = ol._specimen_dirs_on_disk()
+    if not dirs:
+        return  # lake not mounted here; the fixtures below carry the guarantees
+    idx = ol._lake_index({})
+    for name in dirs:
+        slug, _, _rev = name.partition("@")
+        repo = slug.replace("--", "/", 1)
+        assert repo in idx, f"{repo} is on disk but absent from the index"
+        assert idx[repo]["in_specimens_listing"] is True
+
+
+def test_earned_verification_requires_a_real_recomputation(tmp_path, monkeypatch):
+    """NEGATIVE CONTROLS: each way of NOT verifying must fail to count."""
+    rows = {
+        "hashed_nothing": {"specimen": "a", "status": "WHOLE_TREE_VERIFIED",
+                           "bytes_hashed": 0, "mismatched": 0,
+                           "no_remote_digest": 0, "verified": 3, "n_files": 3},
+        "a_file_mismatched": {"specimen": "b", "status": "WHOLE_TREE_VERIFIED",
+                              "bytes_hashed": 99, "mismatched": 1,
+                              "no_remote_digest": 0, "verified": 3, "n_files": 3},
+        "a_file_undigested": {"specimen": "c", "status": "WHOLE_TREE_VERIFIED",
+                              "bytes_hashed": 99, "mismatched": 0,
+                              "no_remote_digest": 1, "verified": 3, "n_files": 3},
+        "counted_more_than_it_checked": {"specimen": "d", "status": "WHOLE_TREE_VERIFIED",
+                                         "bytes_hashed": 99, "mismatched": 0,
+                                         "no_remote_digest": 0, "verified": 2, "n_files": 3},
+        "merely_partial": {"specimen": "e", "status": "PARTIAL_NO_REMOTE_DIGEST",
+                           "bytes_hashed": 99, "mismatched": 0,
+                           "no_remote_digest": 1, "verified": 2, "n_files": 3},
+    }
+    good = {"specimen": "ok", "status": "WHOLE_TREE_VERIFIED", "bytes_hashed": 99,
+            "mismatched": 0, "no_remote_digest": 0, "verified": 3, "n_files": 3}
+
+    def _probe(doc):
+        monkeypatch.setattr(ol, "probe_json", lambda *a, **k: {"found": True, "doc": doc})
+        return ol._independently_verified()
+
+    for why, row in rows.items():
+        assert _probe({"results": [row]}) == {}, f"a specimen that {why} was counted"
+    assert set(_probe({"results": [good]})) == {"ok"}
+
+
+def test_the_curriculum_never_asserts_an_absence_it_did_not_check():
+    """Every unready role must give a reason derived from evidence, not a constant."""
+    cur = ol.propose_specimen_curriculum()
+    for role in cur["roles"]:
+        if role.get("ready"):
+            continue
+        assert role.get("ready_reason"), f"{role['role']} refused without a reason"
+        if "not in the ModelLake specimens listing" in role["ready_reason"]:
+            slug = str(role["repo"]).replace("/", "--", 1)
+            on_disk = {n.partition("@")[0] for n in ol._specimen_dirs_on_disk()}
+            assert slug not in on_disk, (
+                f"{role['repo']} was called absent from the listing but is on disk"
+            )
+
+
+# ---------------------------------------------------------------------------
+# A tool whose parent is not on this host is not callable by anyone.
+# ---------------------------------------------------------------------------
+
+
+def test_declared_inputs_are_parsed_not_imported(tmp_path):
+    """Importing an odyssey tool would run its module-level work inside the gate."""
+    rel = "tools/future/_fixture_declared_inputs.py"
+    src = ol.REPO / rel
+    src.write_text(
+        'from pathlib import Path\n'
+        'PARENT = Path("/definitely/not/here")\n'
+        'RELATIVE = Path("receipts/headless")\n'
+        'SIDE_EFFECT = print("this must never run")\n'
+    )
+    try:
+        found = ol._declared_inputs(rel)
+    finally:
+        src.unlink()
+    names = {i["name"] for i in found}
+    assert names == {"PARENT"}, "only absolute external inputs count"
+    assert found[0]["present"] is False
+
+
+def test_doctor_and_gravity_blame_the_real_blocker_not_the_runtime():
+    """The reason must name what is actually blocking, or it sends work astray."""
+    for evaluate in (ol._eval_doctor, ol._eval_gravity):
+        row = evaluate()
+        missing = row["evidence"][0]["missing_inputs"]
+        if not missing:
+            continue
+        assert row["met"] is False
+        assert not row["operational"]["flags"]["invoke"], (
+            "a tool whose declared parent is unreachable cannot be invoked"
+        )
+        for item in missing:
+            assert item["path"] in row["reason"], "the blocker is not named in the reason"
+
+
+def test_a_moved_parent_is_reported_as_stale_not_as_missing():
+    """52GB that is already on the disk must never be reported as absent.
+
+    Doctor and Gravity declare /Users/scammermike/models/... which is gone. The
+    parent itself is on the external volume. Calling that a missing model sends
+    someone to re-download it.
+    """
+    row = ol._eval_doctor()
+    stale = row["evidence"][0]["stale_declared_paths"]
+    if not stale:
+        return  # nothing moved on this host
+    for item in stale:
+        assert pathlib.Path(item["resolved_elsewhere"]).is_dir()
+        assert pathlib.Path(item["path"]).name == pathlib.Path(item["resolved_elsewhere"]).name
+    assert "STALE DECLARED PATH" in row["reason"]
+    assert "not a missing model" in row["reason"]
+
+
+def test_resolution_is_bounded_to_known_model_roots(tmp_path):
+    """A find over a 4.5TB volume is not a probe; only named roots are searched."""
+    assert ol._resolve_stale_input("/nowhere/at/all/a-name-that-does-not-exist") is None
+    for root in ol.MODEL_ROOTS:
+        assert root.startswith("/")
+
+
+def test_negative_control_the_gate_cannot_certify_itself_as_the_driver():
+    """odyssey_launch names these tools in an `owned = [...]` literal.
+
+    An earlier version accepted any Assign as evidence of driving and so
+    credited this gate module as Doctor's resident driver -- self-certification,
+    which the constitution forbids outright.
+    """
+    sched = ol._resident_schedulable(["tools/odyssey/doctor_tournament.py"])
+    assert sched.get("driver_module") != "odyssey_launch.py"
+    assert sched["schedule"] is False, "a declaration is not a schedule"

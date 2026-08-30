@@ -23,6 +23,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.
 from tools.future._common import write_receipt, load_json, REPO, git, RECEIPTS
 
 import argparse
+import ast
 import importlib
 import json
 import subprocess
@@ -345,6 +346,47 @@ def operational_bar(
 # ---------------------------------------------------------------------------
 
 
+def _specimen_dirs_on_disk() -> set[str]:
+    """Specimen directory names actually present in ModelLake. Read-only."""
+    root = Path("/Volumes/corpdrive/hawking-modellake/specimens")
+    try:
+        return {p.name for p in root.iterdir() if p.is_dir()}
+    except OSError:
+        return set()  # the lake may not be mounted; that is not an error here
+
+
+def _independently_verified() -> dict[str, dict[str, Any]]:
+    """Specimens whose every published digest was RECOMPUTED and matched.
+
+    ModelLake's own seals say MANIFEST_ONLY because it verified most files by
+    size. That is not verification and the gate is right to refuse it. But the
+    digests were never missing -- HuggingFace writes a .metadata sidecar per
+    file -- so whole-tree verification can be EARNED offline, and this reads the
+    receipt where it was earned.
+
+    Strict on purpose: a row counts only if it hashed real bytes, matched every
+    file, and had no file it could not check. Anything softer would turn a
+    correct refusal into a false readiness, which is the exact failure this
+    gate exists to prevent.
+    """
+    rec = probe_json("receipts/future/SPECIMEN_VERIFICATION.json")
+    doc = rec.get("doc") if isinstance(rec.get("doc"), Mapping) else None
+    out: dict[str, dict[str, Any]] = {}
+    for row in (doc or {}).get("results") or []:
+        if not isinstance(row, Mapping):
+            continue
+        if row.get("status") != "WHOLE_TREE_VERIFIED":
+            continue
+        if not (isinstance(row.get("bytes_hashed"), int) and row["bytes_hashed"] > 0):
+            continue
+        if row.get("mismatched") or row.get("no_remote_digest"):
+            continue
+        if row.get("verified") != row.get("n_files"):
+            continue
+        out[str(row.get("specimen") or "")] = dict(row)
+    return out
+
+
 def _lake_index(census: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
     """Index ModelLake census manifests and specimen dirs by repo / slug."""
     out: dict[str, dict[str, Any]] = {}
@@ -372,6 +414,13 @@ def _lake_index(census: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
         }
     specimens = census.get("specimens") if isinstance(census.get("specimens"), Mapping) else {}
     names = {str(e.get("name")) for e in (specimens.get("entries") or []) if isinstance(e, Mapping)}
+    # DISK STATE IS AUTHORITY. The census is a cache of it, and a specimen the
+    # census never recorded still exists. Reading only the census reported
+    # Mistral-Small-24B as "not in the ModelLake specimens listing" while its
+    # directory was sitting in that listing -- a wrong reason attached to a
+    # correct refusal, which is the kind of error that sends work to the wrong
+    # place. ModelLake is read, never written.
+    names |= _specimen_dirs_on_disk()
     for repo, row in out.items():
         slug = (row.get("specimen_path") or "").rstrip("/").split("/")[-1]
         row["in_specimens_listing"] = slug in names
@@ -384,6 +433,39 @@ def _lake_index(census: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
             and n_files > 0
             and n_sha == n_files
         )
+    # A specimen present on disk but absent from the census needs a row of its
+    # own, or the disk fallback above can only correct rows the cache already
+    # had -- which is how Mistral-Small-24B stayed invisible.
+    for name in sorted(_specimen_dirs_on_disk()):
+        slug, _, rev = name.partition("@")
+        repo = slug.replace("--", "/", 1)
+        if repo in out:
+            continue
+        out[repo] = {
+            "repo": repo,
+            "revision": rev or None,
+            "resolved_sha": rev or None,
+            "manifest_path": None,
+            "specimen_path": f"/Volumes/corpdrive/hawking-modellake/specimens/{name}",
+            "n_files": None,
+            "n_sha256_verified": None,
+            "n_size_only_verified": None,
+            "whole_tree_verified": False,
+            "in_specimens_listing": True,
+            "source": "modellake_specimens_dir",
+        }
+
+    earned = _independently_verified()
+    for row in out.values():
+        slug = (row.get("specimen_path") or "").rstrip("/").split("/")[-1]
+        hit = earned.get(slug)
+        if not hit:
+            continue
+        row["whole_tree_verified"] = True
+        row["verification_source"] = "tools/future/specimen_verify.py (offline recomputation)"
+        row["bytes_hashed"] = hit.get("bytes_hashed")
+        row["in_specimens_listing"] = True
+
     flash = census.get("source") if isinstance(census.get("source"), Mapping) else {}
     if flash.get("repo"):
         repo = str(flash.get("repo"))
@@ -536,11 +618,17 @@ def propose_specimen_curriculum(census_doc: Mapping[str, Any] | None = None) -> 
             mistral_partial = row
             break
     p004 = _patient_for("mistral-small", "O004", "24B")
+    # Consult the index rather than asserting absence. This role hardcoded
+    # in_specimens_listing=False and so reported "not in the ModelLake specimens
+    # listing" for a specimen whose 89GB directory was sitting in that listing --
+    # a wrong reason on a correct refusal, which sends the next worker to fix
+    # the wrong thing.
+    mistral_lake = lake.get("mistralai/Mistral-Small-3.1-24B-Instruct-2503") or {}
     mistral_id = {
+        **mistral_lake,
         "repo": "mistralai/Mistral-Small-3.1-24B-Instruct-2503",
-        "revision": "68faf511d618ef198fef186659617cfd2eb8e33a",
-        "in_specimens_listing": False,
-        "whole_tree_verified": False,
+        "revision": mistral_lake.get("revision")
+        or "68faf511d618ef198fef186659617cfd2eb8e33a",
         "stale_partial": mistral_partial,
         "patient_seal": None if not p004 else p004.get("seal"),
         "patient_state": None if not p004 else p004.get("state"),
@@ -1174,6 +1262,124 @@ def _eval_modellake() -> dict[str, Any]:
     )
 
 
+def _resident_schedulable(owned: Sequence[str]) -> dict[str, Any]:
+    """Can the RESIDENT schedule this tool, route its receipt, and refill on it?
+
+    Measured against the connector, not asserted. A binding counts only if the
+    orchestration table names a sidecar module that actually drives this tool --
+    a module that merely mentions the path in a comment is not a binding.
+    """
+    result = {"schedule": False, "frontier": None, "refill": False,
+              "why": "no orchestration binding drives this tool"}
+    try:
+        from tools.future import frontiers as _fr
+        from tools.future import orchestration as _orch
+    except Exception as exc:
+        result["why"] = f"connector unavailable: {type(exc).__name__}"
+        return result
+    wanted = {str(o) for o in owned}
+    for module, (frontier_id, _species) in _orch.BINDINGS.items():
+        if module == "odyssey_launch.py":
+            continue  # this gate does not get to certify itself as the driver
+        src = REPO / "tools" / "future" / module
+        try:
+            text = src.read_text(errors="replace")
+        except OSError:
+            continue
+        if not any(w in text for w in wanted):
+            continue
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+        # A driver RUNS it. Naming the path in a list constant is a declaration,
+        # and a declaration schedules nothing -- the first version of this check
+        # accepted an Assign and so credited this gate module itself, which had
+        # the path in an `owned = [...]` literal, as Doctor's driver. Requiring
+        # the mention to sit inside a call refuses that. It also refuses a real
+        # driver that builds its argv separately, which is the safe direction:
+        # this check may understate schedulability, never overstate it.
+        drives = any(
+            isinstance(n, ast.Call) and any(w in ast.dump(n) for w in wanted)
+            for n in ast.walk(tree)
+        )
+        if not drives:
+            continue
+        result.update({"schedule": True, "frontier": frontier_id,
+                       "driver_module": module, "why": "bound via orchestration"})
+        try:
+            result["refill"] = any(
+                str(item.get("id")) == frontier_id
+                for item in (_fr.refill(("CPU_ANALYSIS", "CPU_VERIFY", "CPU_REPRESENTATION")) or [])
+            )
+        except Exception:
+            result["refill"] = False
+        break
+    return result
+
+
+def _declared_inputs(rel: str) -> list[dict[str, Any]]:
+    """Absolute filesystem paths a tool hardcodes as its input, and whether they exist.
+
+    Parsed, never imported: importing an odyssey tool would run its module-level
+    work inside the gate. Only literal `NAME = Path("/abs/...")` assignments are
+    read, which is exactly how the Doctor and Gravity tools name their parent.
+    """
+    path = REPO / rel
+    try:
+        tree = ast.parse(path.read_text(errors="replace"))
+    except (OSError, SyntaxError):
+        return []
+    out: list[dict[str, Any]] = []
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        call = node.value
+        if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
+                and call.func.id == "Path" and len(call.args) == 1
+                and isinstance(call.args[0], ast.Constant)
+                and isinstance(call.args[0].value, str)):
+            continue
+        literal = call.args[0].value
+        if not literal.startswith("/"):
+            continue  # a repo-relative path is not an external input
+        out.append({"name": target.id, "path": literal,
+                    "present": Path(literal).exists(), "declared_in": rel})
+    return out
+
+
+# Where large model parents actually live on this host. Bounded on purpose: a
+# find over the 4.5TB volume to answer "is the parent here" is not a probe.
+MODEL_ROOTS: tuple[str, ...] = (
+    "/Users/scammermike/models",
+    "/Volumes/corpdrive/personalmodel/correspondent",
+    "/Volumes/corpdrive/personalmodel",
+    "/Volumes/corpdrive/hawking-modellake/specimens",
+)
+
+
+def _resolve_stale_input(declared: str) -> str | None:
+    """The same directory name under a known model root, if the declared path moved.
+
+    "Not on this host" and "not where the tool says" are different findings, and
+    only one of them is a missing model. The Doctor and Gravity tools declare
+    /Users/scammermike/models/qwen3.8-27b-abliterated-bf16, which is gone; the
+    52GB parent is on the external volume. Saying the model is missing would
+    send someone to re-download 52GB that is already here.
+    """
+    name = Path(declared).name
+    if not name:
+        return None
+    for root in MODEL_ROOTS:
+        candidate = Path(root) / name
+        if candidate.is_dir():
+            return str(candidate)
+    return None
+
+
 def _eval_callable_tool(*, cid: str, owned: Sequence[str], prior_glob: str, title: str) -> dict[str, Any]:
     files = [_module_file(p) for p in owned]
     prior = []
@@ -1181,17 +1387,39 @@ def _eval_callable_tool(*, cid: str, owned: Sequence[str], prior_glob: str, titl
     if root.is_dir():
         prior = sorted(str(p.relative_to(REPO)) for p in root.glob(prior_glob))
     present = any(f.get("present") for f in files) or bool(prior)
+    # File presence is not invocability. These tools hardcode the parent weights
+    # they read, and a tool whose parent is not on this host cannot be invoked by
+    # anyone, resident or human. Measure it rather than inferring it from the
+    # presence of the script.
+    inputs = [i for rel in owned for i in _declared_inputs(rel)]
+    for item in inputs:
+        if not item["present"]:
+            item["resolved_elsewhere"] = _resolve_stale_input(item["path"])
+    missing_inputs = [i for i in inputs if not i["present"]]
+    stale_inputs = [i for i in missing_inputs if i.get("resolved_elsewhere")]
+    absent_inputs = [i for i in missing_inputs if not i.get("resolved_elsewhere")]
+    invocable = (
+        any(f.get("present") and f.get("path_taken") == "worktree" for f in files)
+        and not missing_inputs
+    )
+    # schedule / frontier / refill are measured against the connector that now
+    # exists, instead of being asserted False. They are still false here, but for
+    # a reason that can be checked and can change.
+    sched = _resident_schedulable(owned)
     bar = operational_bar(
         discover=present,
-        invoke=any(f.get("present") and f.get("path_taken") == "worktree" for f in files) or bool(prior),
-        schedule=False,
+        invoke=invocable,
+        schedule=bool(sched["schedule"]),
         verify=bool(prior),
-        frontier=False,
+        frontier=bool(sched["frontier"]),
         persist=bool(prior),
-        refill=False,
+        refill=bool(sched["refill"]),
         notes={
             "cli_or_prior_seals": "true",
-            "resident_workgraph_runtime": "missing",
+            "declared_inputs_missing": ", ".join(i["path"] for i in missing_inputs) or "none",
+            "stale_declared_paths": ", ".join(
+                f"{i['path']} -> {i['resolved_elsewhere']}" for i in stale_inputs
+            ) or "none",
             "integration": INTEGRATION_POINTS["workgraph"] + " + " + INTEGRATION_POINTS["resident_api"],
         },
     )
@@ -1202,13 +1430,33 @@ def _eval_callable_tool(*, cid: str, owned: Sequence[str], prior_glob: str, titl
             f"{title} is resident-operational"
             if bar["resident_operational"]
             else (
-                f"{title} is recovered as a human-callable tool and/or prior "
-                f"Odyssey I seals (n_prior={len(prior)}) but is not resident-"
-                f"operational: schedule/frontier/refill are false. "
-                f"A CLI a human can run is not enough."
+                f"{title} is recovered (n_prior={len(prior)}) but is not resident-"
+                f"operational. Unmet: "
+                + ", ".join(k for k, v in bar["flags"].items() if not v)
+                + (
+                    f". The blocker is a STALE DECLARED PATH, not a missing model: "
+                    + "; ".join(
+                        f"{i['name']} in {i['declared_in']} points at {i['path']}, "
+                        f"which is gone, while the directory is present at "
+                        f"{i['resolved_elsewhere']}"
+                        for i in stale_inputs
+                    )
+                    + ". The tool cannot run as written."
+                    if stale_inputs
+                    else (
+                        f". {', '.join(i['path'] for i in absent_inputs)} is not on "
+                        f"this host at all, so the tool cannot be invoked by anyone. "
+                        f"A CLI a human cannot run either is not enough."
+                        if absent_inputs
+                        else ". A CLI a human can run is not enough."
+                    )
+                )
             )
         ),
-        evidence=[{"owned": files, "n_prior_seals": len(prior), "prior_seals": prior}],
+        evidence=[{"owned": files, "n_prior_seals": len(prior), "prior_seals": prior,
+                   "declared_inputs": inputs, "missing_inputs": missing_inputs,
+                   "stale_declared_paths": stale_inputs, "absent_inputs": absent_inputs,
+                   "resident_schedulable": sched}],
         operational=bar,
     )
 

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T18:59:33Z",
+  "recorded_at": "2026-08-30T19:20:38Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1524,7 +1524,7 @@
   {
    "evidence": [
     {
-     "n_json": 100,
+     "n_json": 101,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
@@ -1547,7 +1547,7 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=100 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=101 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2297,7 +2297,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "e16e1779f466de611ec7341a0f05fd358b8ee30b",
+ "head": "c5962d8bbd97fab99ce2fd66ed5fb3916793b8d0",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -4181,7 +4181,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "764f810626083d4ffa83446f8ed3b2548b9fa93893597b2e4815ce4c4f693056",
+ "seal_sha256": "78062c93a75d47f1ca5ac8643d3f1b4bd252dedd0150d7f01f714f88fb74ffea",
  "sleeping_workunits": [
   {
    "assigned_backend": null,

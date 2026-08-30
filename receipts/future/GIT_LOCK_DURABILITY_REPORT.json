@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T18:57:56Z",
+  "recorded_at": "2026-08-30T19:17:49Z",
   "recorded_by": "tools/future/git_lock_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -381,11 +381,10 @@
     "/Users/scammermike/Downloads/hawking",
     "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/gravity",
     "/Users/scammermike/Downloads/forge/projects/hawking",
-    "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/kernel",
-    "/Users/scammermike/.claude-grok/worktrees/l20-rival-codec-screen-20260830-112709"
+    "/Users/scammermike/Downloads/hawking/workspace/ops/local/genesis-agentos-worktrees/kernel"
    ]
   },
-  "observation_now_epoch": 1788116276,
+  "observation_now_epoch": 1788117469,
   "stale_catalog": [
    {
     "mtime_epoch": 1788088904,
@@ -988,44 +987,47 @@
      "mode": "report",
      "renamed": false
     },
-    "age_seconds": 6914.181,
+    "age_seconds": null,
     "age_threshold_s": 300.0,
     "conditions": [
      {
-      "detail": "age_s=6914.181 threshold_s=300.000",
-      "holds": true,
+      "detail": "index.lock not present; nothing to rename",
+      "holds": false,
       "name": "age_exceeds_threshold"
      },
      {
-      "detail": "size_bytes=1048576",
+      "detail": "index.lock not present; nothing to rename",
       "holds": false,
       "name": "zero_bytes"
      },
      {
-      "detail": "no holders (lsof-no-match)",
-      "holds": true,
+      "detail": "index.lock not present; nothing to rename",
+      "holds": false,
       "name": "no_lsof_holder"
      },
      {
-      "detail": "no git process against this repo (scanned=0; pgrep -x git: none)",
-      "holds": true,
+      "detail": "index.lock not present; nothing to rename",
+      "holds": false,
       "name": "no_git_process"
      }
     ],
     "failing_conditions": [
-     "zero_bytes"
+     "age_exceeds_threshold",
+     "zero_bytes",
+     "no_lsof_holder",
+     "no_git_process"
     ],
     "git_dir": "/Users/scammermike/Downloads/hawking/.git",
     "git_processes_scanned": 0,
-    "holders": [],
-    "is_regular_file": true,
+    "holders": null,
+    "is_regular_file": false,
     "matching_git_processes": [],
     "may_rename": false,
-    "mtime_epoch": 1788109362,
+    "mtime_epoch": null,
     "path": "/Users/scammermike/Downloads/hawking/.git/index.lock",
-    "present": true,
+    "present": false,
     "role": "primary",
-    "size_bytes": 1048576,
+    "size_bytes": null,
     "stale_siblings": [
      {
       "mtime_epoch": 1788088904,
@@ -1624,7 +1626,7 @@
   ]
  },
  "schema": "hawking.future.git_lock_durability.v1",
- "seal_sha256": "c18012539d3e1b233682982a7ca4ae819c860d4900bb49d22b05e8fd7126891b",
+ "seal_sha256": "fc49281e676f77d423377eaf7c1c308139fab2b1f784eb8f8717edc706695b57",
  "version": 1,
  "vocabulary": {
   "eras": [

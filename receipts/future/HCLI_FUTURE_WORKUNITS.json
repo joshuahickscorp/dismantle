@@ -78,7 +78,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T18:57:05Z",
+  "recorded_at": "2026-08-30T19:20:18Z",
   "recorded_by": "tools/future/workunit_species.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -216,7 +216,7 @@
   "tools.accelerator.physical_qualification.workunits_for_candidates": "emits READY physical candidates through WorkUnit.to_dict plus extras (candidate_id, model, diagnostic_command, protected_command, claim_boundary)"
  },
  "schema": "hawking.future.workunit_species.v1",
- "seal_sha256": "9e7d8360ad381004854c50d301de9e2882054ead01e31088a7ec8b76644f3d3f",
+ "seal_sha256": "072ee049e9715a46a7b74ac4efda909619aad83410d2d1b63bb2784a913782e3",
  "species": [
   {
    "bounded_authority": [

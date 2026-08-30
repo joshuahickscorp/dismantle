@@ -163,3 +163,13 @@ def test_refill_is_exercised_without_waiting_for_starvation(tmp_path):
     )
     for event in refills:
         assert event["payload"]["unit_ids"], "a refill that added nothing is not a refill"
+
+
+def test_an_invalidated_run_is_recorded_and_never_reported_as_a_result():
+    """Improving the test and claiming the original interval is the failure here."""
+    doc = json.loads(ar.build().read_text())
+    rows = doc["invalidated_runs"]
+    assert rows, "the killed 1h run must be on the record"
+    for row in rows:
+        assert row["verdict"] == "INVALIDATED_BY_SUBSTRATE_MUTATION"
+        assert row["why"] and row["kept"], "say what was lost and what survives"

@@ -50,6 +50,28 @@ SCHEMA = "hawking.future.autonomy_run.v1"
 
 MISSION_STATE = RECEIPTS / "AUTONOMY_MISSION_STATE.json"
 
+# Runs that will never be reported as results, and why. A trial whose substrate
+# changed mid-interval measured a machine that no longer exists; reporting it
+# would be improving the test and claiming the original interval.
+INVALIDATED_RUNS: tuple[dict[str, str], ...] = (
+    {
+        "trial": "1h",
+        "started": "2026-08-30T08:57:13-04:00",
+        "killed": "2026-08-30T10:17:34-04:00",
+        "verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
+        "why": (
+            "specimen_verify.py was edited while the run was in flight, and the loop "
+            "invokes it as a subprocess, so later units ran different code from earlier "
+            "ones. odyssey_launch.py was edited too. No timeline was written."
+        ),
+        "kept": (
+            "the specimen verifications it completed are real recomputations and stand "
+            "on their own: Qwen3-30B-A3B, Qwen3-VL-30B, Mistral-24B, Kimi-VL-A3B and "
+            "Falcon-H1-7B, all whole-tree verified"
+        ),
+    },
+)
+
 # Lanes this host can actually run. GPU and ANE are blocked per Codex's own
 # blocker list, so work needing them parks SLEEPING rather than stalling the loop.
 # The frontier's OWN lane vocabulary, imported rather than invented. These were
@@ -652,6 +674,7 @@ def build(result: dict[str, Any] | None = None) -> Path:
             "negative science is consulted before admission",
         ],
         "last_run": result or None,
+        "invalidated_runs": [dict(r) for r in INVALIDATED_RUNS],
         "recovered_implementation": [
             "tools/future/autonomy_trial.py supplies the timeline schema, cpu_workunit "
             "and is_valid_workunit; this driver produces timelines for it to judge",

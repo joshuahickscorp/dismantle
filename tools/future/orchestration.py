@@ -128,6 +128,7 @@ BINDINGS: dict[str, tuple[str, str]] = {
     # Whole-tree specimen verification: CPU/disk work that directly gates
     # Odyssey I, and the only long-running honest work source on a host with
     # no GPU.
+    "metal_reachability.py":      ("FT.MODEL_EXECUTION.complete-token", "HOST_CAPABILITY"),
     "specimen_verify.py":          ("FT.MODEL_CAPABILITY.hard-gates", "SPECIMEN_VERIFY"),
     # --- physical graph / fpga / ane --------------------------------------
     "hwir.py":                     ("FT.PHYSICAL_GRAPH.hwir-lower", "HWIR_LOWER"),

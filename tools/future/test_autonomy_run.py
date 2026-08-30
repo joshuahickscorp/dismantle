@@ -99,3 +99,26 @@ def test_run_never_emits_an_idle_event(tmp_path):
     ar.run(trial="15m", duration_s=30, timeline=tl)
     kinds = {e["kind"] for e in json.loads(tl.read_text())["events"]}
     assert not (kinds & {"idle", "awaiting_instructions", "all_tasks_complete"})
+
+
+def test_the_metal_blocker_is_measured_not_quoted():
+    """A repeated blocker line was half false and it scoped the whole campaign.
+
+    "no Metal-capable GPU and no Metal compiler" was carried from a blocker list
+    into three places in this driver. The GPU is an M3 Ultra and it is present;
+    what is absent is the offline shader compiler. A missing GPU would block
+    every physical measurement, while a missing offline compiler blocks
+    precompilation -- different scopes, different work unblocked.
+    """
+    from tools.future import hardware_doctor as hwd
+
+    state = hwd.metal_state()
+    why = ar._metal_why()
+    assert state["is_a_measurement"] is False, "this is a capability probe, not a timing"
+    assert state["runtime_source_compilation"] == "UNKNOWN", (
+        "nothing has exercised runtime shader compilation; guessing is a claim"
+    )
+    if state["gpu_present"]:
+        assert "no Metal-capable GPU" not in why
+        assert state["chip"] in why
+    assert ("compiler is absent" in why) == (not state["offline_metal_compiler"])

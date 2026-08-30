@@ -27,6 +27,7 @@ from tools.future._common import write_receipt, load_json, REPO, git
 import argparse
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -1135,6 +1136,62 @@ def negative_findings(organs: dict[str, Any], scar_pack: dict[str, Any]) -> list
     if not maps.get("flash-next") or not maps.get("qwen27"):
         findings.append("one or both FPGA organ maps failed to load")
     return findings
+
+
+def metal_state() -> dict[str, Any]:
+    """What this host can actually do with Metal, measured, not quoted.
+
+    The sidecar was repeating "no Metal-capable GPU and no Metal compiler on
+    this host" from a blocker list. Half of that is false: the GPU is an M3
+    Ultra and it is present. What is genuinely absent is the OFFLINE shader
+    compiler -- `xcrun metal` ships with full Xcode, and this host has only the
+    Command Line Tools -- so a .metallib cannot be built ahead of time here.
+
+    The distinction matters because the two blockers have different scopes. A
+    missing GPU would block every physical measurement. A missing offline
+    compiler blocks precompilation, and says nothing on its own about what a
+    runtime that compiles shaders from source can do -- which is why that stays
+    UNKNOWN below rather than being guessed in either direction.
+
+    This reports capability, never a measurement. No timing, no throughput.
+    """
+    def _run(*cmd: str) -> tuple[int, str]:
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            return r.returncode, (r.stdout or r.stderr or "").strip()
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return -1, f"{type(exc).__name__}"
+
+    chip = ""
+    rc, out = _run("system_profiler", "SPHardwareDataType")
+    if rc == 0:
+        for line in out.splitlines():
+            if line.strip().startswith("Chip:"):
+                chip = line.split(":", 1)[1].strip()
+                break
+    rc_metal, metal_out = _run("xcrun", "-sdk", "macosx", "metal", "--version")
+    rc_dev, dev_dir = _run("xcode-select", "-p")
+    return {
+        "chip": chip or "unknown",
+        "gpu_present": bool(chip),
+        "why_gpu": (
+            f"{chip} reports as this host's chip; Apple silicon carries an "
+            f"integrated Metal GPU"
+            if chip
+            else "the host chip could not be read"
+        ),
+        "offline_metal_compiler": rc_metal == 0,
+        "offline_metal_compiler_detail": metal_out.splitlines()[0][:200] if metal_out else "",
+        "developer_dir": dev_dir if rc_dev == 0 else "",
+        "full_xcode_installed": Path("/Applications/Xcode.app").is_dir(),
+        "runtime_source_compilation": "UNKNOWN",
+        "why_runtime_unknown": (
+            "compiling shader source at runtime goes through the Metal framework, "
+            "not xcrun, and nothing here has exercised that path; guessing either "
+            "way would be a capability claim without evidence"
+        ),
+        "is_a_measurement": False,
+    }
 
 
 def build() -> Path:

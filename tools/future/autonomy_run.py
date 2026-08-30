@@ -9,10 +9,12 @@ the clock runs out.
 
 What this is honest about:
 
-* **The loop is HCLI orchestration, not model cognition.** No resident model
-  process can start on this host — Codex reports no Metal-capable GPU and no
-  Metal compiler — so `resident_model_cognition` is recorded UNAVAILABLE with
-  that reason. The trial conditions are daemon behaviour (recover, select,
+* **The loop is HCLI orchestration, not model cognition.** `resident_model_
+  cognition` is recorded UNAVAILABLE, with the reason MEASURED rather than
+  quoted. The earlier reason -- "no Metal-capable GPU and no Metal compiler",
+  repeated from a blocker list -- was half false: the GPU is an M3 Ultra and it
+  is present. What is absent is the OFFLINE shader compiler, which ships with
+  full Xcode and not with the Command Line Tools this host has. The trial conditions are daemon behaviour (recover, select,
   launch, ingest, refill, never idle), and those are exercised for real.
 * **Every launch does work.** A `workunit_launched` event is followed by an
   actual `orchestration.invoke()` that runs the module and writes its receipt.
@@ -128,6 +130,33 @@ SAFE_CAPABILITIES = (
 )
 
 
+def _metal_why() -> str:
+    """The real Metal blocker on this host, measured each run.
+
+    Quoting "no Metal-capable GPU and no Metal compiler" from a blocker list was
+    wrong in a way that matters: a missing GPU would block every physical
+    measurement, while a missing OFFLINE compiler blocks precompilation only.
+    """
+    try:
+        from tools.future import hardware_doctor as hwd
+        m = hwd.metal_state()
+    except Exception as exc:
+        return f"the Metal state could not be probed ({type(exc).__name__})"
+    parts = []
+    parts.append(
+        f"{m['chip']} GPU is present" if m["gpu_present"] else "no GPU could be read"
+    )
+    parts.append(
+        "the offline Metal shader compiler is absent (developer dir is "
+        f"{m['developer_dir'] or 'unset'}, full Xcode not installed), so no "
+        ".metallib can be built ahead of time here"
+        if not m["offline_metal_compiler"]
+        else "the offline Metal shader compiler is available"
+    )
+    parts.append("runtime shader compilation is UNKNOWN and unexercised")
+    return "; ".join(parts)
+
+
 def _emit(doc: dict[str, Any], kind: str, payload: dict[str, Any],
           *, t_s: int, cites: list[str] | None = None) -> dict[str, Any]:
     event: dict[str, Any] = {"kind": kind, "payload": payload}
@@ -170,7 +199,7 @@ def run(trial: str = "15m", timeline: Path | None = None,
         "bindings_present": bindings.is_file(),
         "identity_present": identity.is_file(),
         "resident_model_cognition": "UNAVAILABLE",
-        "why": "no Metal-capable GPU and no Metal compiler on this host (Codex blocker list); "
+        "why": "measured: " + _metal_why() + "; "
                "the loop under test is HCLI orchestration, not model cognition",
     }, t_s=t(), cites=[at.FRONTIER_REL])
 
@@ -561,8 +590,7 @@ def build(result: dict[str, Any] | None = None) -> Path:
         "loop_is": "HCLI orchestration",
         "resident_model_cognition": "UNAVAILABLE",
         "why_unavailable": (
-            "no Metal-capable GPU and no Metal compiler on this host, per Codex's "
-            "own blocker list; a resident model process cannot start"
+            "measured on this host, not quoted from a blocker list: " + _metal_why()
         ),
         "available_lanes": list(AVAILABLE_LANES),
         "blocked_lanes": list(BLOCKED_LANES),

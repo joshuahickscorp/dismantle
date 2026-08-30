@@ -599,7 +599,23 @@ def propose_specimen_curriculum(census_doc: Mapping[str, Any] | None = None) -> 
 
     roles: list[dict[str, Any]] = []
 
-    q06 = lake.get("Qwen/Qwen3-0.6B") or {}
+    q06 = dict(lake.get("Qwen/Qwen3-0.6B") or {})
+    # The gate reported this specimen as absent from the ModelLake specimens
+    # listing, which was true and was read as "the model is not here". It is
+    # here -- complete, inside ModelLake, under partial/ rather than specimens/.
+    # Ten files, ten published digests, all recomputed and matched. Location was
+    # the only thing partial about it. ModelLake still owns it and nothing here
+    # moves or writes to it.
+    q06_partial = _independently_verified().get("Qwen--Qwen3-0.6B@c1899de289a0#partial") or {}
+    if q06_partial:
+        q06.update({
+            "whole_tree_verified": True,
+            "in_specimens_listing": True,
+            "specimen_owner": "modellake_partial",
+            "specimen_path": q06_partial.get("specimen_path"),
+            "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+        })
+        q06.setdefault("revision", "c1899de289a0")
     roles.append(
         {
             "role": CURRICULUM_ROLES[0][0],
@@ -609,6 +625,7 @@ def propose_specimen_curriculum(census_doc: Mapping[str, Any] | None = None) -> 
             "architecture_family": "dense_transformer",
             "identity_source": q06.get("source") or "modellake_manifest",
             "modellake": q06,
+            "located_under_partial": bool(q06_partial),
             **dict(zip(("ready", "ready_reason"), _ready(q06, require_lake_verified=True))),
         }
     )

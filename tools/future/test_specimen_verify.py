@@ -199,9 +199,21 @@ def test_real_falcon_result_is_recorded_and_is_a_recomputation():
 
 def test_a_non_lake_specimen_is_labelled_not_disguised():
     """ModelLake still owns the lake. A local directory must say so."""
+    # Provenance is not one bucket. An authorized directory outside the lake and
+    # ModelLake's own partial/ staging area are different facts, and collapsing
+    # them would let a staged download read as an external specimen or the
+    # reverse.
     for name in sv.EXTRA_SPECIMENS:
-        assert sv.specimen_owner(name) == "local_directory"
-        assert name.endswith("@local"), "a non-lake specimen must be visibly named"
+        owner = sv.specimen_owner(name)
+        assert owner in {"local_directory", "modellake_partial"}, owner
+        assert owner != "modellake", "a specimen outside specimens/ must not read as lake stock"
+        assert any(name.endswith(m) for m in ("@local", "#partial")), (
+            "a specimen outside the specimens listing must be visibly marked in its name"
+        )
+        if owner == "modellake_partial":
+            assert "hawking-modellake" in str(sv.EXTRA_SPECIMENS[name])
+        else:
+            assert "hawking-modellake" not in str(sv.EXTRA_SPECIMENS[name])
     lake_names = [n for n in sv.list_specimens() if n not in sv.EXTRA_SPECIMENS]
     for name in lake_names:
         assert sv.specimen_owner(name) == "modellake"

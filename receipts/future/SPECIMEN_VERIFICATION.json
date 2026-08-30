@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T14:39:43Z",
+  "recorded_at": "2026-08-30T16:10:09Z",
   "recorded_by": "tools/future/specimen_verify.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -13,8 +13,8 @@
   "corrupt": 0,
   "incomplete": 0,
   "partial": 0,
-  "specimens_examined": 6,
-  "whole_tree_verified": 6
+  "specimens_examined": 7,
+  "whole_tree_verified": 7
  },
  "gaps_closed": [
   "nothing recomputed specimen hashes offline; readiness rested on size checks"
@@ -44,6 +44,105 @@
   "workunit": "one unit per specimen; CPU_VERIFY lane; genuinely long-running"
  },
  "results": [
+  {
+   "bytes_hashed": 1519209243,
+   "files": [
+    {
+     "actual": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "bytes": 1570,
+     "digest_kind": "git_blob_sha1",
+     "expected": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+     "file": ".gitattributes",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+     "bytes": 11343,
+     "digest_kind": "git_blob_sha1",
+     "expected": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+     "file": "LICENSE",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "a50b19e76f5274f9ec99f5a5d99873dca5bff25e",
+     "bytes": 13965,
+     "digest_kind": "git_blob_sha1",
+     "expected": "a50b19e76f5274f9ec99f5a5d99873dca5bff25e",
+     "file": "README.md",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f5c3703b78ae2a478ae15b247e9f855e0ce2107b",
+     "bytes": 726,
+     "digest_kind": "git_blob_sha1",
+     "expected": "f5c3703b78ae2a478ae15b247e9f855e0ce2107b",
+     "file": "config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "20a8a9156fc8c3f25295ca067f61fdf120d517c5",
+     "bytes": 239,
+     "digest_kind": "git_blob_sha1",
+     "expected": "20a8a9156fc8c3f25295ca067f61fdf120d517c5",
+     "file": "generation_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "bytes": 1671853,
+     "digest_kind": "git_blob_sha1",
+     "expected": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+     "file": "merges.txt",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b",
+     "bytes": 1503300328,
+     "digest_kind": "sha256",
+     "expected": "f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b",
+     "file": "model.safetensors",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "bytes": 11422654,
+     "digest_kind": "sha256",
+     "expected": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+     "file": "tokenizer.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "417d038a63fa3de29cfde265caedae14d1a58d92",
+     "bytes": 9732,
+     "digest_kind": "git_blob_sha1",
+     "expected": "417d038a63fa3de29cfde265caedae14d1a58d92",
+     "file": "tokenizer_config.json",
+     "verdict": "VERIFIED"
+    },
+    {
+     "actual": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "bytes": 2776833,
+     "digest_kind": "git_blob_sha1",
+     "expected": "4783fe10ac3adce15ac8f358ef5462739852c569",
+     "file": "vocab.json",
+     "verdict": "VERIFIED"
+    }
+   ],
+   "mismatched": 0,
+   "modellake_mutated": false,
+   "n_files": 10,
+   "no_remote_digest": 0,
+   "owner": "local_directory",
+   "skipped_time_budget": 0,
+   "source_mutated": false,
+   "specimen": "Qwen--Qwen3-0.6B@c1899de289a0#partial",
+   "specimen_path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3-0.6B@c1899de289a0",
+   "status": "WHOLE_TREE_VERIFIED",
+   "unrecognized_digest": 0,
+   "verified": 10,
+   "wall_seconds": 55.88,
+   "whole_tree_verified": true
+  },
   {
    "bytes_hashed": 61084187391,
    "files": [
@@ -1273,10 +1372,11 @@
   }
  ],
  "schema": "hawking.future.specimen_verify.v1",
- "seal_sha256": "86bddf2c32e5caca293a22c064515f00351fbb24f5daf91c91ffc55f18ef64b3",
+ "seal_sha256": "d93259d493e5568753036f82a6c05d1757b5881766430041d2b1d1316f879393",
  "verification_rule": "VERIFIED means the hash was recomputed here and matched a published digest. Size agreement is not verification. A specimen is WHOLE_TREE_VERIFIED only when every file carried a digest and every one matched; a single undigested file yields PARTIAL_NO_REMOTE_DIGEST.",
  "version": 1,
  "whole_tree_verified_specimens": [
+  "Qwen--Qwen3-0.6B@c1899de289a0#partial",
   "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
   "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
   "mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",

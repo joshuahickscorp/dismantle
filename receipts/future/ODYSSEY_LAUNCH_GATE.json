@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:07:30Z",
+  "recorded_at": "2026-08-30T16:11:35Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -56,7 +56,7 @@
      "path_taken": "worktree",
      "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
     },
-    "n_ready": 3,
+    "n_ready": 4,
     "n_roles": 5,
     "not_proposed": [
      {
@@ -146,8 +146,9 @@
      {
       "architecture_family": "dense_transformer",
       "identity_source": "modellake_manifest",
+      "located_under_partial": true,
       "modellake": {
-       "in_specimens_listing": false,
+       "in_specimens_listing": true,
        "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3-0.6B@c1899de289a0.json",
        "n_files": 10,
        "n_sha256_verified": 2,
@@ -156,12 +157,14 @@
        "resolved_sha": "c1899de289a04d12100db370d81485cdf75e47ca",
        "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
        "source": "modellake_manifest",
-       "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
-       "whole_tree_verified": false
+       "specimen_owner": "modellake_partial",
+       "specimen_path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3-0.6B@c1899de289a0",
+       "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+       "whole_tree_verified": true
       },
       "purpose": "very small dense for procedural speed",
-      "ready": false,
-      "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+      "ready": true,
+      "ready_reason": "ModelLake whole-tree sha256 verification",
       "repo": "Qwen/Qwen3-0.6B",
       "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
       "role": "very_small_dense_procedural_speed"
@@ -575,9 +578,8 @@
    "evidence": [
     {
      "curriculum_n_roles": 5,
-     "n_ready": 3,
+     "n_ready": 4,
      "unready": [
-      "very_small_dense_procedural_speed",
       "flash_heterogeneous_frontier"
      ]
     }
@@ -601,7 +603,7 @@
     },
     "resident_operational": false
    },
-   "reason": "curriculum proposes 5 roles; ready=3. unready=['very_small_dense_procedural_speed', 'flash_heterogeneous_frontier']. A proposal is not a ready specimen set."
+   "reason": "curriculum proposes 5 roles; ready=4. unready=['flash_heterogeneous_frontier']. A proposal is not a ready specimen set."
   },
   {
    "evidence": [
@@ -2116,7 +2118,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "b06d725701ec506644ab109f4ea8be802a527f51",
+ "head": "8a847c4269749cec8a2bba3f36736c93df11f397",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -2193,7 +2195,7 @@
     "path_taken": "worktree",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
    },
-   "n_ready": 3,
+   "n_ready": 4,
    "n_roles": 5,
    "not_proposed": [
     {
@@ -2283,8 +2285,9 @@
     {
      "architecture_family": "dense_transformer",
      "identity_source": "modellake_manifest",
+     "located_under_partial": true,
      "modellake": {
-      "in_specimens_listing": false,
+      "in_specimens_listing": true,
       "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3-0.6B@c1899de289a0.json",
       "n_files": 10,
       "n_sha256_verified": 2,
@@ -2293,12 +2296,14 @@
       "resolved_sha": "c1899de289a04d12100db370d81485cdf75e47ca",
       "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
       "source": "modellake_manifest",
-      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
-      "whole_tree_verified": false
+      "specimen_owner": "modellake_partial",
+      "specimen_path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3-0.6B@c1899de289a0",
+      "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+      "whole_tree_verified": true
      },
      "purpose": "very small dense for procedural speed",
-     "ready": false,
-     "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+     "ready": true,
+     "ready_reason": "ModelLake whole-tree sha256 verification",
      "repo": "Qwen/Qwen3-0.6B",
      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
      "role": "very_small_dense_procedural_speed"
@@ -3575,7 +3580,7 @@
   "physical blocker sleep.machine-heavy: contamination_class='HEAVY'; sidecar will not SIGSTOP standing workers. HEAVY (or unknown) is not a protected window.",
   "physical blocker sleep.flash-nx-scaffold: FLASH_NX_COMPLETENESS_AUDIT seven_all_met=False nx_status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION' nr_v2.status='COMPLETE_HETEROGENEOUS_CANDIDATE_NOT_FOR_PROMOTION'. SCAFFOLD_ONLY / metadata seals are not a callable NX path.",
   "physical blocker sleep.teacher-capture: teacher capture executed=0/12 workunits; target_row_counts=[256]. Unrun capture is not a synthetic corpus.",
-  "curriculum unready roles: ['very_small_dense_procedural_speed', 'flash_heterogeneous_frontier']",
+  "curriculum unready roles: ['flash_heterogeneous_frontier']",
   "this-wave siblings are not imported; local interfaces are the integration points autonomy_trial, dirty_measure, evidence_dag, frontiers, protected_window, resident_api, resident_identity, sandbox, succession, super_resident, wakeup, workgraph"
  ],
  "no_era_vi": true,
@@ -3818,7 +3823,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "21d00b591c0901f023b30a16c587884b5924b4be87b4f0b1634d0a9ab50e5cfe",
+ "seal_sha256": "781cf437a28017bf5a3a5d7a433f1f98a71a28bf55c6123fa5b4bc1da3de08e9",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -4037,7 +4042,7 @@
    "path_taken": "worktree",
    "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json"
   },
-  "n_ready": 3,
+  "n_ready": 4,
   "n_roles": 5,
   "not_proposed": [
    {
@@ -4127,8 +4132,9 @@
    {
     "architecture_family": "dense_transformer",
     "identity_source": "modellake_manifest",
+    "located_under_partial": true,
     "modellake": {
-     "in_specimens_listing": false,
+     "in_specimens_listing": true,
      "manifest_path": "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3-0.6B@c1899de289a0.json",
      "n_files": 10,
      "n_sha256_verified": 2,
@@ -4137,12 +4143,14 @@
      "resolved_sha": "c1899de289a04d12100db370d81485cdf75e47ca",
      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
      "source": "modellake_manifest",
-     "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/Qwen--Qwen3-0.6B@c1899de289a0",
-     "whole_tree_verified": false
+     "specimen_owner": "modellake_partial",
+     "specimen_path": "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3-0.6B@c1899de289a0",
+     "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
+     "whole_tree_verified": true
     },
     "purpose": "very small dense for procedural speed",
-    "ready": false,
-    "ready_reason": "identity known but specimen is not in the ModelLake specimens listing",
+    "ready": true,
+    "ready_reason": "ModelLake whole-tree sha256 verification",
     "repo": "Qwen/Qwen3-0.6B",
     "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
     "role": "very_small_dense_procedural_speed"

@@ -528,3 +528,38 @@ def test_recurrence_is_labelled_so_it_is_not_read_as_a_first_wave_result():
     for role in cur["roles"]:
         if role.get("ready") and "RETIRED" in str(role.get("modellake", {}).get("patient_state", "")):
             assert "RECURRENT_PATIENT" in role["ready_reason"]
+
+
+def test_a_specimen_under_partial_is_located_not_missing():
+    """"Not in the specimens listing" was read as "the model is not here".
+
+    Qwen3-0.6B was complete inside ModelLake the whole time -- ten files, ten
+    published digests, zero incomplete markers -- sitting under partial/ rather
+    than specimens/. Location was the only thing partial about it. Reporting
+    that as a missing model would have sent someone to re-download it, which is
+    the same failure as the three Odyssey tools pointing at a moved directory.
+    """
+    cur = ol.propose_specimen_curriculum()
+    role = next(r for r in cur["roles"]
+                if r["role"] == "very_small_dense_procedural_speed")
+    if not role.get("located_under_partial"):
+        return  # not verified on this host; the rule below still holds
+    assert role["ready"] is True
+    # Readiness still had to be EARNED by recomputation, not granted by location.
+    verified = ol._independently_verified()
+    row = verified["Qwen--Qwen3-0.6B@c1899de289a0#partial"]
+    assert row["verified"] == row["n_files"]
+    assert row["mismatched"] == 0 and row["no_remote_digest"] == 0
+    assert row["bytes_hashed"] > 0, "readiness claimed without hashing anything"
+
+
+def test_finding_a_specimen_does_not_lower_the_bar_for_the_others():
+    """NEGATIVE CONTROL: every ready role must still name real verification."""
+    for role in ol.propose_specimen_curriculum()["roles"]:
+        if not role.get("ready"):
+            continue
+        why = role["ready_reason"]
+        assert any(k in why for k in
+                   ("whole-tree", "RECURRENT_PATIENT", "tree digest is sealed")), (
+            f"{role['role']} was made ready by something other than verification: {why}"
+        )

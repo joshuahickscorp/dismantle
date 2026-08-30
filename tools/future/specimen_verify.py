@@ -69,6 +69,15 @@ EXTRA_SPECIMENS: dict[str, Path] = {
     "qwen3.8-27b-abliterated-bf16@local": Path(
         "/Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16"
     ),
+    # Inside ModelLake, but under partial/ rather than specimens/. The gate read
+    # that as "identity known but the specimen is not in the ModelLake specimens
+    # listing", which is true and was taken to mean the model is not here. It is
+    # here: nine files, nine .metadata sidecars, zero .incomplete markers. Only
+    # its LOCATION is partial. Verified read-only by the same rule as everything
+    # else; ModelLake owns it and nothing here moves, renames, or writes to it.
+    "Qwen--Qwen3-0.6B@c1899de289a0#partial": Path(
+        "/Volumes/corpdrive/hawking-modellake/partial/Qwen--Qwen3-0.6B@c1899de289a0"
+    ),
 }
 
 # Written by the local mirror, not published by the source repo. crc32.txt covers
@@ -99,8 +108,20 @@ def specimen_dir(name: str) -> Path:
     return SPECIMENS / name
 
 
+# Where a non-specimens-listing specimen actually lives. "outside the lake" and
+# "inside the lake but not under specimens/" are different provenances and must
+# not share a label: one is an authorized external directory, the other is
+# ModelLake's own storage in a staging location.
+EXTRA_OWNER: dict[str, str] = {
+    "qwen3.8-27b-abliterated-bf16@local": "local_directory",
+    "Qwen--Qwen3-0.6B@c1899de289a0#partial": "modellake_partial",
+}
+
+
 def specimen_owner(name: str) -> str:
-    return "local_directory" if name in EXTRA_SPECIMENS else "modellake"
+    if name in EXTRA_SPECIMENS:
+        return EXTRA_OWNER.get(name, "local_directory")
+    return "modellake"
 
 
 def list_specimens() -> list[str]:

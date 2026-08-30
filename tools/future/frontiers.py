@@ -407,7 +407,7 @@ def _catalog() -> tuple[dict[str, Any], ...]:
             frontier="MODEL_REPRESENTATION",
             kind="BLOCKED",
             title="Flash teacher capture is 0/256 and blocked on Metal",
-            detail="FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY status BLOCKED_NO_METAL_GPU at dense_source_bf16_prefix_initialization. Sleeps. No synthetic rows.",
+            detail="FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY status BLOCKED_NO_METAL_GPU at dense_source_bf16_prefix_initialization. Sleeps. No synthetic rows. The STATUS is not the CAUSE: METAL_REACHABILITY.json shows this host's GPU is reachable from the same metal crate, so the wake condition is identifying that process's context, not acquiring hardware.",
             required_lanes=(LANE_GPU_PROTECTED,),
             gain=INFO_HIGH,
             species="learned_compiler_experiment",

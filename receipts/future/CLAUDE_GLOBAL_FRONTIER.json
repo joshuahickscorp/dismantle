@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T06:40:31Z",
+  "recorded_at": "2026-08-30T11:59:43Z",
   "recorded_by": "tools/future/global_frontier.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,8 +11,8 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
   "by_classification": {
-   "BLOCKED": 4,
-   "HIGH_VALUE_INTEGRATION": 4,
+   "BLOCKED": 3,
+   "HIGH_VALUE_INTEGRATION": 5,
    "MISSING": 8,
    "WEAK": 4
   },
@@ -495,14 +495,14 @@
    "title": "Six ABI findings await a Codex verdict with no prepared response"
   },
   {
-   "classification": "BLOCKED",
-   "detail": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization. Two independent paths agree on the same binding constraint.",
+   "classification": "HIGH_VALUE_INTEGRATION",
+   "detail": "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required rows, failing at dense_source_bf16_prefix_initialization -- and this sidecar's meta funnel independently placed the same nine families at the same gate, so the STALL is corroborated. The stated CAUSE is not. METAL_REACHABILITY.json shows the host GPU is an Apple M3 Ultra, that the exact metal crate the runtime uses returns that device from an ordinary process here, and that shaders compile from source. The blocker is the process context of that one run, which nothing has yet identified -- not the machine.",
    "duplication_check": "teacher_corpus owns admission; meta_funnel owns the gates; this is readiness only",
    "evidence_level": "receipt-backed: FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json status field",
-   "expected_value": "everything downstream of gate 2 is idle until this clears",
+   "expected_value": "everything downstream of gate 2 is idle, and the reason it is idle is now a process question rather than a hardware one",
    "id": "F019",
    "integration_target": "tools/future/meta_ready.py prepares gates 3-9 to start on arrival",
-   "prerequisite": "a Metal-capable GPU for dense source-BF16 prefix initialization",
+   "prerequisite": "identify why Device::system_default() returned None in that process, then re-run the capture; the GPU itself is reachable",
    "probe": {
     "expect": "BLOCKED_NO_METAL_GPU",
     "field": "status",
@@ -517,8 +517,8 @@
     "kind": "field",
     "path": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json"
    },
-   "resource_need": "GPU authority the sidecar does not have",
-   "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU"
+   "resource_need": "GPU authority the sidecar does not have and will not take",
+   "title": "Flash meta stalls at teacher capture, and the stated GPU blocker is false"
   },
   {
    "classification": "HIGH_VALUE_INTEGRATION",
@@ -557,7 +557,7 @@
  ],
  "resolved_meaning": "A MISSING claim whose probe now finds ONLY sidecar files: this campaign closed the gap. The entry is retired, not refuted.",
  "schema": "hawking.future.claude_global_frontier.v1",
- "seal_sha256": "3b6fd8ead4ae6fb7c1143957812498f5823f428bfd0e1af37d55ef7869f64077",
+ "seal_sha256": "b6c877379691c7bee284946ce7bf680ba9a837a4fa7bae51669b6e11b859a042",
  "stale_entries": [],
  "stale_meaning": "A stale probe means the claim no longer matches disk -- usually because Codex or a sidecar lane built the thing. Retire or reclassify the entry; do not silently keep it.",
  "version": 1

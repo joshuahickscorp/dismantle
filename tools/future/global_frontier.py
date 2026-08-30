@@ -404,17 +404,28 @@ FRONTIER: list[dict[str, Any]] = [
     },
     {
         "id": "F019",
-        "title": "Flash meta is blocked at teacher capture, and capture is blocked on GPU",
-        "classification": "BLOCKED",
+        "title": "Flash meta stalls at teacher capture, and the stated GPU blocker is false",
+        "classification": "HIGH_VALUE_INTEGRATION",
         "detail": (
             "All nine real Flash meta families stall at gate 2 real_teacher_fit. Codex "
             "attempted the capture and recorded BLOCKED_NO_METAL_GPU with 0 of 256 required "
-            "rows, failing at dense_source_bf16_prefix_initialization. Two independent paths "
-            "agree on the same binding constraint."
+            "rows, failing at dense_source_bf16_prefix_initialization -- and this sidecar's "
+            "meta funnel independently placed the same nine families at the same gate, so "
+            "the STALL is corroborated. The stated CAUSE is not. METAL_REACHABILITY.json "
+            "shows the host GPU is an Apple M3 Ultra, that the exact metal crate the "
+            "runtime uses returns that device from an ordinary process here, and that "
+            "shaders compile from source. The blocker is the process context of that one "
+            "run, which nothing has yet identified -- not the machine."
         ),
-        "prerequisite": "a Metal-capable GPU for dense source-BF16 prefix initialization",
-        "expected_value": "everything downstream of gate 2 is idle until this clears",
-        "resource_need": "GPU authority the sidecar does not have",
+        "prerequisite": (
+            "identify why Device::system_default() returned None in that process, then "
+            "re-run the capture; the GPU itself is reachable"
+        ),
+        "expected_value": (
+            "everything downstream of gate 2 is idle, and the reason it is idle is now a "
+            "process question rather than a hardware one"
+        ),
+        "resource_need": "GPU authority the sidecar does not have and will not take",
         "evidence_level": "receipt-backed: FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json status field",
         "integration_target": "tools/future/meta_ready.py prepares gates 3-9 to start on arrival",
         "duplication_check": "teacher_corpus owns admission; meta_funnel owns the gates; this is readiness only",

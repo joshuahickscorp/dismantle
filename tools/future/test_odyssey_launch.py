@@ -563,3 +563,56 @@ def test_finding_a_specimen_does_not_lower_the_bar_for_the_others():
                    ("whole-tree", "RECURRENT_PATIENT", "tree digest is sealed")), (
             f"{role['role']} was made ready by something other than verification: {why}"
         )
+
+
+def test_protected_scheduling_is_measured_not_a_constant(monkeypatch):
+    """A bar that cannot move on ANY machine measures nothing.
+
+    invoke, frontier and refill were hardcoded False here, so this criterion
+    could not pass even on a quiescent host holding a real lease -- the same
+    shape that made doctor_callable and gravity_callable permanently unmet, and
+    it hid the real blocker behind a constant.
+
+    It must still refuse today. What must change is that the refusal names
+    conditions that could become true.
+    """
+    live = ol._eval_protected_scheduling()
+    assert live["met"] is False, "this must not pass on a contaminated host"
+    reason = live["reason"]
+    assert "QUIESCENT" in reason and "gpu_authority" in reason, (
+        "the refusal does not name its preconditions"
+    )
+
+    # Flip only the two preconditions this evaluator reads, and the lease-gated
+    # flags must respond. If they do not, they are constants wearing a measurement.
+    real_probe = ol.probe_json
+
+    def fake_probe(*paths, **kw):
+        out = real_probe(*paths, **kw)
+        first = paths[0] if paths else ""
+        if "CONTAMINATION_SCIENCE" in first and isinstance(out.get("doc"), dict):
+            out = dict(out, doc=dict(out["doc"], contamination_class="QUIESCENT"))
+        if "QUALIFICATION_PIPELINE" in first and isinstance(out.get("doc"), dict):
+            ab = dict(out["doc"].get("authority_boundary") or {}, gpu_authority=True)
+            out = dict(out, doc=dict(out["doc"], authority_boundary=ab))
+        return out
+
+    monkeypatch.setattr(ol, "probe_json", fake_probe)
+    lifted = ol._eval_protected_scheduling()
+    assert lifted["operational"]["flags"]["invoke"] is True, (
+        "invoke did not respond to the lease preconditions; it is still a constant"
+    )
+    # schedule/frontier/refill additionally require a real driver, which is the
+    # honest remaining gap -- they may stay False, but not because of a literal.
+    assert "driver" in lifted["operational"]["notes"]
+
+
+def test_refusing_to_seize_a_lock_is_not_the_same_claim_as_cannot_schedule():
+    """The policy and the capability are different facts and must stay separate."""
+    row = ol._eval_protected_scheduling()
+    notes = row["operational"]["notes"]
+    assert notes["sidecar_must_not_seize_lock"] == "true"
+    assert "lease_precondition" in notes
+    assert "not whether" in row["reason"], (
+        "the reason must distinguish the policy from the capability"
+    )

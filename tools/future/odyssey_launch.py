@@ -1828,16 +1828,35 @@ def _eval_protected_scheduling() -> dict[str, Any]:
     klass = None
     if isinstance(cont.get("doc"), Mapping):
         klass = cont["doc"].get("contamination_class")
+    # invoke / frontier / refill were hardcoded False, so this criterion could not
+    # pass on ANY machine -- not even a quiescent one holding a real lease. That
+    # is the same unreachable-bar shape that made doctor_callable and
+    # gravity_callable permanently unmet, and it hid the actual blocker behind a
+    # constant. Measure them. The criterion still refuses today, because
+    # contamination is not QUIESCENT and there is no GPU authority, and those are
+    # facts about this moment rather than a decision baked into the evaluator.
+    #
+    # Refusing to SEIZE a lock and being unable to SCHEDULE protected work are
+    # different claims. The sidecar will never take a contested lock; that is a
+    # policy this evaluator does not need to enforce by pretending the machinery
+    # is absent.
+    pw_sched = _resident_schedulable(["tools/future/protected_window.py"])
+    lease_ok = klass == "QUIESCENT" and gpu_auth
     bar = operational_bar(
         discover=bool(odyssey_pw.get("present") or qual.get("found")),
-        invoke=False,
-        schedule=bool(future_pw.get("present")) and klass == "QUIESCENT" and gpu_auth,
+        invoke=bool(future_pw.get("present")) and lease_ok,
+        schedule=bool(pw_sched["schedule"]) and lease_ok,
         verify=bool(qual.get("found")),
-        frontier=False,
+        frontier=bool(pw_sched["frontier"]) and lease_ok,
         persist=bool(qual.get("found")),
-        refill=False,
+        refill=bool(pw_sched["refill"]) and lease_ok,
         notes={
             "sidecar_must_not_seize_lock": "true",
+            "lease_precondition": (
+                f"contamination must be QUIESCENT (is {klass!r}) and qualification "
+                f"gpu_authority must be true (is {gpu_auth})"
+            ),
+            "driver": str(pw_sched.get("driver_module") or "none"),
             "integration": INTEGRATION_POINTS["protected_window"],
             "prior_odyssey_protected_window": odyssey_pw.get("path_taken"),
         },
@@ -1849,11 +1868,14 @@ def _eval_protected_scheduling() -> dict[str, Any]:
             "protected scheduling is resident-operational on a QUIESCENT machine with a proven HCLI lease"
             if bar["resident_operational"]
             else (
-                f"protected scheduling cannot start: contamination_class={klass!r}, "
-                f"qualification gpu_authority={gpu_auth}, future.protected_window "
-                f"path_taken={future_pw.get('path_taken')}. flock of the bench lock "
-                "would be a seizure. tools/odyssey/protected_window.py is prior Odyssey "
-                "SIGSTOP machinery, not this-wave resident scheduling."
+                f"protected scheduling cannot start: contamination_class={klass!r} "
+                f"(needs QUIESCENT), qualification gpu_authority={gpu_auth} (needs "
+                f"true), driver={pw_sched.get('driver_module') or 'none'}. Every "
+                f"unmet flag is measured: {', '.join(k for k, v in bar['flags'].items() if not v)}. "
+                "The sidecar will not flock a contested bench lock, and that policy "
+                "is separate from this criterion -- these flags describe whether a "
+                "lease-holding resident COULD schedule protected work, not whether "
+                "this process may take a lock."
             )
         ),
         evidence=[

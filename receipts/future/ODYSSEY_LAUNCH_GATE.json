@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T16:11:35Z",
+  "recorded_at": "2026-08-30T16:13:05Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1238,13 +1238,15 @@
      "verify": true
     },
     "notes": {
+     "driver": "none",
      "integration": "tools/future/protected_window.py \u2014 protected scheduling that does not seize Codex's GPU lock",
+     "lease_precondition": "contamination must be QUIESCENT (is 'HEAVY') and qualification gpu_authority must be true (is False)",
      "prior_odyssey_protected_window": "worktree",
      "sidecar_must_not_seize_lock": "true"
     },
     "resident_operational": false
    },
-   "reason": "protected scheduling cannot start: contamination_class='HEAVY', qualification gpu_authority=False, future.protected_window path_taken=worktree. flock of the bench lock would be a seizure. tools/odyssey/protected_window.py is prior Odyssey SIGSTOP machinery, not this-wave resident scheduling."
+   "reason": "protected scheduling cannot start: contamination_class='HEAVY' (needs QUIESCENT), qualification gpu_authority=False (needs true), driver=none. Every unmet flag is measured: invoke, schedule, frontier, refill. The sidecar will not flock a contested bench lock, and that policy is separate from this criterion -- these flags describe whether a lease-holding resident COULD schedule protected work, not whether this process may take a lock."
   },
   {
    "evidence": [
@@ -2118,7 +2120,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "8a847c4269749cec8a2bba3f36736c93df11f397",
+ "head": "625601b25cab2e5e522181864fbd90b17b0eec9d",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 Odyssey I resident-orchestration trial pass receipt",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -3823,7 +3825,7 @@
   "sleeping_are_not_results": true
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "781cf437a28017bf5a3a5d7a433f1f98a71a28bf55c6123fa5b4bc1da3de08e9",
+ "seal_sha256": "7fbe4bda2cff66722630c0ba0496937bf79a7cb2432d6596ec8499a1f2bebabe",
  "sleeping_workunits": [
   {
    "assigned_backend": null,

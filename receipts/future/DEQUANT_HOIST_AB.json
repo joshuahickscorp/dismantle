@@ -1,48 +1,110 @@
 {
  "bit_identity": {
-  "MUST_NOT_BE_QUOTED_AS_BIT_IDENTICAL": "the harness fills x with (i % 17) * 0.125 - 1.0 - dyadic values with four mantissa bits - and the codes are 2-bit, so both orderings land on exactly representable intermediates. This is the input LEAST likely to expose a reassociation difference. Real activations are UNTESTED and the transform reassociates, so the honest expectation is that it is NOT bit-identical in production.",
-  "all_exact": true,
-  "n_bit_exact": 39936,
+  "all_exact": false,
+  "max_abs_err": 4.76837158203125e-07,
+  "max_rel_fro": 9.802392101565035e-08,
+  "measured_on": "real_captured_activation",
+  "n_bit_exact": 15435,
   "n_compared": 39936,
-  "the_comparison_is_sound": "planting a 1e-6 error in the kernel took bit_exact from 39936 to 0 with max_abs 6.4e-4, which is 640 chunks times 1e-6. The instrument detects what it is supposed to detect.",
-  "what_would_settle_it": "re-run the comparison with x drawn from a real captured activation rather than the dyadic fill. Until then the FP behaviour of this transform on production data is unknown."
+  "per_tensor": [
+   {
+    "bit_identical": false,
+    "max_abs_err": 1.1920928955078125e-07,
+    "rel_fro": 8.471050580180782e-08,
+    "tensor": "language_model.model.layers.0.mlp.gate_proj.weight"
+   },
+   {
+    "bit_identical": false,
+    "max_abs_err": 1.1920928955078125e-07,
+    "rel_fro": 8.16550426691231e-08,
+    "tensor": "language_model.model.layers.0.mlp.up_proj.weight"
+   },
+   {
+    "bit_identical": false,
+    "max_abs_err": 4.76837158203125e-07,
+    "rel_fro": 9.802392101565035e-08,
+    "tensor": "language_model.model.layers.0.mlp.down_proj.weight"
+   }
+  ],
+  "reading": "NOT bit-identical, and that is the correct answer for a transform that reassociates. The error sits at f32 epsilon: rel_fro under 1e-7 on every projection. Numerically this transform would have been safe to adopt. It is rejected on speed, not on accuracy.",
+  "the_earlier_bit_exact_result_was_the_artifact": "the harness fill is (i % 17) * 0.125 - 1.0 - dyadic values with four mantissa bits - and the codes are 2-bit, so both orderings landed on exactly representable intermediates. That was recorded as an artifact at the time and the real-activation run confirms it."
  },
- "claim_boundary": "One MLP layer, gate+up+down, on sealed-3.14, three dispatches in one command buffer, MTLCommandBuffer GPUStartTime/GPUEndTime, 11 reps after 5 warmup. CONTAMINATED WINDOW: absolute GB/s are not promotable and the ratio is inflated with every other ratio in the run, so the span recovery is the comparison that survives. The output comparison uses the harness's DYADIC synthetic input and therefore says nothing about FP behaviour on real activations.",
- "evidence_class": "DIAGNOSTIC_RELATIVE",
- "gpu_authority": true,
+ "candidate": "affine_q2_geo_tpr64_tg128_hoist",
+ "correction": "an earlier version of this receipt reported 1.6338x as the measured speedup. That number was real as an observation and wrong as a claim about the hoist: it compared the hoist against a production arm depressed by the synthetic input. Corrected here on evidence, not withdrawn quietly.",
+ "instrument_consequence": {
+  "reopen": "if any future receipt reports a production dequant arm below ~250 GB/s on this machine, suspect the input before the kernel.",
+  "scar": "FILL_F32_IS_NOT_A_NEUTRAL_INPUT_FOR_THE_PRODUCTION_DEQUANT_ARM",
+  "statement": "the synthetic dyadic fill measured the production kernel at 195.6 GB/s across two runs and real activations measured it at 317.4, a 1.62x difference from the input alone, while ARM A and the hoist were unmoved. Any ratio taken against a fill_f32 production arm is therefore suspect until the arm is re-run on real x.",
+  "what_is_NOT_claimed": "this does not retroactively void the ALU roofline. Its production arm measured 329.6 GB/s, which is near the real-activation 317.4 and far from 195.6, so that receipt does not carry the signature. The obligation is to CHECK each receipt, not to assume contamination."
+ },
  "kernel": "alu_roofline_affine_q2_geo_tpr64_tg128_hoist",
  "measured": {
-  "arm_a_over_production": 2.5661,
-  "arm_a_stripped_gb_s": 502.10556677242573,
-  "hoist_gb_s": 319.6890279828904,
-  "hoist_over_production": 1.6338,
-  "loadavg": "{ 8.20 8.67 8.40 }",
-  "production_gb_s": 195.66833161218713,
-  "span_recovered": 0.4047,
-  "why_span_and_not_ratio": "this run is contended and ARM A's own ratio is 2.59x here against 1.51-1.64x in quieter runs, so every ratio is inflated together. The fraction of the production-to-ARM-A span recovered is the load-robust comparison, and it puts the hoist at 40.5% against k6's 42% on the earlier ladder."
+  "arm_a_holds_across_runs": {
+   "real_gb_s": 502.3561169461261,
+   "relative_drift": 0.0005,
+   "synthetic_gb_s": 502.10556677242573,
+   "why_it_matters": "ARM A has all the arithmetic removed, so it reads the same bytes in both runs and is the machine-state control. It holds to 0.05%, which is what licenses attributing production's change to the input rather than to contention."
+  },
+  "headline_hoist_over_production": 0.9995,
+  "mechanism_is_not_established": "production forms w = q*scale + bias then w*x per weight; the hoist forms q*x with q in {0,1,2,3} and applies scale once per chunk. A denormal or flush-to-zero path in the per-weight product would produce this signature. That is a hypothesis. The verdict does not rest on it.",
+  "real_activation_run": {
+   "arm_a_over_production": 1.5827,
+   "arm_a_stripped_gb_s": 502.3561169461261,
+   "hoist_gb_s": 317.2613849506785,
+   "hoist_over_production": 0.9995,
+   "input": "real_captured_activation",
+   "loadavg": "{ 6.19 7.14 7.73 }",
+   "production_gb_s": 317.4108262108262,
+   "raw": "receipts/future/_G092_HOIST_REALX_raw.json",
+   "span_recovered": -0.0008
+  },
+  "synthetic_control_run": {
+   "arm_a_over_production": 2.5661,
+   "arm_a_stripped_gb_s": 502.10556677242573,
+   "hoist_gb_s": 319.6890279828904,
+   "hoist_over_production": 1.6338,
+   "input": "synthetic_dyadic_fill (i % 17) * 0.125 - 1.0",
+   "loadavg": "{ 8.20 8.67 8.40 }",
+   "production_gb_s": 195.66833161218713,
+   "raw": "receipts/future/_G092_HOIST_raw.json",
+   "span_recovered": 0.4047
+  },
+  "the_input_moved_production_not_the_hoist": {
+   "hoist_real_gb_s": 317.2613849506785,
+   "hoist_real_over_synth": 0.9924,
+   "hoist_synth_gb_s": 319.6890279828904,
+   "production_real_gb_s": 317.4108262108262,
+   "production_real_over_synth": 1.6222,
+   "production_synth_gb_s": 195.66833161218713,
+   "reading": "the hoist is input-insensitive and production is input-sensitive. The apparent 1.63x was production being slow on the fill."
+  },
+  "verdict": "NO_SPEEDUP_ON_REAL_ACTIVATIONS"
  },
  "measurement_provenance": {
   "absolutes_are_measured_under_load": true,
   "gpu_lane_lock_held": true,
   "lane": "g092-hoist",
-  "loadavg": "{ 7.22 7.73 8.03 }",
-  "measured_at": "2026-08-31T21:01:24Z",
+  "loadavg": "{ 8.44 9.76 9.65 }",
+  "measured_at": "2026-08-31T21:24:50Z",
   "measured_at_source": "WRITE_TIME",
   "why": "a hardware number that cannot be placed in time cannot be audited against a contention window"
  },
+ "ms_per_token_saved": 0.0,
+ "obligation": "G092",
  "prediction_vs_measurement": {
-  "k6_span_recovery_on_the_earlier_ladder": 0.42,
-  "measured_ratio_this_run": 1.6338,
-  "measured_span_recovery": 0.4047,
+  "direction": "BELOW",
+  "inside_bracket": false,
+  "measured_on_real_activations": 0.9995,
   "predicted_bracket_from_ladder": [
    1.2679,
    1.4256
   ],
-  "predicted_from_fma_count": 1.6,
-  "reading": "on the load-robust measure the hoist behaves like k6 at 2.0 FMA/B, not like the 1.6667 its instruction count suggests. The likely cause is the one thing the FMA count ignores: the hoist adds a LOAD - sumx8[col>>3] - that k6 does not have. Trading six FMA for one load is not free, and an arithmetic-only model could not have said so."
+  "reading": "the issue-rate ladder predicted 1.27x-1.43x from removing one FMA per weight. The measurement says 1.00x. The ladder's premise - that the production kernel is issue-limited on that FMA - is refuted for this kernel on real input: removing the FMA changes nothing, so the FMA was not on the critical resource.",
+  "what_this_kills": "the per-weight-affine-arithmetic branch of the ALU school for the MLP q2 matvec. Cheaper decode arithmetic of THIS shape is not the lever. It does not kill the wider decode-tax target, which is measured against ARM A's full 1.58x span, still unexplained."
  },
  "recorded_by": "tools/future/dequant_hoist_ab.py",
- "schema": "hawking.future.dequant_hoist_ab.v1",
- "seal_sha256": "fd1cd729a2384366187418ee86a7ef6068469176cbbb80756a942edace3081c7",
- "version": 1
+ "seal_sha256": "82a3e2d1a5af55686b579ff257c056a2adb20f821fa3e465d880a4e9c54b1da3",
+ "shader": "crates/hawking-core/examples/alu_roofline_organs.metal",
+ "transform": "apply the per-group affine once per 8-weight chunk instead of once per weight, using sumx8 - a per-chunk sum of x that is a property of x, not of the output row, so it amortises over all rows",
+ "verdict": "NO_SPEEDUP_ON_REAL_ACTIVATIONS"
 }

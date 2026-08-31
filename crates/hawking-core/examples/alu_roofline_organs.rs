@@ -45,6 +45,11 @@ struct Args {
     session_warmup: usize,
     session_reps: usize,
     out: Option<PathBuf>,
+    /// Real captured activations instead of the dyadic synthetic fill. The
+    /// default `(i % 17) * 0.125 - 1.0` has four mantissa bits, which is the
+    /// input LEAST able to expose a floating-point reassociation difference -
+    /// so any bit-identity measured on it says nothing about production.
+    x_file: Option<PathBuf>,
 }
 
 fn parse_args() -> Args {
@@ -56,6 +61,7 @@ fn parse_args() -> Args {
     let mut session_warmup = 2usize;
     let mut session_reps = 7usize;
     let mut out = None;
+    let mut x_file: Option<PathBuf> = None;
     let mut args = env::args().skip(1);
     while let Some(flag) = args.next() {
         match flag.as_str() {
@@ -74,6 +80,11 @@ fn parse_args() -> Args {
                     .unwrap_or_else(|| fail(usage()))
                     .parse()
                     .unwrap_or_else(|_| fail("--layer"));
+            }
+            "--x-file" => {
+                x_file = Some(PathBuf::from(
+                    args.next().unwrap_or_else(|| fail("--x-file needs a path")),
+                ));
             }
             "--warmup" => {
                 warmup = args
@@ -119,6 +130,7 @@ fn parse_args() -> Args {
         session_warmup,
         session_reps,
         out,
+        x_file,
     }
 }
 
@@ -510,10 +522,55 @@ mod macos {
         scale_bytes: u64,
     }
 
+    /// Real captured activations, truncated or cycled to the tensor's width.
+    /// REFUSES an empty or unreadable file rather than silently falling back to
+    /// the synthetic fill - a comparison that quietly used dyadic input while
+    /// reporting a real-activation run would be worse than no comparison.
+    fn load_x(path: &std::path::Path, cols: usize) -> Result<Vec<f32>, String> {
+        let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        if bytes.len() < cols * 4 {
+            return Err(format!(
+                "{}: {} bytes is fewer than one row of {cols} f32",
+                path.display(),
+                bytes.len()
+            ));
+        }
+        let mut out = Vec::with_capacity(cols);
+        for i in 0..cols {
+            let b = [
+                bytes[i * 4],
+                bytes[i * 4 + 1],
+                bytes[i * 4 + 2],
+                bytes[i * 4 + 3],
+            ];
+            out.push(f32::from_le_bytes(b));
+        }
+        if out.iter().all(|v| *v == 0.0) {
+            return Err(format!("{}: first row is all zero", path.display()));
+        }
+        Ok(out)
+    }
+
+    /// What x the run actually used. The dyadic fill and a real activation row
+    /// are not interchangeable inputs: the production kernel measures 195.6 GB/s
+    /// on the fill and 317.4 on real activations, so a receipt that does not say
+    /// which one it used cannot be compared to another receipt.
+    fn x_source_json(x_file: Option<&std::path::Path>) -> serde_json::Value {
+        match x_file {
+            None => json!({"kind": "synthetic_dyadic_fill", "expr": "(i % 17) * 0.125 - 1.0"}),
+            Some(p) => json!({
+                "kind": "real_captured_activation",
+                "path": p.display().to_string(),
+                "file_bytes": std::fs::metadata(p).map(|m| m.len()).unwrap_or(0),
+            }),
+        }
+    }
+
     fn load_affine(
         device: &Device,
         catalog: &HashMap<String, CatalogRow>,
         name: &str,
+        x_file: Option<&std::path::Path>,
     ) -> Result<AffineProj, String> {
         let row = catalog
             .get(name)
@@ -530,7 +587,10 @@ mod macos {
         if packed.is_q2f() {
             return Err(format!("{name} is q2f (no bias); probe needs affine2"));
         }
-        let input = fill_f32(packed.cols);
+        let input = match x_file {
+            Some(p) => load_x(p, packed.cols)?,
+            None => fill_f32(packed.cols),
+        };
         let output = vec![0f32; packed.rows];
         let sumx8: Vec<f32> = input
             .chunks(8)
@@ -1268,11 +1328,12 @@ mod macos {
         let qkvz_name = qwen38_layer_name(args.layer, "linear_attn.in_proj_qkvz.weight");
 
         eprintln!("  loading {gate_name}");
-        let gate = load_affine(&device, &catalog, &gate_name).unwrap_or_else(|e| fail(e));
+        let xf = args.x_file.as_deref();
+        let gate = load_affine(&device, &catalog, &gate_name, xf).unwrap_or_else(|e| fail(e));
         eprintln!("  loading {up_name}");
-        let up = load_affine(&device, &catalog, &up_name).unwrap_or_else(|e| fail(e));
+        let up = load_affine(&device, &catalog, &up_name, xf).unwrap_or_else(|e| fail(e));
         eprintln!("  loading {down_name}");
-        let down = load_affine(&device, &catalog, &down_name).unwrap_or_else(|e| fail(e));
+        let down = load_affine(&device, &catalog, &down_name, xf).unwrap_or_else(|e| fail(e));
         let mlp = [gate, up, down];
         let mlp_bytes: u64 = mlp.iter().map(|p| p.weight_bytes).sum();
         let mlp_rows_gate = mlp[0].rows;
@@ -1472,6 +1533,7 @@ mod macos {
             "timing": "MTLCommandBuffer GPUStartTime/GPUEndTime",
             "concurrent_load": concurrent,
             "absolute_gb_s_are_measured_under_load": true,
+            "x_source": x_source_json(args.x_file.as_deref()),
             "mlp": {
                 "organ": "mlp",
                 "kernel": "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",

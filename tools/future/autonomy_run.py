@@ -43,7 +43,7 @@ import json
 import subprocess
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from hcli.resources import pid_is_alive
 
@@ -504,7 +504,11 @@ def reorder_queue_from_evidence(
 
 
 def _detach_priority(job: dict[str, Any]) -> int | None:
-    """Lower is sooner. None means this job is never detached."""
+    """Lower is sooner. None means this job is never detached.
+
+    0 is a real priority (long / composer-detached units). Callers must not
+    write `prio or 99` — that sends the jobs we most need in flight to the back.
+    """
     if job.get("generate") or job.get("already_detached"):
         return None
     if str(job.get("launch") or "").lower() == "parked":
@@ -517,6 +521,18 @@ def _detach_priority(job: dict[str, Any]) -> int | None:
     if job.get("capability"):
         return 2
     return None
+
+
+def rank_detachable(queue: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Long/detached jobs first. Priority 0 is highest, not missing."""
+    ranked: list[tuple[int, dict[str, Any]]] = []
+    for job in queue:
+        prio = _detach_priority(job)
+        if prio is None:
+            continue
+        ranked.append((prio, job))
+    ranked.sort(key=lambda pair: pair[0])
+    return [job for _prio, job in ranked]
 
 
 def _bound_runner(receipt: Path) -> Path:
@@ -1138,13 +1154,14 @@ def run(trial: str = "15m", timeline: Path | None = None,
         """
         if sched is None:
             return doc_now
-        ranked = sorted(
-            (j for j in queue if _detach_priority(j) is not None),
-            key=lambda j: int(_detach_priority(j) or 99),
-        )
+        ranked = rank_detachable(queue)
         started_n = 0
         for job in ranked:
             if job.get("already_detached"):
+                continue
+            # Leave cause/effect units on the sequential queue so a landing
+            # result can actually reorder remaining work.
+            if job.get("replacement_for") or job.get("replan_effect"):
                 continue
             if started_n >= 2 and _detach_priority(job) != 0:
                 break

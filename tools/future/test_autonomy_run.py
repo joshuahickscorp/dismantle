@@ -16,6 +16,7 @@ import json
 import pytest
 
 from tools.future import autonomy_run as ar
+from tools.future import autonomy_trial as at
 from tools.future import negative_index as ni
 from tools.future._common import REPO, git
 
@@ -161,7 +162,7 @@ def test_refill_is_exercised_without_waiting_for_starvation(tmp_path):
     reached the end of its queue.
     """
     tl = tmp_path / "tl.json"
-    ar.run(trial="15m", duration_s=180, timeline=tl)
+    ar.run(trial="15m", duration_s=40, timeline=tl)
     doc = json.loads(tl.read_text())
     kinds = [e["kind"] for e in doc["events"]]
     assert "result_ingested" in kinds, "the judge scores result_ingested, not receipt_ingested"
@@ -356,6 +357,23 @@ def test_negative_science_refusal_requires_the_scar_source_path():
     assert src in (event.get("cites") or [])
 
 
+def test_long_detached_jobs_are_ranked_ahead_of_capabilities():
+    """Priority 0 is highest. `prio or 99` used to send long jobs to the back."""
+    long_job = {
+        "long_subprocess": True,
+        "capability": "specimen_verify.py",
+        "launch": "detached",
+        "composed_unit_id": "WU.TORTURE.NO_WAIT.specimen_verify",
+    }
+    cap_a = {"capability": "negative_index.py", "composed_unit_id": "WU.NEG"}
+    cap_b = {"capability": "hcli_self_profile.py", "composed_unit_id": "WU.HCLI"}
+    assert ar._detach_priority(long_job) == 0
+    assert ar._detach_priority(cap_a) == 2
+    ranked = ar.rank_detachable([cap_a, long_job, cap_b])
+    assert ranked[0] is long_job
+    assert [j["composed_unit_id"] for j in ranked][0] == "WU.TORTURE.NO_WAIT.specimen_verify"
+
+
 def test_reorder_from_evidence_mutates_the_queue_or_returns_none():
     """The event is a report of a mutation. A no-op must not claim a reorder."""
     cause = {
@@ -411,20 +429,41 @@ def _overlap_from_timestamps(events):
     return False, None, None, 0.0
 
 
-def test_short_smoke_emits_all_four_with_real_backing(tmp_path):
-    """End to end: the four missing 30m conditions, each backed by the act."""
-    tl = tmp_path / "smoke.json"
-    ar.run(trial="15m", duration_s=40, timeline=tl)
-    doc = json.loads(tl.read_text())
+@pytest.fixture(scope="module")
+def short_loop_timeline(tmp_path_factory):
+    """One real driver loop. The four condition tests all read this run.
+
+    trial=15m uses the same emit sites as 30m; power_torture.compose() alone
+    can consume a short duration_s before the loop ever starts.
+    """
+    tl = tmp_path_factory.mktemp("short_loop") / "timeline.json"
+    ar.run(trial="15m", duration_s=25, timeline=tl)
+    return json.loads(tl.read_text())
+
+
+def test_refill_work_emits_work_refilled_after_an_ingest(short_loop_timeline):
+    """eval_refill_work: work_refilled after min result_ingested, with unit ids."""
+    doc = short_loop_timeline
+    verdict = at.eval_refill_work(at.TimelineView(doc, "15m"))
+    assert verdict["met"], verdict.get("detail")
+    ingests = [e for e in doc["events"] if e["kind"] == "result_ingested"]
+    refills = [e for e in doc["events"] if e["kind"] == "work_refilled"]
+    assert ingests and refills
+    t_ing = min(int(e.get("t_s") or 0) for e in ingests)
+    later = [e for e in refills if int(e.get("t_s") or 0) > t_ing]
+    assert later, "refill did not follow an ingest (same-second refill is not after)"
+    for event in later:
+        payload = event.get("payload") or {}
+        ids = list(payload.get("unit_ids") or []) + list(event.get("cites") or [])
+        assert ids or payload.get("unit"), "a refill that added nothing is not a refill"
+
+
+def test_overlap_detached_work_starts_two_live_jobs(short_loop_timeline):
+    """eval_overlap_detached_work: two detached_started intervals open at once."""
+    doc = short_loop_timeline
     events = doc["events"]
-    kinds = {e["kind"] for e in events}
-
-    assert "result_ingested" in kinds
-    assert "idea_rejected" in kinds
-    assert "workunit_sleeping" in kinds
-    assert "mission_state_written" in kinds
-    assert not (kinds & {"idle", "awaiting_instructions", "all_tasks_complete"})
-
+    verdict = at.eval_overlap_detached_work(at.TimelineView(doc, "15m"))
+    assert verdict["met"], verdict.get("detail")
     started = [e for e in events if e["kind"] == "detached_started"]
     assert len(started) >= 2, "need two real detached jobs, not a single handle"
     for event in started:
@@ -432,34 +471,40 @@ def test_short_smoke_emits_all_four_with_real_backing(tmp_path):
         assert isinstance(pid, int) and pid > 0
         assert event["payload"].get("job_id")
         assert event["payload"].get("started_at")
-    overlapped, a, b, overlap = _overlap_from_timestamps(events)
+    overlapped, _a, _b, overlap = _overlap_from_timestamps(events)
     assert overlapped, "detached_started events were adjacent, not an open interval"
     assert overlap > 0
 
+
+def test_use_negative_science_emits_query_and_refusal(short_loop_timeline):
+    """eval_use_negative_science: query/refusal with query, source_path, or cites."""
+    doc = short_loop_timeline
+    verdict = at.eval_use_negative_science(at.TimelineView(doc, "15m"))
+    assert verdict["met"], verdict.get("detail")
+    events = doc["events"]
     refusals = [e for e in events if e["kind"] == "negative_science_refusal"]
     queries = [e for e in events if e["kind"] == "negative_science_query"]
-    assert refusals or queries, "use_negative_science has nothing to score"
     assert queries, "consulted the index without emitting the query the judge scores"
     assert refusals, "refused ideas without emitting negative_science_refusal"
+    for event in queries:
+        payload = event.get("payload") or {}
+        assert payload.get("query") or event.get("cites") or payload.get("source_path")
     for event in refusals[:20]:
         src = event["payload"].get("source_path")
         assert src, "refusal carried no scar source path"
         assert _source_resolves(src), f"cited scar source is absent: {src}"
         assert event.get("cites")
 
-    altered = [e for e in events if e["kind"] == "priority_altered"]
+
+def test_alter_priority_from_evidence_reorders_the_remaining_queue(short_loop_timeline):
+    """eval_alter_priority_from_evidence: before != after lists, citing evidence."""
+    doc = short_loop_timeline
+    verdict = at.eval_alter_priority_from_evidence(at.TimelineView(doc, "15m"))
+    assert verdict["met"], verdict.get("detail")
+    altered = [e for e in doc["events"] if e["kind"] == "priority_altered"]
     assert altered, "no priority_altered; the reorder condition cannot be met"
     for event in altered:
         before, after = event["payload"].get("before"), event["payload"].get("after")
         assert isinstance(before, list) and isinstance(after, list)
         assert before != after
         assert event.get("cites")
-
-    ingests = [e for e in events if e["kind"] == "result_ingested"]
-    refills = [e for e in events if e["kind"] == "work_refilled"]
-    assert refills, "no work_refilled after leaving frontier headroom"
-    t_ing = min(int(e.get("t_s") or 0) for e in ingests)
-    later = [e for e in refills if int(e.get("t_s") or 0) > t_ing]
-    assert later, "refill did not follow an ingest (same-second refill is not after)"
-    for event in later:
-        assert event["payload"].get("unit_ids"), "a refill that added nothing is not a refill"

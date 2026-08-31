@@ -153,7 +153,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T01:10:57Z",
+  "recorded_at": "2026-08-31T03:24:46Z",
   "recorded_by": "tools/future/negative_index.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -200,6 +200,10 @@
    },
    {
     "family": "adding_stage_wins_isolated_organ_products_and_calling_the_sum_a_token",
+    "n": 1
+   },
+   {
+    "family": "adjacency_is_not_overlap",
     "n": 1
    },
    {
@@ -368,6 +372,14 @@
    },
    {
     "family": "entropy_coded_pq_indices_entropy_coding_of_trained_pq_indices",
+    "n": 1
+   },
+   {
+    "family": "environment_mismatch_unfused_vs_sealed",
+    "n": 1
+   },
+   {
+    "family": "event_timestamp_unit_mismatch",
     "n": 1
    },
    {
@@ -683,7 +695,15 @@
     "n": 1
    },
    {
+    "family": "prefill_over_generated_token_denominator",
+    "n": 1
+   },
+   {
     "family": "present_an_isolated_organ_product_e_g_192_ms_48_10_gate_up_down_as_a_token_time",
+    "n": 1
+   },
+   {
+    "family": "priority_zero_falsy_or_default",
     "n": 1
    },
    {
@@ -867,7 +887,15 @@
     "n": 1
    },
    {
+    "family": "shared_index_bare_commit_sweeps_foreign_stage",
+    "n": 1
+   },
+   {
     "family": "single_family_representation_across_gate_proj_up_proj_down_proj",
+    "n": 1
+   },
+   {
+    "family": "source_instrumented_runtime_binary_stale",
     "n": 1
    },
    {
@@ -1042,7 +1070,7 @@
    },
    {
     "model": "unrecorded",
-    "n": 78
+    "n": 85
    }
   ],
   "by_source": [
@@ -1094,6 +1122,13 @@
     "n_unparsed": 0,
     "origin": "disk",
     "path": "receipts/ascent-2026-08-18/PHASE_B_HYBRID_REFUTED.json"
+   },
+   {
+    "n_parsed": 7,
+    "n_scars": 7,
+    "n_unparsed": 0,
+    "origin": "disk",
+    "path": "receipts/future/CAMPAIGN_SCARS.json"
    },
    {
     "n_parsed": 3,
@@ -1280,10 +1315,10 @@
    "ramanujan.scaffold.core.stores Graveyard (in-process bury/revive, not a corpus index).",
    "Worktrees and grok/* branches the noetic sweeper walked; this index is HEAD + disk only."
   ],
-  "n_parsed": 649,
-  "n_refuse_eligible": 579,
-  "n_scars": 656,
-  "n_sources": 32,
+  "n_parsed": 656,
+  "n_refuse_eligible": 586,
+  "n_scars": 663,
+  "n_sources": 33,
   "n_unparsed": 7
  },
  "evidence_class": "STATIC_ONLY",
@@ -1297,7 +1332,7 @@
   "Sparse-checkout ingest via git show HEAD:<path> so missing-on-disk is not treated as missing-in-git."
  ],
  "gpu_authority": false,
- "head": "12a76e3e5b12319ee0ca1c4d8dbfa3856b6d9b7c",
+ "head": "9aafa8fc970f505cd092bce64e4d2ad696893d42",
  "how_to_use": {
   "proposal_keys": [
    "model",
@@ -3567,6 +3602,188 @@
    "source_path": "receipts/ascent-2026-08-18/PHASE_B_HYBRID_REFUTED.json",
    "unparsed_reason": "",
    "verdict": "MEASURED NEGATIVE for byte reduction. No low-rank + correction split beats q3's density-quality point: q2-base cannot be corrected back to q3 quality cheaply, and q3-base+correction is more bytes for better quality (Matryoshka, not speed). q3 is Pareto-optimal on the MLP density-quality frontier. The hybrid GENERALIZES (unlike pure low-rank) but does not move active bytes below q3 at q3 quality."
+  },
+  {
+   "claim_refuted": "that two detached_started without completions between them proves two jobs were live at once",
+   "failure_mechanism": "ORDERING_IN_A_LOG_IS_NOT_SIMULTANEITY. Adjacency of start events is a statement about the log, not about two processes being live.",
+   "hypothesis_family": "adjacency_is_not_overlap",
+   "keys_filled": 2,
+   "level": "GENERAL_PHYSICAL",
+   "machine": "unrecorded",
+   "model": "unrecorded",
+   "models": [
+    "unrecorded"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "ADJACENCY_IS_NOT_OVERLAP",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "only if two live pids (or same-unit intervals with positive overlap) are shown. Two starts without a completion between them is never a reopen.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/CAMPAIGN_SCARS.json#ADJACENCY_IS_NOT_OVERLAP",
+   "source_origin": "disk",
+   "source_path": "receipts/future/CAMPAIGN_SCARS.json",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "that a probe of the unfused default graph is a production measurement of sealed-3.14",
+   "failure_mechanism": "ENVIRONMENT_IS_PART_OF_EXPERIMENT_IDENTITY. A measurement whose env hash does not match the sealed config is a different experiment, not the incumbent.",
+   "hypothesis_family": "environment_mismatch_unfused_vs_sealed",
+   "keys_filled": 2,
+   "level": "GENERAL_PHYSICAL",
+   "machine": "unrecorded",
+   "model": "unrecorded",
+   "models": [
+    "unrecorded"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "ENVIRONMENT_MISMATCH_UNFUSED_VS_SEALED",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "a measurement whose env_hash equals the sealed fusion env hash (including serving mode and measurement mode). An unfused probe that is labelled as unfused is not a reopen of this scar.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/CAMPAIGN_SCARS.json#ENVIRONMENT_MISMATCH_UNFUSED_VS_SEALED",
+   "source_origin": "disk",
+   "source_path": "receipts/future/CAMPAIGN_SCARS.json",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "that epoch started_at and trial-relative t_s may be used as ends of one interval",
+   "failure_mechanism": "HETEROGENEOUS_UNITS_ARE_NOT_A_TIMELINE. Falling back across clocks is not a missing-value policy; it is a unit error.",
+   "hypothesis_family": "event_timestamp_unit_mismatch",
+   "keys_filled": 2,
+   "level": "GENERAL_PHYSICAL",
+   "machine": "unrecorded",
+   "model": "unrecorded",
+   "models": [
+    "unrecorded"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "EVENT_TIMESTAMP_UNIT_MISMATCH",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "never for mixed-unit arithmetic. A schema that tags every stamp with its unit and rejects mixed subtraction is the guard, not a reopen of mixing them.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/CAMPAIGN_SCARS.json#EVENT_TIMESTAMP_UNIT_MISMATCH",
+   "source_origin": "disk",
+   "source_path": "receipts/future/CAMPAIGN_SCARS.json",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "that dividing prefill+decode totals by generated tokens yields a per-token production cost",
+   "failure_mechanism": "NUMERATOR_AND_DENOMINATOR_COUNT_DIFFERENT_EVENTS. A field named per_X is not per_X unless both sides count the same events.",
+   "hypothesis_family": "prefill_over_generated_token_denominator",
+   "keys_filled": 2,
+   "level": "GENERAL_PHYSICAL",
+   "machine": "unrecorded",
+   "model": "unrecorded",
+   "models": [
+    "unrecorded"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "PREFILL_OVER_GENERATED_TOKEN_DENOMINATOR",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "a field whose numerator is decode-only (or generated-only) and whose denominator is generated tokens. Renaming the inflated fields to per_generated_token_including_prefill_work is a rename, not a reopen.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/CAMPAIGN_SCARS.json#PREFILL_OVER_GENERATED_TOKEN_DENOMINATOR",
+   "source_origin": "disk",
+   "source_path": "receipts/future/CAMPAIGN_SCARS.json",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "that `_detach_priority(j) or 99` ranks priority-0 jobs first",
+   "failure_mechanism": "FALSY_ZERO_IS_A_VALUE. `x or default` is not a missing-check when 0 is a legitimate member of the domain.",
+   "hypothesis_family": "priority_zero_falsy_or_default",
+   "keys_filled": 2,
+   "level": "GENERAL_PHYSICAL",
+   "machine": "unrecorded",
+   "model": "unrecorded",
+   "models": [
+    "unrecorded"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "PRIORITY_ZERO_FALSY_OR_DEFAULT",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "never for the `prio or 99` form. A language or schema in which 0 is not falsy does not reopen a Python `or`.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/CAMPAIGN_SCARS.json#PRIORITY_ZERO_FALSY_OR_DEFAULT",
+   "source_origin": "disk",
+   "source_path": "receipts/future/CAMPAIGN_SCARS.json",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "that `git add <paths> && git commit` commits only those paths when the index already holds a --3way apply",
+   "failure_mechanism": "THE_INDEX_IS_THE_COMMIT_SET_UNLESS_A_PATHSPEC_SAYS_OTHERWISE. Any command that stages as a side effect (apply --3way, apply --index, stash pop on conflict, cherry-pick/merge on conflict) can put someone else's work under your message.",
+   "hypothesis_family": "shared_index_bare_commit_sweeps_foreign_stage",
+   "keys_filled": 2,
+   "level": "GENERAL_PHYSICAL",
+   "machine": "unrecorded",
+   "model": "unrecorded",
+   "models": [
+    "unrecorded"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "SHARED_INDEX_BARE_COMMIT_SWEEPS_FOREIGN_STAGE",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "never for a bare `git commit`. The pathspec form is the only safe one; an untracked new file must still be `git add`ed first.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/CAMPAIGN_SCARS.json#SHARED_INDEX_BARE_COMMIT_SWEEPS_FOREIGN_STAGE",
+   "source_origin": "disk",
+   "source_path": "receipts/future/CAMPAIGN_SCARS.json",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "that instrumentation in source is instrumentation in the serving binary",
+   "failure_mechanism": "SOURCE_REALITY_IS_NOT_ARTIFACT_REALITY. A capability present in source is not a capability present in the running system.",
+   "hypothesis_family": "source_instrumented_runtime_binary_stale",
+   "keys_filled": 2,
+   "level": "GENERAL_PHYSICAL",
+   "machine": "unrecorded",
+   "model": "unrecorded",
+   "models": [
+    "unrecorded"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "SOURCE_INSTRUMENTED_RUNTIME_BINARY_STALE",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "a binary whose mtime is at or after the introducing commit of every field being read, and whose string table or live probe actually contains those fields. Rebuilding is the reopen, not re-reading the source.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/CAMPAIGN_SCARS.json#SOURCE_INSTRUMENTED_RUNTIME_BINARY_STALE",
+   "source_origin": "disk",
+   "source_path": "receipts/future/CAMPAIGN_SCARS.json",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
   },
   {
    "claim_refuted": "The 24% did not follow the catalog indirection. Isolating host catalog lookup off the GPU addr-probe timestamp left the gap in place. What the 24% tracks instead is dispatch topology and mixed organ sizes: the marginal cost of a dispatch (~15us for this host/catalog ceremony class) multiplied by how many the token issues, plus the fact that organs of very different sizes do not amortise a dispatch equally.",
@@ -18550,6 +18767,6 @@
   }
  ],
  "schema": "hawking.future.negative_index.v1",
- "seal_sha256": "3b414ab3a03057325484cc6c17305d9a6e4fae6b733f22010ee5af48be009a7c",
+ "seal_sha256": "1ecc02aa5ccbbb548cbf56dc9045060b7316984ae573e615e26e2f8ef12dad8f",
  "version": 1
 }

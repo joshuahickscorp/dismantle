@@ -33,7 +33,13 @@ SCHEMA = "hawking.future.status_causality.v1"
 SUPPORTED = "SUPPORTED"
 OVERREACHING = "OVERREACHING"
 UNTESTED = "UNTESTED"
+UNDERDETERMINED = "UNDERDETERMINED"
+CONTRADICTED = "CONTRADICTED"
 VERDICTS = (SUPPORTED, OVERREACHING, UNTESTED)
+# Generic (observation, conclusion) checker. UNTESTED is a status-challenge
+# verdict meaning "no probe recorded"; UNDERDETERMINED is the claim-checker
+# counterpart (probe/observation present but the conclusion is not settled).
+CLAIM_CHECK_VERDICTS = (SUPPORTED, OVERREACHING, UNDERDETERMINED, CONTRADICTED)
 
 # The detector identifies unjustified claims. "wrong" would adjudicate the world.
 FORBIDDEN_VERDICTS = frozenset({"WRONG", "FALSE", "TRUE", "CORRECT", "INVALID"})
@@ -1147,6 +1153,445 @@ def challenge_historical() -> list[dict[str, Any]]:
 
 def challenge_supported() -> list[dict[str, Any]]:
     return [challenge(c) for c in SUPPORTED_FIXTURES]
+
+
+# ---------------------------------------------------------------------------
+# Generic causal claim checker. Narrow probe, broad conclusion.
+#
+# challenge() keeps its three verdicts (a status with no probe is UNTESTED).
+# This path classifies an (observation, conclusion) pair:
+#   SUPPORTED        observation entails the conclusion
+#   OVERREACHING     observation is consistent with the conclusion being false
+#   UNDERDETERMINED  observation neither entails nor contradicts the conclusion
+#   CONTRADICTED     observation is inconsistent with the conclusion
+# ---------------------------------------------------------------------------
+
+CAMPAIGN_CLAIM_CASES: tuple[dict[str, Any], ...] = (
+    {
+        "id": "CC.PREFILL_AS_PER_TOKEN",
+        "scar_id": "PREFILL_OVER_GENERATED_TOKEN_DENOMINATOR",
+        "observation": (
+            "active_bytes_per_token and dispatches_per_generated_token divide "
+            "prefill+decode totals by generated tokens; P=12 N=127 G=128 so "
+            "the factor is 139/128; reported dispatches 1046.84375 = 964 * 139/128"
+        ),
+        "conclusion": (
+            "those figures are the per-token production costs, so the clean-GEMV "
+            "roof is 65.58 TPS and 71 TPS is above it"
+        ),
+        "author_was_the_one_who_concluded": True,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "the observation is an accounting identity about a denominator; "
+            "it does not measure per-forward-pass bytes or production dispatch. "
+            "A world in which the true per-pass cost is 9.878 GB and 628 fused "
+            "dispatches is fully consistent with the same reported fields."
+        ),
+    },
+    {
+        "id": "CC.964_AS_PRODUCTION",
+        "scar_id": "ENVIRONMENT_MISMATCH_UNFUSED_VS_SEALED",
+        "observation": (
+            "a probe of the resident with the fusion env unset returned "
+            "964 dispatches per decode step"
+        ),
+        "conclusion": "964 is the production dispatch count for sealed-3.14",
+        "author_was_the_one_who_concluded": True,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "the probe measured the unfused default graph. Production sealed-3.14 "
+            "sets the fusion env and issues 628. The same observation is exactly "
+            "what the unfused arm produces."
+        ),
+    },
+    {
+        "id": "CC.SOURCE_FIELDS_AS_RUNNING",
+        "scar_id": "SOURCE_INSTRUMENTED_RUNTIME_BINARY_STALE",
+        "observation": (
+            "ascension_qwen38_resident.rs emits dispatches, "
+            "dispatches_per_generated_token, active_bytes_per_token and kin"
+        ),
+        "conclusion": "the running resident can report those fields",
+        "author_was_the_one_who_concluded": False,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "source containing a field does not entail the serving binary "
+            "containing it. The binary was built 2026-08-26; the instrumentation "
+            "landed 2026-08-27 in 8b6f50270."
+        ),
+    },
+    {
+        "id": "CC.PRIORITY_ZERO_VIA_OR",
+        "scar_id": "PRIORITY_ZERO_FALSY_OR_DEFAULT",
+        "observation": (
+            "rank used `_detach_priority(j) or 99`; long detached jobs have "
+            "priority 0"
+        ),
+        "conclusion": "priority 0 ranks first, so the long jobs start first",
+        "author_was_the_one_who_concluded": False,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": False,
+        "contradicts": True,
+        "reason": (
+            "0 is falsy, so `0 or 99` is 99. The observation is inconsistent "
+            "with the conclusion that those jobs rank first."
+        ),
+    },
+    {
+        "id": "CC.MIXED_UNITS_NO_OVERLAP",
+        "scar_id": "EVENT_TIMESTAMP_UNIT_MISMATCH",
+        "observation": (
+            "fallback mixed started_at=1788141337.2 (epoch) with t_s=35.0 "
+            "(trial-relative) and reported a negative interval; same-unit "
+            "stamps on the same events give +2.34s overlap"
+        ),
+        "conclusion": "the two jobs did not overlap",
+        "author_was_the_one_who_concluded": False,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": False,
+        "contradicts": True,
+        "reason": (
+            "the mixed-unit subtraction is not a measurement of overlap. The "
+            "same-unit arithmetic on the same events is +2.34s, which is "
+            "inconsistent with 'did not overlap'."
+        ),
+    },
+    {
+        "id": "CC.ADJACENCY_AS_OVERLAP",
+        "scar_id": "ADJACENCY_IS_NOT_OVERLAP",
+        "observation": (
+            "two detached_started events appear with no detached_completed "
+            "between them in the log"
+        ),
+        "conclusion": "two jobs were live at once",
+        "author_was_the_one_who_concluded": True,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "adjacency in a log is consistent with sequential jobs whose "
+            "completion event is late or unattributable. Two live pids, or "
+            "same-unit intervals with positive overlap, would entail the claim."
+        ),
+    },
+    {
+        "id": "CC.BARE_COMMIT_INTENDED_PATHS",
+        "scar_id": "SHARED_INDEX_BARE_COMMIT_SWEEPS_FOREIGN_STAGE",
+        "observation": (
+            "`git add <supervisor paths> && git commit` succeeded after "
+            "`git apply --3way` of another lane"
+        ),
+        "conclusion": "the commit contains only the supervisor paths named in the add",
+        "author_was_the_one_who_concluded": True,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "`git commit` without a pathspec commits the index. apply --3way "
+            "stages as a side effect, so the observation is exactly what a "
+            "mixed commit looks like. fb4240dad carried autonomy_run.py."
+        ),
+    },
+    {
+        "id": "CC.CATALOG_CENSUS_INFLATION",
+        "scar_id": "PREFILL_OVER_GENERATED_TOKEN_DENOMINATOR",
+        "observation": (
+            "independent HQ38M20 per-tensor census sums to 9,878,901,136; "
+            "resident active_bytes_per_token is 10,727,793,881.75; "
+            "10,727,793,881.75 / (139/128) restores the census to 7 ppm"
+        ),
+        "conclusion": (
+            "the resident's per_generated_token byte field is inflated by "
+            "(P+N)/G for this run"
+        ),
+        "author_was_the_one_who_concluded": False,
+        "has_observation": True,
+        "entails": True,
+        "consistent_with_negation": False,
+        "contradicts": False,
+        "reason": (
+            "two independent numerators (catalog sum, reported field) related "
+            "by the exact predicted factor leave no world in which the field "
+            "is a true per-pass cost."
+        ),
+    },
+    {
+        "id": "CC.STATIC_AND_LIVE_DISPATCH",
+        "scar_id": "ENVIRONMENT_MISMATCH_UNFUSED_VS_SEALED",
+        "observation": (
+            "tps_budget.py encode-path walk predicted 964 unfused and 628 fused; "
+            "the live probe returned 964.00 and 628.00 under those envs"
+        ),
+        "conclusion": (
+            "the unfused graph issues 964 dispatches per decode step and the "
+            "sealed fusion graph issues 628"
+        ),
+        "author_was_the_one_who_concluded": False,
+        "has_observation": True,
+        "entails": True,
+        "consistent_with_negation": False,
+        "contradicts": False,
+        "reason": (
+            "two independent methods, one static and one dynamic, landing on "
+            "the same integers under named envs. That is what those counts are."
+        ),
+    },
+    {
+        "id": "CC.MISSING_ENV_WHICH_GRAPH",
+        "scar_id": "ENVIRONMENT_MISMATCH_UNFUSED_VS_SEALED",
+        "observation": "a dispatch count of 964 was recorded; no env hash is attached",
+        "conclusion": "this is the production sealed-3.14 dispatch count",
+        "author_was_the_one_who_concluded": True,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "without the env actually in effect, 964 is consistent with the "
+            "unfused graph, with a different parent, and with a misread of "
+            "production. The conclusion is not settled by the number alone; "
+            "this is the underdetermined form of the 964-as-production error."
+        ),
+        "force_underdetermined": True,
+    },
+    {
+        "id": "CC.STRINGS_ABSENT_MAY_BE_STRIPPED",
+        "scar_id": "SOURCE_INSTRUMENTED_RUNTIME_BINARY_STALE",
+        "observation": (
+            "strings(binary) does not contain 'dispatches_per_generated_token'"
+        ),
+        "conclusion": "the serving binary predates its instrumentation",
+        "author_was_the_one_who_concluded": False,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "absence of a string in a stripped or optimized binary is strong "
+            "but not absolute. A world in which the field is compiled in and "
+            "the string table dropped is consistent with the observation. "
+            "mtime vs introducing commit, or a live probe, would settle it."
+        ),
+        "force_underdetermined": True,
+    },
+    {
+        "id": "CC.UNFUSED_INHERITS_INCUMBENT",
+        "scar_id": "ENVIRONMENT_MISMATCH_UNFUSED_VS_SEALED",
+        "observation": (
+            "benchmark env_hash is the empty HAWKING_* set; sealed env_hash "
+            "includes HAWKING_QWEN38_FUSE_*"
+        ),
+        "conclusion": "the result may inherit the sealed-3.14-production label",
+        "author_was_the_one_who_concluded": True,
+        "has_observation": True,
+        "entails": False,
+        "consistent_with_negation": True,
+        "contradicts": False,
+        "reason": (
+            "environment is part of experiment identity. A mismatched env hash "
+            "must be labelled with its own environment, not the incumbent."
+        ),
+    },
+)
+
+
+def campaign_claim_cases() -> list[dict[str, Any]]:
+    return [dict(c) for c in CAMPAIGN_CLAIM_CASES]
+
+
+def _classify_claim(
+    *,
+    has_observation: bool,
+    entails: bool,
+    consistent_with_negation: bool,
+    contradicts: bool,
+    force_underdetermined: bool = False,
+) -> tuple[str, str]:
+    """Map structured flags onto a claim-check verdict. Flags, not a lookup."""
+    if not has_observation:
+        return (
+            UNDERDETERMINED,
+            "no observation was given; the conclusion is unconstrained",
+        )
+    if contradicts:
+        return (
+            CONTRADICTED,
+            "the observation is inconsistent with the conclusion",
+        )
+    if force_underdetermined or (not entails and not consistent_with_negation):
+        return (
+            UNDERDETERMINED,
+            "the observation neither entails nor contradicts the conclusion",
+        )
+    if consistent_with_negation:
+        return (
+            OVERREACHING,
+            "the observation is consistent with the conclusion being false "
+            "(narrow probe, broad conclusion)",
+        )
+    if entails:
+        return (
+            SUPPORTED,
+            "the observation entails the conclusion; no recorded world keeps "
+            "the observation and drops the conclusion",
+        )
+    return (
+        UNDERDETERMINED,
+        "the observation neither entails nor contradicts the conclusion",
+    )
+
+
+def _seed_by_id_or_text(
+    observation: Any, conclusion: Any, case_id: str | None
+) -> dict[str, Any] | None:
+    if case_id:
+        for c in CAMPAIGN_CLAIM_CASES:
+            if c["id"] == case_id or c.get("scar_id") == case_id:
+                return dict(c)
+    obs_s = str(observation or "").strip()
+    con_s = str(conclusion or "").strip()
+    if not obs_s and not con_s:
+        return None
+    for c in CAMPAIGN_CLAIM_CASES:
+        if obs_s and obs_s in {c["id"], c.get("scar_id", "")}:
+            return dict(c)
+        if obs_s == str(c.get("observation") or "") and (
+            not con_s or con_s == str(c.get("conclusion") or "")
+        ):
+            return dict(c)
+    return None
+
+
+def check_claim(
+    observation: Any = "",
+    conclusion: Any = "",
+    *,
+    case_id: str | None = None,
+    has_observation: bool | None = None,
+    entails: bool | None = None,
+    consistent_with_negation: bool | None = None,
+    contradicts: bool | None = None,
+    force_underdetermined: bool | None = None,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Classify (observation, conclusion) as a causal claim.
+
+    Structured flags win. A seeded campaign case supplies flags when the
+    caller passes its id (or its exact observation text) without flags.
+    Unknown free text with no flags is UNDERDETERMINED — we do not guess.
+    Never returns 'wrong'.
+    """
+    if isinstance(observation, Mapping) and (
+        "observation" in observation or "conclusion" in observation or "id" in observation
+    ):
+        row = dict(observation)
+        case_id = case_id or (str(row.get("id")) if row.get("id") else None)
+        conclusion = conclusion or row.get("conclusion") or ""
+        observation = row.get("observation") or observation
+        if has_observation is None and "has_observation" in row:
+            has_observation = bool(row.get("has_observation"))
+        if entails is None and "entails" in row:
+            entails = bool(row.get("entails"))
+        if consistent_with_negation is None and "consistent_with_negation" in row:
+            consistent_with_negation = bool(row.get("consistent_with_negation"))
+        if contradicts is None and "contradicts" in row:
+            contradicts = bool(row.get("contradicts"))
+        if force_underdetermined is None and "force_underdetermined" in row:
+            force_underdetermined = bool(row.get("force_underdetermined"))
+        if reason is None:
+            reason = row.get("reason")
+
+    seed = _seed_by_id_or_text(observation, conclusion, case_id)
+    flags_given = any(
+        x is not None
+        for x in (entails, consistent_with_negation, contradicts, force_underdetermined)
+    )
+    if seed is not None and not flags_given:
+        has_observation = bool(seed.get("has_observation", True)) if has_observation is None else has_observation
+        entails = bool(seed.get("entails"))
+        consistent_with_negation = bool(seed.get("consistent_with_negation"))
+        contradicts = bool(seed.get("contradicts"))
+        force_underdetermined = bool(seed.get("force_underdetermined", False))
+        observation = seed.get("observation") if not str(observation or "").strip() or str(observation) in {seed["id"], seed.get("scar_id")} else observation
+        conclusion = conclusion or seed.get("conclusion") or ""
+        reason = reason or seed.get("reason")
+        case_id = case_id or seed.get("id")
+
+    obs_present = bool(str(observation or "").strip()) if has_observation is None else bool(has_observation)
+    # Free text with no flags and no seed: we cannot tell. That is
+    # UNDERDETERMINED, not OVERREACHING — accusing in the dark is how a
+    # regex attacker cried wolf in this partition.
+    if seed is None and not flags_given:
+        v, default_reason = _classify_claim(
+            has_observation=obs_present,
+            entails=False,
+            consistent_with_negation=False,
+            contradicts=False,
+            force_underdetermined=True,
+        )
+        out = {
+            "observation": observation,
+            "conclusion": conclusion,
+            "verdict": v,
+            "reason": reason or default_reason,
+            "law": LAW,
+        }
+        if case_id:
+            out["id"] = case_id
+        return out
+
+    v, default_reason = _classify_claim(
+        has_observation=obs_present,
+        entails=bool(entails),
+        consistent_with_negation=bool(consistent_with_negation),
+        contradicts=bool(contradicts),
+        force_underdetermined=bool(force_underdetermined),
+    )
+    if v not in CLAIM_CHECK_VERDICTS:
+        raise ValueError(f"claim-check verdict {v!r} is not in {CLAIM_CHECK_VERDICTS}")
+    if v in FORBIDDEN_VERDICTS:
+        raise ValueError(f"the routine does not adjudicate the world: {v!r}")
+    out = {
+        "observation": observation,
+        "conclusion": conclusion,
+        "verdict": v,
+        "reason": reason or default_reason,
+        "has_observation": obs_present,
+        "entails": bool(entails),
+        "consistent_with_negation": bool(consistent_with_negation),
+        "contradicts": bool(contradicts),
+        "law": LAW,
+    }
+    if case_id:
+        out["id"] = case_id
+    if seed is not None:
+        out["scar_id"] = seed.get("scar_id")
+        out["author_was_the_one_who_concluded"] = bool(
+            seed.get("author_was_the_one_who_concluded")
+        )
+        out["seeded"] = seed.get("id")
+    for key in WORLD_STATE_KEYS:
+        if key in out:
+            raise RuntimeError(f"check_claim leaked a world-state key: {key}")
+    return out
+
+
+def check_campaign_claims() -> list[dict[str, Any]]:
+    """Run the seeded campaign cases through the classifier, not a table lookup."""
+    return [check_claim(c) for c in CAMPAIGN_CLAIM_CASES]
 
 
 def build() -> Path:

@@ -180,7 +180,46 @@
  ],
  "gpu_authority": false,
  "recorded_by": "tools/future/resident_token_budget.py",
- "schema": "hawking.future.resident_token_budget.v2",
+ "schema": "hawking.future.resident_token_budget.v3",
  "took_gpu_lease": false,
- "version": 2
+ "unexplained_residual": {
+  "candidates_not_yet_falsified": [
+   {
+    "named_by": "L41's own handoff, which falsified geometry and pointed here instead",
+    "what": "low-bit decode ALU cost, affine2 vs q4"
+   },
+   {
+    "named_by": "L40's redirect after catalog addressing was falsified",
+    "what": "mixed organ sizes failing to amortise bandwidth equally"
+   },
+   {
+    "note": "attention is 39.0% of catalogued active bytes",
+    "what": "attention and DeltaNet arithmetic, which is not GEMV-shaped and should not be expected to hit a GEMV roof"
+   },
+   {
+    "what": "LM head, 675,430,440 bytes (6.8%), one large GEMV that may already run near the clean rate and therefore is NOT here"
+   },
+   {
+    "note": "MLP_BYTE_CENSUS marks KV cache, DeltaNet recurrent state and activations UNKNOWN \u2014 they are real bytes the roof denominator does not include",
+    "what": "state and KV traffic absent from the catalog census"
+   },
+   {
+    "note": "the marginal cost was measured over the 336 fusion removed; the survivors may not be identical",
+    "what": "per-dispatch launch cost above the 6.25 us marginal figure for the 628 that remain"
+   }
+  ],
+  "caveat": "The byte term assumes every catalogued active byte is read exactly once at the clean rate. If real traffic exceeds the catalog \u2014 KV, state, activations, re-reads \u2014 then part of this residual is byte time that the roof denominator simply does not count, and the executor is closer to the roof than this makes it look.",
+  "chain_ms": {
+   "UNEXPLAINED": 9.672,
+   "bytes_at_clean_gemv_roof": 14.043,
+   "dispatch_628_at_measured_6_25us": 3.925,
+   "host_gap": 0.8,
+   "total": 28.44
+  },
+  "cheapest_falsifier": "per-kernel GPU timestamps for one decode step. That splits the residual by kernel in a single run and settles which candidate owns it, without any representation work.",
+  "tps_if_only_unexplained_were_removed": 53.28,
+  "unexplained_share": 0.3401,
+  "why_this_is_the_executor_recovery_target": "Removing dispatch and host gap entirely reaches only 42.2 TPS. The roof is 71.21. The difference lives in this residual, so it is what 'recover the addressing bandwidth' actually means now."
+ },
+ "version": 3
 }

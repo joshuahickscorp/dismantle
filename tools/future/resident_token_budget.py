@@ -309,10 +309,74 @@ def budget() -> dict[str, Any]:
     }
 
 
+def unexplained_residual() -> dict[str, Any]:
+    """What is left after bytes, dispatch and host gap. This is the target.
+
+    703 GB/s -> 337 GB/s was never a location, only a pair of endpoints. With a
+    measured dispatch cost and a corrected byte count the loss chain finally has
+    a bounded unexplained term, and it is large: a third of the token.
+    """
+    d = derived()
+    total = d["production_ms_per_token"]
+    byte_ms = d["byte_ms_at_clean_gemv"]
+    disp_ms = d["remaining_dispatch_ms_per_token"]
+    host_ms = d["host_gap_ms_per_token"]
+    resid = total - byte_ms - disp_ms - host_ms
+    return {
+        "chain_ms": {
+            "bytes_at_clean_gemv_roof": byte_ms,
+            "dispatch_628_at_measured_6_25us": disp_ms,
+            "host_gap": host_ms,
+            "UNEXPLAINED": round(resid, 3),
+            "total": total,
+        },
+        "unexplained_share": round(resid / total, 4),
+        "tps_if_only_unexplained_were_removed": round(1000.0 / (total - resid), 2),
+        "why_this_is_the_executor_recovery_target": (
+            "Removing dispatch and host gap entirely reaches only 42.2 TPS. The "
+            "roof is 71.21. The difference lives in this residual, so it is what "
+            "'recover the addressing bandwidth' actually means now."
+        ),
+        "candidates_not_yet_falsified": [
+            {"what": "low-bit decode ALU cost, affine2 vs q4",
+             "named_by": "L41's own handoff, which falsified geometry and "
+                         "pointed here instead"},
+            {"what": "mixed organ sizes failing to amortise bandwidth equally",
+             "named_by": "L40's redirect after catalog addressing was falsified"},
+            {"what": "attention and DeltaNet arithmetic, which is not GEMV-shaped "
+                     "and should not be expected to hit a GEMV roof",
+             "note": "attention is 39.0% of catalogued active bytes"},
+            {"what": "LM head, 675,430,440 bytes (6.8%), one large GEMV that may "
+                     "already run near the clean rate and therefore is NOT here"},
+            {"what": "state and KV traffic absent from the catalog census",
+             "note": "MLP_BYTE_CENSUS marks KV cache, DeltaNet recurrent state "
+                     "and activations UNKNOWN — they are real bytes the roof "
+                     "denominator does not include"},
+            {"what": "per-dispatch launch cost above the 6.25 us marginal figure "
+                     "for the 628 that remain",
+             "note": "the marginal cost was measured over the 336 fusion "
+                     "removed; the survivors may not be identical"},
+        ],
+        "cheapest_falsifier": (
+            "per-kernel GPU timestamps for one decode step. That splits the "
+            "residual by kernel in a single run and settles which candidate "
+            "owns it, without any representation work."
+        ),
+        "caveat": (
+            "The byte term assumes every catalogued active byte is read exactly "
+            "once at the clean rate. If real traffic exceeds the catalog — KV, "
+            "state, activations, re-reads — then part of this residual is byte "
+            "time that the roof denominator simply does not count, and the "
+            "executor is closer to the roof than this makes it look."
+        ),
+    }
+
+
 def build() -> dict[str, Any]:
     return {
-        "schema": "hawking.future.resident_token_budget.v2",
-        "version": 2,
+        "schema": "hawking.future.resident_token_budget.v3",
+        "version": 3,
+        "unexplained_residual": unexplained_residual(),
         "recorded_by": "tools/future/resident_token_budget.py",
         "evidence_class": "DIAGNOSTIC_RELATIVE",
         "gpu_authority": False,

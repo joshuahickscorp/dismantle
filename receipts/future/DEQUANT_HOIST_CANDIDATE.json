@@ -1,14 +1,21 @@
 {
  "accounting": {
-  "decode_cheapening": 32.0,
+  "a_retiling_would_do_better": {
+   "but": "that is a DIFFERENT candidate with its own addressing and occupancy consequences. The first version of this receipt quoted its 1.939x while describing the un-retiled loop, which was a change it did not state.",
+   "folded_total_fma": 8.25,
+   "if": "one thread owned a whole group of 64 instead of an 8-chunk",
+   "total_arithmetic_cheapening": 1.9394
+  },
+  "amortised_over": "the 8-weight chunk, because the kernel strides col += 512",
+  "decode_cheapening": 4.0,
   "folded": {
    "bitops": 16,
-   "decode_fma_per_weight_byte": 0.0417,
-   "dequant_fma": 0.25,
-   "fma_per_weight_byte": 1.375,
+   "decode_fma_per_weight_byte": 0.3333,
+   "dequant_fma": 2.0,
+   "fma_per_weight_byte": 1.6667,
    "int_to_float": 8,
    "mac_fma": 8,
-   "total_fma": 8.25
+   "total_fma": 10.0
   },
   "group_size": 64,
   "incumbent": {
@@ -21,7 +28,7 @@
    "total_fma": 16
   },
   "int_to_float_unchanged_because": "the codes still have to become floats to multiply x. The saving is the dequant FMA, not the conversions, and claiming the conversions too would be the easiest way to overstate this.",
-  "total_arithmetic_cheapening": 1.9394,
+  "total_arithmetic_cheapening": 1.6,
   "weight_bytes_per_iteration": 6,
   "weights_per_iteration": 8
  },
@@ -29,7 +36,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T20:33:45Z",
+  "recorded_at": "2026-08-31T20:36:08Z",
   "recorded_by": "tools/future/dequant_hoist_candidate.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -45,7 +52,7 @@
  },
  "meets_the_requirement": {
   "clears": true,
-  "offered_total_cheapening": 1.9394,
+  "offered_total_cheapening": 1.6,
   "required_total_cheapening": 1.509
  },
  "risks": {
@@ -56,6 +63,6 @@
   "status": "UNBUILT, UNMEASURED, arithmetic argument only"
  },
  "schema": "hawking.future.dequant_hoist_candidate.v1",
- "seal_sha256": "90df64da497822e242598d1f57156546bc65959d5bb787d4baf82ab92c00430e",
+ "seal_sha256": "43961de179a004b0b2097e7872785eff6ebd493c5cfc3ac947919a263536c79e",
  "version": 1
 }

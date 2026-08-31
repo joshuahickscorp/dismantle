@@ -74,7 +74,19 @@ def accounting() -> dict[str, Any]:
             "the measured inner loop does not reconcile: "
             f"({dequant}+{mac})/{wb} != {inner['fma_per_weight_byte']}"
         )
-    folded_dequant = 2.0 * w / GROUP  # two FMA per group, amortised over the iteration
+    # AMORTISED OVER THE CHUNK, NOT THE GROUP - and getting this wrong is how the
+    # first version of this receipt claimed 1.939x.
+    #
+    # The production kernel strides `col += 512` (64 threads per row x 8 weights),
+    # so a thread handles ONE 8-weight chunk of a group and never returns to that
+    # group. scale and bias are constant within the CHUNK, not across the group,
+    # so the affine has to be applied every 8 weights: 2 FMA per 8, not 2 per 64.
+    #
+    # A retiling where one thread owns a whole group of 64 would reach 2 per 64
+    # and 1.939x, but that is a DIFFERENT candidate with its own addressing
+    # consequences, and quoting its number here would be claiming a change this
+    # receipt does not describe.
+    folded_dequant = 2.0
     folded_total = mac + folded_dequant
     return {
         "group_size": GROUP,
@@ -100,6 +112,18 @@ def accounting() -> dict[str, Any]:
         },
         "total_arithmetic_cheapening": round((dequant + mac) / folded_total, 4),
         "decode_cheapening": round(dequant / folded_dequant, 1),
+        "amortised_over": "the 8-weight chunk, because the kernel strides col += 512",
+        "a_retiling_would_do_better": {
+            "if": "one thread owned a whole group of 64 instead of an 8-chunk",
+            "folded_total_fma": round(mac + 2.0 * w / GROUP, 4),
+            "total_arithmetic_cheapening": round((dequant + mac) / (mac + 2.0 * w / GROUP), 4),
+            "but": (
+                "that is a DIFFERENT candidate with its own addressing and "
+                "occupancy consequences. The first version of this receipt quoted "
+                "its 1.939x while describing the un-retiled loop, which was a "
+                "change it did not state."
+            ),
+        },
         "int_to_float_unchanged_because": (
             "the codes still have to become floats to multiply x. The saving is "
             "the dequant FMA, not the conversions, and claiming the conversions "

@@ -36,18 +36,32 @@ def test_an_inner_loop_that_does_not_add_up_is_refused(monkeypatch, tmp_path):
         dh.accounting()
 
 
-def test_the_dequant_term_collapses_to_two_fma_per_group():
+def test_the_affine_is_amortised_over_the_CHUNK_not_the_group():
+    """The kernel strides col += 512, so a thread handles one 8-weight chunk of a
+    group and never returns to it. scale and bias are constant within the CHUNK.
+
+    Assuming the group was how the first version of this receipt claimed 1.939x
+    while describing the un-retiled loop.
+    """
     acc = dh.accounting()
-    assert acc["group_size"] == 64
-    assert acc["folded"]["dequant_fma"] == pytest.approx(2.0 * 8 / 64)
-    assert acc["decode_cheapening"] == pytest.approx(32.0, abs=0.1)
+    assert acc["folded"]["dequant_fma"] == pytest.approx(2.0)
+    assert acc["decode_cheapening"] == pytest.approx(4.0, abs=0.1)
+    assert "col += 512" in acc["amortised_over"]
+
+
+def test_the_retiling_variant_is_named_as_a_DIFFERENT_candidate():
+    acc = dh.accounting()
+    r = acc["a_retiling_would_do_better"]
+    assert r["total_arithmetic_cheapening"] > acc["total_arithmetic_cheapening"]
+    assert "DIFFERENT candidate" in r["but"]
+    assert "did not state" in r["but"]
 
 
 def test_it_clears_the_required_cheapening():
     doc = dh.build()
     m = doc["meets_the_requirement"]
     assert m["required_total_cheapening"] == 1.509
-    assert m["offered_total_cheapening"] == pytest.approx(1.9394, abs=1e-3)
+    assert m["offered_total_cheapening"] == pytest.approx(1.600, abs=1e-3)
     assert m["clears"] is True
 
 

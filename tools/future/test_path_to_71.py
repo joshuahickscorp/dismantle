@@ -17,7 +17,8 @@ def test_overlapping_levers_are_not_summed():
     both = p.compose(["aux_group_size_1024", "aux_u8"])
     assert "aux_u8" not in both["components"]
     assert any("overlaps" in s for s in both["skipped"])
-    assert both["gb_removed"] == p.COMPONENTS["aux_group_size_1024"]["gb_saved"]
+    # compose() rounds to 4 decimals for the receipt; compare at that precision.
+    assert both["gb_removed"] == round(p.COMPONENTS["aux_group_size_1024"]["gb_saved"], 4)
 
 
 def test_only_path_01_is_qualified():

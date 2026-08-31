@@ -362,12 +362,65 @@ def bytes_required_after_arithmetic() -> dict[str, Any]:
     }
 
 
+# Levers that are BUILT and MEASURED on the real graph but DEFAULT-OFF. They are
+# not part of `live` - the resident still runs production unless the env says
+# otherwise - and pretending otherwise would be the fake-completion this campaign
+# forbids. Each cites the receipt that measured it on the complete token.
+BUILT_NOT_PROMOTED = (
+    {
+        "lever": "HAWKING_AFFINE2_GEO=bitcast",
+        "gpu_ms_saved": 3.8541,
+        "token_identical": True,
+        "receipt": "receipts/future/BITCAST_DEQUANT_AB.json",
+    },
+    {
+        "lever": "HAWKING_Q4_UNPACK=bitcast",
+        "gpu_ms_saved": 0.6836,
+        "token_identical": True,
+        "receipt": "receipts/future/Q4_BITCAST_AB.json",
+    },
+)
+
+
+def available_now() -> dict[str, Any]:
+    """What the resident would be if the built levers were switched on.
+
+    Kept SEPARATE from live() on purpose. Both levers default to off, so the
+    resident is still 36.644 TPS; folding them into the live number would claim
+    a promotion that has not happened.
+    """
+    lv = live()
+    total = sum(x["gpu_ms_saved"] for x in BUILT_NOT_PROMOTED)
+    after = lv["ms_per_token"] - total
+    return {
+        "levers": list(BUILT_NOT_PROMOTED),
+        "combined_ms_saved": round(total, 4),
+        "all_token_identical": all(x["token_identical"] for x in BUILT_NOT_PROMOTED),
+        "live_tps": lv["tps"],
+        "tps_if_promoted": round(1000.0 / after, 3),
+        "ms_if_promoted": round(after, 4),
+        "still_short_of_60_by_ms": round(after - 1000.0 / 60.0, 4),
+        "why_not_promoted": (
+            "both are opt-in env levers and production default is unchanged. "
+            "Promotion needs a protected absolute measurement to replace "
+            f"{BUDGET_REL}, and every window so far has had ModelLake downloads "
+            "running - twice after they were SIGSTOPped and the supervisor "
+            "respawned them."
+        ),
+        "what_promotion_requires": (
+            "a protected reprofile with both levers set, replacing the resident "
+            "token budget; then the default flips and this section empties"
+        ),
+    }
+
+
 def build() -> dict[str, Any]:
     lv = live()
     cps = checkpoints()
     sixty = next(c for c in cps if c["tps"] == 60.0)
     seventyone = next(c for c in cps if c["tps"] == 71.0)
     ranked = ranked_experiments()
+    avail = available_now()
     material = [r for r in ranked if r["material"] and r["status"] not in ("CLOSED",)]
     return {
         "obligation": "G095",
@@ -379,6 +432,14 @@ def build() -> dict[str, Any]:
         "organ_win_table": organ_win_table(),
         "three_dominant_kernels": three_dominant(),
         "ranked_experiments": ranked,
+        "built_not_promoted": avail,
+        "ranked_experiments_are_gross_not_net": (
+            "the bandwidth-recovery ceilings above are computed against the "
+            "PRODUCTION kernels. The built-not-promoted levers have already "
+            f"taken {avail['combined_ms_saved']} ms of that headroom, so the "
+            "ranking overstates what remains. It is kept gross because the "
+            "levers are not promoted and the resident still runs production."
+        ),
         "material_open_experiments": material,
         "sum_of_material_open_ms": round(
             sum(r["max_ms_removable"] for r in material), 4),

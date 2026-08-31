@@ -38,6 +38,30 @@
   "what_this_does_not_say": "it does not say the arithmetic school is not worth working. It is the largest single block on the board and the bitcast candidates have already taken a measured 3.854 ms of it. It says the school must not be the ONLY thing running if 60 is the target."
  },
  "authority": "S026 \u00a70, \u00a71, \u00a711, \u00a712, \u00a748",
+ "built_not_promoted": {
+  "all_token_identical": true,
+  "combined_ms_saved": 4.5377,
+  "levers": [
+   {
+    "gpu_ms_saved": 3.8541,
+    "lever": "HAWKING_AFFINE2_GEO=bitcast",
+    "receipt": "receipts/future/BITCAST_DEQUANT_AB.json",
+    "token_identical": true
+   },
+   {
+    "gpu_ms_saved": 0.6836,
+    "lever": "HAWKING_Q4_UNPACK=bitcast",
+    "receipt": "receipts/future/Q4_BITCAST_AB.json",
+    "token_identical": true
+   }
+  ],
+  "live_tps": 36.644,
+  "ms_if_promoted": 22.7519,
+  "still_short_of_60_by_ms": 6.0852,
+  "tps_if_promoted": 43.952,
+  "what_promotion_requires": "a protected reprofile with both levers set, replacing the resident token budget; then the default flips and this section empties",
+  "why_not_promoted": "both are opt-in env levers and production default is unchanged. Promotion needs a protected absolute measurement to replace receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json, and every window so far has had ModelLake downloads running - twice after they were SIGSTOPped and the supervisor respawned them."
+ },
  "bytes_required_after_arithmetic": {
   "caveat": "this assumes arithmetic removal and byte removal compose, which they do not automatically: a representation that removes bytes usually changes the arithmetic too, and the accelerator has to be reopened after every representation change.",
   "fraction_of_matvec_bytes_to_remove": 0.1677,
@@ -80,8 +104,8 @@
  "does_the_open_set_reach_60": false,
  "escalation_clock": {
   "deprivilege_condition_would_fire": true,
-  "elapsed_hours": 0.931,
-  "hours_to_next_phase": 5.069,
+  "elapsed_hours": 1.138,
+  "hours_to_next_phase": 4.862,
   "next_phase": "SURVIVOR_OR_COLLAPSE",
   "not_an_abandonment": "the clock forbids complacency, not the incumbent. Passing a phase boundary licenses widening the search; it never requires dropping work that is producing evidence.",
   "phase": "DISCOVERY",
@@ -120,10 +144,10 @@
   "absolutes_are_measured_under_load": true,
   "gpu_lane_lock_held": null,
   "lane": "derived",
-  "loadavg": "{ 7.32 6.96 7.13 }",
+  "loadavg": "{ 5.45 5.78 6.37 }",
   "measured_at": null,
   "measured_at_source": "RETROFIT_UNKNOWN",
-  "receipt_regenerated_at": "2026-08-31T22:27:24Z",
+  "receipt_regenerated_at": "2026-08-31T22:39:49Z",
   "why": "this receipt predates measurement provenance; the raw capture carries no timestamp, so the measurement time is genuinely unknown and is recorded as unknown rather than invented"
  },
  "obligation": "G095",
@@ -323,8 +347,9 @@
    "status": "OPEN"
   }
  ],
+ "ranked_experiments_are_gross_not_net": "the bandwidth-recovery ceilings above are computed against the PRODUCTION kernels. The built-not-promoted levers have already taken 4.5377 ms of that headroom, so the ranking overstates what remains. It is kept gross because the levers are not promoted and the resident still runs production.",
  "recorded_by": "tools/future/gap_ledger_60.py",
- "seal_sha256": "de62b72f611be913d037e3848321d472e1289aa0e334a89342aaccc384733c1d",
+ "seal_sha256": "30e46be6253c2d6fe2170d03f325741826266cc1d6dc5755502a7ab8481a3b6f",
  "sum_of_material_open_ms": 7.063,
  "three_dominant_kernels": {
   "combined_ms": 21.2444,

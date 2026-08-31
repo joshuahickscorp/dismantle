@@ -6,105 +6,88 @@
   "measured_on": "real_captured_activation",
   "n_bit_exact": 15435,
   "n_compared": 39936,
-  "per_tensor": [
-   {
-    "bit_identical": false,
-    "max_abs_err": 1.1920928955078125e-07,
-    "rel_fro": 8.471050580180782e-08,
-    "tensor": "language_model.model.layers.0.mlp.gate_proj.weight"
-   },
-   {
-    "bit_identical": false,
-    "max_abs_err": 1.1920928955078125e-07,
-    "rel_fro": 8.16550426691231e-08,
-    "tensor": "language_model.model.layers.0.mlp.up_proj.weight"
-   },
-   {
-    "bit_identical": false,
-    "max_abs_err": 4.76837158203125e-07,
-    "rel_fro": 9.802392101565035e-08,
-    "tensor": "language_model.model.layers.0.mlp.down_proj.weight"
-   }
-  ],
-  "reading": "NOT bit-identical, and that is the correct answer for a transform that reassociates. The error sits at f32 epsilon: rel_fro under 1e-7 on every projection. Numerically this transform would have been safe to adopt. It is rejected on speed, not on accuracy.",
-  "the_earlier_bit_exact_result_was_the_artifact": "the harness fill is (i % 17) * 0.125 - 1.0 - dyadic values with four mantissa bits - and the codes are 2-bit, so both orderings landed on exactly representable intermediates. That was recorded as an artifact at the time and the real-activation run confirms it."
+  "reading": "NOT bit-identical, which is correct for a transform that reassociates, with the error at f32 epsilon. This was never the reason to reject the candidate.",
+  "the_dyadic_bit_exact_result_was_an_artifact": "the harness fill is (i % 17) * 0.125 - 1.0 - dyadic values with four mantissa bits - and the codes are 2-bit, so both orderings landed on exactly representable intermediates. Flagged as an artifact when it was first recorded, and confirmed by the real-activation run."
  },
  "candidate": "affine_q2_geo_tpr64_tg128_hoist",
- "correction": "an earlier version of this receipt reported 1.6338x as the measured speedup. That number was real as an observation and wrong as a claim about the hoist: it compared the hoist against a production arm depressed by the synthetic input. Corrected here on evidence, not withdrawn quietly.",
- "instrument_consequence": {
-  "reopen": "if any future receipt reports a production dequant arm below ~250 GB/s on this machine, suspect the input before the kernel.",
-  "scar": "FILL_F32_IS_NOT_A_NEUTRAL_INPUT_FOR_THE_PRODUCTION_DEQUANT_ARM",
-  "statement": "the synthetic dyadic fill measured the production kernel at 195.6 GB/s across two runs and real activations measured it at 317.4, a 1.62x difference from the input alone, while ARM A and the hoist were unmoved. Any ratio taken against a fill_f32 production arm is therefore suspect until the arm is re-run on real x.",
-  "what_is_NOT_claimed": "this does not retroactively void the ALU roofline. Its production arm measured 329.6 GB/s, which is near the real-activation 317.4 and far from 195.6, so that receipt does not carry the signature. The obligation is to CHECK each receipt, not to assume contamination."
- },
+ "correction_history": [
+  {
+   "cause": "warmup 5; production's median landed on the slow mode",
+   "claim": "1.6338x, a win",
+   "reading": 1
+  },
+  {
+   "cause": "warmup 5; production's median landed on the FAST mode in that one run, and I attributed the difference to the input",
+   "claim": "0.9995x, the synthetic input slowed production",
+   "reading": 2
+  },
+  {
+   "cause": "warmup 60; three runs, two inputs, all ratios within 0.01",
+   "claim": "0.960x, the hoist is slower",
+   "reading": 3
+  }
+ ],
  "kernel": "alu_roofline_affine_q2_geo_tpr64_tg128_hoist",
  "measured": {
-  "arm_a_holds_across_runs": {
-   "real_gb_s": 502.3561169461261,
-   "relative_drift": 0.0005,
-   "synthetic_gb_s": 502.10556677242573,
-   "why_it_matters": "ARM A has all the arithmetic removed, so it reads the same bytes in both runs and is the machine-state control. It holds to 0.05%, which is what licenses attributing production's change to the input rather than to contention."
-  },
-  "headline_hoist_over_production": 0.9995,
-  "mechanism_is_not_established": "production forms w = q*scale + bias then w*x per weight; the hoist forms q*x with q in {0,1,2,3} and applies scale once per chunk. A denormal or flush-to-zero path in the per-weight product would produce this signature. That is a hypothesis. The verdict does not rest on it.",
+  "headline_hoist_over_production": 0.9598,
   "real_activation_run": {
-   "arm_a_over_production": 1.5827,
+   "arm_a_over_production": 1.5128,
    "arm_a_stripped_gb_s": 502.3561169461261,
-   "hoist_gb_s": 317.2613849506785,
-   "hoist_over_production": 0.9995,
+   "hoist_gb_s": 318.72325168023315,
+   "hoist_over_production": 0.9598,
    "input": "real_captured_activation",
-   "loadavg": "{ 6.19 7.14 7.73 }",
-   "production_gb_s": 317.4108262108262,
+   "loadavg": "{ 8.64 9.54 9.50 }",
+   "production_gb_s": 332.07511177347243,
+   "production_rep_spread": 1.0086249099498903,
    "raw": "receipts/future/_G092_HOIST_REALX_raw.json",
-   "span_recovered": -0.0008
+   "warmup": 60
   },
   "synthetic_control_run": {
-   "arm_a_over_production": 2.5661,
-   "arm_a_stripped_gb_s": 502.10556677242573,
-   "hoist_gb_s": 319.6890279828904,
-   "hoist_over_production": 1.6338,
-   "input": "synthetic_dyadic_fill (i % 17) * 0.125 - 1.0",
-   "loadavg": "{ 8.20 8.67 8.40 }",
-   "production_gb_s": 195.66833161218713,
-   "raw": "receipts/future/_G092_HOIST_raw.json",
-   "span_recovered": 0.4047
+   "arm_a_over_production": 1.5188,
+   "arm_a_stripped_gb_s": 503.11229927205073,
+   "hoist_gb_s": 319.4336023365433,
+   "hoist_over_production": 0.9643,
+   "input": "synthetic_dyadic_fill",
+   "loadavg": "{ 12.82 10.68 9.96 }",
+   "production_gb_s": 331.2536422344588,
+   "production_rep_spread": 1.0082988047808765,
+   "raw": "receipts/future/_G092_HOIST_SYNTH_W60_raw.json",
+   "warmup": 60
   },
-  "the_input_moved_production_not_the_hoist": {
-   "hoist_real_gb_s": 317.2613849506785,
-   "hoist_real_over_synth": 0.9924,
-   "hoist_synth_gb_s": 319.6890279828904,
-   "production_real_gb_s": 317.4108262108262,
-   "production_real_over_synth": 1.6222,
-   "production_synth_gb_s": 195.66833161218713,
-   "reading": "the hoist is input-insensitive and production is input-sensitive. The apparent 1.63x was production being slow on the fill."
+  "the_input_does_not_matter": {
+   "production_real_gb_s": 332.07511177347243,
+   "production_synthetic_gb_s": 331.2536422344588,
+   "reading": "at adequate warmup the production kernel reads the same rate on both inputs to within 0.25%. The earlier claim that the synthetic fill depressed production is REFUTED by this control.",
+   "relative_difference": 0.0025
   },
-  "verdict": "NO_SPEEDUP_ON_REAL_ACTIVATIONS"
+  "verdict": "SLOWER_THAN_PRODUCTION",
+  "what_actually_moved": {
+   "cause": "INSUFFICIENT_WARMUP_ON_THE_FIRST_MEASURED_ARM",
+   "signature": "at warmup 5 production's per-rep timings are bimodal, 252k ns or 428k ns within one run, and one run showed 2 fast reps followed by 9 slow ones. At warmup 60 the spread is 1.01.",
+   "why_production_specifically": "production is the first arm timed, so it pays first-touch residency for buffers every later arm finds already warm. The later arms were never bimodal in any run."
+  }
  },
  "measurement_provenance": {
   "absolutes_are_measured_under_load": true,
   "gpu_lane_lock_held": true,
   "lane": "g092-hoist",
-  "loadavg": "{ 8.44 9.76 9.65 }",
-  "measured_at": "2026-08-31T21:24:50Z",
+  "loadavg": "{ 13.30 11.06 10.14 }",
+  "measured_at": "2026-08-31T21:41:37Z",
   "measured_at_source": "WRITE_TIME",
   "why": "a hardware number that cannot be placed in time cannot be audited against a contention window"
  },
  "ms_per_token_saved": 0.0,
  "obligation": "G092",
- "prediction_vs_measurement": {
-  "direction": "BELOW",
-  "inside_bracket": false,
-  "measured_on_real_activations": 0.9995,
-  "predicted_bracket_from_ladder": [
-   1.2679,
-   1.4256
-  ],
-  "reading": "the issue-rate ladder predicted 1.27x-1.43x from removing one FMA per weight. The measurement says 1.00x. The ladder's premise - that the production kernel is issue-limited on that FMA - is refuted for this kernel on real input: removing the FMA changes nothing, so the FMA was not on the critical resource.",
-  "what_this_kills": "the per-weight-affine-arithmetic branch of the ALU school for the MLP q2 matvec. Cheaper decode arithmetic of THIS shape is not the lever. It does not kill the wider decode-tax target, which is measured against ARM A's full 1.58x span, still unexplained."
- },
  "recorded_by": "tools/future/dequant_hoist_ab.py",
- "seal_sha256": "82a3e2d1a5af55686b579ff257c056a2adb20f821fa3e465d880a4e9c54b1da3",
- "shader": "crates/hawking-core/examples/alu_roofline_organs.metal",
- "transform": "apply the per-group affine once per 8-weight chunk instead of once per weight, using sumx8 - a per-chunk sum of x that is a property of x, not of the output row, so it amortises over all rows",
- "verdict": "NO_SPEEDUP_ON_REAL_ACTIVATIONS"
+ "scar": {
+  "id": "WARMUP_5_LEAVES_THE_FIRST_MEASURED_ARM_OUTSIDE_STEADY_STATE",
+  "producer_fix": "the harness default warmup is 60, arm_json emits gpu_ns_min, gpu_ns_max, rep_spread and a steady_state flag against a 1.10 bound, and the consumers refuse an arm outside it. RECEIPT-ONLY FIXES ARE FORBIDDEN: the producer changed, then the receipt was regenerated.",
+  "reopen": "any receipt whose first-measured arm has rep_spread above 1.10 is not a measurement regardless of how clean its median looks",
+  "statement": "the harness timed arms in blocks at warmup 5. The first block - always production - was still faulting buffers in during its measured reps and went bimodal between 252k and 428k ns, a 1.70 spread. Every ratio taken against that arm inherits which mode won.",
+  "who_it_hit": "receipts/future/MLP_ALU_ROOFLINE.json carries the signature: its MLP production arm has min 252500 and max 428333, spread 1.696, while its DeltaNet production arm is 1.010. Its median landed on the fast mode so its 329.6 GB/s is close to the warmup-60 value of 331 - it was right by luck, not by construction."
+ },
+ "seal_sha256": "5aa71735d75fb3f4d637a42008f7403e4ebe4e425bd2123885930a74a3cfa6db",
+ "transform": "apply the per-group affine once per 8-weight chunk instead of once per weight, using a per-chunk sum of x that amortises over all rows",
+ "verdict": "SLOWER_THAN_PRODUCTION",
+ "why_it_is_slower": "G094 measured the class the hoist attacked: the affine FMA is 1.8% of this kernel's arithmetic and 0.6% of its time. The hoist's per-chunk fixup costs more than that."
 }

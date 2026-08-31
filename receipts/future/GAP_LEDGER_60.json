@@ -1,0 +1,298 @@
+{
+ "authority": "S026 \u00a70, \u00a71, \u00a711, \u00a712, \u00a748",
+ "checkpoints": [
+  {
+   "fraction_of_token_to_remove": 0.0839,
+   "ms_per_token_required": 25.0,
+   "ms_to_remove_from_live": 2.2896,
+   "reached": false,
+   "tps": 40.0
+  },
+  {
+   "fraction_of_token_to_remove": 0.2671,
+   "ms_per_token_required": 20.0,
+   "ms_to_remove_from_live": 7.2896,
+   "reached": false,
+   "tps": 50.0
+  },
+  {
+   "fraction_of_token_to_remove": 0.3893,
+   "ms_per_token_required": 16.6667,
+   "ms_to_remove_from_live": 10.6229,
+   "reached": false,
+   "tps": 60.0
+  },
+  {
+   "fraction_of_token_to_remove": 0.4839,
+   "ms_per_token_required": 14.0845,
+   "ms_to_remove_from_live": 13.2051,
+   "reached": false,
+   "tps": 71.0
+  }
+ ],
+ "does_the_open_set_reach_60": false,
+ "escalation_clock": {
+  "deprivilege_condition_would_fire": true,
+  "elapsed_hours": 0.172,
+  "hours_to_next_phase": 5.828,
+  "next_phase": "SURVIVOR_OR_COLLAPSE",
+  "not_an_abandonment": "the clock forbids complacency, not the incumbent. Passing a phase boundary licenses widening the search; it never requires dropping work that is producing evidence.",
+  "phase": "DISCOVERY",
+  "phase_licenses": "incumbent-kernel work is the privileged route",
+  "started_at_tps": 36.644,
+  "started_utc": "2026-08-31T21:31:32Z",
+  "tps_moved_since_start": 0.0
+ },
+ "gap_to_60_ms": 10.6229,
+ "gap_to_71_ms": 13.2051,
+ "honest_reading": "the material open experiments are bandwidth-recovery bounds - what each organ would cost if it ran at a rate already demonstrated elsewhere on this machine. They are CEILINGS, not candidates: no mechanism that reaches them is on record. Summing them and comparing to the gap says whether the gap is closable IN PRINCIPLE by the open set, not whether it is closable today.",
+ "live": {
+  "git_head": "9c43a81b19b1a7dac59935a256defedd86c4f083",
+  "gpu_ms_per_token": 26.5943,
+  "ms_per_token": 27.2896,
+  "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+  "tps": 36.644
+ },
+ "material_open_experiments": [
+  {
+   "id": "reach_demonstrated_bandwidth_mlp",
+   "material": true,
+   "max_ms_removable": 4.79,
+   "organ": "mlp",
+   "status": "RUNNING"
+  },
+  {
+   "id": "reach_demonstrated_bandwidth_deltanet",
+   "material": true,
+   "max_ms_removable": 2.273,
+   "organ": "deltanet",
+   "status": "QUEUED"
+  }
+ ],
+ "measurement_provenance": {
+  "absolutes_are_measured_under_load": true,
+  "gpu_lane_lock_held": null,
+  "lane": "derived",
+  "loadavg": "{ 12.03 10.86 10.08 }",
+  "measured_at": null,
+  "measured_at_source": "RETROFIT_UNKNOWN",
+  "receipt_regenerated_at": "2026-08-31T21:41:49Z",
+  "why": "this receipt predates measurement provenance; the raw capture carries no timestamp, so the measurement time is genuinely unknown and is recorded as unknown rather than invented"
+ },
+ "obligation": "G095",
+ "organ_win_table": [
+  {
+   "current_ms": 9.9154,
+   "dispatches": 128,
+   "material": true,
+   "ms_at_100pct_win": 9.9154,
+   "ms_at_10pct_win": 0.9915,
+   "ms_at_20pct_win": 1.9831,
+   "ms_at_30pct_win": 2.9746,
+   "organ": "mlp_gate_up",
+   "perfect_removal_max_ms": 9.9154,
+   "share_of_token": 0.3633,
+   "tps_at_100pct_win": 57.557,
+   "tps_at_10pct_win": 38.026,
+   "tps_at_20pct_win": 39.516,
+   "tps_at_30pct_win": 41.127,
+   "why": "a 20% win here is 1.983 ms of the 27.29 ms token"
+  },
+  {
+   "current_ms": 5.7319,
+   "dispatches": 128,
+   "material": true,
+   "ms_at_100pct_win": 5.7319,
+   "ms_at_10pct_win": 0.5732,
+   "ms_at_20pct_win": 1.1464,
+   "ms_at_30pct_win": 1.7196,
+   "organ": "mlp_down",
+   "perfect_removal_max_ms": 5.7319,
+   "share_of_token": 0.21,
+   "tps_at_100pct_win": 46.387,
+   "tps_at_10pct_win": 37.43,
+   "tps_at_20pct_win": 38.251,
+   "tps_at_30pct_win": 39.108,
+   "why": "a 20% win here is 1.146 ms of the 27.29 ms token"
+  },
+  {
+   "current_ms": 5.5971,
+   "dispatches": 288,
+   "material": true,
+   "ms_at_100pct_win": 5.5971,
+   "ms_at_10pct_win": 0.5597,
+   "ms_at_20pct_win": 1.1194,
+   "ms_at_30pct_win": 1.6791,
+   "organ": "deltanet",
+   "perfect_removal_max_ms": 5.5971,
+   "share_of_token": 0.2051,
+   "tps_at_100pct_win": 46.099,
+   "tps_at_10pct_win": 37.411,
+   "tps_at_20pct_win": 38.211,
+   "tps_at_30pct_win": 39.047,
+   "why": "a 20% win here is 1.119 ms of the 27.29 ms token"
+  },
+  {
+   "current_ms": 2.0596,
+   "dispatches": 64,
+   "material": true,
+   "ms_at_100pct_win": 2.0596,
+   "ms_at_10pct_win": 0.206,
+   "ms_at_20pct_win": 0.4119,
+   "ms_at_30pct_win": 0.6179,
+   "organ": "q4_remainder",
+   "perfect_removal_max_ms": 2.0596,
+   "share_of_token": 0.0755,
+   "tps_at_100pct_win": 39.635,
+   "tps_at_10pct_win": 36.923,
+   "tps_at_20pct_win": 37.206,
+   "tps_at_30pct_win": 37.493,
+   "why": "a 20% win here is 0.412 ms of the 27.29 ms token"
+  },
+  {
+   "current_ms": 2.0356,
+   "dispatches": 96,
+   "material": true,
+   "ms_at_100pct_win": 2.0356,
+   "ms_at_10pct_win": 0.2036,
+   "ms_at_20pct_win": 0.4071,
+   "ms_at_30pct_win": 0.6107,
+   "organ": "gqa_attention",
+   "perfect_removal_max_ms": 2.0356,
+   "share_of_token": 0.0746,
+   "tps_at_100pct_win": 39.598,
+   "tps_at_10pct_win": 36.919,
+   "tps_at_20pct_win": 37.199,
+   "tps_at_30pct_win": 37.483,
+   "why": "a 20% win here is 0.407 ms of the 27.29 ms token"
+  },
+  {
+   "current_ms": 1.0204,
+   "dispatches": 2,
+   "material": true,
+   "ms_at_100pct_win": 1.0204,
+   "ms_at_10pct_win": 0.102,
+   "ms_at_20pct_win": 0.2041,
+   "ms_at_30pct_win": 0.3061,
+   "organ": "lm_head",
+   "perfect_removal_max_ms": 1.0204,
+   "share_of_token": 0.0374,
+   "tps_at_100pct_win": 38.067,
+   "tps_at_10pct_win": 36.782,
+   "tps_at_20pct_win": 36.92,
+   "tps_at_30pct_win": 37.06,
+   "why": "a 20% win here is 0.204 ms of the 27.29 ms token"
+  },
+  {
+   "current_ms": 0.334,
+   "dispatches": 1,
+   "material": false,
+   "ms_at_100pct_win": 0.334,
+   "ms_at_10pct_win": 0.0334,
+   "ms_at_20pct_win": 0.0668,
+   "ms_at_30pct_win": 0.1002,
+   "organ": "sampling",
+   "perfect_removal_max_ms": 0.334,
+   "share_of_token": 0.0122,
+   "tps_at_100pct_win": 37.098,
+   "tps_at_10pct_win": 36.689,
+   "tps_at_20pct_win": 36.734,
+   "tps_at_30pct_win": 36.779,
+   "why": "perfect elimination is below the materiality threshold; do not spend an hour here"
+  },
+  {
+   "current_ms": 0.0073,
+   "dispatches": 1,
+   "material": false,
+   "ms_at_100pct_win": 0.0073,
+   "ms_at_10pct_win": 0.0007,
+   "ms_at_20pct_win": 0.0015,
+   "ms_at_30pct_win": 0.0022,
+   "organ": "embedding",
+   "perfect_removal_max_ms": 0.0073,
+   "share_of_token": 0.0003,
+   "tps_at_100pct_win": 36.654,
+   "tps_at_10pct_win": 36.645,
+   "tps_at_20pct_win": 36.646,
+   "tps_at_30pct_win": 36.647,
+   "why": "perfect elimination is below the materiality threshold; do not spend an hour here"
+  }
+ ],
+ "ranked_experiments": [
+  {
+   "id": "reach_demonstrated_bandwidth_mlp",
+   "material": true,
+   "max_ms_removable": 4.79,
+   "organ": "mlp",
+   "status": "RUNNING"
+  },
+  {
+   "id": "reach_demonstrated_bandwidth_deltanet",
+   "material": true,
+   "max_ms_removable": 2.273,
+   "organ": "deltanet",
+   "status": "QUEUED"
+  },
+  {
+   "id": "eliminate_all_host_gap",
+   "material": false,
+   "max_ms_removable": 0.989,
+   "organ": null,
+   "status": "CLOSED"
+  },
+  {
+   "id": "reach_demonstrated_bandwidth_gqa",
+   "material": false,
+   "max_ms_removable": 0.815,
+   "organ": "gqa",
+   "status": "QUEUED"
+  },
+  {
+   "id": "entropy_floor_of_mlp_codes",
+   "material": false,
+   "max_ms_removable": 0.152,
+   "organ": null,
+   "status": "OPEN"
+  },
+  {
+   "id": "quantize_aux_u8",
+   "material": false,
+   "max_ms_removable": 0.0,
+   "organ": null,
+   "status": "OPEN"
+  },
+  {
+   "id": "group_size_256",
+   "material": false,
+   "max_ms_removable": 0.0,
+   "organ": null,
+   "status": "OPEN"
+  },
+  {
+   "id": "group_size_1024",
+   "material": false,
+   "max_ms_removable": 0.0,
+   "organ": null,
+   "status": "OPEN"
+  }
+ ],
+ "recorded_by": "tools/future/gap_ledger_60.py",
+ "seal_sha256": "7637c97e820e63b5cb071916676b007836470f89f564eb17168255bb51e1e241",
+ "sum_of_material_open_ms": 7.063,
+ "three_dominant_kernels": {
+  "combined_ms": 21.2444,
+  "ms_at_10pct_across_all_three": 2.1244,
+  "ms_at_20pct_across_all_three": 4.2489,
+  "ms_at_30pct_across_all_three": 6.3733,
+  "organs": [
+   "deltanet",
+   "mlp_down",
+   "mlp_gate_up"
+  ],
+  "reading": "these three are 77.8% of the token. A 20% win across all three is 4.2489 ms, which takes the LIVE resident to 43.401 TPS - not to 60 on its own. S026's arithmetic reaching 60 assumed the ~49.8 PROSPECTIVE composed path as the base, and that path is not qualified.",
+  "share_of_token": 0.7785,
+  "tps_at_10pct_across_all_three": 39.737,
+  "tps_at_20pct_across_all_three": 43.401,
+  "tps_at_30pct_across_all_three": 47.81
+ }
+}

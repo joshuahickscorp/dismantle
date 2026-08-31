@@ -56,7 +56,11 @@ fn parse_args() -> Args {
     let mut artifact_root = None;
     let mut mode = "alu".to_string();
     let mut layer = 0usize;
-    let mut warmup = 5usize;
+    // 60, not 5. At warmup 5 the FIRST-MEASURED arm is still faulting its
+    // buffers in during its measured reps and goes bimodal: production reads
+    // 252k ns or 428k ns in the same run. At 60 it is uniformly 252k. This cost
+    // one wrong receipt and two wrong corrections before it was found.
+    let mut warmup = 60usize;
     let mut reps = 11usize;
     let mut session_warmup = 2usize;
     let mut session_reps = 7usize;
@@ -391,6 +395,11 @@ mod macos {
         v.sort_unstable();
         Some(v[v.len() / 2])
     }
+    /// An arm's slowest rep may exceed its fastest by this much and still be
+    /// called a measurement. A settled arm on this machine runs 1.01-1.03; the
+    /// unwarmed bimodal failure runs 1.70.
+    const STEADY_STATE_MAX_SPREAD: f64 = 1.10;
+
     fn fill_f32(n: usize) -> Vec<f32> {
         (0..n).map(|i| (i % 17) as f32 * 0.125 - 1.0).collect()
     }
@@ -440,6 +449,11 @@ mod macos {
             "alu_roofline_affine_q2_geo_tpr64_tg128_halfk",
             "alu_roofline_affine_q2_geo_tpr64_tg128_zero",
             "alu_roofline_affine_q2_geo_tpr64_tg128_hoist",
+            // Op-class ablation ladder (G094).
+            "alu_roofline_affine_q2_geo_tpr64_tg128_noaffine",
+            "alu_roofline_affine_q2_geo_tpr64_tg128_noconv",
+            "alu_roofline_affine_q2_geo_tpr64_tg128_nounpack",
+            "alu_roofline_affine_q2_geo_tpr64_tg128_bitcast",
             "qwen_uniform_q4_group64_matvec_geo_tpr64_tg128",
             "alu_roofline_q4_geo_tpr64_tg128_stripped",
             "alu_roofline_q4_geo_tpr64_tg128_halfk",
@@ -672,6 +686,8 @@ mod macos {
         AffineHalfk { work_cols: u32 },
         AffineZero,
         AffineHoist,
+        /// Op-class ablations. Same buffers as AffineProd, no extra binding.
+        AffineAblate,
         Q4Prod,
         Q4Stripped { work_cols: u32 },
         Q4Halfk { work_cols: u32 },
@@ -801,11 +817,19 @@ mod macos {
         } else {
             weight_bytes as f64 / med as f64
         };
+        // An arm whose reps are not homogeneous was not in steady state, and its
+        // median is a coin flip between two modes rather than a measurement.
+        let (lo, hi) = gpu.iter().fold((u64::MAX, 0u64), |(l, h), &n| (l.min(n), h.max(n)));
+        let spread = if lo == 0 { 0.0 } else { hi as f64 / lo as f64 };
         let mut v = json!({
             "label": label,
             "kernel": kernel,
             "weight_bytes": weight_bytes,
             "gpu_ns_median": med,
+            "gpu_ns_min": lo,
+            "gpu_ns_max": hi,
+            "rep_spread": spread,
+            "steady_state": spread <= STEADY_STATE_MAX_SPREAD,
             "gpu_ns_reps": gpu,
             "dispatches": dispatches,
             "encoders": 1,
@@ -1460,6 +1484,50 @@ mod macos {
                 c
             })
             .collect();
+        // OP-CLASS ABLATION LADDER. Each removes exactly one class of per-weight
+        // work while loading every byte production loads. None computes the
+        // right answer, so none is output-compared - they are arm_a with one
+        // class added back.
+        // BITCAST DEQUANT: a SEMANTIC candidate, not an ablation. It computes the
+        // right answer by construction, so its output is compared to production's.
+        let bitcast = pipes
+            .get("alu_roofline_affine_q2_geo_tpr64_tg128_bitcast")
+            .unwrap();
+        let _ = time_mlp(args.warmup, ArmKind::AffineAblate, bitcast);
+        let mlp_bitcast_ns = time_mlp(args.reps, ArmKind::AffineAblate, bitcast);
+        let bitcast_cmp: Vec<Value> = mlp
+            .iter()
+            .zip(ref_out.iter())
+            .map(|(p, r)| {
+                let v = read_f32(&p.output, p.rows as usize);
+                let mut c = compare_out(r, &v);
+                c["tensor"] = json!(p.name.clone());
+                c
+            })
+            .collect();
+
+        let mut ablations: Vec<Value> = Vec::new();
+        for name in ["noaffine", "noconv", "nounpack"] {
+            let kernel = format!("alu_roofline_affine_q2_geo_tpr64_tg128_{name}");
+            let pipe = pipes
+                .get(kernel.as_str())
+                .unwrap_or_else(|| panic!("ablation kernel {kernel} did not compile"));
+            let _ = time_mlp(args.warmup, ArmKind::AffineAblate, pipe);
+            let ns = time_mlp(args.reps, ArmKind::AffineAblate, pipe);
+            ablations.push(arm_json(
+                name,
+                &kernel,
+                mlp_bytes,
+                ns,
+                3,
+                &mlp_occ,
+                json!({
+                    "computes_the_right_answer": false,
+                    "role": "op-class ablation; arm_a with one class of per-weight work added back",
+                }),
+            ));
+        }
+
         let _ = time_mlp(
             args.warmup,
             ArmKind::AffineStripped {
@@ -1534,6 +1602,7 @@ mod macos {
             "concurrent_load": concurrent,
             "absolute_gb_s_are_measured_under_load": true,
             "x_source": x_source_json(args.x_file.as_deref()),
+            "steady_state_max_spread": STEADY_STATE_MAX_SPREAD,
             "mlp": {
                 "organ": "mlp",
                 "kernel": "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",
@@ -1551,6 +1620,20 @@ mod macos {
                 "threads_per_threadgroup": TG,
                 "bytes_per_thread_iteration": bytes_per_iter_affine,
                 "inner_loop_trips_gate": trips_mlp,
+                "op_class_ablations": ablations,
+                "bitcast": arm_json(
+                    "bitcast",
+                    bitcast.name,
+                    mlp_bytes,
+                    mlp_bitcast_ns,
+                    3,
+                    &mlp_occ,
+                    json!({
+                        "computes_the_right_answer": true,
+                        "transform": "q unpacked into an f32 mantissa (f = 2 + q/2) so no int-to-float convert runs; the affine is refolded per group as w = (2*scale)*f + (bias - 4*scale)",
+                        "output_compare": bitcast_cmp,
+                    }),
+                ),
                 "production": arm_json(
                     "production",
                     affine_prod.name,

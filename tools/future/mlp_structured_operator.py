@@ -2004,6 +2004,49 @@ def run_census(
             "closed. Distilled is recorded separately as the capacity control."
         )
 
+    # THE UMBRELLA SCAR MUST BE EMITTED, NOT HAND-ADDED TO THE RECEIPT.
+    #
+    # 6fc77f169 fixed "the resident launched zero units" by adding a
+    # MLP_FUNCTION_REPLACEMENT row to receipts/future/MLP_STRUCTURED_OPERATOR.json
+    # and touching NOTHING in this file. That fix survived exactly until someone
+    # rebuilt the receipt - the scars array went 5 -> 4, refuse_if_dead stopped
+    # keying the closed family, and WU.DEAD.mlp_function_replacement came straight
+    # back as the scripted policy. Which is the defect that commit exists to close.
+    #
+    # negative_index reads the `scars` ARRAY. campaign.scar_id is not in it, so an
+    # umbrella closure recorded only there prunes nothing. Emit it where the index
+    # looks, from the same `closed` computation that sets campaign.scar_id, so the
+    # two can never disagree again.
+    if closed:
+        scars.append(
+            {
+                "family": "MLP_FUNCTION_REPLACEMENT",
+                "status": MEASURED_NEGATIVE,
+                "level": "MODEL_SPECIFIC",
+                "parent": "qwen3.8-27b sealed-3.14",
+                "organ": "mlp",
+                "object": "F(x)=down(silu(gate(x))*up(x)) on the teacher corpus",
+                "mechanism": (
+                    "the UMBRELLA closure, " + CLOSED_SCAR + ". Every "
+                    "bottleneck-shaped family died (rank, dictionary, conditional, "
+                    "generated-block, nonlinear generator, factorwise), and the "
+                    "full-width structured operators died too. The DISTILLED "
+                    "CONTROL is what closes it: with no narrow layer anywhere it "
+                    "BEATS the mean predictor yet still cannot carry F under the "
+                    "incumbent ledger. A control with more capacity than any "
+                    "structured family and no structural constraint at all still "
+                    "fails, so the remaining error is not a missing SHAPE."
+                ),
+                "not": (
+                    "a retry of SHARED_*, FACTORIZE_THE_FACTORS, a dictionary, a "
+                    "routed mixture, a per-block factorization, Monarch, butterfly "
+                    "or Kronecker"
+                ),
+                "distilled_control_fails_too": bool(distilled_control.get("fails_too")),
+                "n_survivors_under_incumbent": len(survivors),
+            }
+        )
+
     campaign = {
         "scar_id": CLOSED_SCAR if closed else None,
         "function_replacement_closed": bool(closed),

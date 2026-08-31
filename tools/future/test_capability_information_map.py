@@ -191,7 +191,14 @@ def test_roof_movement_quotes_the_live_budget_without_a_tps_key():
     zero = cim.roof_after_bytes(0)
     assert zero["bytes_eliminated"] == 0
     assert zero["quoted_delta"] == 0.0
-    assert zero["quoted_roof_on_todays_bytes"] == pytest.approx(66.54, abs=0.05)
+    # The test's own name says "quotes the LIVE budget", so compare against the
+    # budget, not against 66.54. Pinning the literal made this fail when the budget
+    # was corrected to include the unattributed 0.321 ms - the correction this test
+    # should have been confirming, not resisting.
+    from tools.future import causal_budget_71 as _cb
+    assert zero["quoted_roof_on_todays_bytes"] == pytest.approx(
+        round(_cb.tps(_cb.token_ms(_cb.CLEAN_GEMV_GB_S)), 2), abs=0.05
+    )
     assert zero["seventy_one_reachable_at_roof"] is False
     assert "tps" not in zero
     big = cim.roof_after_bytes(2_139_095_040)

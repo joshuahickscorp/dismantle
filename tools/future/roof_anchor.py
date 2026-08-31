@@ -924,11 +924,14 @@ def _audit_row(
     if origin and row.get("quote_checked") and isinstance(quoted_value, (int, float)):
         # A quote can match its OWN receipt and still be stale, because the receipt
         # it was copied from has moved. That is the hops problem this module is
-        # named for, and it is live right now: the budget's roof-on-today's-bytes
-        # rung moved 66.54 -> 65.15 when the unattributed 0.321 ms entered the
-        # reconstruction, and two downstream receipts still carry 66.54. Recorded,
-        # not raised - a stale inheritance is a finding about the corpus, not a bug
-        # in this row, and raising would make the detector unable to report it.
+        # named for, and it fired the moment it was wired: the budget's
+        # roof-on-today's-bytes rung moved 66.54 -> 65.15 when the unattributed
+        # 0.321 ms entered the reconstruction, and CAPABILITY_INFORMATION_MAP and
+        # IMPROVEMENT_METABOLISM were both still carrying 66.54. Both read the
+        # figure rather than hard-coding it, so rebuilding them propagated 65.15
+        # and this check now reads clean. Recorded, not raised - a stale
+        # inheritance is a finding about the corpus, and raising would leave the
+        # detector unable to report the thing it detected.
         at_origin = _resolve_field(str(origin), "ladder[rung=every organ at the clean GEMV roof 703.5 GB/s].tps")
         if isinstance(at_origin, (int, float)) and not isinstance(at_origin, bool):
             row["origin_value"] = at_origin
@@ -1072,7 +1075,7 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         id="capability_map_inherits_roof_on_todays_bytes",
         receipt=CAP_MAP_REL,
         field="answers.roof_movement_on_the_71tps_ladder.quoted_roof_on_todays_bytes",
-        quoted_value=66.54,  # STILL 66.54 in that receipt, and that is the finding
+        quoted_value=65.15,  # was 66.54; the hops check caught it and the receipt was rebuilt
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=True,
         defect="wrong_roof_shape",
@@ -1088,7 +1091,7 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         id="improvement_metabolism_inherits_roof_on_todays_bytes",
         receipt=METABOLISM_REL,
         field="cited.causal_budget.roof_on_todays_bytes_cited_tps",
-        quoted_value=66.54,  # STILL 66.54 in that receipt, and that is the finding
+        quoted_value=65.15,  # was 66.54; the hops check caught it and the receipt was rebuilt
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=False,
         defect="unstated_roof",

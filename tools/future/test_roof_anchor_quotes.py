@@ -52,12 +52,43 @@ def test_selector_grammar():
     assert f("receipts/future/NO_SUCH.json", "x") is ra._UNRESOLVABLE
 
 
-def test_stale_inheritance_across_hops_is_detected():
-    """A quote can match its own receipt and still be stale at the origin."""
-    stale = [r for r in ra.CEILING_AUDIT if r.get("inherited_quote_is_stale")]
-    assert {r["id"] for r in stale} == {
-        "capability_map_inherits_roof_on_todays_bytes",
-        "improvement_metabolism_inherits_roof_on_todays_bytes",
-    }
-    for r in stale:
-        assert r["quoted_value"] == 66.54 and r["origin_value"] == 65.15
+def test_inherited_quotes_are_checked_against_their_origin():
+    """A quote can match its own receipt and still be stale at the origin.
+
+    Both inheriting receipts READ the figure rather than hard-coding it, so once
+    the check fired they were rebuilt and 65.15 propagated. The invariant is that
+    inheritance is checked and currently consistent - not the digits, and not the
+    fact that two rows happened to be stale on the day this was written.
+    """
+    inherited = [r for r in ra.CEILING_AUDIT if "inherited_quote_is_stale" in r]
+    assert len(inherited) >= 2, "the hops check must still cover the inheriting rows"
+    for r in inherited:
+        assert r["inherited_quote_is_stale"] is False, (
+            f"{r['id']} quotes {r['quoted_value']} while its origin says {r['origin_value']}"
+        )
+        assert r["quoted_value"] == r["origin_value"]
+
+
+def test_every_route_to_the_roof_agrees():
+    """capability_information_map re-implements the budget's reconstruction twice.
+
+    Both copies summed only the organs plus the host gap, so when the budget grew
+    UNATTRIBUTED_GPU_MS they kept quoting a 66.54 roof against the budget's 65.15
+    - and because they DERIVE the figure rather than reading it, rebuilding the
+    receipt did not fix it. One ceiling reached by three routes must be one number.
+    """
+    import json
+
+    from tools.future import causal_budget_71 as cb71
+
+    canonical = round(cb71.tps(cb71.token_ms(cb71.CLEAN_GEMV_GB_S)), 2)
+    for rel, path in (
+        ("receipts/future/CAPABILITY_INFORMATION_MAP.json",
+         ["answers", "roof_movement_on_the_71tps_ladder", "quoted_roof_on_todays_bytes"]),
+        ("receipts/future/IMPROVEMENT_METABOLISM.json",
+         ["cited", "causal_budget", "roof_on_todays_bytes_cited_tps"]),
+    ):
+        cur = json.loads((ra.REPO / rel).read_text())
+        for k in path:
+            cur = cur[k]
+        assert cur == pytest.approx(canonical, abs=0.01), f"{rel} quotes {cur}, budget says {canonical}"

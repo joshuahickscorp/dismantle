@@ -28,26 +28,26 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T08:19:00Z",
+  "recorded_at": "2026-08-31T13:20:54Z",
   "recorded_by": "tools/future/improvement_metabolism.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "cited": {
   "causal_budget": {
-   "cited_token_ms": 28.722,
-   "cited_tps": 34.82,
+   "cited_token_ms": 29.043,
+   "cited_tps": 34.43,
    "deltanet_dispatches": 337,
    "deltanet_ms_saved_at_497": 2.273,
    "deltanet_organ_gb": 2.961659904,
    "deltanet_organ_gb_s": 360.0,
    "deltanet_organ_ms": 8.227,
-   "demonstrated_regime_cited_tps": 47.97,
+   "demonstrated_regime_cited_tps": 47.25,
    "mlp_ms_saved_at_497": 4.79,
    "mlp_organ_gb": 5.347795776,
    "mlp_organ_gb_s": 344.1,
    "mlp_organ_ms": 15.541,
-   "roof_on_todays_bytes_cited_tps": 66.54,
+   "roof_on_todays_bytes_cited_tps": 65.15,
    "source": "receipts/future/RESIDENT_71TPS_CAUSAL_BUDGET.json"
   },
   "deltanet_generated": {
@@ -93,7 +93,7 @@
    "n_survivors_shared": 0,
    "next": "Do not widen FACTORIZE_THE_FACTORS, dictionaries, conditionals, generated blocks, or silu-readout generators. The cheap round is the kill and the scars name the mechanism. Function replacement as a class remains the economics path; the live instantiation is a full-width structured nonlinear that is not an r-bottleneck.",
    "oracle_pca_r64_held_out_relative_l2": 0.895354,
-   "predicted_ms_saved_if_F_holds": 12.433,
+   "predicted_ms_saved_if_F_holds": 2.3414,
    "shared_candidates_measured_negative": 17,
    "source": [
     "receipts/future/MLP_NONLINEAR_PROGRAM.json",
@@ -129,9 +129,11 @@
   "odyssey_gate": {
    "met": [
     "resident_autonomy_trial_pass",
+    "specimen_curriculum_ready",
     "modellake_identity",
     "doctor_callable",
     "gravity_callable",
+    "nr_nx_path_callable",
     "evidence_hierarchy",
     "negative_science",
     "workgraphs",
@@ -144,15 +146,12 @@
     "receipts"
    ],
    "n_criteria": 16,
-   "n_met": 14,
-   "n_unmet": 2,
-   "phase_transition": "NOT_STARTED",
+   "n_met": 16,
+   "n_unmet": 0,
+   "phase_transition": "STARTED",
    "source": "receipts/future/ODYSSEY_LAUNCH_GATE.json",
-   "unmet": [
-    "specimen_curriculum_ready",
-    "nr_nx_path_callable"
-   ],
-   "verdict": "REFUSED"
+   "unmet": [],
+   "verdict": "LAUNCH"
   },
   "path_to_71": {
    "best_composed_cited_tps": 42.36,
@@ -1184,7 +1183,7 @@
       "falsifier": "held-out relative L2 in the 0.9 band at any affordable size is the cheap kill (landed 0.976845)",
       "formal_verdict": null,
       "id": "mlp.fn.r_bottleneck.FACTORIZE_THE_FACTORS",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "notes": "gate, up and down are individually high-rank. Truncated SVD at rank 32 leaves Frobenius residual energy gate=0.968575 up=0.984304 down=0.980244. Composing the three with exact silu and product has held-out relative L2 0.976845. Even with two factors exact, one rank-64 factor sits at gate=0.878896 up=0.95432 down=0.941705. Gate's image is more compressible (PCA r=64 relative L2 0.514282) than F, but not enough to replace the map. The shared-program 0.9-band result was not an artifact of approximating the composite.",
       "parent_id": "mlp.fn.root",
       "prior_confidence": 0.05,
@@ -1204,7 +1203,7 @@
       "falsifier": "held-out relative L2 in the 0.9 band at any affordable size is the cheap kill (landed 0.994711)",
       "formal_verdict": null,
       "id": "mlp.fn.r_bottleneck.DICTIONARY_PROGRAM",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "notes": "F(x) does not cluster on this manifold. X-routed codebook K=16 has held-out relative L2 0.994711; even the Y-assignment oracle is 0.947216 (diagnostic, not authority). A small codebook of F is not a program for F.",
       "parent_id": "mlp.fn.root",
       "prior_confidence": 0.05,
@@ -1224,7 +1223,7 @@
       "falsifier": "held-out relative L2 in the 0.9 band at any affordable size is the cheap kill (landed 0.997237)",
       "formal_verdict": null,
       "id": "mlp.fn.r_bottleneck.PRODUCT_DICTIONARY",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "notes": "Product codebooks over 16 sub-blocks of K=16 still sit at held-out relative L2 0.997237 (Y-assignment oracle 0.937674). F is not a product of small block codebooks on this manifold.",
       "parent_id": "mlp.fn.root",
       "prior_confidence": 0.05,
@@ -1244,7 +1243,7 @@
       "falsifier": "held-out relative L2 in the 0.9 band at any affordable size is the cheap kill (landed 0.91666)",
       "formal_verdict": null,
       "id": "mlp.fn.r_bottleneck.CONDITIONAL_PROGRAM",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "notes": "A condition on x (k-means, E=8) selecting a rank-16 expert (or a mean) has held-out relative L2 0.91666. The condition is cheap and is billed; the programs it selects are still high-rank maps of x. A cheap default plus an exceptional path does not replace F.",
       "parent_id": "mlp.fn.root",
       "prior_confidence": 0.05,
@@ -1264,7 +1263,7 @@
       "falsifier": "held-out relative L2 in the 0.9 band at any affordable size is the cheap kill (landed 0.942662)",
       "formal_verdict": null,
       "id": "mlp.fn.r_bottleneck.GENERATED_BLOCK",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "notes": "Unconstrained per-block rank-16 maps on 16 output blocks (the best a lookup generator G(layer, row_block) can emit at this size) have held-out relative L2 0.942662. A smaller MLP of (layer, block) is strictly weaker. Block index does not buy a compact local representation of F.",
       "parent_id": "mlp.fn.root",
       "prior_confidence": 0.05,
@@ -1284,7 +1283,7 @@
       "falsifier": "held-out relative L2 in the 0.9 band at any affordable size is the cheap kill (landed 0.918286)",
       "formal_verdict": null,
       "id": "mlp.fn.r_bottleneck.NONLINEAR_GENERATOR",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "notes": "An MLP-shaped generator (silu_readout, r=128) has held-out relative L2 0.918286. A silu readout of a small latent is still an r-dimensional bottleneck through a high-rank output; it matches the SHARED_INPUT silu readout already killed, not a full-width structured nonlinear.",
       "parent_id": "mlp.fn.root",
       "prior_confidence": 0.05,
@@ -1304,7 +1303,7 @@
       "falsifier": "held-out relative L2 in the 0.9 band at affordable size kills this instantiation (do not widen rank). Function replacement as a class stays open only if a different full-width algebra is proposed",
       "formal_verdict": null,
       "id": "mlp.fn.full_width_structured",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "notes": "",
       "parent_id": "mlp.fn.root",
       "prior_confidence": 0.35,
@@ -1322,7 +1321,7 @@
     "falsifier": "a candidate whose held-out relative L2 stays in the 0.9 band is MEASURED_NEGATIVE; dense rematerialization of W is REJECTED_DENSE_REMAT",
     "formal_verdict": null,
     "id": "mlp.fn.root",
-    "max_possible_gain_ms": 12.433,
+    "max_possible_gain_ms": 2.3414,
     "notes": "",
     "parent_id": null,
     "prior_confidence": 0.4,
@@ -1343,14 +1342,14 @@
    "live_candidates": [
     {
      "id": "mlp.fn.full_width_structured",
-     "max_possible_gain_ms": 12.433,
+     "max_possible_gain_ms": 2.3414,
      "prior_confidence": 0.35,
      "required_resource": "CPU",
      "status": "OPEN"
     },
     {
      "id": "mlp.fn.root",
-     "max_possible_gain_ms": 12.433,
+     "max_possible_gain_ms": 2.3414,
      "prior_confidence": 0.4,
      "required_resource": "CPU",
      "status": "OPEN"
@@ -1360,7 +1359,7 @@
     "cheap round: one representative layer (38), Monarch or butterfly factorisation of F that is not rank-r, held-out relative L2 on the teacher corpus prompt_id split, bytes via executable_economics.score; python3 tools/future/mlp_nonlinear_program.py --build",
     "score function_replacement through executable_economics.score with bytes_added billed, then a held-out F replacement that is not an r-bottleneck; python3 tools/future/mlp_nonlinear_program.py --build"
    ],
-   "objective": "PATH_TO_71 best composed path reaches 42.36 cited TPS; 71 needs another 9.52 ms. Both organs are at their entropy floor, so the only remaining source of that magnitude is weights that need not exist independently. Six r-bottleneck families are MEASURED_NEGATIVE; the live reopen is a full-width structured operator. This frontier exists because function_replacement is the only economics candidate that is live and material at 12.433 ms if F holds.",
+   "objective": "PATH_TO_71 best composed path reaches 42.36 cited TPS; 71 needs another 9.52 ms. Both organs are at their entropy floor, so the only remaining source of that magnitude is weights that need not exist independently. Six r-bottleneck families are MEASURED_NEGATIVE; the live reopen is a full-width structured operator. This frontier exists because function_replacement is the only economics candidate that is live and material at 2.3414 ms if F holds.",
    "remaining_gap": {
     "best_composed_cited_tps": 42.36,
     "cited_ms": 9.52,
@@ -1428,7 +1427,7 @@
    ],
    "target": {
     "label": "replace F, do not code q better",
-    "predicted_ms_saved_if_F_holds": 12.433,
+    "predicted_ms_saved_if_F_holds": 2.3414,
     "source": "receipts/future/EXECUTABLE_ECONOMICS.json"
    },
    "why_it_exists": {
@@ -1443,14 +1442,14 @@
     "live_candidates": [
      {
       "id": "mlp.fn.full_width_structured",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "prior_confidence": 0.35,
       "required_resource": "CPU",
       "status": "OPEN"
      },
      {
       "id": "mlp.fn.root",
-      "max_possible_gain_ms": 12.433,
+      "max_possible_gain_ms": 2.3414,
       "prior_confidence": 0.4,
       "required_resource": "CPU",
       "status": "OPEN"
@@ -1462,7 +1461,7 @@
      "cheap round: one representative layer (38), Monarch or butterfly factorisation of F that is not rank-r, held-out relative L2 on the teacher corpus prompt_id split, bytes via executable_economics.score; python3 tools/future/mlp_nonlinear_program.py --build",
      "score function_replacement through executable_economics.score with bytes_added billed, then a held-out F replacement that is not an r-bottleneck; python3 tools/future/mlp_nonlinear_program.py --build"
     ],
-    "objective": "PATH_TO_71 best composed path reaches 42.36 cited TPS; 71 needs another 9.52 ms. Both organs are at their entropy floor, so the only remaining source of that magnitude is weights that need not exist independently. Six r-bottleneck families are MEASURED_NEGATIVE; the live reopen is a full-width structured operator. This frontier exists because function_replacement is the only economics candidate that is live and material at 12.433 ms if F holds.",
+    "objective": "PATH_TO_71 best composed path reaches 42.36 cited TPS; 71 needs another 9.52 ms. Both organs are at their entropy floor, so the only remaining source of that magnitude is weights that need not exist independently. Six r-bottleneck families are MEASURED_NEGATIVE; the live reopen is a full-width structured operator. This frontier exists because function_replacement is the only economics candidate that is live and material at 2.3414 ms if F holds.",
     "remaining_gap": {
      "best_composed_cited_tps": 42.36,
      "cited_ms": 9.52,
@@ -1474,61 +1473,20 @@
     ],
     "target": {
      "label": "replace F, do not code q better",
-     "predicted_ms_saved_if_F_holds": 12.433,
+     "predicted_ms_saved_if_F_holds": 2.3414,
      "source": "receipts/future/EXECUTABLE_ECONOMICS.json"
     }
    }
   },
   "odyssey_gate": {
-   "biggest_unknown": "the unmet criteria: specimen_curriculum_ready, nr_nx_path_callable",
+   "biggest_unknown": "none unmet",
    "causal_hypotheses": {
     "cheapest_decisive_experiment": "python3 tools/future/odyssey_launch.py --verify",
-    "children": [
-     {
-      "cheapest_decisive_experiment": "re-evaluate criterion specimen_curriculum_ready from disk evidence; python3 tools/future/odyssey_launch.py --verify",
-      "children": [],
-      "evidence": [],
-      "evidence_for": null,
-      "expected_runtime_s": 30.0,
-      "falsifier": "specimen_curriculum_ready is MET only when the resident can discover, invoke, schedule and verify it and the result persists; a CLI a human can run is not enough",
-      "formal_verdict": null,
-      "id": "odyssey.unmet.specimen_curriculum_ready",
-      "max_possible_gain_ms": 0.0,
-      "notes": "",
-      "parent_id": "odyssey.gate",
-      "prior_confidence": 0.5,
-      "reopen_if": null,
-      "required_resource": "ODYSSEY",
-      "rule_satisfied": null,
-      "status": "OPEN",
-      "title": "specimen_curriculum_ready",
-      "wake_condition": null
-     },
-     {
-      "cheapest_decisive_experiment": "re-evaluate criterion nr_nx_path_callable from disk evidence; python3 tools/future/odyssey_launch.py --verify",
-      "children": [],
-      "evidence": [],
-      "evidence_for": null,
-      "expected_runtime_s": 30.0,
-      "falsifier": "nr_nx_path_callable is MET only when the resident can discover, invoke, schedule and verify it and the result persists; a CLI a human can run is not enough",
-      "formal_verdict": null,
-      "id": "odyssey.unmet.nr_nx_path_callable",
-      "max_possible_gain_ms": 0.0,
-      "notes": "",
-      "parent_id": "odyssey.gate",
-      "prior_confidence": 0.5,
-      "reopen_if": null,
-      "required_resource": "ODYSSEY",
-      "rule_satisfied": null,
-      "status": "OPEN",
-      "title": "nr_nx_path_callable",
-      "wake_condition": null
-     }
-    ],
+    "children": [],
     "evidence": [],
     "evidence_for": null,
     "expected_runtime_s": 30.0,
-    "falsifier": "ODYSSEY_I_LAUNCH.json is written only when every criterion is met; the sealed receipt is REFUSED with unmet=['specimen_curriculum_ready', 'nr_nx_path_callable']",
+    "falsifier": "ODYSSEY_I_LAUNCH.json is written only when every criterion is met; the sealed receipt is LAUNCH with unmet=[]",
     "formal_verdict": null,
     "id": "odyssey.gate",
     "max_possible_gain_ms": 0.0,
@@ -1539,14 +1497,14 @@
     "required_resource": "ODYSSEY",
     "rule_satisfied": null,
     "status": "OPEN",
-    "title": "Odyssey I launch gate 14/16",
+    "title": "Odyssey I launch gate 16/16",
     "wake_condition": null
    },
    "current_best": {
     "n_criteria": 16,
-    "n_met": 14,
+    "n_met": 16,
     "source": "receipts/future/ODYSSEY_LAUNCH_GATE.json",
-    "verdict": "REFUSED"
+    "verdict": "LAUNCH"
    },
    "id": "odyssey_gate",
    "live_candidates": [
@@ -1556,34 +1514,15 @@
      "prior_confidence": 0.8,
      "required_resource": "ODYSSEY",
      "status": "OPEN"
-    },
-    {
-     "id": "odyssey.unmet.specimen_curriculum_ready",
-     "max_possible_gain_ms": 0.0,
-     "prior_confidence": 0.5,
-     "required_resource": "ODYSSEY",
-     "status": "OPEN"
-    },
-    {
-     "id": "odyssey.unmet.nr_nx_path_callable",
-     "max_possible_gain_ms": 0.0,
-     "prior_confidence": 0.5,
-     "required_resource": "ODYSSEY",
-     "status": "OPEN"
     }
    ],
    "next_decisive_experiments": [
-    "python3 tools/future/odyssey_launch.py --verify",
-    "re-evaluate criterion specimen_curriculum_ready from disk evidence; python3 tools/future/odyssey_launch.py --verify",
-    "re-evaluate criterion nr_nx_path_callable from disk evidence; python3 tools/future/odyssey_launch.py --verify"
+    "python3 tools/future/odyssey_launch.py --verify"
    ],
-   "objective": "Odyssey I (WHAT IS TRUE?) is REFUSED at 14/16 cited from receipts/future/ODYSSEY_LAUNCH_GATE.json. Unmet: ['specimen_curriculum_ready', 'nr_nx_path_callable']. This frontier exists because a green scaffold is not Odyssey started.",
+   "objective": "Odyssey I (WHAT IS TRUE?) is LAUNCH at 16/16 cited from receipts/future/ODYSSEY_LAUNCH_GATE.json. Unmet: []. This frontier exists because a green scaffold is not Odyssey started.",
    "remaining_gap": {
-    "n_unmet": 2,
-    "unmet": [
-     "specimen_curriculum_ready",
-     "nr_nx_path_callable"
-    ]
+    "n_unmet": 0,
+    "unmet": []
    },
    "resource_requirements": [
     "ODYSSEY",
@@ -1596,12 +1535,12 @@
     "verdict": "LAUNCH"
    },
    "why_it_exists": {
-    "biggest_unknown": "the unmet criteria: specimen_curriculum_ready, nr_nx_path_callable",
+    "biggest_unknown": "none unmet",
     "current_best": {
      "n_criteria": 16,
-     "n_met": 14,
+     "n_met": 16,
      "source": "receipts/future/ODYSSEY_LAUNCH_GATE.json",
-     "verdict": "REFUSED"
+     "verdict": "LAUNCH"
     },
     "id": "odyssey_gate",
     "live_candidates": [
@@ -1611,36 +1550,17 @@
       "prior_confidence": 0.8,
       "required_resource": "ODYSSEY",
       "status": "OPEN"
-     },
-     {
-      "id": "odyssey.unmet.specimen_curriculum_ready",
-      "max_possible_gain_ms": 0.0,
-      "prior_confidence": 0.5,
-      "required_resource": "ODYSSEY",
-      "status": "OPEN"
-     },
-     {
-      "id": "odyssey.unmet.nr_nx_path_callable",
-      "max_possible_gain_ms": 0.0,
-      "prior_confidence": 0.5,
-      "required_resource": "ODYSSEY",
-      "status": "OPEN"
      }
     ],
-    "n_hypotheses": 3,
+    "n_hypotheses": 1,
     "n_scars": 0,
     "next_decisive_experiments": [
-     "python3 tools/future/odyssey_launch.py --verify",
-     "re-evaluate criterion specimen_curriculum_ready from disk evidence; python3 tools/future/odyssey_launch.py --verify",
-     "re-evaluate criterion nr_nx_path_callable from disk evidence; python3 tools/future/odyssey_launch.py --verify"
+     "python3 tools/future/odyssey_launch.py --verify"
     ],
-    "objective": "Odyssey I (WHAT IS TRUE?) is REFUSED at 14/16 cited from receipts/future/ODYSSEY_LAUNCH_GATE.json. Unmet: ['specimen_curriculum_ready', 'nr_nx_path_callable']. This frontier exists because a green scaffold is not Odyssey started.",
+    "objective": "Odyssey I (WHAT IS TRUE?) is LAUNCH at 16/16 cited from receipts/future/ODYSSEY_LAUNCH_GATE.json. Unmet: []. This frontier exists because a green scaffold is not Odyssey started.",
     "remaining_gap": {
-     "n_unmet": 2,
-     "unmet": [
-      "specimen_curriculum_ready",
-      "nr_nx_path_callable"
-     ]
+     "n_unmet": 0,
+     "unmet": []
     },
     "resource_requirements": [
      "ODYSSEY",
@@ -2047,7 +1967,7 @@
   "unbalanced": false
  },
  "schema": "hawking.future.improvement_metabolism.v1",
- "seal_sha256": "bd3fb77a242630e61036eed45942b42801a25a94f0279ef44065e6e750cab7ec",
+ "seal_sha256": "bf4d81ff63cc0f68db3cc3c75146e7488aeea24c280f95746f58fcf92d7b05ef",
  "sources": {
   "receipts/future/DELTANET_GENERATED_TRANSITION.json": "disk:/Users/scammermike/Downloads/hawking/receipts/future/DELTANET_GENERATED_TRANSITION.json",
   "receipts/future/DELTANET_MULTISTEP.json": "disk:/Users/scammermike/Downloads/hawking/receipts/future/DELTANET_MULTISTEP.json",

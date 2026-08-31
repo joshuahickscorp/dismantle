@@ -799,8 +799,10 @@ def roof_after_bytes(
         take = min(gb_saved, gb) if organ["organ"] == apply_to else 0.0
         today_ms += gb / cb71.CLEAN_GEMV_GB_S * 1000.0
         after_ms += (gb - take) / cb71.CLEAN_GEMV_GB_S * 1000.0
-    today_ms += cb71.HOST_GAP_MS
-    after_ms += cb71.HOST_GAP_MS
+    # Third copy of the same reconstruction. Every fixed term the budget carries
+    # belongs here too, or this function quotes a faster token than the one measured.
+    today_ms += cb71.HOST_GAP_MS + cb71.UNATTRIBUTED_GPU_MS
+    after_ms += cb71.HOST_GAP_MS + cb71.UNATTRIBUTED_GPU_MS
     today_rate = 1000.0 / today_ms
     after_rate = 1000.0 / after_ms
     need_ms = 1000.0 / 71.0
@@ -1623,8 +1625,16 @@ def allocation_from_sensitivity(sens: Mapping[str, Any]) -> dict[str, Any]:
     if by_apply.get("deltanet") or by_apply.get("gqa"):
         # Recompute a combined roof by subtracting each organ's save.
         gb = {k: v / 1e9 for k, v in by_apply.items()}
-        today_ms = cb71.HOST_GAP_MS
-        after_ms = cb71.HOST_GAP_MS
+        # Seed with EVERY fixed term the budget's own reconstruction carries, not
+        # just the host gap. This loop is a second copy of cb71.token_ms, and it
+        # went stale the moment the budget grew UNATTRIBUTED_GPU_MS: it kept
+        # reporting a 66.54 roof while the budget said 65.15, and because it
+        # DERIVES the figure rather than reading it, rebuilding the receipt did
+        # not fix it. Two routes to one ceiling is the drift; naming both terms
+        # here is the cheapest repair short of deleting the copy.
+        _fixed_ms = cb71.HOST_GAP_MS + cb71.UNATTRIBUTED_GPU_MS
+        today_ms = _fixed_ms
+        after_ms = _fixed_ms
         for organ in cb71.ORGANS:
             g = float(organ["gb"])
             take = gb.get(organ["organ"], 0.0)

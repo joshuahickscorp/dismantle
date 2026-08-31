@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -30,7 +31,112 @@ RECEIPT = REPO / "receipts" / "future" / "RESIDENT_71TPS_CAUSAL_BUDGET.json"
 CLEAN_GEMV_GB_S = 703.5          # single clean GEMV, measured
 DEMONSTRATED_GB_S = 497.4        # the LM head, measured on this box TODAY
 HOST_GAP_MS = 0.989              # measured, 3 runs, stable to 5 decimals
+# GPU time inside the decode step that belongs to NO organ: decode_gpu_ms 28.054
+# minus the four independently timed organs 27.733. Leaving it out made every
+# rung in this ladder 0.321 ms optimistic - token_ms() reconstructed 28.722 while
+# the measured wall is 29.0434, so the baseline was a body 1.1% faster than the
+# one that ran. It is carried at a FIXED ms because it scales with neither bytes
+# nor bandwidth in any way this receipt has measured; that is a bound on what a
+# lever can claim, not an assumption that it is irreducible. G038 would name it.
+UNATTRIBUTED_GPU_MS = 0.321
 ACTIVE_BYTES = 9_878_901_136
+
+
+# ---------------------------------------------------------------------------
+# CITATIONS ARE LOADED, NOT COPIED.
+#
+# G072 asks for a ledger that recomputes from landed receipts "rather than from
+# hand-entered numbers". Every constant above and every lever below used to be a
+# literal with a receipt PATH beside it, which is a citation, not a recomputation:
+# if the cited receipt changed, the literal kept its old value and nothing said so.
+# That is the stale-baseline failure this campaign has already paid for twice.
+#
+# Each row below names the receipt AND the exact path to the field. resolve()
+# reads it and RAISES on drift. The literal survives only as `expect`, which makes
+# a silent change impossible in both directions: a receipt that moves fails the
+# expectation, and an expectation edited without the receipt fails too.
+# ---------------------------------------------------------------------------
+
+
+class CitationDrift(RuntimeError):
+    """A ledger number no longer matches the receipt it cites."""
+
+
+class CitationMissing(RuntimeError):
+    """A cited receipt or field is not on disk. Never fall back to the literal."""
+
+
+def _walk(obj: Any, path: Sequence[Any], where: str) -> Any:
+    cur = obj
+    for step in path:
+        if isinstance(step, Mapping):
+            key, want = next(iter(step.items()))
+            if not isinstance(cur, list):
+                raise CitationMissing(f"{where}: selector {step} needs a list, got {type(cur).__name__}")
+            hits = [r for r in cur if isinstance(r, Mapping) and r.get(key) == want]
+            if len(hits) != 1:
+                raise CitationMissing(f"{where}: selector {step} matched {len(hits)} rows, need exactly 1")
+            cur = hits[0]
+            continue
+        try:
+            cur = cur[step]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise CitationMissing(f"{where}: cannot reach {step!r} ({type(exc).__name__})") from exc
+    return cur
+
+
+def resolve(source: str, path: Sequence[Any], expect: float, *, rel_tol: float = 1e-6) -> float:
+    """Read the cited number from disk. Refuse to guess, refuse to drift."""
+    rp = REPO / source
+    if not rp.exists():
+        raise CitationMissing(f"{source} is not on disk; the ledger cannot cite what does not exist")
+    got = _walk(json.loads(rp.read_text()), path, f"{source}:{'.'.join(map(str, path))}")
+    if isinstance(got, bool) or not isinstance(got, (int, float)):
+        raise CitationMissing(f"{source}:{path} is {type(got).__name__}, not a number")
+    got = float(got)
+    if abs(got - expect) > rel_tol * max(abs(expect), 1.0):
+        raise CitationDrift(
+            f"{source}:{'.'.join(map(str, path))} is {got!r}, ledger carries {expect!r}. "
+            "Update the ledger from the receipt - never the other way round."
+        )
+    return got
+
+
+CITATIONS: tuple[dict[str, Any], ...] = (
+    {"id": "host_gap_ms", "expect": HOST_GAP_MS, "rel_tol": 6e-4,
+     "source": "receipts/future/WALL_GPU_RECONCILIATION.json",
+     "path": ["derived", "host_gap_ms_per_token"]},
+    {"id": "demonstrated_gb_s", "expect": DEMONSTRATED_GB_S,
+     "source": "receipts/future/MLP_REGION_FALSIFIER.json",
+     "path": ["lm_head_gb_s"]},
+    {"id": "clean_gemv_gb_s", "expect": CLEAN_GEMV_GB_S,
+     "source": "receipts/future/MLP_REGION_FALSIFIER.json",
+     "path": ["clean_gemv_gb_s"]},
+    {"id": "entropy_floor_bytes", "expect": 277_697_891.2457967,
+     "source": "receipts/future/MLP_CODE_INFORMATION.json",
+     "path": ["measurements", "iid_redundant_bytes"]},
+    {"id": "quantize_aux_u8_bytes", "expect": 534_773_760,
+     "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+     "path": ["open_byte_levers", {"id": "quantize_aux_u8"}, "bytes_eliminated_if_true"]},
+    {"id": "group_size_256_bytes", "expect": 802_160_640,
+     "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+     "path": ["group_size_curve", {"group_size": 256}, "bytes_eliminated_vs_incumbent"]},
+    {"id": "group_size_1024_bytes", "expect": 1_002_700_800,
+     "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+     "path": ["group_size_curve", {"group_size": 1024}, "bytes_eliminated_vs_incumbent"]},
+    {"id": "host_gap_worth_tps", "expect": 1.214,
+     "source": "receipts/future/WALL_GPU_RECONCILIATION.json",
+     "path": ["derived", "tps_gain_from_deleting_all_host_work"]},
+)
+
+
+def resolve_all() -> dict[str, float]:
+    """Every cited number, read from its receipt. Raises rather than degrading."""
+    return {
+        c["id"]: resolve(c["source"], c["path"], float(c["expect"]),
+                         rel_tol=float(c.get("rel_tol", 1e-6)))
+        for c in CITATIONS
+    }
 
 ORGANS: tuple[dict[str, Any], ...] = (
     {"organ": "mlp", "gb": 5.347795776, "ms": 15.541, "gb_s": 344.1, "dispatches": 192},
@@ -61,7 +167,7 @@ REFUTED_LEVERS: tuple[dict[str, Any], ...] = (
                  "stays 0",
      "source": "receipts/future/REPRESENTATION_DECODE_FUSION.json"},
     {"id": "eliminate_all_host_gap",
-     "was_worth_tps": 1.24,
+     "was_worth_tps": 1.214,
      "verdict": "BOUNDED_TOO_SMALL",
      "evidence": "host gap is 0.989 ms of a 29.043 ms token, measured over three "
                  "runs and stable to five decimals",
@@ -82,9 +188,15 @@ BYTE_LEVERS: tuple[dict[str, Any], ...] = (
 
 
 def token_ms(gb_s: float | None = None, gb_saved: float = 0.0,
-             host_ms: float = HOST_GAP_MS) -> float:
-    """Token time if every organ ran at gb_s. None means keep measured rates."""
-    total = 0.0
+             host_ms: float = HOST_GAP_MS,
+             unattributed_ms: float = UNATTRIBUTED_GPU_MS) -> float:
+    """Token time if every organ ran at gb_s. None means keep measured rates.
+
+    The unattributed GPU term is included by DEFAULT. A reconstruction that sums
+    only the organs it can name reports a faster token than the one measured, and
+    every rung above it inherits that optimism silently.
+    """
+    total = float(unattributed_ms)
     saved_left = gb_saved
     for o in ORGANS:
         gb = o["gb"]
@@ -200,9 +312,77 @@ def experiments() -> list[dict[str, Any]]:
     return rows
 
 
+
+def causal_residual() -> dict[str, Any]:
+    """What fraction of the token measurement actually explains, and what it does not.
+
+    G072 asks for this and adds the clause that makes it worth having: the
+    residual "must not stay a miscellaneous bucket".
+
+    Two residuals, and only one of them is real:
+
+    HOST GAP is not a residual at all. It is wall minus GPU, a SUBTRACTION, so
+    it absorbs everything unmeasured by construction and can never be nonzero-
+    surprising. Reporting wall-minus-parts as "the unexplained fraction" would
+    have produced a reassuring zero that means nothing.
+
+    THE GPU RESIDUAL IS REAL. The four organs are timed independently and sum to
+    27.733 ms, while decode_gpu_ms_per_token is 28.054. The 0.321 ms difference
+    - 1.1% of the wall token - is GPU time inside the decode step that belongs to
+    no organ. It is small, and it is unattributed, which are different things.
+    It is not billed to any organ's GB/s, so no organ's bandwidth figure is
+    inflated or deflated by it.
+    """
+    cited = resolve_all()
+    organ_ms = sum(float(o["ms"]) for o in ORGANS)
+    rp = REPO / "receipts" / "future" / "WALL_GPU_RECONCILIATION.json"
+    derived = json.loads(rp.read_text())["derived"]
+    gpu_ms = float(derived["decode_gpu_ms_per_token"])
+    wall_ms = float(derived["decode_wall_ms_per_token"])
+    gpu_residual = gpu_ms - organ_ms
+    return {
+        "wall_ms": wall_ms,
+        "gpu_ms": gpu_ms,
+        "organ_ms_sum": round(organ_ms, 4),
+        "organs_explain_of_gpu": round(organ_ms / gpu_ms, 6),
+        "gpu_residual_ms": round(gpu_residual, 4),
+        "gpu_residual_frac_of_wall": round(gpu_residual / wall_ms, 6),
+        "gpu_residual_is_unattributed_not_absent": True,
+        "host_gap_ms": cited["host_gap_ms"],
+        "host_gap_is_a_subtraction_not_a_residual": (
+            "host_gap = wall - gpu by construction, so it absorbs every unmeasured "
+            "host cost and cannot be a surprise. Do not report wall minus parts as "
+            "the unexplained fraction; it is definitionally zero."
+        ),
+        "next_prey": (
+            "0.321 ms of GPU time inside the decode step belongs to no organ. "
+            "G038 (per-region GPU timestamps) is the instrument that would name it. "
+            "Until then it is UNATTRIBUTED, not miscellaneous, and not zero."
+        ),
+        "baseline_is_stale": {
+            "computed_against_ms": wall_ms,
+            "current_body_ms": "UNKNOWN_UNTIL_G075",
+            "why": (
+                "deltanet_widen_f4 landed as a measured token-identical 1.0245 ms "
+                "win, so this residual is computed against a body that no longer "
+                "runs. The fractions are still the best available reading of where "
+                "time goes; the absolute ms are not the current token."
+            ),
+        },
+    }
+
 def build() -> dict[str, Any]:
+    # Read every cited number off disk FIRST. A receipt that cannot be emitted
+    # without its citations resolving cannot be emitted stale.
+    cited = resolve_all()
     now = token_ms()
     return {
+        "citations_resolved": cited,
+        "causal_residual": causal_residual(),
+        "citations": [
+            {"id": c["id"], "source": c["source"], "path": [str(x) for x in c["path"]]}
+            for c in CITATIONS
+        ],
         "schema": "hawking.future.causal_budget_71.v1",
         "version": 1,
         "recorded_by": "tools/future/causal_budget_71.py",

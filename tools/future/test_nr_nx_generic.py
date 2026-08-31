@@ -432,7 +432,11 @@ def test_physical_graph_stage_parameterized_or_named_failure():
     choice = doc["specimen"]
     pgc = next(s for s in doc["stages"] if s["stage"] == "PhysicalGraphCompiler")
     path = Path(str(choice.get("specimen_path") or ""))
-    if choice.get("ok") and path.is_dir() and (path / "model.safetensors").is_file():
+    weights_present = path.is_dir() and (
+        (path / "model.safetensors").is_file()
+        or (path / "model.safetensors.index.json").is_file()
+    )
+    if choice.get("ok") and weights_present:
         assert pgc["invoked"] is True
         ev = pgc["evidence"] or {}
         plan = ev.get("collapse_plan") or []
@@ -696,6 +700,283 @@ def test_callable_on_and_receipt_agree_on_unmet_nx():
     assert pre["ok"] is False
     assert pre["first_failing_stage"]
     assert doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is False
+
+
+def _name_only_kernel(organ: str = "mlp_down") -> dict:
+    return {
+        "kernel_identity": f"name_only_{organ}",
+        "organ_identity": organ,
+        "representation_identity": "q2_affine",
+        "compiled_identity": {
+            "kind": "ABSENT",
+            "value": None,
+            "absent_reason": "synthetic name-only kernel; not compiled",
+        },
+        "specialization": {"kind": "DERIVED", "group_size": 64},
+    }
+
+
+def _compiled_shape_kernel(organ: str = "mlp_down", cols: int = 64, *, parametric: bool = False) -> dict:
+    spec: dict = {"kind": "DERIVED", "specialized_cols": cols}
+    if parametric:
+        spec["shape_constraints"] = {"cols": [cols]}
+    return {
+        "kernel_identity": f"compiled_{organ}_{cols}",
+        "organ_identity": organ,
+        "representation_identity": "q2_affine",
+        "compiled_identity": {"kind": "MEASURED", "value": "deadbeef" * 4},
+        "specialization": spec,
+    }
+
+
+def test_shared_organ_name_is_not_a_compiled_kernel():
+    """NEGATIVE CONTROL: a shared organ ROLE is not a compiled kernel for this body."""
+    kernel = _name_only_kernel("mlp_down")
+    shapes = nng.organ_shapes_from_config(_dense_cfg())
+    judged = nng.is_compiled_kernel_for_body(
+        kernel,
+        specimen_id="synth-dense",
+        organ="mlp_down",
+        organ_shape=shapes.get("mlp_down"),
+    )
+    assert judged["ok"] is False
+    assert judged["role_match"] is True
+    assert judged["specimen_id_match"] is False
+    assert judged["shape_constraints_satisfied"] is False
+    assert judged["compiled_identity_present"] is False
+    assert nng.NAME_IS_NOT_A_COMPILED_KERNEL in judged["why"]
+    planned = nng.plan_kernels_for_specimen(
+        ["mlp_down", "mlp_gate_up", "gqa_attention"],
+        specimen_id="synth-dense",
+        config=_dense_cfg(),
+        kernels=[kernel, _name_only_kernel("mlp_gate_up"), _name_only_kernel("gqa_attention")],
+        library_specimen_field=None,
+    )
+    assert planned["n_compiled"] == 0
+    assert planned["n_native_unmeasured"] == 3
+    assert planned["name_is_not_a_compiled_kernel"] is True
+    for slot in planned["plan"]:
+        assert slot["status"] == nng.NATIVE_UNMEASURED
+        assert slot["occupying"]["kind"] == nng.NATIVE_UNMEASURED
+        assert slot["occupying"]["compiled_kernel"] is None
+        assert slot["name_is_not_a_compiled_kernel"] is True
+        assert nng.NAME_IS_NOT_A_COMPILED_KERNEL in slot["why"]
+
+
+def test_undeclared_shape_is_not_a_parametric_wildcard():
+    """NEGATIVE CONTROL: omitting specialized_cols does not mean 'any shape'."""
+    kernel = _name_only_kernel("mlp_down")
+    kernel["compiled_identity"] = {"kind": "MEASURED", "value": "abc123"}
+    shapes = nng.organ_shapes_from_config(_dense_cfg())
+    judged = nng.is_compiled_kernel_for_body(
+        kernel,
+        specimen_id="synth-dense",
+        organ="mlp_down",
+        organ_shape=shapes.get("mlp_down"),
+    )
+    assert judged["compiled_identity_present"] is True
+    assert judged["shape_constraints_satisfied"] is False
+    assert judged["ok"] is False
+    assert nng.NAME_IS_NOT_A_COMPILED_KERNEL in judged["why"]
+
+
+def test_shape_mismatch_is_not_a_compiled_kernel():
+    """NEGATIVE CONTROL: parent specialized_cols 5120 is not this body's 64/128."""
+    kernel = _compiled_shape_kernel("mlp_down", cols=5120)
+    shapes = nng.organ_shapes_from_config(_dense_cfg())
+    judged = nng.is_compiled_kernel_for_body(
+        kernel,
+        specimen_id="synth-dense",
+        organ="mlp_down",
+        organ_shape=shapes.get("mlp_down"),
+    )
+    assert judged["role_match"] is True
+    assert judged["compiled_identity_present"] is True
+    assert judged["shape_constraints_satisfied"] is False
+    assert judged["ok"] is False
+    assert nng.NAME_IS_NOT_A_COMPILED_KERNEL in judged["why"]
+
+
+def test_compiled_kernel_requires_identity_or_shapes_and_present_compiled_identity():
+    """Inverse: declared cols that this organ satisfies plus a present compiled_identity."""
+    kernel = _compiled_shape_kernel("mlp_down", cols=64)
+    shapes = nng.organ_shapes_from_config(_dense_cfg())
+    judged = nng.is_compiled_kernel_for_body(
+        kernel,
+        specimen_id="synth-dense",
+        organ="mlp_down",
+        organ_shape=shapes.get("mlp_down"),
+    )
+    assert judged["ok"] is True
+    assert judged["shape_constraints_satisfied"] is True
+    assert judged["compiled_identity_present"] is True
+    assert nng.NAME_IS_NOT_A_COMPILED_KERNEL not in judged["why"]
+
+
+def test_plan_then_compile_emits_native_unmeasured_for_unseen_body():
+    lib = {
+        "kernels": [
+            _name_only_kernel("mlp_down"),
+            _name_only_kernel("mlp_gate_up"),
+            _compiled_shape_kernel("mlp_down", cols=5120),
+        ],
+        "specimen": None,
+    }
+    row = nng.stage_kernel_planner(
+        ["mlp_down", "mlp_gate_up", "embed"],
+        specimen_id="unseen-body",
+        config=_dense_cfg(),
+        library_doc=lib,
+    )
+    assert row["status"] == nng.PASSED
+    assert row["invoked"] is True
+    ev = row["evidence"]
+    assert ev["route"] == nng.KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE
+    assert ev["name_is_not_a_compiled_kernel"] is True
+    assert ev["n_compiled"] == 0
+    assert ev["n_native_unmeasured"] == 3
+    assert nng.NAME_IS_NOT_A_COMPILED_KERNEL in row["why"]
+    organs = {slot["organ"]: slot for slot in ev["plan"]}
+    assert set(organs) == {"mlp_down", "mlp_gate_up", "embed"}
+    for slot in ev["plan"]:
+        assert slot["status"] == nng.NATIVE_UNMEASURED
+
+
+def test_shape_parametric_route_when_library_declares_constraints_and_is_compiled():
+    kernel = _compiled_shape_kernel("mlp_down", cols=64, parametric=True)
+    lib = {"kernels": [kernel], "specimen": None}
+    row = nng.stage_kernel_planner(
+        ["mlp_down"],
+        specimen_id="synth-dense",
+        config=_dense_cfg(),
+        library_doc=lib,
+    )
+    assert row["status"] == nng.PASSED
+    ev = row["evidence"]
+    assert ev["route"] == nng.KERNEL_PLANNER_ROUTE_SHAPE_PARAMETRIC
+    assert ev["n_compiled"] == 1
+    assert ev["plan"][0]["status"] == nng.COMPILED
+    assert ev["plan"][0]["occupying"]["compiled_kernel"] == kernel["kernel_identity"]
+
+
+def test_missing_library_is_refused_not_empty_success(monkeypatch):
+    """NEGATIVE CONTROL: an unreachable library is REFUSED, not an empty pass."""
+    monkeypatch.setattr(nng.nx_audit, "evidence_path", lambda rel: None)
+    row = nng.stage_kernel_planner(
+        ["mlp_down"],
+        specimen_id="x",
+        config=_dense_cfg(),
+    )
+    assert row["status"] == nng.REFUSED
+    assert row["status"] != "SKIPPED"
+    assert row["error"] == "missing_kernel_library"
+    assert "empty success" in row["why"]
+
+
+def test_empty_organs_is_failed_not_skipped():
+    row = nng.stage_kernel_planner(
+        [],
+        specimen_id="x",
+        config=_dense_cfg(),
+        library_doc={"kernels": [_name_only_kernel()]},
+    )
+    assert row["status"] == nng.FAILED
+    assert row["status"] != "SKIPPED"
+    assert row["error"] == "no_organs"
+
+
+def test_live_library_forces_plan_then_compile_for_this_body():
+    """Library evidence that chose the route: no specimen field, no compiled identity,
+    specialized_cols are the parent 5120/17408, not this body's 1024/3072."""
+    doc, _path, err = nng.load_kernel_library()
+    if doc is None:
+        ok, why = nng.kernel_library_is_readable()
+        assert ok is False
+        assert why and "empty success" in why
+        return
+    assert doc.get("specimen") is None
+    kernels = [k for k in (doc.get("kernels") or []) if isinstance(k, dict)]
+    assert kernels
+    n_compiled = sum(1 for k in kernels if nng._compiled_identity_present(k))
+    assert n_compiled == 0
+    declared = sorted({c for k in kernels if (c := nng._declared_specialized_cols(k)) is not None})
+    assert 5120 in declared
+    assert 17408 in declared
+    shapes = nng.organ_shapes_from_config(
+        {
+            "hidden_size": 1024,
+            "intermediate_size": 3072,
+            "vocab_size": 151936,
+            "num_attention_heads": 16,
+            "num_key_value_heads": 8,
+            "head_dim": 128,
+        }
+    )
+    route = nng.kernel_planner_route(
+        kernels,
+        specimen_id=nng.QWEN06_ID,
+        organ_shapes=shapes,
+        library_specimen_field=doc.get("specimen"),
+    )
+    assert route["route"] == nng.KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE
+    assert route["n_compiled_identity_present"] == 0
+    assert route["n_parametric_range_declared"] == 0
+    assert route["shape_overlap"] == []
+    assert 1024 in route["specimen_extents"]
+    assert 3072 in route["specimen_extents"]
+    planned = nng.plan_kernels_for_specimen(
+        ["gqa_attention", "mlp_down", "mlp_gate_up"],
+        specimen_id=nng.QWEN06_ID,
+        config={
+            "hidden_size": 1024,
+            "intermediate_size": 3072,
+            "vocab_size": 151936,
+            "num_attention_heads": 16,
+            "num_key_value_heads": 8,
+            "head_dim": 128,
+        },
+        kernels=kernels,
+        library_specimen_field=doc.get("specimen"),
+    )
+    assert planned["n_compiled"] == 0
+    assert planned["name_is_not_a_compiled_kernel"] is True
+    assert set(planned["intersection"]) == {"gqa_attention", "mlp_down", "mlp_gate_up"}
+
+
+def test_callable_on_kernel_planner_ready_when_library_exists():
+    judged = nng.callable_on(_probe_of("synth-dense", _dense_names(), _dense_cfg()))
+    preview = {r["stage"]: r for r in judged["stage_preview"]}
+    ok, _why = nng.kernel_library_is_readable()
+    if ok:
+        assert preview["KernelPlanner"]["ready"] is True
+        assert judged["first_failing_stage"] == "DeviceCompiler"
+    else:
+        assert preview["KernelPlanner"]["ready"] is False
+        assert judged["first_failing_stage"] == "KernelPlanner"
+
+
+def test_receipt_kernel_planner_passed_and_is_not_first_fail():
+    doc = _receipt()
+    kp = next(s for s in doc["stages"] if s["stage"] == "KernelPlanner")
+    if doc["specimen"].get("ok") and nng.kernel_library_is_readable()[0]:
+        assert kp["status"] == nng.PASSED
+        assert kp["invoked"] is True
+        ev = kp["evidence"] or {}
+        assert ev.get("route") == nng.KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE
+        assert ev.get("name_is_not_a_compiled_kernel") is True
+        assert nng.NAME_IS_NOT_A_COMPILED_KERNEL in kp["why"]
+        assert ev.get("n_compiled") == 0
+        assert ev.get("n_native_unmeasured") == len(ev.get("plan") or [])
+        assert doc["kernel_planner_route"] == nng.KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE
+        assert doc["first_failing_stage"]["stage"] != "KernelPlanner"
+        assert doc["first_failing_stage"]["stage"] == "DeviceCompiler"
+        dc = next(s for s in doc["stages"] if s["stage"] == "DeviceCompiler")
+        assert dc["status"] == nng.BLOCKED
+        assert dc["error"] == "no_entry_point"
+        assert (dc.get("evidence") or {}).get("kernel_plan_received") is True
+    else:
+        assert kp["status"] in {nng.FAILED, nng.REFUSED, nng.BLOCKED}
+        assert kp["status"] != "SKIPPED"
 
 
 def test_no_pytest_skip_in_this_file():

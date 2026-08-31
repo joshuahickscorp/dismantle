@@ -49,18 +49,41 @@ COMPONENTS: dict[str, dict[str, Any]] = {
         "cost": "an executor change",
     },
     "aux_group_size_1024": {
-        "gb_saved": 1.002700800, "evidence": "PROSPECTIVE",
-        "why_prospective": "byte model exact (aux(G) = 4*n_params/G + 58176); "
-                           "capability UNMEASURED, no generate gate has been run",
-        "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
-        "cost": "a refit plus a capability screen",
+        "gb_saved": 0.0, "evidence": "REFUTED",
+        "why": "the capability screen it was waiting for has now run. A real LS "
+               "refit of scale/zero, not an error model: weight-space injury "
+               "0.24-0.27 on every screened layer (3, 31, 38, 63), organ output "
+               "below the 0.99 cosine bar, and in logit space G=1024 keeps argmax "
+               "on only 44% of hold rows with KL 1.23 nats. This rung leaves the "
+               "ladder; it was never worth 2.914 ms.",
+        "source": "receipts/future/AUX_CAPABILITY_SCREEN.json",
+    },
+    "aux_group_size_256": {
+        "gb_saved": 0.0, "evidence": "REFUTED",
+        "why": "same screen, same failure mode; MUTUALLY_EXCLUSIVE with "
+               "group_size_1024 in any case. Was carried as 2.331 ms.",
+        "source": "receipts/future/AUX_CAPABILITY_SCREEN.json",
     },
     "aux_u8": {
-        "gb_saved": 0.534773760, "evidence": "PROSPECTIVE",
-        "why_prospective": "same; and it overlaps group_size, they are not additive",
-        "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
-        "overlaps": ["aux_group_size_1024"],
-        "cost": "a refit plus a capability screen",
+        "gb_saved": 0.534773760, "evidence": "FITTED_HELDOUT",
+        "why": "a real u8 encode of the incumbent f16 aux (log scale + linear "
+               "bias, 2-bit codes kept), screened in weight, organ AND logit "
+               "space. argmax agreement 1.00 AND KL 0.003 - actual parity, which "
+               "is why the screen refuses to accept argmax alone. The cheapest "
+               "live byte lever left and the first one to survive a capability "
+               "screen.",
+        "source": "receipts/future/AUX_CAPABILITY_SCREEN.json",
+        "cost": "a native consumer, then a dirty A/B",
+    },
+    "deltanet_widen_f4": {
+        "ms_saved": 0.702, "evidence": "DIRTY_DIAGNOSTIC",
+        "why": "gated-delta layout, measured back-to-back in one process: fused-ba "
+               "1.581 ms against widen_f4 0.879 ms on the same work. Production "
+               "still launches unfused vi-SIMD, so a 628-graph A/B is required "
+               "before this rises above DIRTY_DIAGNOSTIC. Fusing ba_to_decay "
+               "alone saves no GPU ms - fused-ba is about equal to unfused delta.",
+        "source": "receipts/future/DELTANET_ORGAN_DECOMPOSE.json",
+        "cost": "a layout change plus a 628-graph A/B",
     },
     "mlp_entropy_floor": {
         "gb_saved": 0.277697891, "evidence": "PROSPECTIVE",
@@ -112,7 +135,10 @@ SCHOOLS_RUNNING = (
     "mlp full-width structured operator (Monarch/butterfly/distilled control) - "
     "the only reopen left after six r-bottleneck families died",
     "mlp error budget: what relative output error the model actually tolerates",
-    "auxiliary byte levers under a real capability screen",
+    "native consumer for aux_u8, the one byte lever that passed its screen",
+    "cheapen the MLP decode arithmetic: 1.33 FMA/byte down to 0.88",
+    "the DeviceCompiler that the Odyssey NR-NX path now blocks on",
+    "deltanet gated-delta widen_f4 layout, 0.70 ms measured back-to-back",
     "is the MLP kernel ALU-bound or memory-bound",
     "deltanet multi-step authority (the instrument, after the one-step candidate died)",
     "sparse residual concentration curve",

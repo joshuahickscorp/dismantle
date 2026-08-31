@@ -13,12 +13,39 @@ def test_refuted_components_are_excluded_and_named():
 
 
 def test_overlapping_levers_are_not_summed():
-    """aux_u8 and group_size_1024 attack the same 1.07 GB."""
-    both = p.compose(["aux_group_size_1024", "aux_u8"])
-    assert "aux_u8" not in both["components"]
-    assert any("overlaps" in s for s in both["skipped"])
-    # compose() rounds to 4 decimals for the receipt; compare at that precision.
-    assert both["gb_removed"] == round(p.COMPONENTS["aux_group_size_1024"]["gb_saved"], 4)
+    """The guard, held against a synthetic pair.
+
+    It used to be held against aux_u8 and group_size_1024, which attacked the
+    same 1.07 GB. The capability screen then refuted group_size_1024 outright,
+    so that pair no longer exercises the overlap branch - a refuted component is
+    skipped for being refuted, before overlap is ever consulted. Binding the
+    invariant to whichever components happen to overlap today is how a guard
+    quietly stops guarding, so it is bound to a pair this test owns instead.
+    """
+    saved = dict(p.COMPONENTS)
+    try:
+        p.COMPONENTS["_probe_a"] = {"gb_saved": 0.5, "evidence": "PROSPECTIVE"}
+        p.COMPONENTS["_probe_b"] = {
+            "gb_saved": 0.25, "evidence": "PROSPECTIVE", "overlaps": ["_probe_a"],
+        }
+        both = p.compose(["_probe_a", "_probe_b"])
+        assert "_probe_b" not in both["components"]
+        assert any("overlaps" in s for s in both["skipped"])
+        # compose() rounds to 4 decimals for the receipt; compare at that precision.
+        assert both["gb_removed"] == 0.5
+    finally:
+        p.COMPONENTS.clear()
+        p.COMPONENTS.update(saved)
+
+
+def test_the_refuted_auxiliary_rungs_stay_out_of_every_path():
+    """group_size_1024 and _256 failed their capability screen; 2.9 ms was never real."""
+    for cid in ("aux_group_size_1024", "aux_group_size_256"):
+        assert p.COMPONENTS[cid]["evidence"] == "REFUTED"
+        assert p.COMPONENTS[cid]["gb_saved"] == 0.0
+    for row in p.paths():
+        assert "aux_group_size_1024" not in row["components"]
+        assert "aux_group_size_256" not in row["components"]
 
 
 def test_only_path_01_is_qualified():

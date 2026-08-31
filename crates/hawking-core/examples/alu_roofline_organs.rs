@@ -1,5 +1,7 @@
 //! Matched-pair ALU vs memory-system probe for one MLP layer and DeltaNet's
-//! dominant Q4 kernel. Does not mutate the production decode path.
+//! dominant Q4 kernel, plus `--mode deltanet-decompose`: per-kernel GPU
+//! times of the DeltaNet organ as executed, summing to the organ total.
+//! Does not mutate the production decode path.
 //!
 //! ARM A: same bytes and access pattern, decode+dequant+FMA stripped.
 //! ARM B: same per-code arithmetic, first half of K only.
@@ -10,6 +12,11 @@
 //!   workspace/ops/build/rust/release-fast/examples/alu_roofline_organs \
 //!   --artifact-root ~/noetic/NOETIC_PARENT_A \
 //!   --out receipts/future/_MLP_ALU_ROOFLINE_raw.json
+//! ./tools/gpu_lane_lock.sh w2dnresid \
+//!   workspace/ops/build/rust/release-fast/examples/alu_roofline_organs \
+//!   --mode deltanet-decompose \
+//!   --artifact-root ~/noetic/NOETIC_PARENT_A \
+//!   --out receipts/future/_DELTANET_ORGAN_DECOMPOSE_raw.json
 //! ```
 
 use serde_json::{json, Value};
@@ -20,7 +27,8 @@ use std::process;
 
 fn usage() -> &'static str {
     "usage: alu_roofline_organs --artifact-root DIR \
-        [--layer N] [--warmup N] [--reps N] [--out FILE]"
+        [--mode alu|deltanet-decompose] [--layer N] [--warmup N] [--reps N] \
+        [--session-warmup N] [--session-reps N] [--out FILE]"
 }
 
 fn fail(message: impl std::fmt::Display) -> ! {
@@ -30,23 +38,35 @@ fn fail(message: impl std::fmt::Display) -> ! {
 
 struct Args {
     artifact_root: PathBuf,
+    mode: String,
     layer: usize,
     warmup: usize,
     reps: usize,
+    session_warmup: usize,
+    session_reps: usize,
     out: Option<PathBuf>,
 }
 
 fn parse_args() -> Args {
     let mut artifact_root = None;
+    let mut mode = "alu".to_string();
     let mut layer = 0usize;
     let mut warmup = 5usize;
     let mut reps = 11usize;
+    let mut session_warmup = 2usize;
+    let mut session_reps = 7usize;
     let mut out = None;
     let mut args = env::args().skip(1);
     while let Some(flag) = args.next() {
         match flag.as_str() {
             "--artifact-root" => {
                 artifact_root = Some(PathBuf::from(args.next().unwrap_or_else(|| fail(usage()))));
+            }
+            "--mode" => {
+                mode = args.next().unwrap_or_else(|| fail(usage()));
+                if mode != "alu" && mode != "deltanet-decompose" {
+                    fail("--mode must be alu or deltanet-decompose");
+                }
             }
             "--layer" => {
                 layer = args
@@ -69,18 +89,35 @@ fn parse_args() -> Args {
                     .parse()
                     .unwrap_or_else(|_| fail("--reps"));
             }
+            "--session-warmup" => {
+                session_warmup = args
+                    .next()
+                    .unwrap_or_else(|| fail(usage()))
+                    .parse()
+                    .unwrap_or_else(|_| fail("--session-warmup"));
+            }
+            "--session-reps" => {
+                session_reps = args
+                    .next()
+                    .unwrap_or_else(|| fail(usage()))
+                    .parse()
+                    .unwrap_or_else(|_| fail("--session-reps"));
+            }
             "--out" => out = Some(PathBuf::from(args.next().unwrap_or_else(|| fail(usage())))),
             other => fail(format!("unknown {other}; {}", usage())),
         }
     }
-    if reps == 0 {
-        fail("--reps must be > 0");
+    if reps == 0 || session_reps == 0 {
+        fail("--reps and --session-reps must be > 0");
     }
     Args {
         artifact_root: artifact_root.unwrap_or_else(|| fail(usage())),
+        mode,
         layer,
         warmup,
         reps,
+        session_warmup,
+        session_reps,
         out,
     }
 }
@@ -169,7 +206,9 @@ fn main() {
 mod macos {
     use super::*;
     use hawking_core::model::qwen38_geometry::qwen38_layer_name;
+    use hawking_core::metal::CommandBufferTiming;
     use hawking_core::model::qwen38_hybrid_decode::{
+        Qwen38DeltaNetStateKernel, Qwen38HybridDecodeSession, Qwen38MlpFusion,
         QWEN38_MIXED_CATALOG_MAGIC, QWEN38_MIXED_CATALOG_NAME, QWEN38_MIXED_CATALOG_VERSION,
         QWEN38_MIXED_RECORD_SIZE,
     };
@@ -666,7 +705,478 @@ mod macos {
         v
     }
 
+    fn family_arm(
+        label: &str,
+        kernel: &str,
+        bytes: u64,
+        gpu: Vec<u64>,
+        dispatches: u64,
+        extra: Value,
+    ) -> Value {
+        arm_json(label, kernel, bytes, gpu, dispatches, &json!({}), extra)
+    }
+
+    fn time_session_family(
+        session: &Qwen38HybridDecodeSession,
+        family: &str,
+        warmup: usize,
+        reps: usize,
+    ) -> Result<(Vec<u64>, u64, u64), String> {
+        eprintln!("  family {family} warmup={warmup} reps={reps}");
+        for i in 0..warmup {
+            let t = session
+                .measure_isolated_family(family)
+                .map_err(|e| format!("{family} warmup {i}: {e}"))?;
+            eprintln!(
+                "    warmup{i} gpu={:?} disp={}",
+                t.gpu_ns, t.dispatches
+            );
+        }
+        let mut gpu = Vec::with_capacity(reps);
+        let mut disp = 0u64;
+        let mut encoders = 0u64;
+        for i in 0..reps {
+            let t = session
+                .measure_isolated_family(family)
+                .map_err(|e| format!("{family} rep {i}: {e}"))?;
+            let g = t.gpu_ns.ok_or_else(|| {
+                format!("{family} rep {i}: driver did not expose GPUEndTime-GPUStartTime")
+            })?;
+            eprintln!("    rep{i} gpu={g} wait={} disp={}", t.wait_ns, t.dispatches);
+            gpu.push(g);
+            disp = t.dispatches;
+            encoders = t.encoder_count;
+        }
+        Ok((gpu, disp, encoders))
+    }
+
+    fn time_session_custom(
+        label: &str,
+        warmup: usize,
+        reps: usize,
+        mut once: impl FnMut() -> Result<CommandBufferTiming, String>,
+    ) -> Result<(Vec<u64>, u64, u64), String> {
+        eprintln!("  {label} warmup={warmup} reps={reps}");
+        for i in 0..warmup {
+            let t = once()?;
+            eprintln!("    warmup{i} gpu={:?} disp={}", t.gpu_ns, t.dispatches);
+        }
+        let mut gpu = Vec::with_capacity(reps);
+        let mut disp = 0u64;
+        let mut encoders = 0u64;
+        for i in 0..reps {
+            let t = once()?;
+            let g = t
+                .gpu_ns
+                .ok_or_else(|| format!("{label} rep {i}: no GPUEndTime-GPUStartTime"))?;
+            eprintln!("    rep{i} gpu={g} wait={} disp={}", t.wait_ns, t.dispatches);
+            gpu.push(g);
+            disp = t.dispatches;
+            encoders = t.encoder_count;
+        }
+        Ok((gpu, disp, encoders))
+    }
+
+    fn time_q4_arms(
+        queue: &metal::CommandQueue,
+        warmup: usize,
+        reps: usize,
+        prod: &Pipe,
+        strip: &Pipe,
+        half: &Pipe,
+        zero: &Pipe,
+        proj: &Q4Proj,
+        encode: impl Fn(&metal::ComputeCommandEncoderRef, &Pipe, &ArmKind),
+    ) -> (Vec<u64>, Vec<u64>, Vec<u64>, Vec<u64>, Vec<u64>) {
+        let work_half = proj.cols / 2;
+        let time = |n: usize, kind: ArmKind, pipe: &Pipe| {
+            time_cb(queue, n, |enc| encode(enc, pipe, &kind))
+        };
+        let _ = time(warmup, ArmKind::Q4Prod, prod);
+        let prod_ns = time(reps, ArmKind::Q4Prod, prod);
+        let _ = time(warmup, ArmKind::Q4Stripped { work_cols: 0 }, strip);
+        let a_ns = time(reps, ArmKind::Q4Stripped { work_cols: 0 }, strip);
+        let _ = time(
+            warmup,
+            ArmKind::Q4Halfk {
+                work_cols: work_half,
+            },
+            half,
+        );
+        let b_ns = time(
+            reps,
+            ArmKind::Q4Halfk {
+                work_cols: work_half,
+            },
+            half,
+        );
+        let _ = time(warmup, ArmKind::Q4Zero, zero);
+        let zero_ns = time(reps, ArmKind::Q4Zero, zero);
+        let _ = time(
+            warmup,
+            ArmKind::Q4Stripped {
+                work_cols: work_half,
+            },
+            strip,
+        );
+        let a_half_ns = time(
+            reps,
+            ArmKind::Q4Stripped {
+                work_cols: work_half,
+            },
+            strip,
+        );
+        (prod_ns, a_ns, b_ns, zero_ns, a_half_ns)
+    }
+
+    fn q4_organ_json(
+        organ: &str,
+        proj: &Q4Proj,
+        occ: &Value,
+        prod: &Pipe,
+        strip: &Pipe,
+        half: &Pipe,
+        zero: &Pipe,
+        prod_ns: Vec<u64>,
+        a_ns: Vec<u64>,
+        b_ns: Vec<u64>,
+        zero_ns: Vec<u64>,
+        a_half_ns: Vec<u64>,
+    ) -> Value {
+        let half_bytes = proj.weight_bytes / 2;
+        json!({
+            "organ": organ,
+            "kernel": prod.name,
+            "codec": "HQ30UQ4 group64",
+            "projection": {
+                "name": proj.name,
+                "rows": proj.rows,
+                "cols": proj.cols,
+                "group_size": proj.group_size,
+                "groups_per_row": proj.groups_per_row,
+                "weight_bytes": proj.weight_bytes,
+                "code_bytes": proj.code_bytes,
+                "scale_bytes": proj.scale_bytes,
+            },
+            "threads_per_threadgroup": TG,
+            "production": arm_json("production", prod.name, proj.weight_bytes, prod_ns, 1, occ, json!({"cols": proj.cols})),
+            "arm_a_stripped": arm_json("arm_a_stripped", strip.name, proj.weight_bytes, a_ns, 1, occ, json!({"arithmetic": "xor/add sink of codes+scales+x; same access pattern"})),
+            "arm_b_halfk": arm_json("arm_b_halfk", half.name, half_bytes, b_ns, 1, occ, json!({"work_cols": proj.cols / 2})),
+            "arm_a_halfk": arm_json("arm_a_halfk", strip.name, half_bytes, a_half_ns, 1, occ, json!({"role": "DCE proof: stripped arithmetic, half the bytes"})),
+            "zero_load": arm_json("zero_load", zero.name, proj.weight_bytes, zero_ns, 1, occ, json!({"role": "launch+reduction floor; no weight/x loads"})),
+        })
+    }
+
+    fn run_deltanet_decompose(args: &Args) -> Value {
+        let concurrent_start = concurrent_load();
+        eprintln!(
+            "alu_roofline_organs decompose opening {} layer={} alu_warmup={} alu_reps={} session_warmup={} session_reps={}",
+            args.artifact_root.display(),
+            args.layer,
+            args.warmup,
+            args.reps,
+            args.session_warmup,
+            args.session_reps
+        );
+        let catalog = parse_catalog(&args.artifact_root).unwrap_or_else(|e| fail(e));
+        let device = Device::system_default().unwrap_or_else(|| fail("no Metal-capable GPU"));
+        let queue = device.new_command_queue();
+        let pipes = compile(&device).unwrap_or_else(|e| fail(e));
+        let q4_prod = pipes
+            .get("qwen_uniform_q4_group64_matvec_geo_tpr64_tg128")
+            .unwrap();
+        let q4_strip = pipes.get("alu_roofline_q4_geo_tpr64_tg128_stripped").unwrap();
+        let q4_half = pipes.get("alu_roofline_q4_geo_tpr64_tg128_halfk").unwrap();
+        let q4_zero = pipes.get("alu_roofline_q4_geo_tpr64_tg128_zero").unwrap();
+
+        let qkvz_name = qwen38_layer_name(args.layer, "linear_attn.in_proj_qkvz.weight");
+        let ba_name = qwen38_layer_name(args.layer, "linear_attn.in_proj_ba.weight");
+        let out_name = qwen38_layer_name(args.layer, "linear_attn.out_proj.weight");
+        eprintln!("  loading {qkvz_name}");
+        let qkvz = load_q4(&device, &catalog, &qkvz_name).unwrap_or_else(|e| fail(e));
+        eprintln!("  loading {out_name}");
+        let outp = load_q4(&device, &catalog, &out_name).unwrap_or_else(|e| fail(e));
+        eprintln!("  loading {ba_name}");
+        let ba = load_q4(&device, &catalog, &ba_name).unwrap_or_else(|e| fail(e));
+        if qkvz.cols % 2 != 0 || outp.cols % 2 != 0 || ba.cols % 2 != 0 {
+            fail("Q4 cols must be even for ARM B");
+        }
+
+        let encode_one = |enc: &metal::ComputeCommandEncoderRef, pipe: &Pipe, kind: &ArmKind, proj: &Q4Proj| {
+            encode_q4(enc, pipe, proj, kind);
+        };
+
+        eprintln!("  ALU qkvz / out_proj / ba back-to-back (same process)");
+        let qkvz_occ = occupancy(q4_prod, qkvz.rows);
+        let out_occ = occupancy(q4_prod, outp.rows);
+        let ba_occ = occupancy(q4_prod, ba.rows);
+        let (q_prod, q_a, q_b, q_z, q_ah) = time_q4_arms(
+            &queue, args.warmup, args.reps, q4_prod, q4_strip, q4_half, q4_zero, &qkvz,
+            |enc, pipe, kind| encode_one(enc, pipe, kind, &qkvz),
+        );
+        let (o_prod, o_a, o_b, o_z, o_ah) = time_q4_arms(
+            &queue, args.warmup, args.reps, q4_prod, q4_strip, q4_half, q4_zero, &outp,
+            |enc, pipe, kind| encode_one(enc, pipe, kind, &outp),
+        );
+        let (b_prod, b_a, b_b, b_z, b_ah) = time_q4_arms(
+            &queue, args.warmup, args.reps, q4_prod, q4_strip, q4_half, q4_zero, &ba,
+            |enc, pipe, kind| encode_one(enc, pipe, kind, &ba),
+        );
+
+        let alu = json!({
+            "in_proj_qkvz": q4_organ_json("in_proj_qkvz", &qkvz, &qkvz_occ, q4_prod, q4_strip, q4_half, q4_zero, q_prod, q_a, q_b, q_z, q_ah),
+            "out_proj": q4_organ_json("out_proj", &outp, &out_occ, q4_prod, q4_strip, q4_half, q4_zero, o_prod, o_a, o_b, o_z, o_ah),
+            "in_proj_ba": q4_organ_json("in_proj_ba", &ba, &ba_occ, q4_prod, q4_strip, q4_half, q4_zero, b_prod, b_a, b_b, b_z, b_ah),
+        });
+
+        drop(qkvz);
+        drop(outp);
+        drop(ba);
+        drop(pipes);
+        drop(queue);
+
+        eprintln!("  opening hybrid session (production 628-graph fusions)");
+        std::env::set_var("HAWKING_QWEN_RESIDENCY", "1");
+        std::env::remove_var("HAWKING_TCB_TRACE");
+        std::env::remove_var("HAWKING_QWEN38_FUSE_MLP");
+        std::env::remove_var("HAWKING_QWEN38_FUSE_GQA_QKV");
+        std::env::remove_var("HAWKING_QWEN38_FUSE_DN_INPROJ");
+        std::env::remove_var("HAWKING_QWEN38_FUSE_ADD_RMSNORM");
+        std::env::remove_var("HAWKING_QWEN38_FUSE_BA_DELTA");
+        std::env::remove_var("HAWKING_QWEN38_DN_STATE");
+        let open_started = Instant::now();
+        let mut session = Qwen38HybridDecodeSession::open(&args.artifact_root, 64)
+            .unwrap_or_else(|e| fail(e));
+        let session_open_s = open_started.elapsed().as_secs_f64();
+        session.apply_fusion(Qwen38MlpFusion::GateUpSwiglu, true, true);
+        session.set_fuse_add_rmsnorm(true, false);
+        session.set_fuse_ba_delta(false, false);
+        session.set_dn_state_kernel(Qwen38DeltaNetStateKernel::Baseline);
+        eprintln!(
+            "  session open {session_open_s:.3}s dense_w={} theoretical_disp={}",
+            session.dense_w_materialized,
+            session.theoretical_dispatches()
+        );
+
+        let concurrent_session = concurrent_load();
+        let sw = args.session_warmup;
+        let sr = args.session_reps;
+
+        eprintln!("  structural names of as-executed organ");
+        let (named_t, kernel_names) = session
+            .measure_dn_as_executed_named()
+            .unwrap_or_else(|e| fail(e));
+        let mut kernel_hist: HashMap<String, u64> = HashMap::new();
+        for n in &kernel_names {
+            *kernel_hist.entry(n.clone()).or_insert(0) += 1;
+        }
+        let mut kernel_hist_rows: Vec<(String, u64)> =
+            kernel_hist.into_iter().collect();
+        kernel_hist_rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+
+        let mut families = serde_json::Map::new();
+        let push_family = |map: &mut serde_json::Map<String, Value>,
+                           name: &str,
+                           kernel: &str,
+                           bytes: u64,
+                           gpu: Vec<u64>,
+                           disp: u64,
+                           extra: Value| {
+            map.insert(
+                name.to_string(),
+                family_arm(name, kernel, bytes, gpu, disp, extra),
+            );
+        };
+
+        let run_fam = |session: &Qwen38HybridDecodeSession, name: &str| {
+            time_session_family(session, name, sw, sr).unwrap_or_else(|e| fail(e))
+        };
+
+        {
+            eprintln!("  noop_empty warmup={sw} reps={sr}");
+            let mut gpu = Vec::new();
+            let mut disp = 0u64;
+            for i in 0..(sw + sr) {
+                let t = session
+                    .measure_isolated_organ("noop_empty")
+                    .unwrap_or_else(|e| fail(e));
+                let g = t.gpu_ns.unwrap_or(0);
+                eprintln!("    i{i} gpu={g} wait={} disp={}", t.wait_ns, t.dispatches);
+                if i >= sw {
+                    gpu.push(g);
+                    disp = t.dispatches;
+                }
+            }
+            push_family(
+                &mut families,
+                "noop_empty",
+                "empty_cb",
+                0,
+                gpu,
+                disp,
+                json!({"role": "empty command-buffer floor; missing GPU timestamps recorded as 0"}),
+            );
+        }
+
+        let partition = [
+            ("dn_as_executed", "encode_deltanet x 48", 2_961_659_904u64),
+            ("dn_inproj", "pair_concat qkvz+ba x 48", 2_151_632_640u64),
+            ("dn_qkvz", "qkvz Q4 x 48", 2_139_096_960u64),
+            ("dn_ba", "ba Q4 x 48", 12_535_680u64),
+            ("dn_out_proj", "out_proj Q4 x 48", 802_162_560u64),
+            ("rearrange_48", "qwen38_qkvz_rearrange_conv_l2_f32 x 48", 7_864_704u64),
+            ("ba_to_decay_48", "qwen80_ba_to_decay_beta_f32 x 48", 19_200u64),
+            ("gated_rmsnorm_48", "qwen80_deltanet_gated_rmsnorm_tg x 48", 24_960u64),
+            ("dn_residual_rmsnorm", "add_residual_rmsnorm x 48 DN", 983_040u64),
+            ("dn_input_rmsnorm", "layer0 input_layernorm", 20_480u64),
+        ];
+        for (name, kernel, bytes) in partition {
+            let (g, d, enc) = run_fam(&session, name);
+            push_family(
+                &mut families,
+                name,
+                kernel,
+                bytes,
+                g,
+                d,
+                json!({"encoders": enc, "production_628_graph": true}),
+            );
+        }
+
+        let (g, d, enc) = time_session_custom("gated_delta_unfused", sw, sr, || {
+            session
+                .measure_isolated_gated_delta()
+                .map_err(|e| e.to_string())
+        })
+        .unwrap_or_else(|e| fail(e));
+        push_family(
+            &mut families,
+            "gated_delta_unfused",
+            "qwen38_gated_delta_decode_vi_simd x 48",
+            301_989_888,
+            g,
+            d,
+            json!({"encoders": enc, "traffic": "rec_state R+W", "production": true}),
+        );
+
+        session.set_fuse_ba_delta(true, false);
+        let (g, d, enc) = time_session_custom("gated_delta_fused_ba", sw, sr, || {
+            session
+                .measure_isolated_dn_state_update()
+                .map_err(|e| e.to_string())
+        })
+        .unwrap_or_else(|e| fail(e));
+        push_family(
+            &mut families,
+            "gated_delta_fused_ba",
+            "qwen38_gated_delta_decode_vi_simd_ba x 48",
+            301_989_888,
+            g,
+            d,
+            json!({"encoders": enc, "role": "N026 comparator; not on the 628 graph"}),
+        );
+
+        session.set_dn_state_kernel(Qwen38DeltaNetStateKernel::WidenF4);
+        let (g, d, enc) = time_session_custom("gated_delta_widen_f4", sw, sr, || {
+            session
+                .measure_isolated_dn_state_update()
+                .map_err(|e| e.to_string())
+        })
+        .unwrap_or_else(|e| fail(e));
+        push_family(
+            &mut families,
+            "gated_delta_widen_f4",
+            "qwen38_gated_delta_decode_vi_simd_ba_f4 x 48",
+            301_989_888,
+            g,
+            d,
+            json!({"encoders": enc, "role": "layout/ALU probe of the recurrent update"}),
+        );
+        session.set_dn_state_kernel(Qwen38DeltaNetStateKernel::Baseline);
+        session.set_fuse_ba_delta(false, false);
+
+        let rec_elems = session.rec_state_f32_count();
+        let rec_bytes = (rec_elems * 4) as u64;
+        let dest = session
+            .alloc_profile_buffer(rec_bytes as usize)
+            .unwrap_or_else(|e| fail(e));
+        let (g, d, enc) = time_session_custom("rec_state_f32_stream", sw, sr, || {
+            session
+                .measure_f32_stream("rec_state", &dest)
+                .map_err(|e| e.to_string())
+        })
+        .unwrap_or_else(|e| fail(e));
+        push_family(
+            &mut families,
+            "rec_state_f32_stream",
+            "qwen38_f32_stream_probe",
+            rec_bytes,
+            g,
+            d,
+            json!({
+                "encoders": enc,
+                "role": "contiguous copy of rec_state; bandwidth floor for the recurrent buffer",
+                "f32_count": rec_elems,
+            }),
+        );
+
+        let (g, d, enc) = time_session_custom("organ_incomplete_missing_out_proj", sw, sr, || {
+            session
+                .measure_isolated_organ("deltanet")
+                .map_err(|e| e.to_string())
+        })
+        .unwrap_or_else(|e| fail(e));
+        push_family(
+            &mut families,
+            "organ_incomplete_missing_out_proj",
+            "encode_organ_dn_compute (no out_proj)",
+            2_151_632_640,
+            g,
+            d,
+            json!({"encoders": enc, "role": "N026 isolated organ; 288 launches, out_proj billed elsewhere"}),
+        );
+
+        json!({
+            "schema": "hawking.future.deltanet_organ_decompose.raw.v1",
+            "git_head": git_head(),
+            "artifact_root": args.artifact_root.display().to_string(),
+            "layer": args.layer,
+            "warmup": args.warmup,
+            "reps": args.reps,
+            "session_warmup": args.session_warmup,
+            "session_reps": args.session_reps,
+            "session_open_s": session_open_s,
+            "dense_w_materialized": session.dense_w_materialized,
+            "theoretical_dispatches_628_graph": session.theoretical_dispatches(),
+            "timing": "MTLCommandBuffer GPUStartTime/GPUEndTime",
+            "concurrent_load_start": concurrent_start,
+            "concurrent_load": concurrent_session,
+            "absolute_gb_s_are_measured_under_load": true,
+            "production_fusions": {
+                "mlp": "GateUpSwiglu",
+                "fuse_gqa_qkv": true,
+                "fuse_dn_inproj": true,
+                "fuse_add_rmsnorm": true,
+                "fuse_ba_delta": false,
+                "dn_state_kernel": "baseline",
+            },
+            "as_executed_named": {
+                "gpu_ns": named_t.gpu_ns,
+                "dispatches": named_t.dispatches,
+                "encoder_count": named_t.encoder_count,
+                "command_buffers": named_t.command_buffers,
+                "kernel_names_in_order": kernel_names,
+                "kernel_histogram": kernel_hist_rows.iter().map(|(k, n)| json!({"kernel": k, "count": n})).collect::<Vec<_>>(),
+            },
+            "alu_matched_pair": alu,
+            "families": families,
+        })
+    }
+
     pub fn run(args: Args) -> Value {
+        if args.mode == "deltanet-decompose" {
+            return run_deltanet_decompose(&args);
+        }
         let concurrent = concurrent_load();
         eprintln!(
             "alu_roofline_organs opening {} layer={} warmup={} reps={}",

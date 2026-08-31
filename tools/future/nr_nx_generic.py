@@ -86,6 +86,15 @@ SLEEPING = "SLEEPING"
 # A skipped stage is how a pipeline pretends to finish. The constructor refuses it.
 FORBIDDEN_STAGE_STATUS = frozenset({"SKIPPED", "skip", "pending", "PENDING", "READY", "ready"})
 
+# KernelPlanner occupying kinds. A role-name hit in KERNEL_LIBRARY is never COMPILED.
+NATIVE_UNMEASURED = "NATIVE_UNMEASURED"
+COMPILED = "COMPILED"
+KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE = "PLAN-THEN-COMPILE"
+KERNEL_PLANNER_ROUTE_SHAPE_PARAMETRIC = "SHAPE-PARAMETRIC"
+NAME_IS_NOT_A_COMPILED_KERNEL = (
+    "A shared organ name is not a compiled kernel for this body."
+)
+
 STAGE_ORDER: tuple[str, ...] = (
     "SpecimenSelect",
     "SpecimenPresent",
@@ -996,10 +1005,13 @@ def callable_on(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
             "; ".join(adaptation.get("missing") or ["no parameterized SwiGLU collapse"])
         ),
     )
+    lib_ok, lib_why = kernel_library_is_readable()
     add(
         "KernelPlanner",
-        False,
-        "KERNEL_LIBRARY has no specimen field and no shape-matched kernels for this specimen",
+        bool(lib_ok and probe.get("ok")),
+        None
+        if lib_ok and probe.get("ok")
+        else (lib_why or "no specimen; a kernel plan is not invented"),
     )
     add(
         "DeviceCompiler",
@@ -2029,68 +2041,472 @@ def stage_physical_graph_compiler(
     )
 
 
-def stage_kernel_planner(organs: Sequence[str]) -> dict[str, Any]:
+def kernel_library_is_readable(doc: Mapping[str, Any] | None = None) -> tuple[bool, str | None]:
+    """True when a kernel library document can be read. Absence is not an empty success."""
+    if isinstance(doc, Mapping) and isinstance(doc.get("kernels"), list):
+        return True, None
     path = nx_audit.evidence_path(REL_KERNELS)
     if path is None:
+        return False, (
+            "KERNEL_LIBRARY.json is not reachable via evidence_path; "
+            "not treated as empty success"
+        )
+    return True, None
+
+
+def load_kernel_library(
+    doc: Mapping[str, Any] | None = None,
+) -> tuple[dict[str, Any] | None, str | None, str | None]:
+    if isinstance(doc, Mapping) and isinstance(doc.get("kernels"), list):
+        return dict(doc), "caller", None
+    path = nx_audit.evidence_path(REL_KERNELS)
+    if path is None:
+        return None, None, (
+            "KERNEL_LIBRARY.json is not reachable via evidence_path; "
+            "not treated as empty success"
+        )
+    return load_json(path), str(path), None
+
+
+def organ_shapes_from_config(cfg: Mapping[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Per-organ extents derived from this specimen's config. Missing fields stay missing."""
+    if not isinstance(cfg, Mapping):
+        return {}
+    hidden = cfg.get("hidden_size")
+    intermediate = cfg.get("intermediate_size") or cfg.get("moe_intermediate_size")
+    vocab = cfg.get("vocab_size")
+    n_q = cfg.get("num_attention_heads")
+    n_kv = cfg.get("num_key_value_heads")
+    head_dim = cfg.get("head_dim")
+    out: dict[str, dict[str, Any]] = {}
+    if isinstance(hidden, int) and hidden > 0 and isinstance(intermediate, int) and intermediate > 0:
+        out["mlp_gate_up"] = {
+            "rows": intermediate,
+            "cols": hidden,
+            "extents": [intermediate, hidden],
+            "from": "intermediate_size x hidden_size",
+        }
+        out["mlp_down"] = {
+            "rows": hidden,
+            "cols": intermediate,
+            "extents": [hidden, intermediate],
+            "from": "hidden_size x intermediate_size",
+        }
+    if isinstance(hidden, int) and hidden > 0:
+        out["rmsnorm"] = {
+            "cols": hidden,
+            "extents": [hidden],
+            "from": "hidden_size",
+        }
+        if isinstance(vocab, int) and vocab > 0:
+            out["embed"] = {
+                "rows": vocab,
+                "cols": hidden,
+                "extents": [vocab, hidden],
+                "from": "vocab_size x hidden_size",
+            }
+            out["lm_head"] = {
+                "rows": vocab,
+                "cols": hidden,
+                "extents": [vocab, hidden],
+                "from": "vocab_size x hidden_size",
+            }
+        if isinstance(n_q, int) and n_q > 0 and isinstance(head_dim, int) and head_dim > 0:
+            q_rows = n_q * head_dim
+            extents = [q_rows, hidden]
+            gqa: dict[str, Any] = {
+                "q_rows": q_rows,
+                "cols": hidden,
+                "head_dim": head_dim,
+                "from": "num_attention_heads*head_dim x hidden_size",
+            }
+            if isinstance(n_kv, int) and n_kv > 0:
+                kv_rows = n_kv * head_dim
+                gqa["kv_rows"] = kv_rows
+                extents = [q_rows, kv_rows, hidden]
+            gqa["extents"] = extents
+            out["gqa_attention"] = gqa
+    return out
+
+
+def _kernel_specimen_id(kernel: Mapping[str, Any]) -> str | None:
+    for key in ("specimen", "specimen_id", "specimen_identity"):
+        raw = kernel.get(key)
+        if isinstance(raw, str) and raw.strip():
+            return raw
+    return None
+
+
+def _compiled_identity_present(kernel: Mapping[str, Any]) -> bool:
+    ci = kernel.get("compiled_identity")
+    if not isinstance(ci, Mapping):
+        return False
+    if ci.get("kind") == "ABSENT":
+        return False
+    if ci.get("value") in (None, "", [], {}):
+        return False
+    return True
+
+
+def _declared_specialized_cols(kernel: Mapping[str, Any]) -> int | None:
+    spec = kernel.get("specialization")
+    if not isinstance(spec, Mapping) or "specialized_cols" not in spec:
+        return None
+    raw = spec.get("specialized_cols")
+    return int(raw) if isinstance(raw, int) else None
+
+
+def _organ_extents(shape: Mapping[str, Any] | None) -> set[int]:
+    if not isinstance(shape, Mapping):
+        return set()
+    raw = shape.get("extents")
+    if isinstance(raw, list):
+        return {int(x) for x in raw if isinstance(x, int)}
+    out: set[int] = set()
+    for key in ("rows", "cols", "q_rows", "kv_rows"):
+        val = shape.get(key)
+        if isinstance(val, int):
+            out.add(val)
+    return out
+
+
+def _declared_parametric_range(kernel: Mapping[str, Any]) -> bool:
+    """True only when the kernel wrote a range/constraint object. Absence is not a wildcard."""
+    spec = kernel.get("specialization")
+    if not isinstance(spec, Mapping):
+        return False
+    for key in ("shape_constraints", "cols_range", "min_cols", "max_cols", "accepted_shapes"):
+        if key in spec and spec.get(key) not in (None, "", [], {}):
+            return True
+    constraints = kernel.get("shape_constraints")
+    return bool(constraints)
+
+
+def is_compiled_kernel_for_body(
+    kernel: Mapping[str, Any],
+    *,
+    specimen_id: str | None,
+    organ: str,
+    organ_shape: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """A shared organ_identity is never a compiled kernel for this body.
+
+    The kernel must (1) role-match, (2) carry a present compiled_identity, and
+    (3) carry this specimen's id or declared shape constraints this organ
+    satisfies. Undeclared specialized_cols is not a parametric wildcard.
+    """
+    role_match = kernel.get("organ_identity") == organ
+    id_match = bool(specimen_id) and _kernel_specimen_id(kernel) == specimen_id
+    specialized_cols = _declared_specialized_cols(kernel)
+    extents = _organ_extents(organ_shape)
+    shape_match = specialized_cols is not None and specialized_cols in extents
+    compiled = _compiled_identity_present(kernel)
+    ok = bool(role_match and compiled and (id_match or shape_match))
+    if ok:
+        why = (
+            "compiled kernel for this body: role matches and compiled_identity is "
+            f"present and {'specimen id matches' if id_match else 'declared shape constraints are satisfied'}"
+        )
+    elif not role_match:
+        why = (
+            f"organ_identity={kernel.get('organ_identity')!r} does not serve organ={organ!r}"
+        )
+    else:
+        why = (
+            f"{NAME_IS_NOT_A_COMPILED_KERNEL} "
+            f"specimen_id_match={id_match} shape_constraints_satisfied={shape_match} "
+            f"compiled_identity_present={compiled} specialized_cols={specialized_cols!r} "
+            f"organ_extents={sorted(extents)} kernel_specimen={_kernel_specimen_id(kernel)!r}"
+        )
+    return {
+        "ok": ok,
+        "role_match": role_match,
+        "specimen_id_match": id_match,
+        "shape_constraints_satisfied": shape_match,
+        "compiled_identity_present": compiled,
+        "specialized_cols": specialized_cols,
+        "parametric_range_declared": _declared_parametric_range(kernel),
+        "kernel_identity": kernel.get("kernel_identity"),
+        "organ_identity": kernel.get("organ_identity"),
+        "why": why,
+    }
+
+
+def kernel_planner_route(
+    kernels: Sequence[Mapping[str, Any]],
+    *,
+    specimen_id: str | None,
+    organ_shapes: Mapping[str, Mapping[str, Any]],
+    library_specimen_field: Any,
+) -> dict[str, Any]:
+    """Choose SHAPE-PARAMETRIC vs PLAN-THEN-COMPILE from what the library actually wrote."""
+    entries = [k for k in kernels if isinstance(k, Mapping)]
+    n = len(entries)
+    n_compiled = sum(1 for k in entries if _compiled_identity_present(k))
+    n_specimen_bound = sum(1 for k in entries if _kernel_specimen_id(k))
+    n_parametric_range = sum(1 for k in entries if _declared_parametric_range(k))
+    declared_cols = sorted(
+        {c for k in entries if (c := _declared_specialized_cols(k)) is not None}
+    )
+    specimen_extents = sorted(
+        {
+            v
+            for shape in organ_shapes.values()
+            for v in _organ_extents(shape)
+        }
+    )
+    shape_overlap = sorted(set(declared_cols) & set(specimen_extents))
+    # SHAPE-PARAMETRIC is the real fix only if kernels declare the constraints
+    # they satisfy, a compiled identity exists, and this body meets them.
+    # Omitting specialized_cols is not a declared parametric contract.
+    shape_parametric = bool(
+        n_compiled > 0
+        and n_parametric_range > 0
+        and (bool(shape_overlap) or n_specimen_bound > 0)
+    )
+    route = (
+        KERNEL_PLANNER_ROUTE_SHAPE_PARAMETRIC
+        if shape_parametric
+        else KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE
+    )
+    why = (
+        f"{route}: library specimen_field={library_specimen_field!r}; "
+        f"{n_compiled}/{n} kernels carry a present compiled_identity; "
+        f"{n_specimen_bound}/{n} carry a specimen id; "
+        f"{n_parametric_range}/{n} declare a parametric shape range; "
+        f"declared specialized_cols={declared_cols}; "
+        f"this specimen's organ extents={specimen_extents}; "
+        f"shape overlap={shape_overlap}. "
+        + (
+            "Kernels declare constraints this body satisfies and are compiled; "
+            "matching those constraints rather than a specimen id."
+            if shape_parametric
+            else (
+                "Kernels in this library are parent-shape specializations or have "
+                "no declared shape contract, and none are compiled. The generic "
+                "pipeline emits a NATIVE_UNMEASURED plan for an unseen body rather "
+                "than claiming a compiled kernel exists."
+            )
+        )
+    )
+    return {
+        "route": route,
+        "why": why,
+        "n_kernels": n,
+        "n_compiled_identity_present": n_compiled,
+        "n_specimen_bound": n_specimen_bound,
+        "n_parametric_range_declared": n_parametric_range,
+        "declared_specialized_cols": declared_cols,
+        "specimen_extents": specimen_extents,
+        "shape_overlap": shape_overlap,
+        "library_specimen_field": library_specimen_field,
+        "specimen_id": specimen_id,
+    }
+
+
+def plan_kernels_for_specimen(
+    organs: Sequence[str],
+    *,
+    specimen_id: str | None,
+    config: Mapping[str, Any] | None,
+    kernels: Sequence[Mapping[str, Any]],
+    library_specimen_field: Any = None,
+) -> dict[str, Any]:
+    """Emit a kernel plan for this body. Never promotes a role-name match to COMPILED."""
+    organ_names = [str(o) for o in organs if o]
+    shapes = organ_shapes_from_config(config)
+    entries = [k for k in kernels if isinstance(k, Mapping)]
+    route = kernel_planner_route(
+        entries,
+        specimen_id=specimen_id,
+        organ_shapes=shapes,
+        library_specimen_field=library_specimen_field,
+    )
+    lib_organs = sorted(
+        {str(k.get("organ_identity")) for k in entries if k.get("organ_identity")}
+    )
+    intersection = sorted(set(organ_names) & set(lib_organs))
+    plan: list[dict[str, Any]] = []
+    n_compiled = 0
+    n_unmeasured = 0
+    n_name_refused = 0
+    for organ in organ_names:
+        role_matched = [k for k in entries if k.get("organ_identity") == organ]
+        judgements = [
+            is_compiled_kernel_for_body(
+                k,
+                specimen_id=specimen_id,
+                organ=organ,
+                organ_shape=shapes.get(organ),
+            )
+            for k in role_matched
+        ]
+        compiled = [j for j in judgements if j.get("ok") is True]
+        name_refused = [
+            j
+            for j in judgements
+            if j.get("role_match") is True and j.get("ok") is not True
+        ]
+        if compiled:
+            occupying_kind = COMPILED
+            n_compiled += 1
+            occupying_why = compiled[0]["why"]
+        else:
+            occupying_kind = NATIVE_UNMEASURED
+            n_unmeasured += 1
+            occupying_why = (
+                f"{NAME_IS_NOT_A_COMPILED_KERNEL} "
+                f"{len(role_matched)} role-matched kernel(s) for {organ!r}; "
+                f"{len(compiled)} compiled for this body. Plan occupies "
+                f"{NATIVE_UNMEASURED} rather than claiming a compiled kernel."
+            )
+        if name_refused:
+            n_name_refused += 1
+        plan.append(
+            {
+                "organ": organ,
+                "status": occupying_kind,
+                "occupying": {
+                    "kind": occupying_kind,
+                    "compiled_kernel": None
+                    if not compiled
+                    else compiled[0].get("kernel_identity"),
+                    "science_mark": "COMPILE_TIME_SCIENCE_ONLY",
+                },
+                "specimen_shape": shapes.get(organ),
+                "n_role_matched": len(role_matched),
+                "n_compiled_for_this_body": len(compiled),
+                "name_is_not_a_compiled_kernel": bool(name_refused),
+                "role_matched_kernel_ids": [k.get("kernel_identity") for k in role_matched],
+                "compiled_kernel_ids": [j.get("kernel_identity") for j in compiled],
+                "refusals": [j.get("why") for j in name_refused],
+                "why": occupying_why,
+            }
+        )
+    return {
+        "route": route["route"],
+        "route_why": route["why"],
+        "route_evidence": route,
+        "specimen_id": specimen_id,
+        "n_organs": len(plan),
+        "n_compiled": n_compiled,
+        "n_native_unmeasured": n_unmeasured,
+        "n_name_is_not_a_compiled_kernel": n_name_refused,
+        "library_organs": lib_organs,
+        "specimen_organs": list(organ_names),
+        "intersection": intersection,
+        "organ_shapes": shapes,
+        "plan": plan,
+        "name_is_not_a_compiled_kernel": n_name_refused > 0,
+        "names_this_specimen": False,
+    }
+
+
+def stage_kernel_planner(
+    organs: Sequence[str],
+    *,
+    specimen_id: str | None = None,
+    config: Mapping[str, Any] | None = None,
+    library_doc: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    doc, path, err = load_kernel_library(library_doc)
+    if doc is None:
         return _stage(
             "KernelPlanner",
             REFUSED,
-            why="KERNEL_LIBRARY.json is not reachable via evidence_path; not treated as empty success",
+            why=err or "KERNEL_LIBRARY.json is not reachable via evidence_path; not treated as empty success",
             invoked=True,
             error="missing_kernel_library",
         )
-    doc = load_json(path)
-    kernels = doc.get("kernels") or []
-    lib_organs = sorted(
-        {
-            k.get("organ_identity")
-            for k in kernels
-            if isinstance(k, Mapping) and k.get("organ_identity")
-        }
-    )
-    specimen_organs = set(organs)
-    intersection = sorted(specimen_organs & set(lib_organs))
-    matched = []
-    for k in kernels:
-        if not isinstance(k, Mapping):
-            continue
-        org = k.get("organ_identity")
-        if org in specimen_organs:
-            matched.append(
-                {
-                    "kernel_identity": k.get("kernel_identity"),
-                    "organ_identity": org,
-                    "representation_identity": k.get("representation_identity"),
-                    "machine_identity": k.get("machine_identity"),
-                }
-            )
+    kernels = [k for k in (doc.get("kernels") or []) if isinstance(k, Mapping)]
     specimen_field = doc.get("specimen")
+    organ_names = [str(o) for o in organs if o]
+    if not organ_names:
+        return _stage(
+            "KernelPlanner",
+            FAILED,
+            why="no organs to plan; a plan for an empty inventory is not a plan",
+            invoked=True,
+            error="no_organs",
+            evidence={
+                "path": path,
+                "n_kernels": doc.get("n_kernels") if doc.get("n_kernels") is not None else len(kernels),
+                "specimen_field": specimen_field,
+            },
+        )
+    planned = plan_kernels_for_specimen(
+        organ_names,
+        specimen_id=specimen_id,
+        config=config,
+        kernels=kernels,
+        library_specimen_field=specimen_field,
+    )
+    role_matched = [
+        {
+            "kernel_identity": k.get("kernel_identity"),
+            "organ_identity": k.get("organ_identity"),
+            "representation_identity": k.get("representation_identity"),
+            "specialized_cols": _declared_specialized_cols(k),
+            "compiled_identity_kind": (
+                (k.get("compiled_identity") or {}).get("kind")
+                if isinstance(k.get("compiled_identity"), Mapping)
+                else None
+            ),
+            "kernel_specimen": _kernel_specimen_id(k),
+        }
+        for k in kernels
+        if k.get("organ_identity") in set(organ_names)
+    ]
+    n_unmeasured = planned["n_native_unmeasured"]
+    n_compiled = planned["n_compiled"]
+    why = (
+        f"{planned['route']}: KERNEL_LIBRARY.json was read and a kernel plan was "
+        f"emitted for this unseen body ({specimen_id!r}). "
+        f"role intersection={planned['intersection']}. "
+        f"{len(role_matched)} role-matched kernels; {n_compiled} compiled for this "
+        f"body; {n_unmeasured} organ(s) occupy {NATIVE_UNMEASURED}. "
+        f"{NAME_IS_NOT_A_COMPILED_KERNEL} "
+        f"specimen_field={specimen_field!r}. {planned['route_why']}"
+    )
     return _stage(
         "KernelPlanner",
-        FAILED,
-        why=(
-            "KERNEL_LIBRARY.json was read and compared to this specimen's organs. "
-            f"role intersection={intersection}. None of the {len(matched)} role-matched "
-            "kernels carry this specimen's id or shapes. A shared organ name is not a "
-            "compiled kernel for this body. specimen_field="
-            f"{specimen_field!r}"
-        ),
+        PASSED,
+        why=why,
         invoked=True,
         evidence={
-            "path": str(path),
+            "path": path,
             "n_kernels": doc.get("n_kernels") if doc.get("n_kernels") is not None else len(kernels),
-            "library_organs": lib_organs,
-            "specimen_organs": sorted(specimen_organs),
-            "intersection": intersection,
-            "role_matched_kernels": matched,
+            "library_organs": planned["library_organs"],
+            "specimen_organs": planned["specimen_organs"],
+            "intersection": planned["intersection"],
+            "role_matched_kernels": role_matched,
             "specimen_field": specimen_field,
             "names_this_specimen": False,
+            "route": planned["route"],
+            "route_why": planned["route_why"],
+            "route_evidence": planned["route_evidence"],
+            "plan": planned["plan"],
+            "n_compiled": n_compiled,
+            "n_native_unmeasured": n_unmeasured,
+            "n_name_is_not_a_compiled_kernel": planned["n_name_is_not_a_compiled_kernel"],
+            "name_is_not_a_compiled_kernel": planned["name_is_not_a_compiled_kernel"],
+            "organ_shapes": planned["organ_shapes"],
+            "claim_boundary": (
+                "COMPILE_TIME_SCIENCE_ONLY kernel plan. NATIVE_UNMEASURED is not a "
+                "compiled kernel, not a hardware measurement, not physical EBPW."
+            ),
         },
     )
 
 
-def stage_device_compiler(native: Mapping[str, Any], *, family: Any = None) -> dict[str, Any]:
+def stage_device_compiler(
+    native: Mapping[str, Any],
+    *,
+    family: Any = None,
+    kernel_plan: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     blocked = dict((nc.BLOCKED.get("DeviceCompiler") or {}) if nc is not None else {})
+    plan = kernel_plan if isinstance(kernel_plan, Mapping) else {}
     return _stage(
         "DeviceCompiler",
         BLOCKED,
@@ -2101,7 +2517,12 @@ def stage_device_compiler(native: Mapping[str, Any], *, family: Any = None) -> d
             "GGUF match arms are "
             f"{native.get('architectures')!r}; qwen3 dense is "
             f"{'present' if _native_includes_qwen3_dense(native) else 'absent'} "
-            f"(qwen3moe is a different family). adapted family={family!r}"
+            f"(qwen3moe is a different family). adapted family={family!r}. "
+            f"KernelPlanner handed a {plan.get('route') or 'no'} plan covering "
+            f"{len(plan.get('plan') or [])} organ(s) "
+            f"(compiled={plan.get('n_compiled')}, "
+            f"native_unmeasured={plan.get('n_native_unmeasured')}); "
+            "there is still no compiler that can lower that plan"
         ),
         invoked=True,
         error="no_entry_point",
@@ -2110,6 +2531,11 @@ def stage_device_compiler(native: Mapping[str, Any], *, family: Any = None) -> d
             "noetic_compiler_missing_capability": blocked.get("missing_capability"),
             "copied_as_this_specimen": False,
             "adapted_family": family,
+            "kernel_plan_received": bool(plan),
+            "kernel_plan_route": plan.get("route"),
+            "kernel_plan_n_organs": len(plan.get("plan") or []),
+            "kernel_plan_n_compiled": plan.get("n_compiled"),
+            "kernel_plan_n_native_unmeasured": plan.get("n_native_unmeasured"),
             "native": {
                 "path": native.get("path"),
                 "architectures": native.get("architectures"),
@@ -2423,8 +2849,19 @@ def run(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
         for n in organ_nodes
         if isinstance(n, Mapping) and n.get("organ")
     ]
-    stages.append(stage_kernel_planner(organ_names))
-    stages.append(stage_device_compiler(native, family=adaptation.get("family")))
+    kp = stage_kernel_planner(
+        organ_names,
+        specimen_id=None if not choice.get("id") else str(choice.get("id")),
+        config=cfg,
+    )
+    stages.append(kp)
+    stages.append(
+        stage_device_compiler(
+            native,
+            family=adaptation.get("family"),
+            kernel_plan=kp.get("evidence") if isinstance(kp.get("evidence"), Mapping) else None,
+        )
+    )
     stages.append(stage_noetic_executable(choice))
 
     packed_nx = None
@@ -2497,13 +2934,18 @@ def assemble() -> dict[str, Any]:
     pgc_passed = bool(pgc_row and pgc_row.get("status") == PASSED)
     sleeping = emit_sleeping_lower(first_nx_lower or first, native, pgc_passed=pgc_passed)
 
+    kp_row = next((s for s in stages if s["stage"] == "KernelPlanner"), None)
+    kp_ev = kp_row.get("evidence") if isinstance(kp_row, Mapping) else None
+    kp_ev = kp_ev if isinstance(kp_ev, Mapping) else {}
     launch_still_flash = (
         "odyssey_launch._eval_nr_nx keys nr_nx_path_callable on "
         "GENERIC_NR_NX_PIPELINE_CALLABLE from this module. FLASH_NX_READY is a "
-        "separate field. Parameterizing tensor names closed the Doctor/PGC naming "
-        "miss; it did not pack an NX. The generic path is still not callable, so "
-        "the launch criterion stays unmet for a precise remaining reason, not the "
-        "original hardcoded-name reason"
+        "separate field. PLAN-THEN-COMPILE closed the KernelPlanner stall by "
+        "emitting a NATIVE_UNMEASURED plan for an unseen body without treating a "
+        "shared organ name as a compiled kernel. It did not pack an NX. The "
+        "generic path is still not callable because DeviceCompiler has no entry "
+        "point, so the launch criterion stays unmet for that remaining reason, "
+        "not the original name-is-not-a-kernel stall"
     )
 
     doc: dict[str, Any] = {
@@ -2537,6 +2979,8 @@ def assemble() -> dict[str, Any]:
         "stages": stages,
         "first_failing_stage": first,
         "first_nx_lower_failure": first_nx_lower,
+        "kernel_planner_route": kp_ev.get("route"),
+        "kernel_planner_route_why": kp_ev.get("route_why"),
         "flash": flash,
         "launch_criterion_still_flash_specific": launch_still_flash,
         "sleeping_workunit": sleeping,
@@ -2553,14 +2997,14 @@ def assemble() -> dict[str, Any]:
             "Doctor": "parameterized _doctor_stats; doctor_tournament.probes() not called (PARENT hardcoded)",
             "RepresentationPlanner": "tools.headless.representation_library.seed (rehearse not called)",
             "PhysicalGraphCompiler": "parameterized gate_up_swiglu + compiler main() still hardcoded",
-            "KernelPlanner": "receipts/headless/KERNEL_LIBRARY.json (no specimen field)",
+            "KernelPlanner": "tools.future.nr_nx_generic.plan_kernels_for_specimen (PLAN-THEN-COMPILE; name is not a compiled kernel)",
             "DeviceCompiler": "NO CALLABLE; tools/odyssey/noetic_compiler.py BLOCKED map",
             "NoeticExecutable": "tools/headless/first_noetic_executable.py (Qwen38 27B only)",
             "native_loader": NATIVE_LOADER,
             "nx_verifier": "tools.future.flash_nx_audit.py:check_nx",
         },
         "recovered_implementation": [
-            "tools/future/nr_nx_generic.py — EXTENDED: probe_specimen/adapt/callable_on/run; previous stage driver kept and parameterized",
+            "tools/future/nr_nx_generic.py — EXTENDED: probe_specimen/adapt/callable_on/run plus PLAN-THEN-COMPILE KernelPlanner; previous stage driver kept and parameterized",
             "tools/future/nr_nx_path.py — seven-requirement map, SLEEPING units, physical_ebpw refusal; EXTENDED, not forked",
             "tools/future/flash_nx_audit.py — check_nx, evidence_path, METADATA_ONLY, synthetic_promotable_nx",
             "tools/future/flash_nr_complete.py — composition NR is not serialized_nr_information",
@@ -2582,6 +3026,7 @@ def assemble() -> dict[str, Any]:
             "Doctor CPU preconditions run on this specimen's tensors; compiler PARENT probes are overlap evidence only",
             "PhysicalGraphCompiler SwiGLU collapse runs on dense single-shard names; compiler main() remains hardcoded and is recorded as such",
             "RepresentationPlanner seeds from representation_library on local organs; rehearse() is not called (it would fetch)",
+            "KernelPlanner emits a NATIVE_UNMEASURED plan for an unseen body (PLAN-THEN-COMPILE); a shared organ name is still not a compiled kernel",
             "GENERIC_NR_NX_PIPELINE_CALLABLE stays False: no packed NX was produced",
         ],
         "negative_findings": [
@@ -2589,7 +3034,7 @@ def assemble() -> dict[str, Any]:
             "FLASH_NX_READY is False; FLASH_COMPLETE_V0.nx remains a metadata seal of a different model",
             "doctor_tournament.probes() is still hardcoded to Qwen3.8-27B PARENT; it was not called",
             "physical_graph_compiler.main() still requires model.safetensors.index.json, an X_layer capture, and MoE expert tensors",
-            "KERNEL_LIBRARY.json has no specimen field; role-name overlap is not a kernel for this body",
+            "KERNEL_LIBRARY.json has no specimen field and 0 present compiled_identity values; role-name overlap is still not a compiled kernel for this body, now recorded as NATIVE_UNMEASURED rather than stalling the planner",
             "native engine match arms include qwen2 and qwen3moe, not dense qwen3, not falcon_h1",
             "no generic NX packer; first_noetic_executable is a 27B mix",
             "no physical EBPW was written",
@@ -2599,7 +3044,7 @@ def assemble() -> dict[str, Any]:
             "that editing tools/odyssey/physical_graph_compiler.py to accept dense names would be accepted by Codex",
             "that adding a qwen3 GGUF match arm would load this safetensors specimen",
             "protected complete-token performance or physical EBPW",
-            "that Odyssey I can launch; nr_nx_path_callable stays unmet until a real NX exists",
+            "that Odyssey I can launch; nr_nx_path_callable stays unmet until DeviceCompiler exists and a real NX is packed",
         ],
         "next_workunits": [
             {

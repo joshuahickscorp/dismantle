@@ -146,7 +146,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T22:21:50Z",
+  "recorded_at": "2026-08-31T08:15:45Z",
   "recorded_by": "tools/future/nr_nx_generic.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -156,7 +156,7 @@
   "ArchitectureRecognizer": "tools/odyssey/arch_recognizer.py:recognize",
   "DeviceCompiler": "NO CALLABLE; tools/odyssey/noetic_compiler.py BLOCKED map",
   "Doctor": "parameterized _doctor_stats; doctor_tournament.probes() not called (PARENT hardcoded)",
-  "KernelPlanner": "receipts/headless/KERNEL_LIBRARY.json (no specimen field)",
+  "KernelPlanner": "tools.future.nr_nx_generic.plan_kernels_for_specimen (PLAN-THEN-COMPILE; name is not a compiled kernel)",
   "NoeticExecutable": "tools/headless/first_noetic_executable.py (Qwen38 27B only)",
   "OrganGraph": "tools/odyssey/physical_graph_compiler.py:organ_graph",
   "PhysicalGraphCompiler": "parameterized gate_up_swiglu + compiler main() still hardcoded",
@@ -171,16 +171,16 @@
  "evidence_class": "STATIC_ONLY",
  "facts_are_independent": true,
  "first_failing_stage": {
-  "error": null,
-  "stage": "KernelPlanner",
-  "status": "FAILED",
-  "why": "KERNEL_LIBRARY.json was read and compared to this specimen's organs. role intersection=['gqa_attention', 'mlp_down', 'mlp_gate_up']. None of the 16 role-matched kernels carry this specimen's id or shapes. A shared organ name is not a compiled kernel for this body. specimen_field=None"
+  "error": "no_entry_point",
+  "stage": "DeviceCompiler",
+  "status": "BLOCKED",
+  "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan"
  },
  "first_nx_lower_failure": {
   "error": "no_entry_point",
   "stage": "DeviceCompiler",
   "status": "BLOCKED",
-  "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'"
+  "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan"
  },
  "flash": {
   "FLASH_NX_READY": false,
@@ -206,11 +206,14 @@
   "Doctor CPU preconditions run on this specimen's tensors; compiler PARENT probes are overlap evidence only",
   "PhysicalGraphCompiler SwiGLU collapse runs on dense single-shard names; compiler main() remains hardcoded and is recorded as such",
   "RepresentationPlanner seeds from representation_library on local organs; rehearse() is not called (it would fetch)",
+  "KernelPlanner emits a NATIVE_UNMEASURED plan for an unseen body (PLAN-THEN-COMPILE); a shared organ name is still not a compiled kernel",
   "GENERIC_NR_NX_PIPELINE_CALLABLE stays False: no packed NX was produced"
  ],
  "gpu_authority": false,
  "is_a_measurement": false,
- "launch_criterion_still_flash_specific": "odyssey_launch._eval_nr_nx keys nr_nx_path_callable on GENERIC_NR_NX_PIPELINE_CALLABLE from this module. FLASH_NX_READY is a separate field. Parameterizing tensor names closed the Doctor/PGC naming miss; it did not pack an NX. The generic path is still not callable, so the launch criterion stays unmet for a precise remaining reason, not the original hardcoded-name reason",
+ "kernel_planner_route": "PLAN-THEN-COMPILE",
+ "kernel_planner_route_why": "PLAN-THEN-COMPILE: library specimen_field=None; 0/17 kernels carry a present compiled_identity; 0/17 carry a specimen id; 0/17 declare a parametric shape range; declared specialized_cols=[5120, 17408]; this specimen's organ extents=[1024, 2048, 3072, 151936]; shape overlap=[]. Kernels in this library are parent-shape specializations or have no declared shape contract, and none are compiled. The generic pipeline emits a NATIVE_UNMEASURED plan for an unseen body rather than claiming a compiled kernel exists.",
+ "launch_criterion_still_flash_specific": "odyssey_launch._eval_nr_nx keys nr_nx_path_callable on GENERIC_NR_NX_PIPELINE_CALLABLE from this module. FLASH_NX_READY is a separate field. PLAN-THEN-COMPILE closed the KernelPlanner stall by emitting a NATIVE_UNMEASURED plan for an unseen body without treating a shared organ name as a compiled kernel. It did not pack an NX. The generic path is still not callable because DeviceCompiler has no entry point, so the launch criterion stays unmet for that remaining reason, not the original name-is-not-a-kernel stall",
  "measurement_class": "STATIC_ONLY",
  "native_engine": {
   "architectures": [
@@ -245,7 +248,7 @@
   "FLASH_NX_READY is False; FLASH_COMPLETE_V0.nx remains a metadata seal of a different model",
   "doctor_tournament.probes() is still hardcoded to Qwen3.8-27B PARENT; it was not called",
   "physical_graph_compiler.main() still requires model.safetensors.index.json, an X_layer capture, and MoE expert tensors",
-  "KERNEL_LIBRARY.json has no specimen field; role-name overlap is not a kernel for this body",
+  "KERNEL_LIBRARY.json has no specimen field and 0 present compiled_identity values; role-name overlap is still not a compiled kernel for this body, now recorded as NATIVE_UNMEASURED rather than stalling the planner",
   "native engine match arms include qwen2 and qwen3moe, not dense qwen3, not falcon_h1",
   "no generic NX packer; first_noetic_executable is a 27B mix",
   "no physical EBPW was written"
@@ -272,9 +275,9 @@
  "physical_ebpw_written": false,
  "preflight": {
   "adaptation_family": "dense_swiglu_transformer",
-  "first_failing_stage": "KernelPlanner",
+  "first_failing_stage": "DeviceCompiler",
   "id": "Qwen--Qwen3-0.6B@c1899de289a0",
-  "missing_input": "KERNEL_LIBRARY has no specimen field and no shape-matched kernels for this specimen",
+  "missing_input": "no DeviceCompiler callable; native GGUF match arms ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7'] do not make a safetensors packer",
   "ok": false,
   "pipeline_can_start": true,
   "probe_ok": true,
@@ -320,8 +323,8 @@
     "stage": "PhysicalGraphCompiler"
    },
    {
-    "missing_input": "KERNEL_LIBRARY has no specimen field and no shape-matched kernels for this specimen",
-    "ready": false,
+    "missing_input": null,
+    "ready": true,
     "stage": "KernelPlanner"
    },
    {
@@ -350,7 +353,7 @@
     "stage": "Verifier"
    }
   ],
-  "why": "KernelPlanner: KERNEL_LIBRARY has no specimen field and no shape-matched kernels for this specimen"
+  "why": "DeviceCompiler: no DeviceCompiler callable; native GGUF match arms ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7'] do not make a safetensors packer"
  },
  "probe": {
   "id": "Qwen--Qwen3-0.6B@c1899de289a0",
@@ -364,7 +367,7 @@
  },
  "purpose": "Parameterize the NR\u2192NX compiler stages from a specimen's own config and tensor index, drive them on the cheapest whole-tree-verified body adapt() accepts, and keep GENERIC_NR_NX_PIPELINE_CALLABLE separate from FLASH_NX_READY",
  "recovered_implementation": [
-  "tools/future/nr_nx_generic.py \u2014 EXTENDED: probe_specimen/adapt/callable_on/run; previous stage driver kept and parameterized",
+  "tools/future/nr_nx_generic.py \u2014 EXTENDED: probe_specimen/adapt/callable_on/run plus PLAN-THEN-COMPILE KernelPlanner; previous stage driver kept and parameterized",
   "tools/future/nr_nx_path.py \u2014 seven-requirement map, SLEEPING units, physical_ebpw refusal; EXTENDED, not forked",
   "tools/future/flash_nx_audit.py \u2014 check_nx, evidence_path, METADATA_ONLY, synthetic_promotable_nx",
   "tools/future/flash_nr_complete.py \u2014 composition NR is not serialized_nr_information",
@@ -387,7 +390,7 @@
   "workunit": "one CPU_ANALYSIS unit; probe+adapt+drive compiler stages on a real specimen; no GPU authority; no packer; no minted NX"
  },
  "schema": "hawking.future.nr_nx_generic.v1",
- "seal_sha256": "60a8266fe9d894be3a82377026bb692cac535e70c9d375afd5e66cab85099a8e",
+ "seal_sha256": "2bea07efe71f06485063011e4fe3ccc6301c20f2395e139f2a352e0ab6117b33",
  "sleeping_workunit": {
   "blocked_reason": "NX_LOWER blocked at stage DeviceCompiler: no_entry_point",
   "classification": "SLEEPING",
@@ -605,15 +608,8 @@
    },
    {
     "chosen": false,
-    "family": "moe_swiglu_transformer",
     "id": "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
-    "mlp_kind": "moe",
-    "n_tensors": 18867,
-    "names_via": "model.safetensors.index.json",
-    "not_chosen_because": null,
-    "pipeline_can_start": true,
-    "present": true,
-    "verified": true
+    "not_chosen_because": "not whole-tree verified"
    }
   ],
   "bytes_hashed": 1519209243,
@@ -642,7 +638,7 @@
   "verification_status": "WHOLE_TREE_VERIFIED",
   "verification_via": "/Users/scammermike/Downloads/hawking/receipts/future/SPECIMEN_VERIFICATION.json",
   "why_chosen": "first cheapness-ordered candidate whose adapt() derived a SwiGLU collapse and a probe plan from this specimen's own index (family=dense_swiglu_transformer, mlp=dense, n_tensors=311, via=model.safetensors header)",
-  "why_not_later_candidates": "later candidates were not needed; adapt() already accepted a cheaper body. tiiuae--Falcon-H1-7B-Instruct@41e72f27effb: not reached; Qwen--Qwen3-30B-A3B@ad44e777bcd1: not reached"
+  "why_not_later_candidates": "later candidates were not needed; adapt() already accepted a cheaper body. tiiuae--Falcon-H1-7B-Instruct@41e72f27effb: not reached; Qwen--Qwen3-30B-A3B@ad44e777bcd1: not whole-tree verified"
  },
  "stages": [
   {
@@ -675,22 +671,15 @@
      },
      {
       "chosen": false,
-      "family": "moe_swiglu_transformer",
       "id": "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
-      "mlp_kind": "moe",
-      "n_tensors": 18867,
-      "names_via": "model.safetensors.index.json",
-      "not_chosen_because": null,
-      "pipeline_can_start": true,
-      "present": true,
-      "verified": true
+      "not_chosen_because": "not whole-tree verified"
      }
     ],
     "bytes_hashed": 1519209243,
     "family": "dense_swiglu_transformer",
     "id": "Qwen--Qwen3-0.6B@c1899de289a0",
     "repo": "Qwen/Qwen3-0.6B",
-    "why_not_later_candidates": "later candidates were not needed; adapt() already accepted a cheaper body. tiiuae--Falcon-H1-7B-Instruct@41e72f27effb: not reached; Qwen--Qwen3-30B-A3B@ad44e777bcd1: not reached"
+    "why_not_later_candidates": "later candidates were not needed; adapt() already accepted a cheaper body. tiiuae--Falcon-H1-7B-Instruct@41e72f27effb: not reached; Qwen--Qwen3-30B-A3B@ad44e777bcd1: not whole-tree verified"
    },
    "invoked": true,
    "stage": "SpecimenSelect",
@@ -1484,6 +1473,7 @@
   {
    "error": null,
    "evidence": {
+    "claim_boundary": "COMPILE_TIME_SCIENCE_ONLY kernel plan. NATIVE_UNMEASURED is not a compiled kernel, not a hardware measurement, not physical EBPW.",
     "intersection": [
      "gqa_attention",
      "mlp_down",
@@ -1495,443 +1485,414 @@
      "mlp_down",
      "mlp_gate_up"
     ],
+    "n_compiled": 0,
     "n_kernels": 17,
+    "n_name_is_not_a_compiled_kernel": 3,
+    "n_native_unmeasured": 6,
+    "name_is_not_a_compiled_kernel": true,
     "names_this_specimen": false,
+    "organ_shapes": {
+     "embed": {
+      "cols": 1024,
+      "extents": [
+       151936,
+       1024
+      ],
+      "from": "vocab_size x hidden_size",
+      "rows": 151936
+     },
+     "gqa_attention": {
+      "cols": 1024,
+      "extents": [
+       2048,
+       1024,
+       1024
+      ],
+      "from": "num_attention_heads*head_dim x hidden_size",
+      "head_dim": 128,
+      "kv_rows": 1024,
+      "q_rows": 2048
+     },
+     "lm_head": {
+      "cols": 1024,
+      "extents": [
+       151936,
+       1024
+      ],
+      "from": "vocab_size x hidden_size",
+      "rows": 151936
+     },
+     "mlp_down": {
+      "cols": 3072,
+      "extents": [
+       1024,
+       3072
+      ],
+      "from": "hidden_size x intermediate_size",
+      "rows": 1024
+     },
+     "mlp_gate_up": {
+      "cols": 1024,
+      "extents": [
+       3072,
+       1024
+      ],
+      "from": "intermediate_size x hidden_size",
+      "rows": 3072
+     },
+     "rmsnorm": {
+      "cols": 1024,
+      "extents": [
+       1024
+      ],
+      "from": "hidden_size"
+     }
+    },
     "path": "/Users/scammermike/Downloads/hawking/receipts/headless/KERNEL_LIBRARY.json",
-    "role_matched_kernels": [
+    "plan": [
      {
-      "kernel_identity": "q2f_group64_matvec",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
+      "compiled_kernel_ids": [],
+      "n_compiled_for_this_body": 0,
+      "n_role_matched": 0,
+      "name_is_not_a_compiled_kernel": false,
+      "occupying": {
+       "compiled_kernel": null,
+       "kind": "NATIVE_UNMEASURED",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
       },
-      "organ_identity": "mlp_down",
-      "representation_identity": "q2_affine"
+      "organ": "embed",
+      "refusals": [],
+      "role_matched_kernel_ids": [],
+      "specimen_shape": {
+       "cols": 1024,
+       "extents": [
+        151936,
+        1024
+       ],
+       "from": "vocab_size x hidden_size",
+       "rows": 151936
+      },
+      "status": "NATIVE_UNMEASURED",
+      "why": "A shared organ name is not a compiled kernel for this body. 0 role-matched kernel(s) for 'embed'; 0 compiled for this body. Plan occupies NATIVE_UNMEASURED rather than claiming a compiled kernel."
      },
      {
-      "kernel_identity": "q2f_group64_matvec_geo_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
+      "compiled_kernel_ids": [],
+      "n_compiled_for_this_body": 0,
+      "n_role_matched": 1,
+      "name_is_not_a_compiled_kernel": true,
+      "occupying": {
+       "compiled_kernel": null,
+       "kind": "NATIVE_UNMEASURED",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
       },
-      "organ_identity": "mlp_down",
-      "representation_identity": "q2_affine"
+      "organ": "gqa_attention",
+      "refusals": [
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 2048] kernel_specimen=None"
+      ],
+      "role_matched_kernel_ids": [
+       "qwen80_add_residual_rmsnorm_tg"
+      ],
+      "specimen_shape": {
+       "cols": 1024,
+       "extents": [
+        2048,
+        1024,
+        1024
+       ],
+       "from": "num_attention_heads*head_dim x hidden_size",
+       "head_dim": 128,
+       "kv_rows": 1024,
+       "q_rows": 2048
+      },
+      "status": "NATIVE_UNMEASURED",
+      "why": "A shared organ name is not a compiled kernel for this body. 1 role-matched kernel(s) for 'gqa_attention'; 0 compiled for this body. Plan occupies NATIVE_UNMEASURED rather than claiming a compiled kernel."
      },
      {
-      "kernel_identity": "affine2_group32_matvec_geo_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
+      "compiled_kernel_ids": [],
+      "n_compiled_for_this_body": 0,
+      "n_role_matched": 0,
+      "name_is_not_a_compiled_kernel": false,
+      "occupying": {
+       "compiled_kernel": null,
+       "kind": "NATIVE_UNMEASURED",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
       },
-      "organ_identity": "mlp_down",
-      "representation_identity": "q2_affine"
+      "organ": "lm_head",
+      "refusals": [],
+      "role_matched_kernel_ids": [],
+      "specimen_shape": {
+       "cols": 1024,
+       "extents": [
+        151936,
+        1024
+       ],
+       "from": "vocab_size x hidden_size",
+       "rows": 151936
+      },
+      "status": "NATIVE_UNMEASURED",
+      "why": "A shared organ name is not a compiled kernel for this body. 0 role-matched kernel(s) for 'lm_head'; 0 compiled for this body. Plan occupies NATIVE_UNMEASURED rather than claiming a compiled kernel."
      },
      {
-      "kernel_identity": "affine2_group64_matvec_geo_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
+      "compiled_kernel_ids": [],
+      "n_compiled_for_this_body": 0,
+      "n_role_matched": 11,
+      "name_is_not_a_compiled_kernel": true,
+      "occupying": {
+       "compiled_kernel": null,
+       "kind": "NATIVE_UNMEASURED",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
       },
-      "organ_identity": "mlp_down",
-      "representation_identity": "q2_affine"
+      "organ": "mlp_down",
+      "refusals": [
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=5120 organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=5120 organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=5120 organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=5120 organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=5120 organ_extents=[1024, 3072] kernel_specimen=None"
+      ],
+      "role_matched_kernel_ids": [
+       "q2f_group64_matvec",
+       "q2f_group64_matvec_geo_tpr64_tg128",
+       "affine2_group32_matvec_geo_tpr64_tg128",
+       "affine2_group64_matvec_geo_tpr64_tg128",
+       "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",
+       "ternary_5in8_g64_matvec_geo_c5120_tpr64_tg128",
+       "binary_g64_matvec_geo_c5120_tpr64_tg128",
+       "shared_binary_k2_group_dots_c5120_g64_tpr64_tg128",
+       "shared_binary_k2_scale_contract_gpr80",
+       "binary_sparse_fused_geo_c5120_tpr64_tg128",
+       "q2f_g64_matvec_geo_c5120_tpr64_tg128"
+      ],
+      "specimen_shape": {
+       "cols": 3072,
+       "extents": [
+        1024,
+        3072
+       ],
+       "from": "hidden_size x intermediate_size",
+       "rows": 1024
+      },
+      "status": "NATIVE_UNMEASURED",
+      "why": "A shared organ name is not a compiled kernel for this body. 11 role-matched kernel(s) for 'mlp_down'; 0 compiled for this body. Plan occupies NATIVE_UNMEASURED rather than claiming a compiled kernel."
      },
      {
-      "kernel_identity": "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
+      "compiled_kernel_ids": [],
+      "n_compiled_for_this_body": 0,
+      "n_role_matched": 4,
+      "name_is_not_a_compiled_kernel": true,
+      "occupying": {
+       "compiled_kernel": null,
+       "kind": "NATIVE_UNMEASURED",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
       },
-      "organ_identity": "mlp_down",
-      "representation_identity": "q2_affine"
+      "organ": "mlp_gate_up",
+      "refusals": [
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=None organ_extents=[1024, 3072] kernel_specimen=None",
+       "A shared organ name is not a compiled kernel for this body. specimen_id_match=False shape_constraints_satisfied=False compiled_identity_present=False specialized_cols=17408 organ_extents=[1024, 3072] kernel_specimen=None"
+      ],
+      "role_matched_kernel_ids": [
+       "q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+       "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+       "affine2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+       "ternary_5in8_g64_matvec_geo_c17408_tpr64_tg128"
+      ],
+      "specimen_shape": {
+       "cols": 1024,
+       "extents": [
+        3072,
+        1024
+       ],
+       "from": "intermediate_size x hidden_size",
+       "rows": 3072
+      },
+      "status": "NATIVE_UNMEASURED",
+      "why": "A shared organ name is not a compiled kernel for this body. 4 role-matched kernel(s) for 'mlp_gate_up'; 0 compiled for this body. Plan occupies NATIVE_UNMEASURED rather than claiming a compiled kernel."
      },
      {
-      "kernel_identity": "qwen80_add_residual_rmsnorm_tg",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
+      "compiled_kernel_ids": [],
+      "n_compiled_for_this_body": 0,
+      "n_role_matched": 0,
+      "name_is_not_a_compiled_kernel": false,
+      "occupying": {
+       "compiled_kernel": null,
+       "kind": "NATIVE_UNMEASURED",
+       "science_mark": "COMPILE_TIME_SCIENCE_ONLY"
       },
-      "organ_identity": "gqa_attention",
-      "representation_identity": "q4_control"
-     },
-     {
-      "kernel_identity": "q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
+      "organ": "rmsnorm",
+      "refusals": [],
+      "role_matched_kernel_ids": [],
+      "specimen_shape": {
+       "cols": 1024,
+       "extents": [
+        1024
+       ],
+       "from": "hidden_size"
       },
-      "organ_identity": "mlp_gate_up",
-      "representation_identity": "q2_affine"
-     },
-     {
-      "kernel_identity": "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_gate_up",
-      "representation_identity": "q2_affine"
-     },
-     {
-      "kernel_identity": "affine2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_gate_up",
-      "representation_identity": "q2_affine"
-     },
-     {
-      "kernel_identity": "ternary_5in8_g64_matvec_geo_c5120_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_down",
-      "representation_identity": "ternary"
-     },
-     {
-      "kernel_identity": "ternary_5in8_g64_matvec_geo_c17408_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_gate_up",
-      "representation_identity": "ternary"
-     },
-     {
-      "kernel_identity": "binary_g64_matvec_geo_c5120_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_down",
-      "representation_identity": "binary"
-     },
-     {
-      "kernel_identity": "shared_binary_k2_group_dots_c5120_g64_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_down",
-      "representation_identity": "shared_basis"
-     },
-     {
-      "kernel_identity": "shared_binary_k2_scale_contract_gpr80",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_down",
-      "representation_identity": "shared_basis"
-     },
-     {
-      "kernel_identity": "binary_sparse_fused_geo_c5120_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_down",
-      "representation_identity": "binary_sparse_residual"
-     },
-     {
-      "kernel_identity": "q2f_g64_matvec_geo_c5120_tpr64_tg128",
-      "machine_identity": {
-       "chipset": "Apple M3 Ultra",
-       "command": "NOETIC_PARENT_A.MachineGenome",
-       "device_measured_sustained_gb_s": {
-        "absent_reason": null,
-        "command": "BANDWIDTH_ROOF.anchor_roof.correction.new_roof_gb_s",
-        "kind": "CITED",
-        "note": "N017 sequential unique-once DRAM roof, sealed as 778.8. Copied, not re-derived. Raw highest_dram_read_gb_s=778.7585851761676 is the measurement that sealed this figure.",
-        "source": "receipts/headless/BANDWIDTH_ROOF.json",
-        "unit": "GB/s",
-        "value": 778.8
-       },
-       "gpu_cores": 60,
-       "metal_family": "Metal 4",
-       "parent_genome_roof_gb_s_is_not_the_campaign_roof": {
-        "note": "595.9 is the G072 family scoring reference sealed into NOETIC_PARENT_A.MachineGenome, not DEVICE_MEASURED_SUSTAINED. Canon law 10. Current DRAM roof is 778.8.",
-        "parent_machinegenome_measured_roof_gb_s": 595.9,
-        "source": "receipts/headless/NOETIC_PARENT_A.json"
-       },
-       "source": "receipts/headless/NOETIC_PARENT_A.json",
-       "unified_memory_bytes": 103079215104
-      },
-      "organ_identity": "mlp_down",
-      "representation_identity": "q2_affine"
+      "status": "NATIVE_UNMEASURED",
+      "why": "A shared organ name is not a compiled kernel for this body. 0 role-matched kernel(s) for 'rmsnorm'; 0 compiled for this body. Plan occupies NATIVE_UNMEASURED rather than claiming a compiled kernel."
      }
     ],
+    "role_matched_kernels": [
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "q2f_group64_matvec",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "q2f_group64_matvec_geo_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "affine2_group32_matvec_geo_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "affine2_group64_matvec_geo_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "qwen_affine_q2_group32_matvec_geo_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "qwen80_add_residual_rmsnorm_tg",
+      "kernel_specimen": null,
+      "organ_identity": "gqa_attention",
+      "representation_identity": "q4_control",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_gate_up",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_gate_up",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "affine2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_gate_up",
+      "representation_identity": "q2_affine",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "ternary_5in8_g64_matvec_geo_c5120_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "ternary",
+      "specialized_cols": 5120
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "ternary_5in8_g64_matvec_geo_c17408_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_gate_up",
+      "representation_identity": "ternary",
+      "specialized_cols": 17408
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "binary_g64_matvec_geo_c5120_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "binary",
+      "specialized_cols": 5120
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "shared_binary_k2_group_dots_c5120_g64_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "shared_basis",
+      "specialized_cols": 5120
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "shared_binary_k2_scale_contract_gpr80",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "shared_basis",
+      "specialized_cols": null
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "binary_sparse_fused_geo_c5120_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "binary_sparse_residual",
+      "specialized_cols": 5120
+     },
+     {
+      "compiled_identity_kind": "ABSENT",
+      "kernel_identity": "q2f_g64_matvec_geo_c5120_tpr64_tg128",
+      "kernel_specimen": null,
+      "organ_identity": "mlp_down",
+      "representation_identity": "q2_affine",
+      "specialized_cols": 5120
+     }
+    ],
+    "route": "PLAN-THEN-COMPILE",
+    "route_evidence": {
+     "declared_specialized_cols": [
+      5120,
+      17408
+     ],
+     "library_specimen_field": null,
+     "n_compiled_identity_present": 0,
+     "n_kernels": 17,
+     "n_parametric_range_declared": 0,
+     "n_specimen_bound": 0,
+     "route": "PLAN-THEN-COMPILE",
+     "shape_overlap": [],
+     "specimen_extents": [
+      1024,
+      2048,
+      3072,
+      151936
+     ],
+     "specimen_id": "Qwen--Qwen3-0.6B@c1899de289a0",
+     "why": "PLAN-THEN-COMPILE: library specimen_field=None; 0/17 kernels carry a present compiled_identity; 0/17 carry a specimen id; 0/17 declare a parametric shape range; declared specialized_cols=[5120, 17408]; this specimen's organ extents=[1024, 2048, 3072, 151936]; shape overlap=[]. Kernels in this library are parent-shape specializations or have no declared shape contract, and none are compiled. The generic pipeline emits a NATIVE_UNMEASURED plan for an unseen body rather than claiming a compiled kernel exists."
+    },
+    "route_why": "PLAN-THEN-COMPILE: library specimen_field=None; 0/17 kernels carry a present compiled_identity; 0/17 carry a specimen id; 0/17 declare a parametric shape range; declared specialized_cols=[5120, 17408]; this specimen's organ extents=[1024, 2048, 3072, 151936]; shape overlap=[]. Kernels in this library are parent-shape specializations or have no declared shape contract, and none are compiled. The generic pipeline emits a NATIVE_UNMEASURED plan for an unseen body rather than claiming a compiled kernel exists.",
     "specimen_field": null,
     "specimen_organs": [
      "embed",
@@ -1944,8 +1905,8 @@
    },
    "invoked": true,
    "stage": "KernelPlanner",
-   "status": "FAILED",
-   "why": "KERNEL_LIBRARY.json was read and compared to this specimen's organs. role intersection=['gqa_attention', 'mlp_down', 'mlp_gate_up']. None of the 16 role-matched kernels carry this specimen's id or shapes. A shared organ name is not a compiled kernel for this body. specimen_field=None"
+   "status": "PASSED",
+   "why": "PLAN-THEN-COMPILE: KERNEL_LIBRARY.json was read and a kernel plan was emitted for this unseen body ('Qwen--Qwen3-0.6B@c1899de289a0'). role intersection=['gqa_attention', 'mlp_down', 'mlp_gate_up']. 16 role-matched kernels; 0 compiled for this body; 6 organ(s) occupy NATIVE_UNMEASURED. A shared organ name is not a compiled kernel for this body. specimen_field=None. PLAN-THEN-COMPILE: library specimen_field=None; 0/17 kernels carry a present compiled_identity; 0/17 carry a specimen id; 0/17 declare a parametric shape range; declared specialized_cols=[5120, 17408]; this specimen's organ extents=[1024, 2048, 3072, 151936]; shape overlap=[]. Kernels in this library are parent-shape specializations or have no declared shape contract, and none are compiled. The generic pipeline emits a NATIVE_UNMEASURED plan for an unseen body rather than claiming a compiled kernel exists."
   },
   {
    "error": "no_entry_point",
@@ -1957,6 +1918,11 @@
      "crates/hawking-core/src/model/mod.rs",
      "hcli/agentos/flash_executable.py (Flash scaffold, Codex-owned)"
     ],
+    "kernel_plan_n_compiled": 0,
+    "kernel_plan_n_native_unmeasured": 6,
+    "kernel_plan_n_organs": 6,
+    "kernel_plan_received": true,
+    "kernel_plan_route": "PLAN-THEN-COMPILE",
     "native": {
      "architectures": [
       "llama",
@@ -1990,7 +1956,7 @@
    "invoked": true,
    "stage": "DeviceCompiler",
    "status": "BLOCKED",
-   "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'"
+   "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan"
   },
   {
    "error": "no_generic_packer",
@@ -2158,6 +2124,6 @@
   "that editing tools/odyssey/physical_graph_compiler.py to accept dense names would be accepted by Codex",
   "that adding a qwen3 GGUF match arm would load this safetensors specimen",
   "protected complete-token performance or physical EBPW",
-  "that Odyssey I can launch; nr_nx_path_callable stays unmet until a real NX exists"
+  "that Odyssey I can launch; nr_nx_path_callable stays unmet until DeviceCompiler exists and a real NX is packed"
  ]
 }

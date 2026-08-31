@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T18:55:07Z",
+  "recorded_at": "2026-08-31T20:14:37Z",
   "recorded_by": "tools/future/multistream_capacity_tree.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -18,6 +18,7 @@
    "kills_if": "every edge in the token is a true data dependency and the independent operations are already fused",
    "max_payoff_ms": null,
    "reopens_if": "a representation change creates new independence, or a region is found that the DAG did not model",
+   "sharpened_by": null,
    "status": "KILLED"
   },
   {
@@ -28,6 +29,7 @@
    "kills_if": "GB/s is flat across a real occupancy sweep at identical bytes",
    "max_payoff_ms": null,
    "reopens_if": "a kernel is changed in a way that alters its register or threadgroup footprint",
+   "sharpened_by": null,
    "status": "OPEN"
   },
   {
@@ -38,6 +40,7 @@
    "kills_if": "deeper per-thread load pipelining does not move GB/s",
    "max_payoff_ms": null,
    "reopens_if": "the representation changes the access pattern",
+   "sharpened_by": null,
    "status": "OPEN"
   },
   {
@@ -48,7 +51,8 @@
    "kills_if": "ARM A (arithmetic stripped, bytes identical) does not move meaningfully faster than production",
    "max_payoff_ms": null,
    "reopens_if": "a representation with a longer decode chain is proposed",
-   "status": "OPEN"
+   "sharpened_by": "receipts/future/MLP_ALU_ROOFLINE.json. ARM A strips the arithmetic at IDENTICAL BYTES and MLP goes 329.6 -> 497.4 GB/s, a 1.5089x jump; DeltaNet qkvz goes 600.9 -> 943.2, 1.5697x. ARM B halves K and returns time/byte 1.0427 - bytes behave like bytes. The pre-registered rule reads that conjunction as MIXED: both terms are real. So this class is NOT killed and NOT alone. What it now carries is a NUMBER: about 1.5x is available at constant bytes, which sits inside the 1.24-1.60x the concurrency ladder measured from a completely different direction. Two independent probes, one magnitude. SELF_MEASURED_DIRTY and taken under load 8.41, so the ABSOLUTE GB/s are not promotable - but ARM A is a back-to-back RATIO at identical bytes, and ratios hold under load.",
+   "status": "SHARPENED"
   },
   {
    "cheapest_discriminator": "read the compiled pipeline's register footprint and max threads per threadgroup from the Metal reflection, then compare against the occupancy sweep in class B",
@@ -58,6 +62,7 @@
    "kills_if": "the achieved threadgroup size is already at the device maximum and occupancy is not the binding term",
    "max_payoff_ms": null,
    "reopens_if": "a kernel rewrite changes the register footprint",
+   "sharpened_by": null,
    "status": "OPEN"
   },
   {
@@ -68,6 +73,7 @@
    "kills_if": "no knee appears across a working-set sweep spanning the plausible cache sizes",
    "max_payoff_ms": null,
    "reopens_if": "a layout change alters locality",
+   "sharpened_by": null,
    "status": "OPEN"
   },
   {
@@ -78,6 +84,7 @@
    "kills_if": "multiple queues do not change GPU time for identical work",
    "max_payoff_ms": null,
    "reopens_if": "the driver or OS scheduler changes",
+   "sharpened_by": null,
    "status": "OPEN"
   },
   {
@@ -88,6 +95,7 @@
    "kills_if": "per-byte rate is flat from batch 1 upward",
    "max_payoff_ms": null,
    "reopens_if": "a batched or speculative decode path is adopted",
+   "sharpened_by": null,
    "status": "OPEN"
   },
   {
@@ -98,13 +106,14 @@
    "kills_if": "one of its children is confirmed, which makes the parent redundant rather than false",
    "max_payoff_ms": null,
    "reopens_if": "every child is killed and the effect survives",
+   "sharpened_by": null,
    "status": "OPEN"
   }
  ],
  "evidence_class": "STATIC_ONLY",
  "gpu_authority": false,
  "schema": "hawking.future.multistream_capacity_tree.v1",
- "seal_sha256": "7ba59f8d78a5a98a19a3c5e9762dbb8be72095a2a3123f5a8af9ed0054c21e8c",
+ "seal_sha256": "3f694aaf8675347f67d4d374c72e93b3319aabca52f492164953cd92061cd0be",
  "summary": {
   "do_not_call_it_serial_dependency": "concurrency helping is the OBSERVATION, not the cause. Class H - the one that would have made 'serial dependency' literally true at the dispatch grain - is the one class already dead. What remains is inside the kernels, and naming it before measuring would be the error this tree exists to prevent.",
   "killed": [
@@ -112,10 +121,14 @@
   ],
   "n_classes": 9,
   "n_killed": 1,
-  "n_open": 8,
+  "n_open": 7,
+  "n_sharpened": 1,
   "next_cheapest": [
    "B_occupancy_too_few_active_threads",
    "E_memory_level_parallelism",
+   "C_register_limited_occupancy"
+  ],
+  "sharpened": [
    "D_instruction_dependency_chain"
   ],
   "the_effect_being_explained": {

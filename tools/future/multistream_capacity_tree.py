@@ -50,6 +50,7 @@ def _cls(
     reopens_if: str,
     status: str = OPEN,
     killed_by: str | None = None,
+    sharpened_by: str | None = None,
 ) -> dict[str, Any]:
     if len(discriminator) < 40:
         raise TreeRefused(f"{id}: a class without a cheap discriminator is a guess")
@@ -57,6 +58,11 @@ def _cls(
         raise TreeRefused(f"{id}: kill and reopen criteria are written BEFORE the run")
     if status == KILLED and not killed_by:
         raise TreeRefused(f"{id}: killed without naming the evidence that killed it")
+    if status == SHARPENED and not sharpened_by:
+        raise TreeRefused(
+            f"{id}: SHARPENED without naming the evidence that sharpened it. A "
+            "class that narrowed for no stated reason is a class nobody can check."
+        )
     return {
         "id": id,
         "claim": claim,
@@ -66,6 +72,7 @@ def _cls(
         "reopens_if": reopens_if,
         "status": status,
         "killed_by": killed_by,
+        "sharpened_by": sharpened_by,
     }
 
 
@@ -126,6 +133,24 @@ def classes() -> list[dict[str, Any]]:
             kills_if="ARM A (arithmetic stripped, bytes identical) does not move "
                      "meaningfully faster than production",
             reopens_if="a representation with a longer decode chain is proposed",
+            status=SHARPENED,
+            killed_by=None,
+            sharpened_by=(
+                "receipts/future/MLP_ALU_ROOFLINE.json. ARM A strips the "
+                "arithmetic at IDENTICAL BYTES and MLP goes 329.6 -> 497.4 GB/s, "
+                "a 1.5089x jump; DeltaNet qkvz goes 600.9 -> 943.2, 1.5697x. ARM "
+                "B halves K and returns time/byte 1.0427 - bytes behave like "
+                "bytes. The pre-registered rule reads that conjunction as MIXED: "
+                "both terms are real. "
+                "So this class is NOT killed and NOT alone. What it now carries "
+                "is a NUMBER: about 1.5x is available at constant bytes, which "
+                "sits inside the 1.24-1.60x the concurrency ladder measured from "
+                "a completely different direction. Two independent probes, one "
+                "magnitude. "
+                "SELF_MEASURED_DIRTY and taken under load 8.41, so the ABSOLUTE "
+                "GB/s are not promotable - but ARM A is a back-to-back RATIO at "
+                "identical bytes, and ratios hold under load."
+            ),
         ),
         _cls(
             id="C_register_limited_occupancy",
@@ -203,7 +228,9 @@ def summary() -> dict[str, Any]:
         "n_classes": len(cs),
         "n_killed": sum(1 for c in cs if c["status"] == KILLED),
         "n_open": sum(1 for c in cs if c["status"] == OPEN),
+        "n_sharpened": sum(1 for c in cs if c["status"] == SHARPENED),
         "killed": [c["id"] for c in cs if c["status"] == KILLED],
+        "sharpened": [c["id"] for c in cs if c["status"] == SHARPENED],
         "next_cheapest": [c["id"] for c in cs if c["status"] == OPEN][:3],
         "the_effect_being_explained": None if conc is None else {
             "verdict": conc["classification"]["verdict"],

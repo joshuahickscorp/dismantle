@@ -74,7 +74,7 @@ def test_payoffs_are_null_rather_than_invented():
 
 def test_the_summary_refuses_to_name_the_cause():
     s = tree.summary()
-    assert s["n_killed"] == 1 and s["n_open"] == 8
+    assert s["n_killed"] == 1 and s["n_open"] + s["n_sharpened"] == 8
     assert "concurrency helping is the OBSERVATION" in s["do_not_call_it_serial_dependency"]
 
 
@@ -83,3 +83,40 @@ def test_the_next_cheapest_are_the_within_kernel_classes():
     nxt = tree.summary()["next_cheapest"]
     assert nxt[0].startswith("B_occupancy")
     assert any(x.startswith("E_memory_level") for x in nxt)
+
+
+def test_class_d_is_sharpened_by_the_alu_roofline_not_killed():
+    """ARM A strips arithmetic at IDENTICAL bytes and MLP jumps 1.5089x.
+
+    That is the opposite of this class's kill criterion, so it narrows rather
+    than dying - and what it narrows to is a NUMBER: about 1.5x available at
+    constant bytes, inside the 1.24-1.60x the concurrency ladder measured from a
+    completely different direction.
+    """
+    d = next(c for c in tree.classes() if c["id"].startswith("D_"))
+    assert d["status"] == tree.SHARPENED
+    assert d["killed_by"] is None
+    ev = d["sharpened_by"]
+    assert "MLP_ALU_ROOFLINE" in ev
+    assert "1.5089x" in ev and "1.0427" in ev
+    assert "ratios hold under load" in ev
+
+
+def test_a_sharpened_class_must_name_its_evidence():
+    long = "a discriminator long enough to clear the forty character bar here"
+    with pytest.raises(tree.TreeRefused, match="SHARPENED without naming"):
+        tree._cls(id="x", claim="c", max_payoff_ms=None, discriminator=long,
+                  kills_if="a", reopens_if="b", status=tree.SHARPENED)
+
+
+def test_the_two_independent_probes_agree_on_the_magnitude():
+    """1.5x from stripping arithmetic, 1.24-1.60x from a second stream."""
+    d = next(c for c in tree.classes() if c["id"].startswith("D_"))
+    assert "1.24-1.60x" in d["sharpened_by"]
+    assert "different direction" in d["sharpened_by"]
+
+
+def test_the_summary_counts_sharpened_separately_from_killed():
+    s = tree.summary()
+    assert s["n_killed"] == 1 and s["n_sharpened"] == 1 and s["n_open"] == 7
+    assert s["sharpened"] == ["D_instruction_dependency_chain"]

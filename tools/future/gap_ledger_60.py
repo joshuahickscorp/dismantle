@@ -222,6 +222,74 @@ def escalation_clock() -> dict[str, Any]:
     }
 
 
+# arm_a / production, MEASURED at warmup 60 on real captured activations. These
+# are the rate each matvec reaches with ALL of its decode arithmetic removed and
+# every byte still loaded, so they bound the entire arithmetic school.
+ARM_A_RATIO = {
+    "q2": (1.5128, ("mlp_gate_up", "mlp_down"),
+           "receipts/future/OP_CLASS_ABLATION.json"),
+    "q4": (1.5599, ("deltanet", "q4_remainder", "gqa_attention"),
+           "receipts/future/Q4_BITCAST_AB.json"),
+}
+
+
+def arithmetic_ceiling() -> dict[str, Any]:
+    """What the WHOLE decode-arithmetic school is worth if it perfectly succeeds.
+
+    Not a projection from a candidate. arm_a removes every arithmetic operation
+    from the inner loop while loading every byte production loads, so its rate
+    is the measured floor on time for these kernels at these bytes.
+    """
+    d = _budget()
+    cur = float(d["decode_wall_ms_per_token"])
+    rows = {r["organ"]: float(r["gpu_ms"]) for r in d["organs"]["rows"]}
+    parts = []
+    total = 0.0
+    for codec, (ratio, organs, source) in ARM_A_RATIO.items():
+        missing = [o for o in organs if o not in rows]
+        if missing:
+            raise GapRefused(f"{codec}: budget has no rows for {missing}")
+        ms = sum(rows[o] for o in organs)
+        saved = ms - ms / ratio
+        total += saved
+        parts.append({
+            "codec": codec,
+            "organs": list(organs),
+            "organ_ms": round(ms, 4),
+            "arm_a_over_production": ratio,
+            "ms_saved_at_perfect_removal": round(saved, 4),
+            "source": source,
+        })
+    after = cur - total
+    return {
+        "parts": parts,
+        "total_ms_at_perfect_removal": round(total, 4),
+        "token_ms_after": round(after, 4),
+        "tps_after": round(1000.0 / after, 3),
+        "reaches_60": after <= 1000.0 / 60.0,
+        "still_short_of_60_by_ms": round(after - 1000.0 / 60.0, 4),
+        "verdict": (
+            "THE DECODE-ARITHMETIC SCHOOL CANNOT REACH 60 EVEN IF IT PERFECTLY "
+            f"SUCCEEDS. Removing every arithmetic operation from every q2 and q4 "
+            f"matvec reaches {round(1000.0/after, 1)} TPS. 60 needs "
+            f"{round(after - 1000.0/60.0, 2)} ms from a DIFFERENT class - fewer "
+            "bytes, less host time, or work removed rather than made cheaper."
+        ),
+        "what_this_does_not_say": (
+            "it does not say the arithmetic school is not worth working. It is "
+            "the largest single block on the board and the bitcast candidates "
+            "have already taken a measured 3.854 ms of it. It says the school "
+            "must not be the ONLY thing running if 60 is the target."
+        ),
+        "assumption": (
+            "arm_a's ratio measured on one representative projection per codec "
+            "is applied to every organ that runs that codec. Organs differ in "
+            "shape, so this is an estimate at the organ level even though each "
+            "ratio is measured. It would take a per-organ arm_a to tighten."
+        ),
+    }
+
+
 def build() -> dict[str, Any]:
     lv = live()
     cps = checkpoints()
@@ -245,6 +313,7 @@ def build() -> dict[str, Any]:
         "does_the_open_set_reach_60": (
             sum(r["max_ms_removable"] for r in material) >= sixty["ms_to_remove_from_live"]
         ),
+        "arithmetic_ceiling": arithmetic_ceiling(),
         "escalation_clock": escalation_clock(),
         "honest_reading": (
             "the material open experiments are bandwidth-recovery bounds - what "

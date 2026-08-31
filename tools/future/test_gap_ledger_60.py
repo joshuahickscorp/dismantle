@@ -93,3 +93,39 @@ def test_the_clock_is_explicitly_not_an_abandonment():
     c = g.escalation_clock()
     assert "forbids complacency, not the incumbent" in c["not_an_abandonment"]
     assert c["phase_licenses"]
+
+
+def test_the_whole_arithmetic_school_cannot_reach_sixty():
+    """The decisive strategic fact, computed from measured arm_a rates."""
+    a = g.arithmetic_ceiling()
+    assert a["reaches_60"] is False
+    assert a["still_short_of_60_by_ms"] > 0
+    assert 50 < a["tps_after"] < 60, "perfect removal lands in the mid-50s"
+    assert "CANNOT REACH 60 EVEN IF IT PERFECTLY SUCCEEDS" in a["verdict"]
+
+
+def test_the_ceiling_does_not_dismiss_the_school_it_bounds_it():
+    a = g.arithmetic_ceiling()
+    assert "largest single block on the board" in a["what_this_does_not_say"]
+    assert "must not be the ONLY thing running" in a["what_this_does_not_say"]
+
+
+def test_each_ratio_cites_the_receipt_it_was_measured_in():
+    a = g.arithmetic_ceiling()
+    for part in a["parts"]:
+        assert part["source"].startswith("receipts/future/")
+        assert part["arm_a_over_production"] > 1.4
+
+
+def test_the_organ_level_estimate_is_labelled_as_one():
+    a = g.arithmetic_ceiling()
+    assert "estimate at the organ level" in a["assumption"]
+
+
+def test_a_missing_organ_refuses(monkeypatch):
+    d = g._budget()
+    trimmed = {**d, "organs": {**d["organs"], "rows": [
+        r for r in d["organs"]["rows"] if r["organ"] != "deltanet"]}}
+    monkeypatch.setattr(g, "_budget", lambda: trimmed)
+    with pytest.raises(g.GapRefused, match="budget has no rows for"):
+        g.arithmetic_ceiling()

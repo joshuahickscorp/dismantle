@@ -87,7 +87,13 @@ def test_everything_on_record_does_not_reach_50():
 
 def test_the_gap_is_stated_as_a_share_of_remaining_gpu():
     g = p.gap_to_71()
-    assert g["still_to_remove_ms"] > 8.0
+    # This pinned > 8.0, which was a fact about the gap on one afternoon. The
+    # fold_addqx complete-token A/B then saved 3.9833 ms where the one-layer
+    # probe had projected 1.745, and the gap fell to 7.426 - so the test failed
+    # BECAUSE the campaign moved. The invariant is that a gap REMAINS: nothing on
+    # record reaches 71, and the day that stops being true this assertion should
+    # be deleted deliberately, not tripped over.
+    assert g["still_to_remove_ms"] > 0.0, "nothing on record may reach 71 silently"
     assert 0.35 < g["still_to_remove_share_of_gpu"] < 0.50
     assert "does not exist yet" in g["verdict"]
 

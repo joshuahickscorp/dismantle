@@ -25,6 +25,10 @@ from _common import REPO  # noqa: E402
 
 RECEIPT = REPO / "receipts" / "future" / "PATH_TO_71.json"
 
+# 28.722 was the pre-widen_f4 baseline and is STALE. The post-widen_f4 incumbent
+# arm re-measured at 26.3026 ms under load (receipts/future/FOLD_ADDQX_AB.json).
+# Kept as the historical anchor every landed path was computed against; a rebase
+# onto 26.3026 is G075 and must recompute every row, not just this constant.
 TOKEN_MS = 28.722
 HOST_MS = 0.989
 ACTIVE_GB = 9.878901136
@@ -158,7 +162,22 @@ COMPONENTS: dict[str, dict[str, Any]] = {
         "source": "receipts/future/DELTANET_GENERATED_TRANSITION.json",
     },
     "mlp_decode_fold_addqx": {
-        "ms_saved": 1.745, "evidence": "DIRTY_DIAGNOSTIC",
+        "ms_saved": 3.9833, "evidence": "DIRTY_DIAGNOSTIC",
+        "parity": "token-id IDENTICAL across 7x2 runs (fnv1a64 e04e1b12206475d8, "
+                  "128 bytes compared, 0 mismatch) - but layer-0 named-matvec "
+                  "output buffers are NOT byte-identical (gate 22309 of 69632 "
+                  "bytes differ). APPROX_CANDIDATE, not exact.",
+        "why_not_qualified": "faster-but-not-exact. The single-layer probe was "
+                             "called bit-identical; at token level it is not. A "
+                             "faster resident that answers differently is not the "
+                             "same resident, so production default stays "
+                             "Affine2Geo::Tpr64 and this is not blended into a "
+                             "bit-identical verdict.",
+        "measured": "complete-token A/B on the fused 580-graph: incumbent "
+                    "26.3026 ms against fold_addqx 22.3192 ms, saved 3.9833 ms. "
+                    "The organ cut REACHED the token (3.98 against 3.95 "
+                    "isolated). The 1.745 ms one-layer projection did not "
+                    "reproduce - it under-predicted by 2.24 ms.",
         "why": "BIT-IDENTICAL on the probed layer. 370.9 GB/s against production "
                "329.2, 1.127x, by folding the affine into integer adds for q.x and "
                "applying s and b once per group: decode FMA/byte 1.3333 -> 0.3333. "
@@ -271,7 +290,7 @@ def paths() -> list[dict[str, Any]]:
     for pid, label, ids in (
         ("PATH_01", "everything QUALIFIED today",
          ["ba_delta_fusion", "deltanet_widen_f4"]),
-        ("PATH_02", "qualified + the bit-identical decode fold",
+        ("PATH_02", "qualified + the decode fold (APPROX, not exact)",
          ["ba_delta_fusion", "deltanet_widen_f4", "mlp_decode_fold_addqx"]),
         ("PATH_03", "that + the executor lever that survived",
          ["ba_delta_fusion", "deltanet_widen_f4", "mlp_decode_fold_addqx",

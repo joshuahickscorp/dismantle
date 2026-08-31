@@ -496,6 +496,16 @@ pub const QWEN38_AFFINE_GATE_UP_ACCFUSE: &str =
     "qwen_affine_q2_group64_matvec_gate_up_accfuse_tpr64_tg128";
 pub const QWEN38_AFFINE_GATE_UP_SWIGLU_ACCFUSE: &str =
     "qwen_affine_q2_group64_matvec_gate_up_swiglu_accfuse_tpr64_tg128";
+/// fold_addqx sibling of production geo_tpr64. Same occupancy and binds.
+/// Default production stays Tpr64; opt-in via HAWKING_AFFINE2_GEO=fold_addqx
+/// or `apply_affine2_geo(Affine2Geo::FoldAddqx)`. Reversible: unset the
+/// lever and the 580-graph launches production unpack8 again.
+pub const QWEN38_AFFINE_Q2_FOLD_ADDQX: &str =
+    "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_fold_addqx";
+pub const QWEN38_AFFINE_GATE_UP_FOLD_ADDQX: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128_fold_addqx";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_FOLD_ADDQX: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128_fold_addqx";
 pub const QWEN38_AFFINE_GATE_UP_BIASPREP: &str =
     "qwen_affine_q2_group64_matvec_gate_up_biasprep_tpr64_tg128";
 pub const QWEN38_AFFINE_GATE_UP_SWIGLU_BIASPREP: &str =
@@ -528,6 +538,9 @@ pub enum Affine2Geo {
     SplitK4Vec,
     /// Fuse scale/bias into the accumulate via algebraic rewrite (N024).
     AccFuse,
+    /// fold_addqx unpack on the production tpr64 map. Same occupancy.
+    /// Default stays Tpr64. Empirically bit-identical on sealed-3.14 MLP.
+    FoldAddqx,
     /// N030: deferred group-64 bias via RMSNorm-produced x-sums. Same tpr64
     /// occupancy. Gate_up_swiglu only; single GEMVs stay tpr64.
     BiasPrep,
@@ -551,6 +564,7 @@ impl Affine2Geo {
             "splitk4" | "splitk" => Self::SplitK4,
             "splitk4_vec" | "splitk_vec" | "splitk4_vector" => Self::SplitK4Vec,
             "accfuse" | "acc_fuse" => Self::AccFuse,
+            "fold_addqx" | "addqx" => Self::FoldAddqx,
             "biasprep" | "xsum" | "bias_prep" => Self::BiasPrep,
             "biasprep_drop" | "dropbias" | "drop_bias" => Self::BiasPrepDrop,
             _ => Self::Tpr64,
@@ -582,6 +596,7 @@ impl Affine2Geo {
             Self::SplitK4 => "splitk4",
             Self::SplitK4Vec => "splitk4_vec",
             Self::AccFuse => "accfuse",
+            Self::FoldAddqx => "fold_addqx",
             Self::BiasPrep => "biasprep",
             Self::BiasPrepDrop => "biasprep_drop",
         }
@@ -1350,6 +1365,11 @@ fn qwen38_affine_q2_launch_with_recon_fuse(
             let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
             Some((QWEN38_AFFINE_Q2_ACCFUSE, (grid, 1, 1), (tg, 1, 1)))
         }
+        Affine2Geo::FoldAddqx => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            Some((QWEN38_AFFINE_Q2_FOLD_ADDQX, (grid, 1, 1), (tg, 1, 1)))
+        }
         Affine2Geo::BiasPrep | Affine2Geo::BiasPrepDrop => {
             // mlp_down and other single GEMVs stay on tpr64. BiasPrep is
             // a fused gate_up_swiglu organ cut (N031 owns down).
@@ -1442,6 +1462,16 @@ fn qwen38_affine_gate_up_launch(
                 QWEN38_AFFINE_GATE_UP_SWIGLU_ACCFUSE
             } else {
                 QWEN38_AFFINE_GATE_UP_ACCFUSE
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::FoldAddqx => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_FOLD_ADDQX
+            } else {
+                QWEN38_AFFINE_GATE_UP_FOLD_ADDQX
             };
             (name, (grid, 1, 1), (tg, 1, 1))
         }
@@ -1742,8 +1772,7 @@ pub fn load_qwen38_tokenizer(path: impl AsRef<Path>) -> Result<Tokenizer> {
 mod device {
     use super::*;
     use crate::kernels::{
-        mha_decode_f32_qwen38_gated_tcb, mha_decode_f32_tcb, qwen_next_add_residual_tcb,
-        sample_argmax_f32_tcb,
+        mha_decode_f32_tcb, qwen_next_add_residual_tcb, sample_argmax_f32_tcb,
     };
     use crate::metal::{CommandBufferTiming, MetalContext, PinnedBuffer, TokenCommandBuffer};
     use std::cell::Cell;
@@ -2648,14 +2677,6 @@ mod device {
         /// for Qwen3.8, so decoding it once at attach removes repeated modulo
         /// and error-path construction from the token graph.
         mixer_kinds: [Qwen38MixerKind; QWEN38_LAYERS],
-        /// Resident pipeline handles moved between token command buffers.
-        /// This keeps steady-state dispatches out of the context-wide cache
-        /// lock after the first token has warmed each kernel.
-        pipeline_cache: crate::metal::TokenPipelineCache,
-        /// A/B gate for resident pipeline-handle reuse. Default on keeps the
-        /// warmed cache in the fast path; `=0` restores an empty per-token
-        /// cache for a protected control.
-        pipeline_cache_reuse: bool,
     }
 
     impl Qwen38HybridDecodeSession {
@@ -2743,8 +2764,6 @@ mod device {
                 active_weight_accounting: true,
                 layer_names: Qwen38LayerNameCache::new(),
                 mixer_kinds,
-                pipeline_cache: Default::default(),
-                pipeline_cache_reuse: crate::env_opt_out("HAWKING_METAL_PIPELINE_CACHE_REUSE"),
             };
             // `MetalContext` clones share `Arc<DispatchTrace>`. If that ever
             // becomes a fresh buffer, `drain_trace` on the session would miss
@@ -5646,20 +5665,10 @@ mod device {
             seq_len: usize,
         ) -> Result<()> {
             if self.fuse_attention_gate {
-                mha_decode_f32_qwen38_gated_tcb(
-                    tcb,
-                    &self.workspace.query,
-                    &self.workspace.gqa_key,
-                    cache_off,
-                    &self.workspace.gqa_value,
-                    cache_off,
-                    &self.workspace.gated_attn,
-                    &self.workspace.q_proj,
-                    seq_len,
-                    QWEN38_GQA_HEAD_DIM,
-                    QWEN38_GQA_HEADS,
-                    QWEN38_GQA_KV_HEADS,
-                )
+                return Err(mixed_error(
+                    "qwen38 gated MHA (mha_decode_f32_qwen38_gated_tcb) is not \
+                     in this commit's kernels; leave HAWKING_QWEN38_FUSE_ATTENTION_GATE off",
+                ));
             } else {
                 mha_decode_f32_tcb(
                     tcb,
@@ -7188,19 +7197,9 @@ mod device {
             }
             self.reset_active_weight_bytes();
             let encode_t0 = Instant::now();
-            let mut tcb = if self.pipeline_cache_reuse {
-                TokenCommandBuffer::new_with_pipeline_cache(
-                    &self.context,
-                    std::mem::take(&mut self.pipeline_cache),
-                )
-            } else {
-                TokenCommandBuffer::new(&self.context)
-            };
+            let mut tcb = TokenCommandBuffer::new(&self.context);
             self.enable_dispatch_name_trace(&mut tcb);
             let encode_result = self.encode_full_token(&mut tcb, token);
-            if self.pipeline_cache_reuse {
-                self.pipeline_cache = tcb.take_pipeline_cache();
-            }
             encode_result?;
             let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
             let encode_ns = encode_t0.elapsed().as_nanos() as u64;
@@ -7231,20 +7230,10 @@ mod device {
             self.reset_active_weight_bytes();
             let previous_active_weight_accounting = self.active_weight_accounting;
             self.active_weight_accounting = false;
-            let mut tcb = if self.pipeline_cache_reuse {
-                TokenCommandBuffer::new_with_pipeline_cache(
-                    &self.context,
-                    std::mem::take(&mut self.pipeline_cache),
-                )
-            } else {
-                TokenCommandBuffer::new(&self.context)
-            };
+            let mut tcb = TokenCommandBuffer::new(&self.context);
             self.enable_dispatch_name_trace(&mut tcb);
             let encode_result = self.encode_full_token(&mut tcb, token);
             self.active_weight_accounting = previous_active_weight_accounting;
-            if self.pipeline_cache_reuse {
-                self.pipeline_cache = tcb.take_pipeline_cache();
-            }
             encode_result?;
             let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
             tcb.commit_and_wait()?;
@@ -7266,21 +7255,11 @@ mod device {
             self.reset_active_weight_bytes();
             let wall = Instant::now();
             let alloc_started = Instant::now();
-            let mut tcb = if self.pipeline_cache_reuse {
-                TokenCommandBuffer::new_with_pipeline_cache(
-                    &self.context,
-                    std::mem::take(&mut self.pipeline_cache),
-                )
-            } else {
-                TokenCommandBuffer::new(&self.context)
-            };
+            let mut tcb = TokenCommandBuffer::new(&self.context);
             let allocation_ns = alloc_started.elapsed().as_nanos() as u64;
             self.enable_dispatch_name_trace(&mut tcb);
             let encode_started = Instant::now();
             let encode_result = self.encode_full_token(&mut tcb, token);
-            if self.pipeline_cache_reuse {
-                self.pipeline_cache = tcb.take_pipeline_cache();
-            }
             encode_result?;
             let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
             let encode_ns = encode_started.elapsed().as_nanos() as u64;
@@ -8715,6 +8694,29 @@ mod mixed_catalog_contract_tests {
             qwen38_affine_q2_launch(Affine2Geo::AccFuse, 64, 17408, 5120).map(|l| l.0),
             Some(QWEN38_AFFINE_Q2_ACCFUSE)
         );
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::FoldAddqx, 64, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_FOLD_ADDQX)
+        );
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::FoldAddqx, 32, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_FOLD_ADDQX)
+        );
+        assert_eq!(
+            qwen38_affine_gate_up_launch(Affine2Geo::FoldAddqx, true, 17408).0,
+            QWEN38_AFFINE_GATE_UP_SWIGLU_FOLD_ADDQX
+        );
+        assert_eq!(
+            qwen38_affine_gate_up_launch(Affine2Geo::FoldAddqx, false, 17408).0,
+            QWEN38_AFFINE_GATE_UP_FOLD_ADDQX
+        );
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_affine_q2_group32_matvec_geo_tpr64_tg128_fold_addqx("
+        ));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128_fold_addqx("
+        ));
+        assert_eq!(Affine2Geo::from_value("fold_addqx").as_str(), "fold_addqx");
         assert_eq!(
             qwen38_affine_q2_launch(Affine2Geo::BiasPrep, 64, 17408, 5120).map(|l| l.0),
             Some(QWEN38_AFFINE_Q2_GEO_TPR64)

@@ -43,7 +43,17 @@ SCHEMA = "hawking.future.choice_json_probe.v1"
 RECORDED_BY = "tools/future/choice_json_probe.py"
 VERSION = 1
 
-TIMELINE_REL = "receipts/future/MODEL_BEARING_TIMELINE.json"
+# THE HISTORICAL TIMELINE, FROM A PATH NOTHING WRITES.
+#
+# This probe reconstructs the ask that failed 0 of 43. It used to read the LIVE
+# receipts/future/MODEL_BEARING_TIMELINE.json, which every subsequent run
+# overwrites - so once the ask was FIXED and the resident went 51 of 51, this
+# probe's assertions failed for the one reason a control never should: the
+# artifact it exists to describe had been replaced by the thing it caused.
+# Same trap, same repair, as the archived 477 s autonomy control.
+TIMELINE_REL = "receipts/future/controls/MODEL_BEARING_TIMELINE_ARCHIVED_43turn.json"
+TIMELINE_ARCHIVE_COMMIT = "3fee807a8"
+LIVE_TIMELINE_REL = "receipts/future/MODEL_BEARING_TIMELINE.json"
 TORTURE_REL = "receipts/future/MODEL_BEARING_TORTURE_30M.json"
 
 # Landed trial control. Reconstruction must match this or the probe is answering
@@ -343,6 +353,17 @@ def extract_exact_ask() -> dict[str, Any]:
 
 def load_timeline() -> dict[str, Any]:
     path = REPO / TIMELINE_REL
+    if not path.is_file():
+        # Fall back to the NAMED COMMIT, never HEAD: HEAD holds whatever the most
+        # recent run produced, which is not this control.
+        import subprocess
+
+        blob = subprocess.run(
+            ["git", "show", f"{TIMELINE_ARCHIVE_COMMIT}:{LIVE_TIMELINE_REL}"],
+            cwd=REPO, capture_output=True, text=True,
+        )
+        if blob.returncode == 0 and blob.stdout.strip():
+            return json.loads(blob.stdout)
     if not path.is_file():
         raise ProbeRefused(f"{TIMELINE_REL} missing", missing=[TIMELINE_REL])
     return json.loads(path.read_text(encoding="utf-8"))

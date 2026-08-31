@@ -408,3 +408,31 @@ def test_build_writes_not_run_when_invoked_directly(tmp_path, monkeypatch):
         cjp.OUTCOME_NOTHING,
     }
     assert "--build" in doc["reason"] or "does not start a body" in doc["reason"]
+
+
+def test_the_probe_reads_an_immutable_control_not_the_live_timeline():
+    """A control a later run can overwrite is not a control.
+
+    This probe describes the ask that failed 0 of 43. It used to read the live
+    MODEL_BEARING_TIMELINE.json, which every run replaces - so once the ask was
+    fixed and the resident went 51 of 51, these assertions failed because the
+    artifact under study had been replaced by the thing it caused.
+    """
+    assert "controls/" in cjp.TIMELINE_REL
+    assert cjp.TIMELINE_REL != cjp.LIVE_TIMELINE_REL
+    assert cjp.TIMELINE_ARCHIVE_COMMIT, "the fallback must name a commit, never HEAD"
+    obs = cjp.timeline_observation()
+    assert obs["choose"]["parse_rate"] == "0 of 43", "the control moved"
+
+
+def test_the_live_timeline_is_allowed_to_disagree_with_the_control():
+    """And it does: the fix took it to 51 of 51. That is the point."""
+    live = ra_repo = cjp.REPO / cjp.LIVE_TIMELINE_REL
+    if not live.is_file():
+        pytest.skip("no live timeline on disk")
+    doc = json.loads(live.read_text())
+    calls = [m for m in (doc.get("model_calls") or [])
+             if "Pick one candidate" in str(m.get("prompt") or "")]
+    # no assertion on the NUMBER - it moves with every run, which is why the
+    # control had to stop being this file.
+    assert isinstance(calls, list)

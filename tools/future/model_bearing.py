@@ -1572,6 +1572,25 @@ def resolve_choice_id(raw: str, by_id: Mapping[str, Any]) -> tuple[str, str | No
     return hits[0], raw
 
 
+_INDEX_SUFFIX = re.compile(r"[._-]\d+$")
+
+
+def _ask_kind(row: Mapping[str, Any]) -> str | None:
+    """The SEMANTIC identity of a choose ask: its candidate set, de-indexed.
+
+    WU.HAWKING.health_probe.007 and .008 are the same question. Counting them as
+    two is how a frontier that generates its own filler makes a resident look
+    like it answered fifty different things.
+    """
+    tools = row.get("tools_established")
+    if not isinstance(tools, Mapping):
+        return None
+    ids = tools.get("ids")
+    if not isinstance(ids, list) or not ids:
+        return None
+    return "|".join(sorted({_INDEX_SUFFIX.sub("", str(i)) for i in ids}))
+
+
 def materially_participated(log: Sequence[Mapping[str, Any]] | None = None) -> dict[str, Any]:
     """Falsifiable. Emitting text while Python chooses is not participation."""
     rows = list(log) if log is not None else decision_log()
@@ -1595,6 +1614,17 @@ def materially_participated(log: Sequence[Mapping[str, Any]] | None = None) -> d
     ask_digests = [r.get("prompt_sha256") for r in choose_rows if r.get("prompt_sha256")]
     distinct_asks = len(set(ask_digests))
     repeated_asks = len(ask_digests) - distinct_asks
+    # DISTINCT PROMPTS IS A BETTER DENOMINATOR THAN TOTAL ASKS AND STILL NOT THE
+    # RIGHT ONE. The 51-launch run asked 51 byte-distinct questions and 44 of the
+    # units it launched were WU.HAWKING.health_probe.NNN - the frontier refilling
+    # itself with generated filler. Fifty-one distinct PROMPTS, about seven
+    # distinct QUESTIONS. A model agreeing with "highest gain then id" on 44
+    # near-identical probes is evidence about the frontier, not about judgment.
+    # Strip the trailing index and the question kinds fall out.
+    kinds = {
+        _ask_kind(r) for r in choose_rows if r.get("tools_established")
+    } - {None}
+    distinct_kinds = len(kinds)
     different_hyps = [
         r for r in rows
         if r.get("kind") == "next_hypothesis" and r.get("meaningfully_different")
@@ -1633,23 +1663,27 @@ def materially_participated(log: Sequence[Mapping[str, Any]] | None = None) -> d
         "n_choose_asks": len(choose_rows),
         "n_distinct_choose_asks": distinct_asks,
         "n_repeated_choose_asks": repeated_asks,
-        "divergence_denominator": "distinct asks, not total asks",
+        "n_distinct_question_kinds": distinct_kinds,
+        "divergence_denominator": "distinct QUESTION KINDS, not distinct prompts and not total asks",
         "why": (
             "a deterministic body re-asked a byte-identical question answers it "
-            "identically by construction; counting that as agreement inflates the "
-            "denominator and reports a property of the frontier as a property of "
-            "the model"
+            "identically by construction, so total asks is the wrong denominator. "
+            "So is distinct PROMPTS: a frontier that refills itself with indexed "
+            "probes produces fifty distinct prompts and seven distinct questions. "
+            "The scope of any divergence claim is the question-kind count"
         ),
     }
     finding = None
     if not diverged:
         finding = (
-            f"model choices never diverged from the fixed policy across "
-            f"{distinct_asks} DISTINCT choose asks ({len(choose_rows)} total, "
-            f"{repeated_asks} of them byte-identical repeats). That is a finding "
-            "about this resident on this frontier, not a decorated timeline - and "
-            "the scope is the distinct count, because a deterministic body cannot "
-            "disagree with itself on the same question"
+            "model choices never diverged from the fixed policy across "
+            f"{distinct_kinds} DISTINCT QUESTION KINDS "
+            f"({distinct_asks} distinct prompts, {len(choose_rows)} asks, "
+            f"{repeated_asks} byte-identical repeats). That is a finding about "
+            "this resident on this frontier, not a decorated timeline - and the "
+            "scope is the KIND count, because a deterministic body cannot disagree "
+            "with itself on the same question and an indexed probe series is one "
+            "question asked many times"
         )
     participated = bool(diverged and different_hyps and changed and reasoned)
     why = "model proposed, tools admitted, pick diverged, hyp B differed, and the pick ran"

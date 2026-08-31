@@ -321,28 +321,42 @@ def best_representation_and_its_evidence() -> dict[str, Any]:
 
 
 def next_hardware_requirement() -> dict[str, Any]:
-    """What this machine cannot do, measured rather than assumed."""
+    """What this machine cannot do - and what it CAN do that one stream does not use."""
     traffic = json.loads((REPO / "receipts/future/MEMORY_TRAFFIC_PROBE.json").read_text())
-    organ = json.loads((REPO / "receipts/future/ORGAN_BANDWIDTH.json").read_text())
+    conc_path = REPO / "receipts/future/RESIDENT_CONCURRENCY_MEASURED.json"
+    conc = json.loads(conc_path.read_text()) if conc_path.exists() else None
     return {
         "sources": [
             "receipts/future/MEMORY_TRAFFIC_PROBE.json",
             "receipts/future/ORGAN_BANDWIDTH.json",
+            "receipts/future/RESIDENT_CONCURRENCY_MEASURED.json",
         ],
         "actual_read_bytes_per_token": traffic["actual_read_bytes_per_token"],
         "byte_counter_available": traffic["byte_counter_available"],
         "organ_gb_s_band": [341.9, 360.0],
         "clean_gemv_roof_gb_s": 703.5,
         "lm_head_demonstrated_gb_s": 497.4,
+        "concurrency_verdict": (conc or {}).get("classification", {}).get("verdict"),
+        "aggregate_gb_s_by_level": (conc or {}).get("bandwidth_cross_check", {}).get("gb_s_by_level"),
         "reading": (
-            "The requirement is BANDWIDTH, and the evidence that it is bandwidth "
-            "and not something local is that the loss is uniform: MLP, DeltaNet "
-            "and GQA sit inside 5% of each other at 341.9-360.0 GB/s against a "
-            "703.5 clean roof. There is no hot organ. Separately, this device "
-            "exposes NO counter that reports bytes moved - no MTLCounterSet, "
-            "GPURawCounter, IOKit PerformanceStatistics or IOReport channel - so "
-            "actual traffic is UNKNOWN from an unprivileged process and the "
-            "catalog figure stays an accounting floor rather than a measurement."
+            "The requirement is bandwidth, and the shape of it changed once "
+            "concurrency was measured. WITHIN one session the loss is uniform - "
+            "MLP, DeltaNet and GQA inside 5% of each other at 341.9-360.0 GB/s "
+            "against a 703.5 roof, no hot organ to attack. But a single session is "
+            "NOT what saturates this machine: two or three concurrent sessions "
+            "aggregate to 449-580 GB/s, reaching and sometimes passing the LM "
+            "head's demonstrated 497.4. So the memory system was never full at "
+            "n=1, and ORGAN_BANDWIDTH's own open dependency-chain hypothesis - "
+            "layer N+1 cannot start until layer N retires - is the mechanism. "
+            "That does NOT lower the 71 bar: 71 is single-stream latency, and "
+            "under concurrency each session gets SLOWER. What it changes is the "
+            "diagnosis. The binding limit on one stream is not the memory system's "
+            "capacity; it is the serial dependency between layers, and no amount "
+            "of byte removal addresses that. "
+            "Separately this device exposes NO counter reporting bytes moved - no "
+            "MTLCounterSet, GPURawCounter, IOKit PerformanceStatistics or IOReport "
+            "channel - so actual traffic is UNKNOWN from an unprivileged process "
+            "and the catalog figure stays an accounting floor."
         ),
     }
 

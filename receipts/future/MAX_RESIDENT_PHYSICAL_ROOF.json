@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T16:11:38Z",
+  "recorded_at": "2026-08-31T17:28:13Z",
   "recorded_by": "tools/future/terminal_speed_artifact.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -205,17 +205,24 @@
  },
  "next_hardware_requirement": {
   "actual_read_bytes_per_token": "UNKNOWN",
+  "aggregate_gb_s_by_level": {
+   "1": 361.9,
+   "2": 454.8,
+   "3": 453.2
+  },
   "byte_counter_available": false,
   "clean_gemv_roof_gb_s": 703.5,
+  "concurrency_verdict": "CONCURRENCY_HELPS",
   "lm_head_demonstrated_gb_s": 497.4,
   "organ_gb_s_band": [
    341.9,
    360.0
   ],
-  "reading": "The requirement is BANDWIDTH, and the evidence that it is bandwidth and not something local is that the loss is uniform: MLP, DeltaNet and GQA sit inside 5% of each other at 341.9-360.0 GB/s against a 703.5 clean roof. There is no hot organ. Separately, this device exposes NO counter that reports bytes moved - no MTLCounterSet, GPURawCounter, IOKit PerformanceStatistics or IOReport channel - so actual traffic is UNKNOWN from an unprivileged process and the catalog figure stays an accounting floor rather than a measurement.",
+  "reading": "The requirement is bandwidth, and the shape of it changed once concurrency was measured. WITHIN one session the loss is uniform - MLP, DeltaNet and GQA inside 5% of each other at 341.9-360.0 GB/s against a 703.5 roof, no hot organ to attack. But a single session is NOT what saturates this machine: two or three concurrent sessions aggregate to 449-580 GB/s, reaching and sometimes passing the LM head's demonstrated 497.4. So the memory system was never full at n=1, and ORGAN_BANDWIDTH's own open dependency-chain hypothesis - layer N+1 cannot start until layer N retires - is the mechanism. That does NOT lower the 71 bar: 71 is single-stream latency, and under concurrency each session gets SLOWER. What it changes is the diagnosis. The binding limit on one stream is not the memory system's capacity; it is the serial dependency between layers, and no amount of byte removal addresses that. Separately this device exposes NO counter reporting bytes moved - no MTLCounterSet, GPURawCounter, IOKit PerformanceStatistics or IOReport channel - so actual traffic is UNKNOWN from an unprivileged process and the catalog figure stays an accounting floor.",
   "sources": [
    "receipts/future/MEMORY_TRAFFIC_PROBE.json",
-   "receipts/future/ORGAN_BANDWIDTH.json"
+   "receipts/future/ORGAN_BANDWIDTH.json",
+   "receipts/future/RESIDENT_CONCURRENCY_MEASURED.json"
   ]
  },
  "next_model_body_alternative": {
@@ -251,7 +258,7 @@
  ],
  "recorded_by": "tools/future/terminal_speed_artifact.py",
  "schema": "hawking.future.terminal_speed_artifact.v1",
- "seal_sha256": "7e2aa7a57229eb534bcbc388033b033ebef14e93a03f7a97bc2c2c878a1b78ea",
+ "seal_sha256": "b15bee7e908524d6160b23168072722b0bc295879cb34f5d69cbd60b0a950834",
  "target": {
   "current_body_ms": 27.2896,
   "measured_tps": 34.43,

@@ -59,3 +59,23 @@ def test_the_verdict_is_never_probably_impossible():
     assert v["emit"] in (None, tsa.UNLOCK_NAME, tsa.ROOF_NAME)
     assert "probably" not in v["why"].lower()
     assert "impossible" not in v["why"].lower()
+
+
+def test_every_prerequisite_names_a_tool_that_can_write_it():
+    """Two of the three originally pointed at filenames nobody ever wrote.
+
+    MLP_GRANULARITY_FALSIFIER.json (the receipt is MLP_REGION_FALSIFIER) and
+    TOKEN_REGION_TIMESTAMPS.json (the receipt is ORGAN_BANDWIDTH). Both
+    measurements had ALREADY LANDED, so those were permanent false blockers on
+    completed work - the failure mode this module exists to prevent, inverted.
+    A filename can be invented; the module that writes it cannot.
+    """
+    assert tsa.check_prerequisites_are_writable() == []
+
+
+def test_an_unwritable_prerequisite_refuses_the_build(monkeypatch):
+    fake = dict(tsa.PREREQUISITES[0])
+    fake["written_by"] = "tools/future/no_such_module.py"
+    monkeypatch.setattr(tsa, "PREREQUISITES", (fake,) + tsa.PREREQUISITES[1:])
+    with pytest.raises(tsa.PrerequisiteUnwritable, match="no_such_module"):
+        tsa.build()

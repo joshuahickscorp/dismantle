@@ -62,13 +62,21 @@ class TerminalArtifactRefused(RuntimeError):
 PREREQUISITES: tuple[dict[str, Any], ...] = (
     {
         "id": "G038_per_region_attribution",
-        "receipt": "receipts/future/TOKEN_REGION_TIMESTAMPS.json",
-        "field": ["attributed_ms", "unattributed_ms"],
+        # Second prerequisite pointing at a filename nobody ever wrote. The
+        # receipt is ORGAN_BANDWIDTH.json and it landed with the measurement made:
+        # per-organ GPU ms behind HAWKING_QWEN38_REGION_TIMING (default OFF), the
+        # trace's own cost measured at 1.8%, and coverage of 27.733 of 27.828 ms
+        # with the 0.095 ms remainder NAMED - norms, embedding row, A_log,
+        # dt_bias. I keyed this on an invented name while the answer was on disk.
+        "receipt": "receipts/future/ORGAN_BANDWIDTH.json",
+        "written_by": "tools/future/organ_bandwidth.py",
+        "field": ["coverage", "gpu_ms_unattributed"],
         "why": (
-            "0.321 ms of GPU time inside the decode step belongs to no organ "
-            "(causal_budget_71.causal_residual). A roof receipt that names the "
-            "dominant remaining costs cannot leave 1.1% of the token unattributed "
-            "and call the accounting complete."
+            "a roof receipt that names the dominant remaining costs cannot leave "
+            "GPU time unattributed and call the accounting complete. The answer is "
+            "that the loss is NOT localised: MLP, DeltaNet and GQA sit inside 5% "
+            "of each other against a 703.5 clean roof, so there is no hot organ "
+            "and byte elimination outranks execution tuning."
         ),
     },
     {
@@ -78,6 +86,7 @@ PREREQUISITES: tuple[dict[str, Any], ...] = (
         # false blocker - it would have held the terminal artifact shut forever on
         # a measurement that had already landed.
         "receipt": "receipts/future/MLP_REGION_FALSIFIER.json",
+        "written_by": "tools/future/mlp_region_falsifier.py",
         "field": ["contiguous", "effective_gb_s"],
         "why": (
             "One representative MLP layer, contiguous, few fused regions, "
@@ -89,6 +98,7 @@ PREREQUISITES: tuple[dict[str, Any], ...] = (
     {
         "id": "G075_current_body_baseline",
         "receipt": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+        "written_by": "tools/future/resident_token_budget.py",
         "field": ["decode_wall_ms_per_token"],
         "why": (
             "deltanet_widen_f4 landed as a measured token-identical 1.0245 ms "
@@ -97,6 +107,34 @@ PREREQUISITES: tuple[dict[str, Any], ...] = (
         ),
     },
 )
+
+
+class PrerequisiteUnwritable(RuntimeError):
+    """A prerequisite names a receipt no tool in this repo can produce."""
+
+
+def check_prerequisites_are_writable() -> list[dict[str, Any]]:
+    """Every prerequisite must name the TOOL that writes its receipt, and that
+    tool must exist.
+
+    Two of the three prerequisites originally pointed at filenames nobody ever
+    wrote - MLP_GRANULARITY_FALSIFIER.json (the receipt is MLP_REGION_FALSIFIER)
+    and TOKEN_REGION_TIMESTAMPS.json (the receipt is ORGAN_BANDWIDTH). Both
+    measurements had ALREADY LANDED, so those were permanent false blockers on
+    work that was done.
+    Requiring the writer catches the invention at authoring time: a filename can
+    be made up, but naming the module that produces it cannot be, because the
+    module has to be on disk.
+    """
+    bad = []
+    for pre in PREREQUISITES:
+        tool = pre.get("written_by")
+        if not tool:
+            bad.append({"id": pre["id"], "why": "no written_by; the receipt name is unverifiable"})
+            continue
+        if not (REPO / tool).exists():
+            bad.append({"id": pre["id"], "why": f"written_by {tool} is not on disk"})
+    return bad
 
 
 def _resolved(rel: str, field: list[str]) -> Any:
@@ -167,6 +205,13 @@ def which_receipt() -> dict[str, Any]:
 
 
 def build() -> dict[str, Any]:
+    unwritable = check_prerequisites_are_writable()
+    if unwritable:
+        raise PrerequisiteUnwritable(
+            "a prerequisite names a receipt no tool here can produce, which is a "
+            "permanent false blocker rather than a real one: "
+            + "; ".join(f"{b['id']}: {b['why']}" for b in unwritable)
+        )
     verdict = which_receipt()
     if verdict["emit"] is None:
         raise TerminalArtifactRefused(

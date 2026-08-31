@@ -100,3 +100,36 @@ def test_the_boundary_says_an_fma_count_is_not_a_gb_s():
     cb = dh.build()["claim_boundary"]
     assert "an FMA count is not a GB/s" in cb
     assert "candidate worth building, not a result" in cb
+
+
+def test_the_candidate_is_bracketed_on_the_MEASURED_ladder_not_guessed():
+    """The issue-rate ladder already swept FMA/byte on the real kernel."""
+    b = dh.ladder_bracket()
+    assert b["candidate_fma_per_weight_byte"] == pytest.approx(1.6667, abs=1e-3)
+    assert b["bracketed_by"] == ["k6", "k4"]
+    lo, hi = b["speedup_bracket"]
+    assert lo == pytest.approx(1.2679, abs=1e-3)
+    assert hi == pytest.approx(1.4256, abs=1e-3)
+
+
+def test_it_is_a_bracket_and_not_an_interpolated_point():
+    """The ladder's own verdict is that its shape is neither linear nor plateau."""
+    b = dh.ladder_bracket()
+    assert "false precision" in b["not_interpolated_because"]
+    assert "0.8712" in b["not_interpolated_because"]
+    lo, hi = b["mlp_ms_saved_bracket"]
+    assert lo < hi, "a bracket must have two ends"
+    assert lo == pytest.approx(3.3064, abs=1e-2)
+
+
+def test_the_knee_is_named_so_nobody_chases_past_it():
+    """k4 439.5 and k2 440.6 - halving the FMA again buys 0.25%."""
+    knee = dh.ladder_bracket()["the_knee"]
+    assert "439.5" in knee and "440.6" in knee
+    assert "0.25%" in knee
+    assert "just above the knee" in knee
+
+
+def test_the_ladder_arms_are_not_bit_identical_and_neither_is_this():
+    b = dh.ladder_bracket()
+    assert "not-identical" in b["ladder_arms_are_not_bit_identical"]

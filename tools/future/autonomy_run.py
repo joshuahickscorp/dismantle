@@ -1753,7 +1753,13 @@ def run(trial: str = "15m", timeline: Path | None = None,
             # before blocking. This is not classifier-appeasement - the work
             # really does run during the wait, on the same scheduler the kickoff
             # uses, and if nothing is detachable nothing is emitted.
-            doc = _top_up_detached(doc, queue)
+            # want_live=3 here, not the kickoff's 2. Two live is the threshold for
+            # PROVING overlap once; this call is about to hand the loop to a
+            # blocking invoke, so the question is not "has overlap been
+            # demonstrated" but "is there anything else in flight while I stop".
+            # The 30m run's single remaining forcing interval was an 8 s wait with
+            # WU.AUTONOMY.tournament.78 runnable and the pool already at two.
+            doc = _top_up_detached(doc, queue, want_live=3)
 
             try:
                 unit_budget = min(UNIT_BUDGET_S,

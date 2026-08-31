@@ -695,3 +695,38 @@ def test_does_not_claim_to_edit_the_composed_modules():
         "tools/future/improvement_trial.py",
     ):
         assert path in doc["does_not_edit"]
+
+
+def test_a_launch_claiming_detached_without_proof_is_still_a_sync_wait():
+    """The payload is the driver's own word for it. detached_started is evidence.
+
+    emit_detached_started refuses to write unless the job has a live pid, so a
+    matching detached_started is proof the loop did not block. Accepting the
+    payload claim alone would let a driver relabel its way out of every forcing
+    interval.
+    """
+    events = [
+        {"kind": "workunit_launched", "t_s": 0.0,
+         "payload": {"unit": {"id": "WU.A"}, "launch": "detached"}},
+        # no detached_started for WU.A
+        {"kind": "result_ingested", "t_s": 9.0, "payload": {"unit_id": "WU.A"}},
+    ]
+    assert nwo._verified_detached_ids(events) == set()
+
+
+def test_a_launch_with_a_matching_detached_started_is_proven_non_blocking():
+    events = [
+        {"kind": "workunit_launched", "t_s": 0.0,
+         "payload": {"unit": {"id": "WU.A"}, "launch": "detached"}},
+        {"kind": "detached_started", "t_s": 0.1, "payload": {"unit_id": "WU.A"}},
+        {"kind": "result_ingested", "t_s": 9.0, "payload": {"unit_id": "WU.A"}},
+    ]
+    assert nwo._verified_detached_ids(events) == {"WU.A"}
+
+
+def test_an_unmarked_launch_is_never_treated_as_detached():
+    events = [
+        {"kind": "workunit_launched", "t_s": 0.0, "payload": {"unit": {"id": "WU.B"}}},
+        {"kind": "detached_started", "t_s": 0.1, "payload": {"unit_id": "WU.B"}},
+    ]
+    assert nwo._verified_detached_ids(events) == set()

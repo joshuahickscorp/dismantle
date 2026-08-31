@@ -602,6 +602,39 @@ def _hydrate_candidate(
     return {"id": ident, "resource_class": rc, "dependencies": []}
 
 
+
+def _verified_detached_ids(events: Sequence[Mapping[str, Any]]) -> set[str]:
+    """Units whose launch is PROVEN non-blocking, by evidence not by claim.
+
+    The driver emits workunit_launched for BOTH shapes and marks the payload
+    launch=detached for one of them. A payload is the driver's own word for it,
+    so the claim alone is not enough: this requires a matching detached_started,
+    which emit_detached_started refuses to write unless the job has a live pid.
+
+    Why this matters: a detached launch does not block the loop, so it must not
+    OPEN a forcing interval, and it DOES count as concurrent work for a sync
+    wait that spans it. Treating all 34 of a run's verified detached launches as
+    sync launches both invented intervals and hid real overlap.
+    """
+    claimed: set[str] = set()
+    for event in events:
+        if _kind(event) not in SYNC_LAUNCH_KINDS:
+            continue
+        if str(_payload(event).get("launch") or "").lower() != "detached":
+            continue
+        uid = _event_unit_id(event)
+        if uid:
+            claimed.add(uid)
+    started: set[str] = set()
+    for event in events:
+        if _kind(event) != "detached_started":
+            continue
+        uid = _event_unit_id(event)
+        if uid:
+            started.add(uid)
+    return claimed & started
+
+
 def _sync_launch_between(
     events: Sequence[Mapping[str, Any]],
     i: int,
@@ -610,7 +643,7 @@ def _sync_launch_between(
     exclude_uid: str,
 ) -> bool:
     for event in events[i + 1 : j]:
-        if _kind(event) not in SYNC_LAUNCH_KINDS:
+        if _kind(event) not in LAUNCH_KINDS:
             continue
         uid = _event_unit_id(event)
         if uid and uid != exclude_uid:
@@ -655,12 +688,16 @@ def _blocked_intervals(events: Sequence[Mapping[str, Any]]) -> list[dict[str, An
             }
         )
 
+    detached_ok = _verified_detached_ids(events)
     open_at: dict[str, int] = {}
     for idx, event in enumerate(events):
         kind = _kind(event)
         if kind in SYNC_LAUNCH_KINDS:
             uid = _event_unit_id(event)
-            if uid:
+            # A launch proven detached does not block the loop, so it cannot be
+            # the start of a wait. Proven means a matching detached_started, not
+            # the payload's own claim.
+            if uid and uid not in detached_ok:
                 open_at[uid] = idx
             continue
         if kind not in COMPLETE_KINDS:

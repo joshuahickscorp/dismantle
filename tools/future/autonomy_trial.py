@@ -106,6 +106,7 @@ _POWER_TORTURE_EXTRA = (
     "mutation_proposed_and_rolled_back",
     "status_causality_challenged",
     "protected_work_parked_not_idled",
+    "no_idle_while_work_exists",
 )
 
 _THREE_H_EXTRA = (
@@ -177,6 +178,18 @@ AWAITING_KINDS = frozenset(
         "all_tasks_complete",
     }
 )
+# Event the driver must emit before it sleeps on a subprocess. Distinct from
+# AWAITING_KINDS: this is a survey of a dry refill, not a conversational wait.
+IDLE_JUSTIFIED_KIND = "idle_justified"
+# Sealed 30m transcript (receipts/future/AUTONOMY_TIMELINE_30m.json): honest
+# consecutive-event gaps are 2s, 18s, 22s (inline work), 23s (compose). The
+# defect is 477s of no events while next_work_left still named twelve
+# frontiers. 60s is above every honest gap on that file and 1/8 of the defect;
+# a 25s driver run cannot produce it. Gaps opened by workunit_launched are
+# performing that unit, not idle, even when they exceed this.
+IDLE_WHILE_WORK_GAP_S = 60
+# A gap that starts with one of these is the unit running, not the loop waiting.
+IDLE_PERFORMING_KINDS = frozenset({"workunit_launched"})
 HARDWARE_IDLE_KINDS = frozenset({"hardware_blocked_wait", "waiting_resource"})
 F_ID = re.compile(r"^F\d+$")
 
@@ -1051,6 +1064,149 @@ def eval_never_conversational_wait(view: TimelineView) -> dict[str, Any]:
     }
 
 
+def _named_leftover_ids(event: Mapping[str, Any]) -> list[str]:
+    """Frontier / unit ids a leftover or refill event actually named.
+
+    An exhausted refill that reported n=0 is not leftover work.
+    """
+    payload = _payload(event)
+    raw = (
+        list(payload.get("unit_ids") or [])
+        + list(payload.get("ids") or [])
+        + list(payload.get("entry_ids") or [])
+    )
+    ids = [str(x).strip() for x in raw if str(x).strip()]
+    if payload.get("exhausted") is True and not ids:
+        return []
+    return ids
+
+
+def _idle_justification_ok(event: Mapping[str, Any]) -> bool:
+    """A sleep is legitimate only if this event surveyed a dry refill and named the wait."""
+    if str(event.get("kind") or "") != IDLE_JUSTIFIED_KIND:
+        return False
+    payload = _payload(event)
+    if not str(payload.get("why") or "").strip():
+        return False
+    asked = payload.get("frontiers_asked")
+    returned = payload.get("returned")
+    if asked is None and returned is None:
+        return False
+    if asked is not None and not isinstance(asked, list):
+        return False
+    if returned is not None and not isinstance(returned, list):
+        return False
+    waiting = payload.get("waiting_on")
+    if not isinstance(waiting, list) or not waiting:
+        return False
+    novel = payload.get("n_novel")
+    if novel is None and isinstance(returned, list):
+        novel = sum(
+            1
+            for row in returned
+            if isinstance(row, Mapping) and str(row.get("returned") or "") == "novel"
+        )
+    try:
+        n_novel = int(novel or 0)
+    except (TypeError, ValueError):
+        n_novel = 0
+    if n_novel > 0:
+        return False
+    return True
+
+
+def _work_remained_across_gap(
+    view: TimelineView, gap_start_t: int, gap_end_t: int
+) -> list[str]:
+    """Ids showing runnable leftover still existed at or after the silent interval."""
+    named: list[str] = []
+    for event in view.of("next_work_left", "work_refilled"):
+        t_ev = int(event.get("t_s") or 0)
+        if t_ev < gap_end_t:
+            continue
+        named.extend(_named_leftover_ids(event))
+    for event, unit in view.launched():
+        t_ev = int(event.get("t_s") or 0)
+        if t_ev < gap_end_t:
+            continue
+        fid = str(
+            _payload(event).get("frontier_id") or unit.get("frontier_id") or unit.get("id") or ""
+        )
+        if fid:
+            named.append(fid)
+    if not named:
+        named = [str(r.get("id") or "") for r in view.safe_work if r.get("id")]
+    # Stable unique order.
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in named:
+        if item and item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+def eval_no_idle_while_work_exists(view: TimelineView) -> dict[str, Any]:
+    """FAIL a long silent gap with leftover work and no idle_justified opener.
+
+    never_conversational_wait only sees phrases and AWAITING_KINDS. The 30m
+    torture idled 477s on `time.sleep` with neither, so it passed 16/16.
+    """
+    cid = "no_idle_while_work_exists"
+    events = view.events
+    bad: list[dict[str, Any]] = []
+    leftover_for_bad: list[str] = []
+    t_pairs: list[str] = []
+    justified: list[dict[str, Any]] = []
+    for prev, nxt in zip(events, events[1:]):
+        t0 = int(prev.get("t_s") or 0)
+        t1 = int(nxt.get("t_s") or 0)
+        gap = t1 - t0
+        if gap < IDLE_WHILE_WORK_GAP_S:
+            continue
+        kind0 = str(prev.get("kind") or "")
+        if kind0 in IDLE_PERFORMING_KINDS:
+            continue
+        if _idle_justification_ok(prev):
+            justified.append(prev)
+            continue
+        remained = _work_remained_across_gap(view, t0, t1)
+        if not remained:
+            continue
+        bad.append(prev)
+        bad.append(nxt)
+        leftover_for_bad.extend(remained)
+        t_pairs.append(f"{t0}->{t1}s ({gap}s)")
+    if bad:
+        seen: set[str] = set()
+        left: list[str] = []
+        for item in leftover_for_bad:
+            if item not in seen:
+                seen.add(item)
+                left.append(item)
+        return _unmet(
+            cid,
+            (
+                f"silent interval of >={IDLE_WHILE_WORK_GAP_S}s with leftover "
+                f"frontier work and no {IDLE_JUSTIFIED_KIND} justification: "
+                f"{', '.join(t_pairs)}; leftover={left[:12]}"
+            ),
+            [f"seq:{e.get('seq')}" for e in bad] + left[:12],
+        )
+    detail = (
+        f"no unjustified idle gap >={IDLE_WHILE_WORK_GAP_S}s while work remained"
+    )
+    if justified:
+        return _met(cid, detail, justified)
+    return {
+        "id": cid,
+        "met": True,
+        "cites": [],
+        "detail": detail,
+        "event_seqs": [],
+    }
+
+
 def _detached_overlap(events: Sequence[Mapping[str, Any]]) -> tuple[bool, list[str], list[dict[str, Any]]]:
     """Two detached jobs live at one instant.
 
@@ -1395,6 +1551,7 @@ EVALUATORS = {
     "mutation_proposed_and_rolled_back": eval_mutation_proposed_and_rolled_back,
     "status_causality_challenged": eval_status_causality_challenged,
     "protected_work_parked_not_idled": eval_protected_work_parked_not_idled,
+    "no_idle_while_work_exists": eval_no_idle_while_work_exists,
     "overlap_detached_work": eval_overlap_detached_work,
     "use_negative_science": eval_use_negative_science,
     "alter_priority_from_evidence": eval_alter_priority_from_evidence,

@@ -16,9 +16,62 @@ from pathlib import Path
 import pytest
 
 from tools.future import autonomy_trial as at
-from tools.future._common import RECEIPTS, HardwareClaimError, _assert_no_hardware_claims
+from tools.future._common import RECEIPTS, REPO, git, HardwareClaimError, _assert_no_hardware_claims
 from tools.future.repro_science import FailClosed
 from hcli.workunit import WorkUnit
+
+
+def _load_sealed_30m_timeline() -> dict:
+    """The archived 30m torture transcript. Sparse checkout is not git absence."""
+    rels = (
+        "receipts/future/AUTONOMY_TIMELINE_30M.json",
+        "receipts/future/AUTONOMY_TIMELINE_30m.json",
+    )
+    for rel in rels:
+        path = REPO / rel
+        if path.is_file():
+            return json.loads(path.read_text())
+    for rel in rels:
+        blob = git("show", f"HEAD:{rel}")
+        if blob:
+            return json.loads(blob)
+    raise AssertionError(
+        "sealed 30m timeline is absent from disk and git; "
+        "needed receipts/future/AUTONOMY_TIMELINE_30m.json"
+    )
+
+
+def test_sealed_30m_timeline_fails_no_idle_while_work_exists():
+    """NEGATIVE CONTROL: the 477s idle the 16/16 pass could not see.
+
+    Write this first. If the new evaluator PASSes the archived 30m timeline,
+    the evaluator is wrong.
+    """
+    doc = _load_sealed_30m_timeline()
+    assert doc.get("trial") == "30m"
+    events = at._seq_events(list(doc.get("events") or []))
+    max_gap = 0
+    gap_at = None
+    for prev, nxt in zip(events, events[1:]):
+        dt = int(nxt.get("t_s") or 0) - int(prev.get("t_s") or 0)
+        if dt > max_gap:
+            max_gap = dt
+            gap_at = (int(prev.get("t_s") or 0), int(nxt.get("t_s") or 0), prev.get("kind"), nxt.get("kind"))
+    assert max_gap == 477, f"archived idle is {max_gap}s, not the 477s this campaign named; at {gap_at}"
+
+    view = at.TimelineView(doc, "30m")
+    idle = at.eval_no_idle_while_work_exists(view)
+    assert idle["met"] is False, idle.get("detail")
+    assert "477" in idle["detail"] or "88->565" in idle["detail"] or "88->565s" in idle["detail"]
+
+    # The phrase detector still cannot see this gap — we did not weaken it,
+    # and it must not be the thing that catches the idle.
+    conversational = at.eval_never_conversational_wait(view)
+    assert conversational["met"] is True, conversational.get("detail")
+
+    verdict = at.verify("30m", doc)
+    assert verdict["verdict"] == "FAIL"
+    assert "no_idle_while_work_exists" in verdict["unmet"]
 
 
 def test_entry_point_runs_and_seals_receipt():
@@ -611,3 +664,160 @@ def test_unstamped_timeline_still_falls_back_to_adjacency():
     ]
     ok, jobs, _cited = _detached_overlap_for_test(events)
     assert ok and jobs == ["A", "B"]
+
+
+def test_30m_required_set_gained_no_idle_while_work_exists():
+    assert "no_idle_while_work_exists" in at.REQUIRED_CONDITIONS["30m"]
+    assert "no_idle_while_work_exists" not in at.THIRTEEN_ACCEPTANCE
+    assert "no_idle_while_work_exists" not in at.REQUIRED_CONDITIONS["1h"]
+    assert "no_idle_while_work_exists" not in at.REQUIRED_CONDITIONS["15m"]
+    assert len(at.REQUIRED_CONDITIONS["30m"]) == 17
+    assert at.REQUIRED_CONDITIONS["30m"].count("no_idle_while_work_exists") == 1
+    assert at.eval_never_conversational_wait is not at.eval_no_idle_while_work_exists
+
+
+def test_30m_passing_fixture_still_passes_with_the_stricter_judge():
+    verdict = at.verify("30m", at.build_passing_timeline("30m"))
+    assert verdict["verdict"] == "PASS", verdict.get("reason")
+    assert "no_idle_while_work_exists" not in verdict["unmet"]
+    met_ids = [c["id"] for c in verdict["conditions"] if c["met"]]
+    assert "no_idle_while_work_exists" in met_ids
+
+
+def test_honest_inter_event_gaps_do_not_fail_no_idle():
+    """23s is the largest honest gap on the sealed 30m; it must not fail."""
+    units = at.passing_units()
+    u1 = units["atlas"]
+    timeline = {
+        "schema": at.TIMELINE_SCHEMA,
+        "trial": "30m",
+        "duration_s": at.TRIAL_DURATION_S["30m"],
+        "elapsed_s": 90,
+        "frontier": at.fixture_frontier(),
+        "events": at._seq_events(
+            [
+                at._ev(0, "state_recovered", cites=[at.FRONTIER_REL], payload={"path_taken": "fixture"}),
+                at._ev(0, "workunit_sleeping", payload={"resource_class": "GPU_PROTECTED"}),
+                at._ev(23, "workunit_sleeping", payload={"resource_class": "ANE"}),
+                at._ev(
+                    23,
+                    "workunit_launched",
+                    cites=[u1["id"], "F012"],
+                    payload={"unit": u1, "frontier_id": "F012"},
+                ),
+                at._ev(45, "result_ingested", cites=["receipts/future/X.json"], payload={"receipt": "receipts/future/X.json"}),
+                at._ev(45, "next_work_left", cites=["F015"], payload={"unit_ids": ["F015"], "n": 1}),
+            ]
+        ),
+    }
+    verdict = at.eval_no_idle_while_work_exists(at.TimelineView(timeline, "30m"))
+    assert verdict["met"] is True, verdict.get("detail")
+
+
+def test_performing_work_gap_is_not_an_idle():
+    """A long invoke is a gap opened by workunit_launched; that is work, not wait."""
+    units = at.passing_units()
+    u1 = units["atlas"]
+    timeline = {
+        "schema": at.TIMELINE_SCHEMA,
+        "trial": "30m",
+        "duration_s": at.TRIAL_DURATION_S["30m"],
+        "elapsed_s": 500,
+        "frontier": at.fixture_frontier(),
+        "events": at._seq_events(
+            [
+                at._ev(0, "state_recovered", cites=[at.FRONTIER_REL], payload={"path_taken": "fixture"}),
+                at._ev(
+                    10,
+                    "workunit_launched",
+                    cites=[u1["id"], "F012"],
+                    payload={"unit": u1, "frontier_id": "F012"},
+                ),
+                at._ev(487, "result_ingested", cites=["receipts/future/X.json"], payload={"receipt": "receipts/future/X.json"}),
+                at._ev(487, "next_work_left", cites=["F015"], payload={"unit_ids": ["F015"], "n": 1}),
+            ]
+        ),
+    }
+    verdict = at.eval_no_idle_while_work_exists(at.TimelineView(timeline, "30m"))
+    assert verdict["met"] is True, verdict.get("detail")
+
+
+def test_justified_idle_gap_passes_no_idle_while_work_exists():
+    """The same 477s wait PASSes when the gap opens with a complete idle_justified."""
+    units = at.passing_units()
+    u1 = units["atlas"]
+    timeline = {
+        "schema": at.TIMELINE_SCHEMA,
+        "trial": "30m",
+        "duration_s": at.TRIAL_DURATION_S["30m"],
+        "elapsed_s": 565,
+        "frontier": at.fixture_frontier(),
+        "events": at._seq_events(
+            [
+                at._ev(0, "state_recovered", cites=[at.FRONTIER_REL], payload={"path_taken": "fixture"}),
+                at._ev(
+                    3,
+                    "workunit_launched",
+                    cites=[u1["id"], "F012"],
+                    payload={"unit": u1, "frontier_id": "F012"},
+                ),
+                at._ev(88, "mission_state_written", cites=["mission/state.json"], payload={"path": "mission/state.json", "mission_id": "x", "next_action": "wait"}),
+                at._ev(
+                    88,
+                    at.IDLE_JUSTIFIED_KIND,
+                    payload={
+                        "why": "queue empty and refill returned no novel work; waiting on open handles",
+                        "frontiers_asked": ["F012", "F015"],
+                        "returned": [
+                            {"frontier_id": "F012", "returned": "already_run"},
+                            {"frontier_id": "F015", "returned": "already_held"},
+                        ],
+                        "waiting_on": [{"job_id": "specimen", "pid": 22827, "unit_id": "WU.TORTURE.NO_WAIT.specimen_verify"}],
+                        "n_asked": 2,
+                        "n_novel": 0,
+                    },
+                ),
+                at._ev(565, "detached_completed", payload={"job_id": "specimen"}),
+                at._ev(565, "next_work_left", cites=["F015", "F016"], payload={"unit_ids": ["F015", "F016"], "n": 2}),
+            ]
+        ),
+    }
+    verdict = at.eval_no_idle_while_work_exists(at.TimelineView(timeline, "30m"))
+    assert verdict["met"] is True, verdict.get("detail")
+
+
+def test_idle_justified_with_novel_work_still_fails():
+    """A wait that reports n_novel>0 is not a justification; it is the defect confessing."""
+    units = at.passing_units()
+    u1 = units["atlas"]
+    timeline = {
+        "schema": at.TIMELINE_SCHEMA,
+        "trial": "30m",
+        "duration_s": at.TRIAL_DURATION_S["30m"],
+        "elapsed_s": 565,
+        "frontier": at.fixture_frontier(),
+        "events": at._seq_events(
+            [
+                at._ev(
+                    3,
+                    "workunit_launched",
+                    cites=[u1["id"], "F012"],
+                    payload={"unit": u1, "frontier_id": "F012"},
+                ),
+                at._ev(
+                    88,
+                    at.IDLE_JUSTIFIED_KIND,
+                    payload={
+                        "why": "waiting",
+                        "frontiers_asked": ["F015"],
+                        "returned": [{"frontier_id": "F015", "returned": "novel"}],
+                        "waiting_on": [{"job_id": "specimen", "pid": 1}],
+                        "n_novel": 1,
+                    },
+                ),
+                at._ev(565, "next_work_left", cites=["F015"], payload={"unit_ids": ["F015"], "n": 1}),
+            ]
+        ),
+    }
+    verdict = at.eval_no_idle_while_work_exists(at.TimelineView(timeline, "30m"))
+    assert verdict["met"] is False, verdict.get("detail")

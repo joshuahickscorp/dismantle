@@ -14,7 +14,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T08:00:46Z",
+  "recorded_at": "2026-08-31T16:13:40Z",
   "recorded_by": "tools/future/aux_capability_screen.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -137,7 +137,11 @@
      "flop_ms_range": [
       0.0,
       0.0
-     ]
+     ],
+     "organ_average_gb_s": 344.1,
+     "stream_billing_gb_s": 0.0,
+     "stream_class": "broadcast_aux",
+     "stream_on_critical_path": false
     },
     "byte_model_incomplete": false,
     "bytes_added": {
@@ -159,41 +163,41 @@
     "net_bytes": -1002700800,
     "note": null,
     "organ": "mlp",
-    "predicted_ms_delta": -2.914,
+    "predicted_ms_delta": 0.0,
     "predicted_ms_delta_range": [
-     -2.914,
-     -2.6618
+     0.0,
+     0.0
     ],
-    "predicted_ms_saved": 2.914,
-    "predicted_token_ms": 25.808,
+    "predicted_ms_saved": 0.0,
+    "predicted_token_ms": 28.722,
     "predicted_token_ms_range": [
-     25.808,
-     26.0602
+     28.722,
+     28.722
     ],
-    "predicted_tps": 38.748,
+    "predicted_tps": 34.817,
     "predicted_tps_range": [
-     38.373,
-     38.748
+     34.817,
+     34.817
     ],
     "s020_section_20": {
      "bar_ms": 0.2872,
-     "clears_time_bar": true,
+     "clears_time_bar": false,
      "high_information_falsifier": false,
-     "plausible_ms_saved": 2.914,
+     "plausible_ms_saved": 0.0,
      "reusable_family": true
     },
     "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
     "status": "OPEN",
+    "stream_class": "broadcast_aux",
     "terms": {
      "byte_added_ms": 0.0,
-     "byte_ms_delta": -2.914,
-     "byte_removed_ms": -2.914,
+     "byte_ms_delta": 0.0,
+     "byte_removed_ms": 0.0,
      "dispatch_ms_delta": 0.0,
      "flop_ms_delta": 0.0
     },
     "verdict": "MATERIAL",
     "verdict_reasons": [
-     "clears_s020_section_20_time_bar",
      "reusable_representation_family"
     ]
    },
@@ -683,7 +687,11 @@
      "flop_ms_range": [
       0.0,
       0.0
-     ]
+     ],
+     "organ_average_gb_s": 344.1,
+     "stream_billing_gb_s": 0.0,
+     "stream_class": "broadcast_aux",
+     "stream_on_critical_path": false
     },
     "byte_model_incomplete": false,
     "bytes_added": {
@@ -705,41 +713,41 @@
     "net_bytes": -802160640,
     "note": null,
     "organ": "mlp",
-    "predicted_ms_delta": -2.3312,
+    "predicted_ms_delta": 0.0,
     "predicted_ms_delta_range": [
-     -2.3312,
-     -2.1294
+     0.0,
+     0.0
     ],
-    "predicted_ms_saved": 2.3312,
-    "predicted_token_ms": 26.3908,
+    "predicted_ms_saved": 0.0,
+    "predicted_token_ms": 28.722,
     "predicted_token_ms_range": [
-     26.3908,
-     26.5926
+     28.722,
+     28.722
     ],
-    "predicted_tps": 37.892,
+    "predicted_tps": 34.817,
     "predicted_tps_range": [
-     37.605,
-     37.892
+     34.817,
+     34.817
     ],
     "s020_section_20": {
      "bar_ms": 0.2872,
-     "clears_time_bar": true,
+     "clears_time_bar": false,
      "high_information_falsifier": false,
-     "plausible_ms_saved": 2.3312,
+     "plausible_ms_saved": 0.0,
      "reusable_family": true
     },
     "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
     "status": "OPEN",
+    "stream_class": "broadcast_aux",
     "terms": {
      "byte_added_ms": 0.0,
-     "byte_ms_delta": -2.3312,
-     "byte_removed_ms": -2.3312,
+     "byte_ms_delta": 0.0,
+     "byte_removed_ms": 0.0,
      "dispatch_ms_delta": 0.0,
      "flop_ms_delta": 0.0
     },
     "verdict": "MATERIAL",
     "verdict_reasons": [
-     "clears_s020_section_20_time_bar",
      "reusable_representation_family"
     ]
    },
@@ -1225,7 +1233,11 @@
      "flop_ms_range": [
       0.0,
       0.0
-     ]
+     ],
+     "organ_average_gb_s": 344.1,
+     "stream_billing_gb_s": 0.0,
+     "stream_class": "broadcast_aux",
+     "stream_on_critical_path": false
     },
     "byte_model_incomplete": false,
     "bytes_added": {
@@ -1247,41 +1259,41 @@
     "net_bytes": -534772224,
     "note": null,
     "organ": "mlp",
-    "predicted_ms_delta": -1.5541,
+    "predicted_ms_delta": 0.0,
     "predicted_ms_delta_range": [
-     -1.5541,
-     -1.4196
+     0.0,
+     0.0
     ],
-    "predicted_ms_saved": 1.5541,
-    "predicted_token_ms": 27.1679,
+    "predicted_ms_saved": 0.0,
+    "predicted_token_ms": 28.722,
     "predicted_token_ms_range": [
-     27.1679,
-     27.3024
+     28.722,
+     28.722
     ],
-    "predicted_tps": 36.808,
+    "predicted_tps": 34.817,
     "predicted_tps_range": [
-     36.627,
-     36.808
+     34.817,
+     34.817
     ],
     "s020_section_20": {
      "bar_ms": 0.2872,
-     "clears_time_bar": true,
+     "clears_time_bar": false,
      "high_information_falsifier": false,
-     "plausible_ms_saved": 1.5541,
+     "plausible_ms_saved": 0.0,
      "reusable_family": true
     },
     "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
     "status": "OPEN",
+    "stream_class": "broadcast_aux",
     "terms": {
      "byte_added_ms": 0.0,
-     "byte_ms_delta": -1.5541,
-     "byte_removed_ms": -1.5541,
+     "byte_ms_delta": 0.0,
+     "byte_removed_ms": 0.0,
      "dispatch_ms_delta": 0.0,
      "flop_ms_delta": 0.0
     },
     "verdict": "MATERIAL",
     "verdict_reasons": [
-     "clears_s020_section_20_time_bar",
      "reusable_representation_family"
     ]
    },
@@ -1815,7 +1827,11 @@
      "flop_ms_range": [
       0.0,
       0.0
-     ]
+     ],
+     "organ_average_gb_s": 344.1,
+     "stream_billing_gb_s": 0.0,
+     "stream_class": "broadcast_aux",
+     "stream_on_critical_path": false
     },
     "byte_model_incomplete": false,
     "bytes_added": {
@@ -1837,35 +1853,36 @@
     "net_bytes": -1305544,
     "note": null,
     "organ": "mlp",
-    "predicted_ms_delta": -0.0038,
+    "predicted_ms_delta": 0.0,
     "predicted_ms_delta_range": [
-     -0.0038,
-     -0.0035
+     0.0,
+     0.0
     ],
-    "predicted_ms_saved": 0.0038,
-    "predicted_token_ms": 28.7182,
+    "predicted_ms_saved": 0.0,
+    "predicted_token_ms": 28.722,
     "predicted_token_ms_range": [
-     28.7182,
-     28.7185
+     28.722,
+     28.722
     ],
-    "predicted_tps": 34.821,
+    "predicted_tps": 34.817,
     "predicted_tps_range": [
-     34.821,
-     34.821
+     34.817,
+     34.817
     ],
     "s020_section_20": {
      "bar_ms": 0.2872,
      "clears_time_bar": false,
      "high_information_falsifier": false,
-     "plausible_ms_saved": 0.0038,
+     "plausible_ms_saved": 0.0,
      "reusable_family": true
     },
     "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
     "status": "OPEN",
+    "stream_class": "broadcast_aux",
     "terms": {
      "byte_added_ms": 0.0,
-     "byte_ms_delta": -0.0038,
-     "byte_removed_ms": -0.0038,
+     "byte_ms_delta": 0.0,
+     "byte_removed_ms": 0.0,
      "dispatch_ms_delta": 0.0,
      "flop_ms_delta": 0.0
     },
@@ -2465,7 +2482,7 @@
  "purpose": "Capability screen for the three OPEN auxiliary byte levers on the 1.07 GB of MLP scale/bias/header, plus a heterogeneous allocator that is the first use of the sensitivity map as a byte-placement rule rather than a byte claim.",
  "recorded_by": "tools/future/aux_capability_screen.py",
  "schema": "hawking.future.aux_capability_screen.v1",
- "seal_sha256": "ac2d678a382d0183b3fbf3f27d45e891e95aa2f8bb60810b8974da0315ecd69e",
+ "seal_sha256": "423b2b444fd7fb4abdda3c6b11093e3ff312dd7ecc4d4d0ec1862bbe0395ac3f",
  "sources": [
   "receipts/future/MLP_AUXILIARY_INFORMATION.json",
   "receipts/future/CAPABILITY_INFORMATION_MAP.json",

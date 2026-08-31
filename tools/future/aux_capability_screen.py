@@ -926,6 +926,7 @@ def score_lever(
         consuming_primitive="FusedDecodeCompute",
         bandwidth_regime="affine_q2_family",
         organ="mlp",
+        stream_class="broadcast_aux",
         reusable_family=bool(reusable_family),
         candidate_id=str(lever_id),
         status=str(status),

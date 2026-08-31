@@ -237,6 +237,7 @@ def score_dense_remat(candidate: Mapping[str, Any] | None = None) -> dict[str, A
         dispatch_delta=0.0,
         consuming_primitive="FusedDecodeCompute",
         organ="deltanet",
+        stream_class="weight_codes",
         candidate_id="emit_w_then_ordinary_gemv",
         status="REJECTED_DENSE_REMAT",
     )
@@ -278,6 +279,7 @@ def score_candidate(
         dispatch_delta=float(dispatch_delta),
         consuming_primitive=primitive,
         organ="deltanet",
+        stream_class="weight_codes",
         candidate_id=CANDIDATE_ID,
         status=status or str(row.get("status") or "OPEN"),
         reusable_family=True,

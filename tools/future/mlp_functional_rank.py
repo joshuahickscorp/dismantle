@@ -451,6 +451,7 @@ def score_rank_bytes(
         bytes_added=added,
         extra_flops_per_output_element=0.0,
         organ="mlp",
+        stream_class="weight_codes",
         consuming_primitive=prim,
         candidate_id=cid,
         reusable_family=True,

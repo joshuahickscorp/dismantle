@@ -341,6 +341,7 @@ def test_economics_projection_uses_the_shared_scorer():
         bytes_removed=ee.MLP_ACTIVE_BYTES,
         bytes_added={k: added[k] for k in ee.BYTES_ADDED_FIELDS},
         organ="mlp",
+        stream_class="weight_codes",
         consuming_primitive="TiledProjection",
         reusable_family=True,
         high_information_falsifier=True,
@@ -356,6 +357,7 @@ def test_economics_projection_uses_the_shared_scorer():
         bytes_removed=ee.MLP_ACTIVE_BYTES,
         bytes_added={k: free[k] for k in ee.BYTES_ADDED_FIELDS},
         organ="mlp",
+        stream_class="weight_codes",
         consuming_primitive="TiledProjection",
         status=msp.OPEN,
     )

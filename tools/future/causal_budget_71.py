@@ -204,17 +204,52 @@ REFUTED_LEVERS: tuple[dict[str, Any], ...] = (
      "source": "receipts/future/WALL_GPU_RECONCILIATION.json"},
 )
 
+# EVERY LEVER CARRIES ITS STREAM, AND THE STREAM CARRIES THE RATE.
+#
+# These rungs used to bill removed bytes at the MLP organ average, 344.1 GB/s,
+# which credited the auxiliary levers with 1.99 and 3.08 TPS. ECONOMICS_
+# CALIBRATION measured the streams separately by dropping fractions of each and
+# timing it: codes_keep_50 is faster than 2*MAD, aux_keep_50 is NOT. Removing
+# half the auxiliary is inside measurement noise.
+#
+#   weight_codes    0.547 ms/GB   (bills at 1827 GB/s, not 344)
+#   broadcast_aux   0.000 ms/GB   (measured within noise)
+#   activation      2.906 ms/GB
+#
+# So the organ average was never a byte-class rate. Billing an aux byte at it is
+# the overcredit the stream_class guard refuses, and this ladder was doing it.
+# group_size_256 and group_size_1024 are additionally capability-REFUTED on
+# held-out fit by AUX_CAPABILITY_SCREEN; they are kept here priced at zero rather
+# than deleted, so the record shows what was once claimed for them.
 BYTE_LEVERS: tuple[dict[str, Any], ...] = (
     {"id": "entropy_floor_of_mlp_codes", "gb_saved": 0.277697891,
+     "stream_class": "weight_codes",
      "status": "AT_THE_FLOOR_NOT_A_LEVER",
      "source": "receipts/future/MLP_CODE_INFORMATION.json"},
-    {"id": "quantize_aux_u8", "gb_saved": 0.534773760, "status": "OPEN",
+    {"id": "quantize_aux_u8", "gb_saved": 0.534773760,
+     "stream_class": "broadcast_aux",
+     "status": "OPEN_ON_BYTES_IMMATERIAL_ON_TIME",
      "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json"},
-    {"id": "group_size_256", "gb_saved": 0.802160640, "status": "OPEN",
+    {"id": "group_size_256", "gb_saved": 0.802160640,
+     "stream_class": "broadcast_aux",
+     "status": "CAPABILITY_REFUTED_AND_IMMATERIAL_ON_TIME",
      "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json"},
-    {"id": "group_size_1024", "gb_saved": 1.002700800, "status": "OPEN",
+    {"id": "group_size_1024", "gb_saved": 1.002700800,
+     "stream_class": "broadcast_aux",
+     "status": "CAPABILITY_REFUTED_AND_IMMATERIAL_ON_TIME",
      "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json"},
 )
+
+STREAM_MS_PER_GB: dict[str, float] = {
+    "weight_codes": 0.547282,
+    "broadcast_aux": 0.0,
+    "activation": 2.906132,
+}
+
+
+def lever_ms_saved(lever: Mapping[str, Any]) -> float:
+    """Bill a lever at its OWN stream's measured rate, never the organ average."""
+    return float(lever["gb_saved"]) * STREAM_MS_PER_GB[str(lever["stream_class"])]
 
 
 def token_ms(gb_s: float | None = None, gb_saved: float = 0.0,
@@ -263,13 +298,19 @@ def ladder() -> list[dict[str, Any]]:
                  "rate is already achieved on this box by one organ"},
     ]
     for lever in BYTE_LEVERS:
-        ms = token_ms(DEMONSTRATED_GB_S, lever["gb_saved"])
+        # Bill at the LEVER'S OWN stream rate. token_ms(gb_s, gb_saved) removes
+        # bytes at the organ's rate, which for an auxiliary lever is the
+        # overcredit ECONOMICS_CALIBRATION refuted.
+        ms = token_ms(DEMONSTRATED_GB_S) - lever_ms_saved(lever)
         rows.append({
             "rung": f"demonstrated regime + {lever['id']}",
             "ms": round(ms, 3), "tps": round(tps(ms), 2),
             "requires": f"the above, plus {lever['gb_saved']:.3f} GB removed",
             "class": "DEMONSTRATED_PLUS_OPEN_BYTE_LEVER",
             "capability": "UNMEASURED",
+            "stream_class": lever["stream_class"],
+            "ms_saved_at_measured_stream_rate": round(lever_ms_saved(lever), 4),
+            "lever_status": lever["status"],
         })
     roof = token_ms(CLEAN_GEMV_GB_S)
     rows.append({
@@ -317,11 +358,14 @@ def experiments() -> list[dict[str, Any]]:
             "status": "RUNNING" if o["organ"] == "mlp" else "QUEUED",
         })
     for lever in BYTE_LEVERS:
-        ms = token_ms(None, lever["gb_saved"])
+        saved = lever_ms_saved(lever)
+        ms = now - saved
         rows.append({
             "id": lever["id"],
             "gb_saved": lever["gb_saved"],
-            "ms_saved": round(now - ms, 3),
+            "stream_class": lever["stream_class"],
+            "lever_status": lever["status"],
+            "ms_saved": round(saved, 4),
             "tps_gain": round(tps(ms) - tps(now), 2),
             "falsifier": "held-out reconstruction plus organ error on a real layer",
             "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",

@@ -789,6 +789,7 @@ def _economics(
         dispatch_delta=float(dispatch_delta),
         consuming_primitive=consuming_primitive,
         organ="mlp",
+        stream_class="weight_codes",
         reusable_family=True,
         high_information_falsifier=True,
         status=status,

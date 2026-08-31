@@ -43,6 +43,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import REPO, write_receipt  # noqa: E402
 
 import causal_budget_71 as cb  # noqa: E402
+import executable_economics as ee  # noqa: E402
 
 RECORDED_BY = "tools/future/terminal_speed_artifact.py"
 UNLOCK_NAME = "RESIDENT_71TPS_UNLOCK.json"
@@ -262,21 +263,59 @@ def irreducible_current_information() -> dict[str, Any]:
 
 
 def best_representation_and_its_evidence() -> dict[str, Any]:
-    """The surviving byte levers, with what is measured and what is not."""
+    """The surviving byte levers, priced at the MEASURED per-stream rate.
+
+    This is where a byte-count reading of the campaign goes wrong, and it went
+    wrong in the first version of this receipt. MLP_AUXILIARY_INFORMATION lists
+    quantize_aux_u8 and larger_group_size as open levers worth 534,773,760 bytes
+    each - half the 1.07 GB auxiliary - and that byte figure is exact. It is also
+    worth ZERO MILLISECONDS, and that is measured, not modelled.
+
+    ECONOMICS_CALIBRATION dropped fractions of each stream and timed it:
+    codes_keep_50 is faster than 2*MAD, aux_keep_50 is NOT. Removing half the
+    auxiliary arrays is inside measurement noise. The per-stream rates that fall
+    out are weight_codes 0.547 ms/GB (billing at 1827 GB/s, not the 344 organ
+    average) and broadcast_aux 0.000 ms/GB.
+
+    So the organ average was never a byte-class rate, and billing any removed
+    byte at it is the overcredit the stream_class guard exists to refuse.
+    """
     aux = json.loads((REPO / "receipts/future/MLP_AUXILIARY_INFORMATION.json").read_text())
+    cal = json.loads((REPO / "receipts/future/ECONOMICS_CALIBRATION.json").read_text())
+    rates = {k: v["ms_per_gb_saved"] for k, v in cal["stream_classes"].items()}
+    priced = []
+    for lever in aux["open_byte_levers"]:
+        cls = ee.STREAM_CLASS_BY_ID.get(lever["id"], "broadcast_aux")
+        gb = int(lever["bytes_eliminated_if_true"]) / 1e9
+        priced.append(
+            {
+                **lever,
+                "stream_class": cls,
+                "gb": round(gb, 6),
+                "ms_saved_at_measured_rate": round(gb * rates[cls], 4),
+            }
+        )
     return {
-        "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
-        "open_levers": aux["open_byte_levers"],
+        "sources": [
+            "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+            "receipts/future/ECONOMICS_CALIBRATION.json",
+        ],
+        "measured_ms_per_gb_by_stream": rates,
+        "levers_priced": priced,
         "byte_evidence": "exact from 192 HGRAVF01 headers; reconciled or the module refuses",
-        "capability_evidence": "UNMEASURED for every lever, and labelled so",
+        "time_evidence": "paired keep-fraction loads, ECONOMICS_CALIBRATION, SELF_MEASURED_DIRTY",
         "reading": (
-            "quantize_aux_u8 and larger_group_size each remove 534,773,760 bytes - "
-            "together half the 1.07 GB auxiliary. Both have exact byte models and "
-            "neither has a capability screen. pack_headers is real and worth "
-            "52,032 bytes, which the receipt itself calls 0.005% and not worth "
-            "taking. Everything else in the auxiliary is MEASURED_NEGATIVE: no "
-            "factorization at a rate that saves bytes, no generation, no "
-            "cross-layer sharing, and biases are necessary at this packing."
+            "Every open auxiliary lever prices at 0.0 ms and IMMATERIAL. The bytes "
+            "are real and exactly counted; the time is not there. aux_keep_50 sits "
+            "inside noise while codes_keep_50 does not, so the auxiliary arrays do "
+            "not cost token time at this packing and removing them cannot buy any. "
+            "group_size_256 and group_size_1024 are additionally capability-REFUTED "
+            "on held-out fit by AUX_CAPABILITY_SCREEN. "
+            "What IS priced is the code body: 0.547 ms/GB. All 4.28 GB of it is "
+            "2.34 ms, and 93.5% of it is independent information, so perfect "
+            "entropy coding of what is stored buys 0.152 ms. That is the honest "
+            "size of the representation lever on this body, and it is not close to "
+            "the 13.2 ms that 71 TPS needs."
         ),
     }
 

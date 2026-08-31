@@ -252,6 +252,7 @@ def test_economics_scores_index_and_dispatch_not_bytes_alone():
         dispatch_delta=msr.dispatch_delta_for_k(81),
         consuming_primitive=msr.GATHER_ADD_PRIMITIVE,
         organ="mlp",
+        stream_class="weight_codes",
         reusable_family=True,
         high_information_falsifier=True,
         status=msr.OPEN,

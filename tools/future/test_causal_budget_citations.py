@@ -139,3 +139,43 @@ def test_the_next_prey_is_not_the_remainder():
     prey = cb.causal_residual()["next_prey"]
     assert "no hot organ" in prey
     assert "341.9" in prey and "360.0" in prey
+
+
+def test_every_lever_is_billed_at_its_own_stream_rate():
+    """The organ average was never a byte-class rate.
+
+    ECONOMICS_CALIBRATION dropped fractions of each stream and timed it:
+    codes_keep_50 is faster than 2*MAD, aux_keep_50 is NOT. Billing an auxiliary
+    byte at the MLP organ average credited quantize_aux_u8 with 1.99 TPS and
+    group_size_256 with 3.08 TPS. Both are 0.00.
+    """
+    for lever in cb.BYTE_LEVERS:
+        assert "stream_class" in lever, lever["id"]
+        assert lever["stream_class"] in cb.STREAM_MS_PER_GB
+    aux = [l for l in cb.BYTE_LEVERS if l["stream_class"] == "broadcast_aux"]
+    assert aux, "the auxiliary levers must stay on the record, priced at zero"
+    for lever in aux:
+        assert cb.lever_ms_saved(lever) == 0.0, f"{lever['id']} is credited time"
+
+
+def test_the_code_body_is_the_only_priced_byte_lever():
+    codes = [l for l in cb.BYTE_LEVERS if l["stream_class"] == "weight_codes"]
+    assert codes
+    assert cb.lever_ms_saved(codes[0]) == pytest.approx(0.152, abs=1e-3)
+
+
+def test_the_refuted_group_size_levers_are_kept_and_labelled():
+    """Deleting them would hide what was once claimed for them."""
+    by = {l["id"]: l for l in cb.BYTE_LEVERS}
+    for cid in ("group_size_256", "group_size_1024"):
+        assert "CAPABILITY_REFUTED" in by[cid]["status"]
+        assert cb.lever_ms_saved(by[cid]) == 0.0
+
+
+def test_no_byte_lever_rung_beats_the_demonstrated_regime_by_more_than_the_floor():
+    doc = cb.build()
+    demo = next(r["ms"] for r in doc["ladder"] if r["rung"].endswith("497.4 GB/s"))
+    for row in doc["ladder"]:
+        if not row["rung"].startswith("demonstrated regime + "):
+            continue
+        assert demo - row["ms"] <= 0.16, f"{row['rung']} claims {demo - row['ms']} ms"

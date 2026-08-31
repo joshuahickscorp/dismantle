@@ -3,33 +3,50 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T15:58:16Z",
+  "recorded_at": "2026-08-31T16:11:38Z",
   "recorded_by": "tools/future/terminal_speed_artifact.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "best_representation_and_its_evidence": {
   "byte_evidence": "exact from 192 HGRAVF01 headers; reconciled or the module refuses",
-  "capability_evidence": "UNMEASURED for every lever, and labelled so",
-  "open_levers": [
+  "levers_priced": [
    {
     "bytes_eliminated_if_true": 534773760,
+    "gb": 0.534774,
     "id": "quantize_aux_u8",
-    "status": "OPEN"
+    "ms_saved_at_measured_rate": 0.0,
+    "status": "OPEN",
+    "stream_class": "broadcast_aux"
    },
    {
     "bytes_eliminated_if_true": 534773760,
+    "gb": 0.534774,
     "id": "larger_group_size",
-    "status": "OPEN"
+    "ms_saved_at_measured_rate": 0.0,
+    "status": "OPEN",
+    "stream_class": "broadcast_aux"
    },
    {
     "bytes_eliminated_if_true": 52032,
+    "gb": 5.2e-05,
     "id": "pack_headers",
-    "status": "OPEN"
+    "ms_saved_at_measured_rate": 0.0,
+    "status": "OPEN",
+    "stream_class": "broadcast_aux"
    }
   ],
-  "reading": "quantize_aux_u8 and larger_group_size each remove 534,773,760 bytes - together half the 1.07 GB auxiliary. Both have exact byte models and neither has a capability screen. pack_headers is real and worth 52,032 bytes, which the receipt itself calls 0.005% and not worth taking. Everything else in the auxiliary is MEASURED_NEGATIVE: no factorization at a rate that saves bytes, no generation, no cross-layer sharing, and biases are necessary at this packing.",
-  "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json"
+  "measured_ms_per_gb_by_stream": {
+   "activation": 2.906132,
+   "broadcast_aux": 0.0,
+   "weight_codes": 0.547282
+  },
+  "reading": "Every open auxiliary lever prices at 0.0 ms and IMMATERIAL. The bytes are real and exactly counted; the time is not there. aux_keep_50 sits inside noise while codes_keep_50 does not, so the auxiliary arrays do not cost token time at this packing and removing them cannot buy any. group_size_256 and group_size_1024 are additionally capability-REFUTED on held-out fit by AUX_CAPABILITY_SCREEN. What IS priced is the code body: 0.547 ms/GB. All 4.28 GB of it is 2.34 ms, and 93.5% of it is independent information, so perfect entropy coding of what is stored buys 0.152 ms. That is the honest size of the representation lever on this body, and it is not close to the 13.2 ms that 71 TPS needs.",
+  "sources": [
+   "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+   "receipts/future/ECONOMICS_CALIBRATION.json"
+  ],
+  "time_evidence": "paired keep-fraction loads, ECONOMICS_CALIBRATION, SELF_MEASURED_DIRTY"
  },
  "causal_residual": {
   "baseline_moved": {
@@ -234,7 +251,7 @@
  ],
  "recorded_by": "tools/future/terminal_speed_artifact.py",
  "schema": "hawking.future.terminal_speed_artifact.v1",
- "seal_sha256": "fbe1e4773cf74807809497c3a2e8e628b73636f946fbaf50effbc7b7ccde9ee3",
+ "seal_sha256": "7e2aa7a57229eb534bcbc388033b033ebef14e93a03f7a97bc2c2c878a1b78ea",
  "target": {
   "current_body_ms": 27.2896,
   "measured_tps": 34.43,

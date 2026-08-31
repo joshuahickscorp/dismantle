@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T14:46:49Z",
+  "recorded_at": "2026-08-31T16:11:43Z",
   "recorded_by": "tools/future/roof_anchor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -722,7 +722,7 @@
   "text": "EVERY CEILING MUST STATE WHICH ROOF IT RESTS ON. A ceiling with an unstated roof is the defect that produced 595.9. compute_ceiling() raises UnstatedRoof unless roof_id is a registry key."
  },
  "schema": "hawking.future.roof_anchor.v1",
- "seal_sha256": "4aae8c7d728b2a9c6cdf16f63600c5c96eadcb08d91ea570cb7bfa0ef579cff3",
+ "seal_sha256": "7f304b581c1eb255f316fbb1858e2c36354a5966e9fdda276934333a54e2d0f0",
  "source_verification": {
   "checks": [
    {

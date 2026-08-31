@@ -169,26 +169,6 @@
    "tps_gain": 6.92
   },
   {
-   "capability": "UNMEASURED",
-   "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",
-   "falsifier": "held-out reconstruction plus organ error on a real layer",
-   "gb_saved": 1.0027008,
-   "id": "group_size_1024",
-   "ms_saved": 2.914,
-   "status": "OPEN",
-   "tps_gain": 3.9
-  },
-  {
-   "capability": "UNMEASURED",
-   "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",
-   "falsifier": "held-out reconstruction plus organ error on a real layer",
-   "gb_saved": 0.80216064,
-   "id": "group_size_256",
-   "ms_saved": 2.331,
-   "status": "OPEN",
-   "tps_gain": 3.05
-  },
-  {
    "cost": "ONE_EXPERIMENT",
    "current_gb_s": 360.0,
    "current_ms": 8.227,
@@ -199,16 +179,6 @@
    "status": "QUEUED",
    "target_ms_at_demonstrated": 5.954,
    "tps_gain": 2.97
-  },
-  {
-   "capability": "UNMEASURED",
-   "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",
-   "falsifier": "held-out reconstruction plus organ error on a real layer",
-   "gb_saved": 0.53477376,
-   "id": "quantize_aux_u8",
-   "ms_saved": 1.554,
-   "status": "OPEN",
-   "tps_gain": 1.98
   },
   {
    "cost": "NOT_WORTH_RUNNING",
@@ -237,9 +207,47 @@
    "falsifier": "held-out reconstruction plus organ error on a real layer",
    "gb_saved": 0.277697891,
    "id": "entropy_floor_of_mlp_codes",
-   "ms_saved": 0.807,
+   "lever_status": "AT_THE_FLOOR_NOT_A_LEVER",
+   "ms_saved": 0.152,
    "status": "OPEN",
-   "tps_gain": 1.0
+   "stream_class": "weight_codes",
+   "tps_gain": 0.18
+  },
+  {
+   "capability": "UNMEASURED",
+   "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",
+   "falsifier": "held-out reconstruction plus organ error on a real layer",
+   "gb_saved": 0.53477376,
+   "id": "quantize_aux_u8",
+   "lever_status": "OPEN_ON_BYTES_IMMATERIAL_ON_TIME",
+   "ms_saved": 0.0,
+   "status": "OPEN",
+   "stream_class": "broadcast_aux",
+   "tps_gain": 0.0
+  },
+  {
+   "capability": "UNMEASURED",
+   "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",
+   "falsifier": "held-out reconstruction plus organ error on a real layer",
+   "gb_saved": 0.80216064,
+   "id": "group_size_256",
+   "lever_status": "CAPABILITY_REFUTED_AND_IMMATERIAL_ON_TIME",
+   "ms_saved": 0.0,
+   "status": "OPEN",
+   "stream_class": "broadcast_aux",
+   "tps_gain": 0.0
+  },
+  {
+   "capability": "UNMEASURED",
+   "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",
+   "falsifier": "held-out reconstruction plus organ error on a real layer",
+   "gb_saved": 1.0027008,
+   "id": "group_size_1024",
+   "lever_status": "CAPABILITY_REFUTED_AND_IMMATERIAL_ON_TIME",
+   "ms_saved": 0.0,
+   "status": "OPEN",
+   "stream_class": "broadcast_aux",
+   "tps_gain": 0.0
   }
  ],
  "gpu_authority": false,
@@ -262,34 +270,46 @@
   {
    "capability": "UNMEASURED",
    "class": "DEMONSTRATED_PLUS_OPEN_BYTE_LEVER",
-   "ms": 20.381,
+   "lever_status": "AT_THE_FLOOR_NOT_A_LEVER",
+   "ms": 20.788,
+   "ms_saved_at_measured_stream_rate": 0.152,
    "requires": "the above, plus 0.278 GB removed",
    "rung": "demonstrated regime + entropy_floor_of_mlp_codes",
-   "tps": 49.06
+   "stream_class": "weight_codes",
+   "tps": 48.11
   },
   {
    "capability": "UNMEASURED",
    "class": "DEMONSTRATED_PLUS_OPEN_BYTE_LEVER",
-   "ms": 19.864,
+   "lever_status": "OPEN_ON_BYTES_IMMATERIAL_ON_TIME",
+   "ms": 20.94,
+   "ms_saved_at_measured_stream_rate": 0.0,
    "requires": "the above, plus 0.535 GB removed",
    "rung": "demonstrated regime + quantize_aux_u8",
-   "tps": 50.34
+   "stream_class": "broadcast_aux",
+   "tps": 47.76
   },
   {
    "capability": "UNMEASURED",
    "class": "DEMONSTRATED_PLUS_OPEN_BYTE_LEVER",
-   "ms": 19.327,
+   "lever_status": "CAPABILITY_REFUTED_AND_IMMATERIAL_ON_TIME",
+   "ms": 20.94,
+   "ms_saved_at_measured_stream_rate": 0.0,
    "requires": "the above, plus 0.802 GB removed",
    "rung": "demonstrated regime + group_size_256",
-   "tps": 51.74
+   "stream_class": "broadcast_aux",
+   "tps": 47.76
   },
   {
    "capability": "UNMEASURED",
    "class": "DEMONSTRATED_PLUS_OPEN_BYTE_LEVER",
-   "ms": 18.924,
+   "lever_status": "CAPABILITY_REFUTED_AND_IMMATERIAL_ON_TIME",
+   "ms": 20.94,
+   "ms_saved_at_measured_stream_rate": 0.0,
    "requires": "the above, plus 1.003 GB removed",
    "rung": "demonstrated regime + group_size_1024",
-   "tps": 52.84
+   "stream_class": "broadcast_aux",
+   "tps": 47.76
   },
   {
    "class": "ROOF_ON_TODAYS_BYTES",

@@ -1,5 +1,6 @@
 """The budget must not flatter itself, and 71 must stay honest."""
 import sys
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -37,15 +38,31 @@ def test_the_host_gap_lever_is_closed_not_ranked_as_work():
     assert e["cost"] == "NOT_WORTH_RUNNING"
 
 
-def test_byte_levers_actually_move_the_budget():
-    """A lever that saves a GB and reports +0.00 TPS is an arithmetic bug.
+def test_byte_levers_have_their_saving_applied():
+    """A lever that saves a GB and reports 0.00 ms because the ARITHMETIC dropped
+    it is a bug. One that reports 0.00 ms because its stream was MEASURED at
+    0.000 ms/GB is a finding.
 
-    It was one: the counterfactual kept measured organ ms and never applied the
-    saving. Removing bytes at the organ's OWN rate is the honest version.
+    This test used to assert every lever gains more than 0.5 TPS, which was right
+    when the bug was that the counterfactual never applied the saving. Then
+    ECONOMICS_CALIBRATION timed the streams separately - codes_keep_50 faster
+    than 2*MAD, aux_keep_50 inside noise - and the auxiliary levers became a
+    measured zero. Asserting they must gain would now pin the overcredit.
+
+    The invariant that catches the original bug without contradicting the
+    measurement: the reported saving must EQUAL gb_saved times its own stream's
+    rate.
     """
+    by_id = {l["id"]: l for l in cb.BYTE_LEVERS}
+    seen = 0
     for e in cb.experiments():
-        if e.get("gb_saved"):
-            assert e["tps_gain"] > 0.5, (e["id"], e["tps_gain"])
+        if not e.get("gb_saved"):
+            continue
+        seen += 1
+        lever = by_id[e["id"]]
+        assert e["ms_saved"] == pytest.approx(cb.lever_ms_saved(lever), abs=1e-3), e["id"]
+        assert e["stream_class"] == lever["stream_class"]
+    assert seen == len(by_id), "every lever must appear in the experiment table"
 
 
 def test_every_rung_above_now_is_labelled_a_target():

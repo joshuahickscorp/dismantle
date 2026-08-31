@@ -101,6 +101,7 @@ def test_byte_figures_come_from_executable_economics_not_a_ratio():
         bytes_added=ledger,
         extra_flops_per_output_element=0.0,
         organ="mlp",
+        stream_class="weight_codes",
         consuming_primitive="TiledProjection",
         reusable_family=True,
         high_information_falsifier=True,

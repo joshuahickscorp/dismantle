@@ -3110,7 +3110,32 @@ mod device {
             }
         }
 
+        /// A fused path whose kernel does not exist must not be selected.
+        ///
+        /// The static preflight reports both fused Q2F kernels as
+        /// kernel_existence ERRORs: the host names
+        /// qwen_q2f_group64_matvec_qkv_geo_tpr64_tg128 and
+        /// ..._pair_geo_tpr64_tg128 and no shader defines either. The sibling
+        /// family in q80_mixed_decode.metal stops one short of both.
+        ///
+        /// sealed-3.14 never takes these branches - its GQA q/k/v are codec 3
+        /// (uniform q4), so the q4 fusion wins first - which is why this has
+        /// been latent rather than a crash. But the gate is `bits == 2`, and
+        /// this campaign is actively pursuing 2-bit bodies. The first artifact
+        /// with 2-bit attention would select a pipeline that cannot be built.
+        ///
+        /// So the fused path requires its kernel to EXIST. Absent it, the caller
+        /// falls through to the per-tensor matvec, which is correct and merely
+        /// unfused - a real fallback rather than an impossible dispatch, and no
+        /// impossible runtime path enters Odyssey.
+        fn q2f_kernel_available(&self, name: &str) -> bool {
+            self.context.pipeline(name).is_ok()
+        }
+
         fn can_fuse_q2f_qkv(&self, layer: usize) -> bool {
+            if !self.q2f_kernel_available(QWEN38_Q2F_QKV_GEO_KERNEL) {
+                return false;
+            }
             let q_name = self.layer_name(layer, "self_attn.q_proj.weight");
             let k_name = self.layer_name(layer, "self_attn.k_proj.weight");
             let v_name = self.layer_name(layer, "self_attn.v_proj.weight");
@@ -3134,7 +3159,11 @@ mod device {
                 })
         }
 
+        /// Same rule as can_fuse_q2f_qkv: no kernel, no fused path. See there.
         fn can_fuse_q2f_pair(&self, layer: usize) -> bool {
+            if !self.q2f_kernel_available(QWEN38_Q2F_PAIR_GEO_KERNEL) {
+                return false;
+            }
             let qkvz_name = self.layer_name(layer, "linear_attn.in_proj_qkvz.weight");
             let ba_name = self.layer_name(layer, "linear_attn.in_proj_ba.weight");
             let (Some(qkvz), Some(ba)) = (self.affine(&qkvz_name), self.affine(&ba_name)) else {

@@ -42,6 +42,11 @@ from _common import REPO, measurement_provenance, write_measured_receipt  # noqa
 RECORDED_BY = "tools/future/q4_bitcast_ab.py"
 RECEIPT_NAME = "Q4_BITCAST_AB.json"
 RAW_REL = "receipts/future/_G094_Q4_BITCAST_raw.json"
+# The resident A/B. Both arms have the q2 bitcast ON, so the difference is the
+# q4 unpack alone and nothing else.
+RES_ON_REL = "receipts/future/_G094_Q4RES_BOTH_raw.json"
+RES_OFF_REL = "receipts/future/_G094_Q4RES_Q2ONLY_raw.json"
+LIVE_ARM = "widen_f4"
 BUDGET_REL = "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
 
 STEADY_MAX_SPREAD = 1.10
@@ -152,16 +157,96 @@ def token_projection() -> dict[str, Any]:
             "its own; it was built because the q2 ladder had already paid for "
             "the construction."
         ),
-        "the_isolated_number_has_been_a_LOWER_bound_twice": (
-            "the q2 bitcast predicted 2.7985 ms from its isolated speedup and "
-            "the graph delivered 3.8541. widen_f4 predicted 0.7046 and "
-            "delivered 1.0245. Both under-predicted, so this projection is not "
-            "expected to be tight - and that is not licence to scale it up. "
-            "The complete-token A/B is the number that counts."
+        "the_isolated_number_is_not_a_bound_in_either_direction": (
+            "the q2 bitcast predicted 2.7985 ms and the graph delivered 3.8541; "
+            "widen_f4 predicted 0.7046 and delivered 1.0245; this candidate "
+            "predicted 0.9695 and delivered 0.6836. Two over, one under. An "
+            "earlier version of this receipt called the isolated number a LOWER "
+            "bound off the first two points; the third falsified it. Only the "
+            "complete-token A/B counts."
         ),
         "what_would_make_it_measured": (
             "run the 580-graph twice with HAWKING_Q4_UNPACK=bitcast set and "
             "unset and compare complete-token wall time and token ids"
+        ),
+    }
+
+
+def resident_measured() -> dict[str, Any]:
+    """The complete-token A/B. Both arms carry the q2 bitcast; only q4 differs."""
+    on = json.loads((REPO / RES_ON_REL).read_text())["decode"][LIVE_ARM]
+    off = json.loads((REPO / RES_OFF_REL).read_text())["decode"][LIVE_ARM]
+    if on["new_token_ids"] != off["new_token_ids"]:
+        raise Q4Refused("the arms produced different tokens; this is a regression")
+    if on["theoretical_dispatches"] != off["theoretical_dispatches"]:
+        raise Q4Refused("dispatch count differs; not the same graph")
+    if any(on["fallbacks_reps"]) or any(off["fallbacks_reps"]):
+        raise Q4Refused("a fallback fired; the graph is not the one claimed")
+    left = sorted(
+        k for k in set(on["dispatched_kernels_rep0"])
+        if ("uniform_q4" in k or "affine_q2" in k) and "bitcast" not in k
+    )
+    if left != ["qwen_uniform_q4_embedding_lookup"]:
+        raise Q4Refused(
+            f"production matvecs still dispatched with the lever on: {left}. "
+            "Only the embedding lookup should remain - it is a gather, not a "
+            "matvec, and has no bitcast sibling."
+        )
+
+    def wall(arm: dict[str, Any]) -> float:
+        r = sorted(arm["decode_wall_ns_reps"])
+        return r[len(r) // 2] / 1e6 / len(arm["new_token_ids"])
+
+    g_off, g_on = off["gpu_ns_median"] / 1e6, on["gpu_ns_median"] / 1e6
+    w_off, w_on = wall(off), wall(on)
+    return {
+        "arm": LIVE_ARM,
+        "both_arms_have_q2_bitcast_on": True,
+        "gpu_ms_without_q4_bitcast": round(g_off, 4),
+        "gpu_ms_with_q4_bitcast": round(g_on, 4),
+        "gpu_ms_saved": round(g_off - g_on, 4),
+        "speedup": round(g_off / g_on, 4),
+        "wall_ms_without": round(w_off, 4),
+        "wall_ms_with": round(w_on, 4),
+        "wall_tps_without": round(1000.0 / w_off, 3),
+        "wall_tps_with": round(1000.0 / w_on, 3),
+        "token_identical": True,
+        "dispatches": on["theoretical_dispatches"],
+        "reps": len(on["decode_wall_ns_reps"]),
+        "n_tokens": len(on["new_token_ids"]),
+        "only_production_kernel_left": left,
+        "evidence_class": "DIAGNOSTIC_RELATIVE",
+        "window": (
+            "not protected; ModelLake downloads were live. The paired ratio is "
+            "the claim, and the absolute is not promotable."
+        ),
+    }
+
+
+def projection_vs_graph() -> dict[str, Any]:
+    """The isolated projection OVER-predicted here, which breaks a pattern."""
+    predicted = token_projection()["ms_saved_if_it_lands"]
+    actual = resident_measured()["gpu_ms_saved"]
+    return {
+        "predicted_ms_saved": predicted,
+        "measured_ms_saved_in_the_graph": actual,
+        "graph_over_prediction": round(actual / predicted, 4),
+        "the_lower_bound_pattern_did_not_hold": actual < predicted,
+        "reading": (
+            "the q2 bitcast and widen_f4 both delivered MORE in the graph than "
+            "their isolated numbers predicted, and this receipt previously said "
+            "an isolated organ measurement looks like a LOWER bound for this "
+            f"class of change. Here it OVER-predicted: {predicted} ms projected, "
+            f"{actual} measured, {round(actual/predicted, 3)}x. Three "
+            "observations, two directions. There is no bound, and the earlier "
+            "wording was a pattern read off two points."
+        ),
+        "why_it_may_differ": (
+            "not established. One candidate is that these kernels are a smaller "
+            "share of their organs than the census attribution assumes - the "
+            "DeltaNet in-projection correction already moved this projection "
+            "once - so the denominator, not the kernel, may be what is wrong. "
+            "That is a hypothesis and it has not been tested."
         ),
     }
 
@@ -184,6 +269,8 @@ def build() -> dict[str, Any]:
         ),
         "measured": measured(),
         "token_projection": token_projection(),
+        "resident_measured": resident_measured(),
+        "projection_vs_graph": projection_vs_graph(),
         "the_scar_was_obeyed": (
             "REMOVING_ONE_OP_CLASS_IS_NOT_A_LEVER_WHEN_FOUR_SHARE_THE_COST says "
             "the split is kernel-specific. This did not assume q4 behaves like "

@@ -3337,7 +3337,15 @@ mod device {
             input: &PinnedBuffer,
             output: &PinnedBuffer,
         ) -> Result<()> {
-            self.encode_q4_matvec_kernel(tcb, name, input, output, self.matvec_kernel.as_str())
+            // The geo enum's as_str is a const fn, so the bitcast swap happens
+            // here at the dispatch rather than inside it.
+            self.encode_q4_matvec_kernel(
+                tcb,
+                name,
+                input,
+                output,
+                qwen38_q4_kernel(self.matvec_kernel.as_str()),
+            )
         }
 
         fn encode_named_matvec(
@@ -3364,7 +3372,7 @@ mod device {
                         weight,
                         input,
                         output,
-                        self.matvec_kernel.as_str(),
+                        qwen38_q4_kernel(self.matvec_kernel.as_str()),
                     );
                 }
             } else if let Some(weight) = self.weights.q4.get(name) {
@@ -3374,7 +3382,7 @@ mod device {
                     weight,
                     input,
                     output,
-                    self.matvec_kernel.as_str(),
+                    qwen38_q4_kernel(self.matvec_kernel.as_str()),
                 );
             }
             Err(mixed_error(format!(

@@ -71,7 +71,7 @@ def test_the_projection_is_prospective_and_refuses_to_be_scaled_up():
     assert t["below_the_materiality_threshold"] is True, \
         "counting DeltaNet by its in-projection put this under the 1 ms bar"
     assert "governs what to START, not what to discard" in t["why_keep_it_anyway"]
-    assert "not licence to scale it up" in t["the_isolated_number_has_been_a_LOWER_bound_twice"]
+    assert "Two over, one under" in t["the_isolated_number_is_not_a_bound_in_either_direction"]
 
 
 def test_the_scar_is_named_as_obeyed_not_cited_decoratively():
@@ -90,3 +90,40 @@ def test_the_second_fast_and_wrong_build_is_recorded():
 def test_the_default_is_unchanged():
     assert q4.build()["default_is_unchanged"] is True
     assert "HAWKING_Q4_UNPACK=bitcast" in q4.build()["lever"]
+
+
+def test_the_resident_ab_is_matched_and_token_identical():
+    r = q4.resident_measured()
+    assert r["both_arms_have_q2_bitcast_on"] is True, \
+        "the difference must be the q4 unpack alone"
+    assert r["token_identical"] is True
+    assert r["dispatches"] == 580
+    assert r["only_production_kernel_left"] == ["qwen_uniform_q4_embedding_lookup"]
+    assert r["gpu_ms_saved"] > 0
+    assert r["wall_tps_with"] > r["wall_tps_without"]
+
+
+def test_a_leftover_production_matvec_refuses(monkeypatch):
+    """A partial swap silently under-reports the candidate."""
+    d = json.loads((q4.REPO / q4.RES_ON_REL).read_text())
+    d["decode"][q4.LIVE_ARM]["dispatched_kernels_rep0"].append(
+        "qwen_uniform_q4_group64_matvec_geo_tpr64_tg128")
+    monkeypatch.setattr(q4.json, "loads",
+                        lambda s, _r=json.loads: d if '"decode"' in s else _r(s))
+    with pytest.raises(q4.Q4Refused, match="still dispatched with the lever on"):
+        q4.resident_measured()
+
+
+def test_the_lower_bound_pattern_is_recorded_as_falsified():
+    p = q4.projection_vs_graph()
+    assert p["the_lower_bound_pattern_did_not_hold"] is True
+    assert "Three observations, two directions" in p["reading"]
+    assert "There is no bound" in p["reading"]
+    assert "not established" in p["why_it_may_differ"], \
+        "the cause is a hypothesis, not a finding"
+
+
+def test_the_window_is_declared_unprotected():
+    r = q4.resident_measured()
+    assert r["evidence_class"] == "DIAGNOSTIC_RELATIVE"
+    assert "not promotable" in r["window"]

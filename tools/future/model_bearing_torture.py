@@ -1441,7 +1441,10 @@ def _field_text(obj: Any) -> str:
 def detect_wait_reason_receipt_replan(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     waits = [e for e in events if e.get("kind") in {"subprocess_wait_start", "subagent_wait_start"}]
     reasons = [e for e in events if e.get("kind") in {"model_reasoned_during_wait", "other_reasoned"}]
-    lands = [e for e in events if e.get("kind") in {"receipt_ingested", "result_ingested", "RECEIPT_INGESTED"}]
+    lands = [
+        e for e in events
+        if e.get("kind") in {"RESULT_INGESTED", "receipt_ingested", "result_ingested", "RECEIPT_INGESTED"}
+    ]
     replans = [e for e in events if e.get("kind") in {"scheduler_replan"}]
     for wait in waits:
         w0 = float(wait.get("t_s") or 0)
@@ -1842,7 +1845,7 @@ def run_torture(
             if snap["done"] or (snap["exit_code"] is not None and snap["landed"]):
                 body = load_receipt(handle["receipt"]) if snap["landed"] else {}
                 tape.emit(
-                    "receipt_ingested",
+                    "RESULT_INGESTED",
                     {
                         "receipt": handle.get("receipt"),
                         "path": handle.get("receipt"),
@@ -2691,7 +2694,7 @@ def selftest() -> None:
             "t_s": 34.0,
             "payload": {"reply_text": '{"reading":"avoid MLP_FUNCTION_REPLACEMENT_CLOSED","why":"scar"}'},
         },
-        {"kind": "receipt_ingested", "t_s": 45.0, "payload": {"receipt": "run/WU.SUBAGENT.receipt_wait_probe.receipt.json", "path": "run/WU.SUBAGENT.receipt_wait_probe.receipt.json", "unit_id": "WU.SUBAGENT.receipt_wait_probe"}},
+        {"kind": "RESULT_INGESTED", "t_s": 45.0, "payload": {"receipt": "run/WU.SUBAGENT.receipt_wait_probe.receipt.json", "path": "run/WU.SUBAGENT.receipt_wait_probe.receipt.json", "unit_id": "WU.SUBAGENT.receipt_wait_probe"}},
         {
             "kind": "scheduler_replan",
             "t_s": 46.0,

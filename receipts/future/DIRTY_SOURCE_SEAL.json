@@ -1,23 +1,23 @@
 {
  "base_head": {
-  "sha": "44c699f5048842b082d982818b59232d2a55ce37",
-  "subject": "science(accelerator): GRANULARITY_REFUTED \u2014 contiguity and encoder count are not the ceiling"
+  "sha": "163251f8a1f1b535b9d38b184c308808cef0719f",
+  "subject": "fix(gravity): the umbrella scar lived only in the receipt, so a rebuild deleted it"
  },
  "bench": {
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T05:43:20Z",
+  "recorded_at": "2026-08-31T16:36:26Z",
   "recorded_by": "tools/future/dirty_source_seal.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "binary": {
-  "bytes": 5234624,
-  "matches_provenance_receipt": true,
+  "bytes": 5201584,
+  "matches_provenance_receipt": false,
   "path": "workspace/ops/build/rust/release/examples/ascension_qwen38_resident",
   "provenance_sha256": "39f3f28c0bf695f2f5c2e436bdb82a88f8406fb3f7a4b6f2588899350ebd78f8",
-  "sha256": "39f3f28c0bf695f2f5c2e436bdb82a88f8406fb3f7a4b6f2588899350ebd78f8",
+  "sha256": "6a548bb54a092c77dcedbf15ead67120aa39b7961cfa5c0758a0af465936119d",
   "source": "hashed_on_disk"
  },
  "claim_boundary": "A partition, a review, a crate patch, and the hashes of that patch, the measurement binary, the toolchain and the sealed fusion env. It asserts that the campaign source is uncommitted and labels the numbers DIRTY_SOURCE_DIAGNOSTIC. It does not promote them. It does not claim a hardware measurement. No receipt recorded elsewhere is retracted.",
@@ -231,7 +231,6 @@
    "crates/hawking-core/shaders/matmul.metal",
    "crates/hawking-core/shaders/mha.metal",
    "crates/hawking-core/shaders/moe.metal",
-   "crates/hawking-core/shaders/q80_mixed_decode.metal",
    "crates/hawking-core/shaders/qwen_next.metal",
    "crates/hawking-core/src/decode_family.rs",
    "crates/hawking-core/src/gravity_deepseek_v4_fullseq_attention_device.rs",
@@ -244,11 +243,10 @@
    "crates/hawking-core/src/kernels/mod.rs",
    "crates/hawking-core/src/metal/mod.rs",
    "crates/hawking-core/src/model/qwen30_complete_runtime.rs",
-   "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
    "crates/hawking-core/src/model/qwen80_source_bf16_layer_major.rs",
    "crates/hawking-core/src/model/qwen_complete_binary/uniform_q4.rs"
   ],
-  "total": 40,
+  "total": 38,
   "untracked": [
    "crates/hawking-core/examples/flash_fast_chain.rs",
    "crates/hawking-core/examples/flash_full_attention_layer3.rs",
@@ -300,15 +298,10 @@
     "added": 1042,
     "path": "crates/hawking-core/src/metal/mod.rs",
     "removed": 110
-   },
-   {
-    "added": 1611,
-    "path": "crates/hawking-core/src/model/qwen38_hybrid_decode.rs",
-    "removed": 423
    }
   ],
-  "uncommitted_lines_added": 2679,
-  "uncommitted_lines_removed": 533
+  "uncommitted_lines_added": 1068,
+  "uncommitted_lines_removed": 110
  },
  "measurement_label": "DIRTY_SOURCE_DIAGNOSTIC",
  "measurements": {
@@ -544,12 +537,12 @@
   }
  ],
  "patch": {
-  "bytes": 1304509,
-  "n_files": 40,
-  "n_modified": 27,
+  "bytes": 1079622,
+  "n_files": 38,
+  "n_modified": 25,
   "n_untracked": 13,
   "path": "receipts/future/patches/dirty-crate-work.patch",
-  "sha256": "f420ae4faae231d4103f297bf29aa4957f0790ebe725138e08db367d8e276bad"
+  "sha256": "7630329f840b24d77a5ffc47408b6e483cb157cac6f1f59ee8f8212c2977ed19"
  },
  "promoted": false,
  "recorded_by": "tools/future/dirty_source_seal.py",
@@ -572,7 +565,7 @@
   "land": "P-Q30, P-Q80, P-CACHE, P-INSTRUMENT, P-WORKLIST, P-FAST. P-CACHE changes production default (opt-out). Landing it does not promote the TPS numbers."
  },
  "schema": "hawking.future.dirty_source_seal.v1",
- "seal_sha256": "b3b5eb1ed06dabc509723124463a835124d3275e6c6842a6d24c79907265b175",
+ "seal_sha256": "898ae0235727ce0e456b19d4d671924304544726cec63f44fdb3800f5cd153db",
  "sealed_fusion_env": {
   "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
   "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",

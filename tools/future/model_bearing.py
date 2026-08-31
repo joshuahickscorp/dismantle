@@ -795,13 +795,53 @@ def _compact_entries(entries: Sequence[Mapping[str, Any]], *, cap: int = PROMPT_
     return out
 
 
+# CHOICE_JSON_PROBE: the clip used to eat the tail, and the tail is where every
+# ask puts "Return JSON only: {schema}". A control clipped at MAX_PROMPT_CHARS
+# parsed 0 of 2 on sealed-3.14 AND 0 of 2 on Qwen3-0.6B; with the schema in view
+# both went 2 of 2. That is the ask, not the body and not scale. So: never clip
+# the schema off. Prefer dropping whole candidates (_fit_entries) so the JSON
+# stays well-formed; this elision is the backstop for asks that still overrun.
+SCHEMA_TAIL_RESERVE = 400
+
+
+def _clip_keeping_tail(prompt: str) -> str:
+    if len(prompt) <= MAX_PROMPT_CHARS:
+        return prompt
+    tail = prompt[-SCHEMA_TAIL_RESERVE:]
+    head = prompt[: MAX_PROMPT_CHARS - SCHEMA_TAIL_RESERVE - 1]
+    return head + "…" + tail
+
+
+def _fit_entries(
+    head: str,
+    entries: Sequence[Mapping[str, Any]],
+    tail: str,
+    *,
+    cap: int = PROMPT_ENTRY_CAP,
+) -> tuple[list[dict[str, Any]], int]:
+    """Shrink the candidate set until the ask fits. Never truncate the string.
+
+    A clipped JSON array is malformed AND hides the schema; a shorter array is
+    neither. smaller_choice_set was the probe cell that both parsed 2 of 2 and
+    named a live id, so dropping candidates is the measured-good direction.
+    """
+    wanted = _compact_entries(entries, cap=cap)
+    n = len(wanted)
+    while n > 1:
+        body = json.dumps(wanted[:n], sort_keys=True)
+        if len(head) + len(body) + len(tail) <= MAX_PROMPT_CHARS:
+            break
+        n -= 1
+    return wanted[:n], len(wanted) - n
+
+
 def _ask_json(
     provider: Any,
     prompt: str,
     *,
     session: str | None = None,
 ) -> dict[str, Any]:
-    clipped = prompt if len(prompt) <= MAX_PROMPT_CHARS else prompt[: MAX_PROMPT_CHARS - 1] + "…"
+    clipped = _clip_keeping_tail(prompt)
     reply = _call_ask(provider, clipped, session=session)
     text = str(reply.get("text") or "")
     parsed = _extract_json(text)
@@ -873,13 +913,14 @@ def interpret(
         tools["cognition"] = cog
         return _unavailable_record("interpret", cog["why"], tools)
     active, _how = (provider, "argument") if provider is not None else _active_provider()
-    compact = _compact_entries(entries)
-    prompt = (
-        "Live frontier entries (cite only these ids):\n"
-        + json.dumps(compact, sort_keys=True)
-        + "\nReturn JSON only: "
+    _head = "Live frontier entries (cite only these ids):\n"
+    _tail = (
+        "\nReturn JSON only: "
         '{"reading":"one sentence","worth_doing_next":["id",...],"why":"cite those ids"}'
     )
+    compact, n_dropped = _fit_entries(_head, entries, _tail)
+    tools["candidates_dropped_to_fit"] = n_dropped
+    prompt = _head + json.dumps(compact, sort_keys=True) + _tail
     asked, refused = _try_ask("interpret", active, prompt, tools)
     if refused is not None:
         return refused
@@ -978,16 +1019,27 @@ def choose(
         tools["cognition"] = cog
         return _unavailable_record("choose", cog["why"], tools)
     active, _how = (provider, "argument") if provider is not None else _active_provider()
-    compact = _compact_entries(rows, cap=max(PROMPT_ENTRY_CAP, len(rows)))
-    prompt = (
+    _head = (
         "Pick one candidate. The scripted policy would pick "
         + json.dumps(policy.get("id"))
         + ".\nCandidates:\n"
-        + json.dumps(compact, sort_keys=True)
-        + "\nReturn JSON only: "
+    )
+    _tail = (
+        "\nReturn JSON only: "
         '{"choice_id":"id","reason":"why this, citing a real difference","mechanism":"...",'
         '"surface":"...","hypothesis_family":"..."}'
     )
+    # Never advertise what the tools will refuse. fixed_policy_choose already
+    # dropped every scar-dead candidate for its OWN pick, but the model was shown
+    # the raw set - which is how WU.DEAD.mlp_function_replacement stayed on the
+    # menu 45 turns running while the resident kept picking it and the tools kept
+    # refusing it. Same filter, same turn, one source of liveness.
+    _dead_ids = {str(r.get("id")) for r in (policy.get("refusals") or []) if r.get("id")}
+    _live = [r for r in rows if _cid(r) not in _dead_ids]
+    tools["candidates_scar_dead"] = sorted(_dead_ids)
+    compact, n_dropped = _fit_entries(_head, _live, _tail, cap=max(PROMPT_ENTRY_CAP, len(_live)))
+    tools["candidates_dropped_to_fit"] = n_dropped
+    prompt = _head + json.dumps(compact, sort_keys=True) + _tail
     asked, refused = _try_ask("choose", active, prompt, tools)
     if refused is not None:
         return refused

@@ -116,9 +116,16 @@ def test_host_gap_is_still_a_subtraction():
     assert r["wall_ms"] - r["untraced_gpu_ms"] == pytest.approx(r["host_gap_ms"], abs=1e-9)
 
 
-def test_residual_refuses_to_pretend_the_baseline_is_current():
-    r = cb.causal_residual()
-    assert r["baseline_is_stale"]["current_body_ms"] == "UNKNOWN_UNTIL_G075"
+def test_the_ladder_baseline_moved_to_the_measured_current_body():
+    """G072: when a win lands, the baseline MOVES. It has."""
+    b = cb.causal_residual()["baseline_moved"]
+    assert b["current_body_ms"] == pytest.approx(27.2896, abs=1e-3)
+    assert b["current_body_tps"] == pytest.approx(36.644, abs=1e-2)
+    assert b["ms_removed_since"] > 1.0
+    # and it must say what did NOT move with it
+    assert "PER-ORGAN ms in ORGANS are from the pre-widen_f4" in b[
+        "what_is_still_from_the_old_census"
+    ]
 
 
 def test_organs_do_not_explain_all_of_traced_gpu_time():

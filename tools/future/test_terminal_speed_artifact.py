@@ -79,3 +79,53 @@ def test_an_unwritable_prerequisite_refuses_the_build(monkeypatch):
     monkeypatch.setattr(tsa, "PREREQUISITES", (fake,) + tsa.PREREQUISITES[1:])
     with pytest.raises(tsa.PrerequisiteUnwritable, match="no_such_module"):
         tsa.build()
+
+
+def test_the_roof_names_all_five_things_s022_asks_for():
+    """"Probably impossible" is not an acceptable output; a proof of the binding
+    limit is. These five sections are what makes it a proof rather than a shrug."""
+    doc = tsa.build()
+    for section in (
+        "dominant_remaining_costs",
+        "irreducible_current_information",
+        "best_representation_and_its_evidence",
+        "next_hardware_requirement",
+        "next_model_body_alternative",
+    ):
+        assert section in doc, section
+        assert doc[section].get("reading"), f"{section} has no reading"
+
+
+def test_every_section_cites_a_receipt_on_disk():
+    doc = tsa.build()
+    for section in (
+        "dominant_remaining_costs",
+        "irreducible_current_information",
+        "best_representation_and_its_evidence",
+        "next_hardware_requirement",
+        "next_model_body_alternative",
+    ):
+        blk = doc[section]
+        rels = blk.get("sources") or [blk["source"]]
+        for rel in rels:
+            assert (tsa.REPO / rel).exists(), f"{section} cites missing {rel}"
+
+
+def test_the_dominant_costs_are_measured_on_the_current_body():
+    d = tsa.dominant_remaining_costs()
+    assert d["token_wall_ms"] == pytest.approx(27.2896, abs=1e-3)
+    shares = {r["organ"]: r["share_of_gpu"] for r in d["rows"]}
+    assert shares["mlp_gate_up"] > shares["deltanet"], "MLP must still lead"
+    assert sum(shares.values()) == pytest.approx(1.0, abs=0.05)
+
+
+def test_the_hardware_requirement_does_not_infer_traffic_from_the_catalog():
+    h = tsa.next_hardware_requirement()
+    assert h["actual_read_bytes_per_token"] == "UNKNOWN"
+    assert h["byte_counter_available"] is False
+
+
+def test_succession_is_not_argued_on_cognition():
+    body = tsa.next_model_body_alternative()
+    assert "0.6B" in body["reading"]
+    assert "not on the decision failures" in body["reading"]

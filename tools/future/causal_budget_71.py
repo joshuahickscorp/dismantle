@@ -148,6 +148,12 @@ CITATIONS: tuple[dict[str, Any], ...] = (
     {"id": "region_trace_overhead_pct", "expect": 1.8,
      "source": "receipts/future/ORGAN_BANDWIDTH.json",
      "path": ["trace_overhead", "gpu_overhead_pct"]},
+    {"id": "current_body_wall_ms", "expect": 27.2896,
+     "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+     "path": ["decode_wall_ms_per_token"]},
+    {"id": "current_body_gpu_ms", "expect": 26.5943,
+     "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+     "path": ["decode_gpu_ms_per_token"]},
     {"id": "host_gap_worth_tps", "expect": 1.214,
      "source": "receipts/future/WALL_GPU_RECONCILIATION.json",
      "path": ["derived", "tps_gain_from_deleting_all_host_work"]},
@@ -408,14 +414,21 @@ def causal_residual() -> dict[str, Any]:
             "proportion to bytes, which is why byte elimination outranks execution "
             "tuning from here."
         ),
-        "baseline_is_stale": {
+        "baseline_moved": {
             "computed_against_ms": wall_ms,
-            "current_body_ms": "UNKNOWN_UNTIL_G075",
-            "why": (
-                "deltanet_widen_f4 landed as a measured token-identical 1.0245 ms "
-                "win, so this residual is computed against a body that no longer "
-                "runs. The fractions are still the best available reading of where "
-                "time goes; the absolute ms are not the current token."
+            "current_body_ms": float(cited["current_body_wall_ms"]),
+            "current_body_gpu_ms": float(cited["current_body_gpu_ms"]),
+            "current_body_tps": round(1000.0 / float(cited["current_body_wall_ms"]), 3),
+            "ms_removed_since": round(wall_ms - float(cited["current_body_wall_ms"]), 4),
+            "measured_by": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+            "what_is_still_from_the_old_census": (
+                "the PER-ORGAN ms in ORGANS are from the pre-widen_f4 region trace. "
+                "The new census has eight rows (it separates mlp_gate_up from "
+                "mlp_down and carries a q4_remainder and a sampling row) and does "
+                "not map one-to-one onto the old four, so remapping it is a "
+                "separate piece of work rather than a substitution. The organ "
+                "SHARES remain the best available reading; the token TOTAL is now "
+                "measured on the body that runs."
             ),
         },
     }

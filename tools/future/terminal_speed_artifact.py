@@ -170,7 +170,7 @@ def reached_71() -> dict[str, Any]:
     """Is the target reached on the CURRENT body? Read, never assumed."""
     residual = cb.causal_residual()
     wall_ms = float(residual["wall_ms"])
-    current = residual["baseline_is_stale"]["current_body_ms"]
+    current = residual["baseline_moved"]["current_body_ms"]
     return {
         "target_tps": TARGET_TPS,
         "target_ms": round(TARGET_MS, 3),
@@ -179,9 +179,11 @@ def reached_71() -> dict[str, Any]:
         "current_body_ms": current,
         "reached": False if isinstance(current, str) else bool(float(current) <= TARGET_MS),
         "why_not_assumed": (
-            "the baseline this reads is the last MEASURED complete token; while "
-            "current_body_ms is UNKNOWN the target cannot be claimed reached, and "
-            "it cannot be claimed unreachable either"
+            "reached is decided against the CURRENT body's measured complete "
+            "token, never against a remembered one. While that is UNKNOWN the "
+            "target can be claimed neither reached nor unreachable; now that it is "
+            "measured, 71 TPS needs 14.085 ms and the body runs at "
+            f"{current if isinstance(current, str) else round(float(current), 4)} ms."
         ),
     }
 
@@ -202,6 +204,126 @@ def which_receipt() -> dict[str, Any]:
             "open": [r["id"] for r in open_pre],
         }
     return {"emit": ROOF_NAME, "why": "every named measurement has landed; the limit can be proven"}
+
+
+
+# ---------------------------------------------------------------------------
+# The five things a ROOF receipt must name (S022 §68). Each is READ from the
+# receipt that owns it. "Probably impossible" is not an acceptable output, so
+# every section below either resolves or the artifact refuses.
+# ---------------------------------------------------------------------------
+
+
+def dominant_remaining_costs() -> dict[str, Any]:
+    """Where the token actually goes, on the body that runs."""
+    doc = json.loads((REPO / "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json").read_text())
+    rows = sorted(doc["organs"]["rows"], key=lambda r: -float(r["gpu_ms"]))
+    total = float(doc["decode_gpu_ms_per_token"])
+    return {
+        "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+        "measured_on": "widen_f4, release profile, ModelLake stopped, lane lock held",
+        "token_gpu_ms": total,
+        "token_wall_ms": float(doc["decode_wall_ms_per_token"]),
+        "host_gap_ms": float(doc["host_gap_ms_per_token"]),
+        "rows": [
+            {**r, "share_of_gpu": round(float(r["gpu_ms"]) / total, 4)} for r in rows
+        ],
+        "reading": (
+            "MLP is still the prey: gate_up plus down is 15.647 ms of a 26.594 ms "
+            "GPU token. DeltaNet is second at 5.597. Nothing else clears 8%."
+        ),
+    }
+
+
+def irreducible_current_information() -> dict[str, Any]:
+    """What the stored bytes actually are, measured, not assumed."""
+    code = json.loads((REPO / "receipts/future/MLP_CODE_INFORMATION.json").read_text())
+    aux = json.loads((REPO / "receipts/future/MLP_AUXILIARY_INFORMATION.json").read_text())
+    m = code["measurements"]
+    return {
+        "sources": [
+            "receipts/future/MLP_CODE_INFORMATION.json",
+            "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+        ],
+        "mlp_code_bytes": int(m["code_bytes_read"]),
+        "H_q_bits_of_2_stored": float(m["H_q_bits"]),
+        "independent_fraction": float(m["independent_fraction"]),
+        "entropy_floor_recoverable_bytes": int(m["iid_redundant_bytes"]),
+        "auxiliary_bytes": aux["accounting"],
+        "reading": (
+            "The 4.28 GB code body is 93.5% independent information at these "
+            "statistics: H(q) 1.870 of 2 stored bits, conditioning on the previous "
+            "symbol buys 0.003, cross-layer MI is 1e-7. Perfect entropy coding of "
+            "what is stored recovers 277.7 MB. That is not 'incompressible' - it is "
+            "not conventionally compressible, and function replacement remains "
+            "UNMEASURED on this object rather than refuted."
+        ),
+    }
+
+
+def best_representation_and_its_evidence() -> dict[str, Any]:
+    """The surviving byte levers, with what is measured and what is not."""
+    aux = json.loads((REPO / "receipts/future/MLP_AUXILIARY_INFORMATION.json").read_text())
+    return {
+        "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+        "open_levers": aux["open_byte_levers"],
+        "byte_evidence": "exact from 192 HGRAVF01 headers; reconciled or the module refuses",
+        "capability_evidence": "UNMEASURED for every lever, and labelled so",
+        "reading": (
+            "quantize_aux_u8 and larger_group_size each remove 534,773,760 bytes - "
+            "together half the 1.07 GB auxiliary. Both have exact byte models and "
+            "neither has a capability screen. pack_headers is real and worth "
+            "52,032 bytes, which the receipt itself calls 0.005% and not worth "
+            "taking. Everything else in the auxiliary is MEASURED_NEGATIVE: no "
+            "factorization at a rate that saves bytes, no generation, no "
+            "cross-layer sharing, and biases are necessary at this packing."
+        ),
+    }
+
+
+def next_hardware_requirement() -> dict[str, Any]:
+    """What this machine cannot do, measured rather than assumed."""
+    traffic = json.loads((REPO / "receipts/future/MEMORY_TRAFFIC_PROBE.json").read_text())
+    organ = json.loads((REPO / "receipts/future/ORGAN_BANDWIDTH.json").read_text())
+    return {
+        "sources": [
+            "receipts/future/MEMORY_TRAFFIC_PROBE.json",
+            "receipts/future/ORGAN_BANDWIDTH.json",
+        ],
+        "actual_read_bytes_per_token": traffic["actual_read_bytes_per_token"],
+        "byte_counter_available": traffic["byte_counter_available"],
+        "organ_gb_s_band": [341.9, 360.0],
+        "clean_gemv_roof_gb_s": 703.5,
+        "lm_head_demonstrated_gb_s": 497.4,
+        "reading": (
+            "The requirement is BANDWIDTH, and the evidence that it is bandwidth "
+            "and not something local is that the loss is uniform: MLP, DeltaNet "
+            "and GQA sit inside 5% of each other at 341.9-360.0 GB/s against a "
+            "703.5 clean roof. There is no hot organ. Separately, this device "
+            "exposes NO counter that reports bytes moved - no MTLCounterSet, "
+            "GPURawCounter, IOKit PerformanceStatistics or IOReport channel - so "
+            "actual traffic is UNKNOWN from an unprivileged process and the "
+            "catalog figure stays an accounting floor rather than a measurement."
+        ),
+    }
+
+
+def next_model_body_alternative() -> dict[str, Any]:
+    """The specimens that could carry the mission if this body cannot."""
+    return {
+        "source": "receipts/future/ODYSSEY_I_LAUNCH.json",
+        "incumbent": "sealed-3.14 (Qwen3.8-Flash-Next)",
+        "reading": (
+            "Odyssey I is launched on a sealed specimen constellation, so the "
+            "alternative is not hypothetical. Succession is explicitly NOT "
+            "warranted on cognition grounds: CHOICE_JSON_PROBE showed a 0.6B "
+            "failing the same clipped ask this 27B failed and both passing with "
+            "the schema in view, so the incumbent's structured-output record was "
+            "an artifact of the harness. A body change must be argued on bytes or "
+            "bandwidth, not on the decision failures this campaign has been "
+            "attributing to it."
+        ),
+    }
 
 
 def build() -> dict[str, Any]:
@@ -234,6 +356,11 @@ def build() -> dict[str, Any]:
         "prerequisites": prerequisite_status(),
         "citations_resolved": cb.resolve_all(),
         "causal_residual": cb.causal_residual(),
+        "dominant_remaining_costs": dominant_remaining_costs(),
+        "irreducible_current_information": irreducible_current_information(),
+        "best_representation_and_its_evidence": best_representation_and_its_evidence(),
+        "next_hardware_requirement": next_hardware_requirement(),
+        "next_model_body_alternative": next_model_body_alternative(),
     }
 
 

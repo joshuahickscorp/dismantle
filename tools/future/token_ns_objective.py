@@ -38,9 +38,9 @@ SCHEMA = "hawking.future.token_ns_objective.v1"
 # own byte ledger. The old anchors (35.5 TPS, 9,878,901,136 bytes, 337.3 GB/s)
 # could not all be true at once; the release-profile probe says the byte count
 # was 8.6% low and the bandwidth figure was the outlier.
-CURRENT_DECODE_TPS = 32.594                  # steady decode, not complete-token
+CURRENT_DECODE_TPS = 35.158                  # sealed-3.14, fusion env SET
 ACTIVE_WEIGHT_BYTES_PER_TOKEN = 10_727_793_882
-PRODUCTION_DECODE_GB_S = 349.7
+PRODUCTION_DECODE_GB_S = 377.2  # 10.7278 GB / 28.44 ms
 SUPERSEDED_ANCHORS = {
     "decode_tps": 35.5,
     "active_weight_bytes_per_token": 9_878_901_136,
@@ -171,8 +171,10 @@ def reconciliation() -> dict[str, Any]:
         "resolution": (
             "The serving resident reports 10,727,793,882 active bytes per "
             "generated token, not 9,878,901,136 — the old anchor was 8.6% low. "
-            "10.7278 GB x 32.594 TPS = 349.7 GB/s, so the recorded 337.3 GB/s "
-            "was the outlier, not the TPS. The anchors now multiply out."
+            "10.7278 GB x 35.158 TPS = 377.2 GB/s, so the recorded 337.3 GB/s "
+            "was the outlier, not the TPS. The 35.5 anchor was right all along "
+            "and was measured with the fusion env set; the 32.7 reading that "
+            "briefly looked like a correction was the UNFUSED arm of an A/B."
         ),
         "superseded": SUPERSEDED_ANCHORS,
         "claim": (

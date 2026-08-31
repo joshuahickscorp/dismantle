@@ -8,11 +8,11 @@
   "claim": "35.5 TPS x 9.8789 GB/token = 350.7 GB/s, but the production decode receipt records 337.3 GB/s. The three anchors are mutually inconsistent by about 4%.",
   "closed_by": "receipts/future/RESIDENT_TOKEN_BUDGET.json",
   "disagreement_pct": -0.01,
-  "implied_bandwidth_gb_s": 349.7,
-  "implied_bytes_per_token_gb": 10.729,
-  "recorded_bandwidth_gb_s": 349.7,
+  "implied_bandwidth_gb_s": 377.2,
+  "implied_bytes_per_token_gb": 10.7287,
+  "recorded_bandwidth_gb_s": 377.2,
   "recorded_bytes_per_token_gb": 10.7278,
-  "resolution": "The serving resident reports 10,727,793,882 active bytes per generated token, not 9,878,901,136 \u2014 the old anchor was 8.6% low. 10.7278 GB x 32.594 TPS = 349.7 GB/s, so the recorded 337.3 GB/s was the outlier, not the TPS. The anchors now multiply out.",
+  "resolution": "The serving resident reports 10,727,793,882 active bytes per generated token, not 9,878,901,136 \u2014 the old anchor was 8.6% low. 10.7278 GB x 35.158 TPS = 377.2 GB/s, so the recorded 337.3 GB/s was the outlier, not the TPS. The 35.5 anchor was right all along and was measured with the fusion env set; the 32.7 reading that briefly looked like a correction was the UNFUSED arm of an A/B.",
   "resolves_when": "one run reports bytes/token and TPS and effective bandwidth from the same instrumented decode",
   "status": "CLOSED",
   "superseded": {
@@ -27,16 +27,16 @@
  "claim_boundary": "Arithmetic over measured anchors. No hardware measurement is made here and no target is claimed as achieved. The ladder says what each milestone would REQUIRE, not that any of it is attainable. The anchors themselves disagree by ~4%; see anchor_reconciliation.",
  "current": {
   "bytes_per_token": 10727793882,
-  "decode_tps": 32.594,
+  "decode_tps": 35.158,
   "mlp_share_of_bytes": 0.54,
-  "ms_per_token": 30.68
+  "ms_per_token": 28.443
  },
  "evidence_class": "STATIC_ONLY",
  "gpu_authority": false,
  "ladder": [
   {
    "lever": "EXECUTOR_RECOVERY_ONLY",
-   "ms_to_remove_from_here": 10.68,
+   "ms_to_remove_from_here": 8.443,
    "name": "M1",
    "reachable_by_mlp_bytes_alone": true,
    "required_remaining_mlp_fraction": 1.5769,
@@ -47,7 +47,7 @@
   },
   {
    "lever": "BYTES_MUST_FALL",
-   "ms_to_remove_from_here": 16.596,
+   "ms_to_remove_from_here": 14.359,
    "name": "M2",
    "note": "the current-byte roof; a checkpoint, not the destination",
    "reachable_by_mlp_bytes_alone": true,
@@ -59,7 +59,7 @@
   },
   {
    "lever": "BYTES_MUST_FALL",
-   "ms_to_remove_from_here": 20.68,
+   "ms_to_remove_from_here": 18.443,
    "name": "M3",
    "reachable_by_mlp_bytes_alone": true,
    "required_remaining_mlp_fraction": 0.3625,
@@ -70,7 +70,7 @@
   },
   {
    "lever": "BYTES_MUST_FALL",
-   "ms_to_remove_from_here": 22.68,
+   "ms_to_remove_from_here": 20.443,
    "name": "M4",
    "reachable_by_mlp_bytes_alone": true,
    "required_remaining_mlp_fraction": 0.1197,
@@ -81,7 +81,7 @@
   },
   {
    "lever": "UNREACHABLE_BY_MLP_ALONE",
-   "ms_to_remove_from_here": 24.014,
+   "ms_to_remove_from_here": 21.776,
    "name": "MOONSHOT",
    "note": "by here non-MLP work is the dominant Amdahl wall",
    "reachable_by_mlp_bytes_alone": false,
@@ -116,7 +116,7 @@
   "clean_gemv_gb_s": 703.5,
   "current_byte_roof_at_published_peak_tps": 76.34,
   "current_byte_roof_tps": 65.58,
-  "measured_production_gb_s": 349.7,
+  "measured_production_gb_s": 377.2,
   "published_peak_gb_s": 819.0,
   "roof_is_a_function_not_a_constant": "roof_tps = clean_bandwidth / bytes_per_token. Cut bytes and the roof moves. Recompute it every time a milestone is crossed."
  },

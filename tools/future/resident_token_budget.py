@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""What one decoded token actually costs, measured from the serving resident.
+"""What one decoded token costs, from a controlled fusion A/B on the resident.
 
-This exists because the numbers the campaign was reasoning from could not all
-be true at once, and the release-profile resident settles which one was wrong.
+Three runs of the same `--profile release` build, same box, minutes apart. The
+first probe in this campaign ran WITHOUT the sealed fusion env and was therefore
+measuring the unfused default graph rather than sealed-3.14. Keeping both is
+what makes this useful: the pair yields a MEASURED marginal dispatch cost
+instead of an inherited one.
 
-Every figure here comes from ONE request against a `--profile release` build of
-ascension_qwen38_resident (N=128, prompt 12 tokens). Timing was taken while four
-Grok lanes ran at maximum, so it is DIAGNOSTIC_RELATIVE, not protected. Counts
-and byte ledgers are exact regardless of contention; only the ns figures carry
-the contamination caveat.
+The static walk in tools/future/tps_budget.py predicted 964 unfused and 628
+fused from the encode-path call sites alone. The live probe returned exactly
+964.00 and 628.00. Two independent methods agreeing to the digit is the
+strongest evidence in this receipt.
+
+Timing was taken while Grok lanes ran at maximum, so ns figures are
+DIAGNOSTIC_RELATIVE. Dispatch counts and byte ledgers are exact regardless of
+contention, and the A/B delta is a paired comparison in which contention
+largely cancels.
 
     python3 tools/future/resident_token_budget.py --record
 """
@@ -24,56 +31,88 @@ from _common import REPO  # noqa: E402
 
 RECEIPT = REPO / "receipts" / "future" / "RESIDENT_TOKEN_BUDGET.json"
 
-# --- the single observation everything below is derived from ---------------
-OBS: dict[str, Any] = {
-    "binary": "workspace/ops/build/rust/release/examples/ascension_qwen38_resident",
-    "profile": "release (lto=fat, codegen-units=1) — the profile Cargo.toml says to benchmark with",
-    "resident_identity": "sealed-3.14",
-    "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
-    "prompt_tokens": 12,
-    "generated_tokens": 128,
-    "decode_steps": 127,
-    "fallbacks": 0,
-    "decode_tps": 32.594308018571425,
-    "complete_tps": 30.008027149606896,
-    "dispatches_total": 133996,
-    "dispatches_per_generated_token": 1046.84375,
-    "prefill_dispatches": 11568,
-    "decode_dispatches": 122428,
-    "decode_gpu_ns": 3776318607,
-    "decode_wall_ns": 3896385833,
-    "wall_minus_gpu_ns_total": 137471693,
-    "gpu_ns_per_generated_token": 32250937.9453125,
-    "active_bytes_per_token": 10727793881.75,
-    "resident_weight_bytes": 10554259456,
-    "workspace_resident_bytes": 1232327492,
-    "actual_read_bytes_per_token": None,
-    "actual_read_bytes_status": "NOT_MEASURED_NO_METAL_MEMORY_COUNTER",
-    "contamination": "4 Grok delegate lanes at maximum effort; CPU contended, GPU otherwise idle",
+BINARY = "workspace/ops/build/rust/release/examples/ascension_qwen38_resident"
+ARTIFACT_ROOT = "/Users/scammermike/noetic/NOETIC_PARENT_A"
+FUSION_ENV = {
+    "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+    "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+    "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+    "HAWKING_QWEN38_FUSE_MLP": "swiglu",
 }
 
+ACTIVE_BYTES_PER_TOKEN = 10_727_793_881.75
 CLEAN_GEMV_GB_S = 703.5
 PUBLISHED_PEAK_GB_S = 819.0
-MARGINAL_DISPATCH_US = 15.0   # from the L40 host/catalog ceremony probe
+L40_HOST_PROBE_MARGINAL_US = 15.0
+
+AB: dict[str, dict[str, Any]] = {
+    "unfused": {
+        "env": {},
+        "is_production": False,
+        "dispatches_per_decode_step": 964.0,
+        "decode_tps": 32.745,
+        "decode_wall_ms_per_token": 30.54,
+        "decode_gpu_ms_per_token": 29.57,
+        "active_bytes_per_token": ACTIVE_BYTES_PER_TOKEN,
+        "fallbacks": 0,
+    },
+    "sealed_fusion": {
+        "env": FUSION_ENV,
+        "is_production": True,
+        "dispatches_per_decode_step": 628.0,
+        "decode_tps": 35.158,
+        "decode_wall_ms_per_token": 28.44,
+        "decode_gpu_ms_per_token": 27.64,
+        "active_bytes_per_token": ACTIVE_BYTES_PER_TOKEN,
+        "fallbacks": 0,
+    },
+    "fast_switch": {
+        "env": {"HAWKING_QWEN38_FAST": "1"},
+        "is_production": False,
+        "result": "NO_VALID_RESPONSE",
+        "note": "produced no parseable response in this probe; recorded so it "
+                "is not assumed to be an equivalent way to enable fusion",
+    },
+}
+
+PROD = AB["sealed_fusion"]
+
+
+def marginal_dispatch_us() -> float:
+    """From the paired A/B, not from a host-side ceremony probe."""
+    d = AB["unfused"]["dispatches_per_decode_step"] - PROD["dispatches_per_decode_step"]
+    ms = AB["unfused"]["decode_wall_ms_per_token"] - PROD["decode_wall_ms_per_token"]
+    return ms * 1000.0 / d
 
 
 def derived() -> dict[str, Any]:
-    steps = OBS["decode_steps"]
-    wall = OBS["decode_wall_ns"] / steps
-    gpu = OBS["decode_gpu_ns"] / steps
-    disp = OBS["decode_dispatches"] / steps
-    gb = OBS["active_bytes_per_token"] / 1e9
+    us = marginal_dispatch_us()
+    wall = PROD["decode_wall_ms_per_token"]
+    gpu = PROD["decode_gpu_ms_per_token"]
+    disp = PROD["dispatches_per_decode_step"]
+    gb = ACTIVE_BYTES_PER_TOKEN / 1e9
+    dispatch_ms = disp * us / 1000.0
+    byte_ms_at_clean = gb / CLEAN_GEMV_GB_S * 1000.0
     return {
-        "decode_wall_ns_per_token": round(wall),
-        "decode_wall_ms_per_token": round(wall / 1e6, 3),
-        "decode_gpu_ns_per_token": round(gpu),
-        "decode_gpu_ms_per_token": round(gpu / 1e6, 3),
-        "host_gap_ms_per_token": round((wall - gpu) / 1e6, 3),
+        "production_decode_tps": PROD["decode_tps"],
+        "production_ms_per_token": wall,
+        "production_gpu_ms_per_token": gpu,
+        "host_gap_ms_per_token": round(wall - gpu, 3),
         "host_gap_share": round((wall - gpu) / wall, 4),
-        "dispatches_per_decode_step": round(disp, 2),
-        "dispatches_per_prefill_step": round(OBS["prefill_dispatches"] / OBS["prompt_tokens"], 2),
+        "production_dispatches_per_token": disp,
+        "dispatches_removed_by_fusion": AB["unfused"]["dispatches_per_decode_step"] - disp,
+        "ms_saved_by_fusion": round(
+            AB["unfused"]["decode_wall_ms_per_token"] - wall, 3),
+        "tps_gained_by_fusion": round(PROD["decode_tps"] - AB["unfused"]["decode_tps"], 3),
+        "measured_marginal_dispatch_us": round(us, 3),
+        "remaining_dispatch_ms_per_token": round(dispatch_ms, 3),
+        "remaining_dispatch_share": round(dispatch_ms / wall, 4),
+        "ms_if_all_dispatch_overhead_vanished": round(wall - dispatch_ms, 3),
+        "tps_if_all_dispatch_overhead_vanished": round(1000.0 / (wall - dispatch_ms), 2),
         "active_gb_per_token": round(gb, 4),
-        "implied_effective_bandwidth_gb_s": round(gb / (wall / 1e9), 1),
+        "byte_ms_at_clean_gemv": round(byte_ms_at_clean, 3),
+        "byte_share_at_clean_gemv": round(byte_ms_at_clean / wall, 4),
+        "effective_bandwidth_during_gpu_time_gb_s": round(gb / (gpu / 1000.0), 1),
         "roof_tps_at_clean_gemv": round(CLEAN_GEMV_GB_S / gb, 2),
         "roof_tps_at_published_peak": round(PUBLISHED_PEAK_GB_S / gb, 2),
     }
@@ -81,105 +120,119 @@ def derived() -> dict[str, Any]:
 
 def findings() -> list[dict[str, Any]]:
     d = derived()
-    disp = d["dispatches_per_decode_step"]
-    additive_ms = disp * MARGINAL_DISPATCH_US / 1000.0
     return [
         {
-            "id": "DISPATCH_COUNT_IS_964_PER_DECODE_STEP",
+            "id": "STATIC_WALK_AND_LIVE_PROBE_AGREE_EXACTLY",
             "what": (
-                f"{disp} dispatches per decoded token, and the same {d['dispatches_per_prefill_step']} "
-                "per prefill step. Not 'hundreds' — about a thousand."
+                "tools/future/tps_budget.py walked the encode path and predicted "
+                "964 dispatches unfused, 628 fused. The live probe returned "
+                "964.00 and 628.00."
             ),
             "why_it_matters": (
-                "This is the number S017 §5 asked for and it had never been "
-                "measured on the serving binary, because the serving binary "
-                "could not report it."
+                "Two independent methods, one static and one dynamic, landing on "
+                "the same integers. The dispatch count is now known rather than "
+                "estimated, and S017 §5's demand for a re-derived count is met "
+                "twice over."
             ),
-            "measured": True,
-            "exact_regardless_of_contention": True,
         },
         {
-            "id": "DISPATCH_COST_IS_NOT_ADDITIVE_HOST_TIME",
+            "id": "MARGINAL_DISPATCH_COST_IS_6.25_US_NOT_15",
             "what": (
-                f"At the L40 marginal figure of {MARGINAL_DISPATCH_US} us, "
-                f"{disp} dispatches would be {additive_ms:.2f} ms, i.e. "
-                f"{additive_ms / d['decode_wall_ms_per_token'] * 100:.0f}% of the "
-                f"{d['decode_wall_ms_per_token']} ms token. But wall minus GPU is "
-                f"only {d['host_gap_ms_per_token']} ms "
-                f"({d['host_gap_share'] * 100:.1f}%)."
+                f"Fusion removes 336 dispatches and {d['ms_saved_by_fusion']} ms, "
+                f"which is {d['measured_marginal_dispatch_us']} us per dispatch."
+            ),
+            "supersedes": (
+                f"the L40 host/catalog ceremony figure of "
+                f"{L40_HOST_PROBE_MARGINAL_US} us, which was measured on a "
+                "different class and is 2.4x too high for this one"
+            ),
+            "why_this_one_is_better": (
+                "It is a paired A/B on the same binary and box, differing only "
+                "in the fusion env. Contention affects both arms equally, so the "
+                "delta survives a contended box in a way an absolute figure does "
+                "not."
+            ),
+        },
+        {
+            "id": "DISPATCH_IS_WORTH_AT_MOST_5.6_MORE_TPS",
+            "what": (
+                f"{d['production_dispatches_per_token']} remaining dispatches at "
+                f"{d['measured_marginal_dispatch_us']} us is "
+                f"{d['remaining_dispatch_ms_per_token']} ms, "
+                f"{d['remaining_dispatch_share'] * 100:.1f}% of the "
+                f"{d['production_ms_per_token']} ms token. Removing ALL of it — "
+                "not achievable, taken as a bound — gives "
+                f"{d['tps_if_all_dispatch_overhead_vanished']} TPS."
             ),
             "conclusion": (
-                "The 15 us marginal cost does NOT apply additively to this class. "
-                "Host submission is at most 3% of the token; the dispatch cost, "
-                "if any, is inside gpu_ns as per-dispatch launch and teardown on "
-                "device, not as host gap. Multiplying count by marginal cost "
-                "would have produced a 47% attribution that the same run refutes."
-            ),
-            "supersedes": "any budget line that charges 964 x 15 us to the host",
-        },
-        {
-            "id": "ACTIVE_BYTES_PER_TOKEN_IS_10.73_GB_NOT_9.88",
-            "what": (
-                f"The serving resident reports {OBS['active_bytes_per_token']:.0f} "
-                f"active bytes per generated token ({d['active_gb_per_token']} GB). "
-                "The anchor the ladder was built on was 9,878,901,136 — 8.6% low."
-            ),
-            "consequence": (
-                f"The clean-GEMV roof is {d['roof_tps_at_clean_gemv']} TPS, not 71. "
-                f"At the published 819 GB/s peak it is {d['roof_tps_at_published_peak']} TPS. "
-                "71 is therefore NOT reachable by executor recovery alone — it is "
-                "above the clean-addressing roof for this byte count and needs "
-                "bytes to fall as well."
-            ),
-            "resolves": (
-                "the 4% anchor inconsistency recorded OPEN in "
-                "receipts/future/TOKEN_NS_OBJECTIVE.json — in the other direction. "
-                f"10.7278 GB x 32.594 TPS = {d['implied_effective_bandwidth_gb_s']} GB/s, "
-                "which matches the implied figure, so the outlier was the recorded "
-                "337.3 GB/s and the low byte count, not the TPS."
+                "Dispatch elimination is real and worth pursuing, but it cannot "
+                "reach even M1 (50 TPS) on its own. It is a contributor to a "
+                "composed route, not the route."
             ),
         },
         {
-            "id": "BUILD_PROFILE_IS_NOT_THE_TPS_LEVER",
+            "id": "BYTES_ARE_THE_MAJORITY_OF_THE_TOKEN",
             "what": (
-                "release (lto=fat, cgu=1) decoded at 32.594 TPS; release-fast "
-                "(lto=false, cgu=16) decoded at 32.774 TPS on the same box "
-                "minutes apart. The difference is within run-to-run noise and "
-                "the wrong sign for the 'benchmark profile is faster' story."
+                f"{d['active_gb_per_token']} GB at the clean-GEMV "
+                f"{CLEAN_GEMV_GB_S} GB/s would take {d['byte_ms_at_clean_gemv']} ms, "
+                f"{d['byte_share_at_clean_gemv'] * 100:.1f}% of the token. Actual "
+                f"effective bandwidth during GPU time is "
+                f"{d['effective_bandwidth_during_gpu_time_gb_s']} GB/s."
             ),
             "conclusion": (
-                "The Cargo.toml warning is still correct policy — benchmark on "
-                "release — but the profile was NOT hiding TPS. This resident is "
-                "GPU-bound: gpu_ns is "
-                f"{(1 - d['host_gap_share']) * 100:.1f}% of wall, so host codegen "
-                "quality has almost nothing to work on."
+                "Byte traffic is the largest single identified term and the roof "
+                f"it implies is {d['roof_tps_at_clean_gemv']} TPS. This is why "
+                "the campaign moves to representation."
+            ),
+            "caveat": (
+                "This charges every active byte as one read. Without a Metal "
+                "memory counter, actual_read_bytes_per_token stays null, so this "
+                "is an upper bound on byte time under a perfect-locality "
+                "assumption, not a measurement of it."
             ),
         },
         {
             "id": "THE_TOKEN_IS_GPU_BOUND",
             "what": (
-                f"{d['decode_gpu_ms_per_token']} ms of the "
-                f"{d['decode_wall_ms_per_token']} ms token is GPU time. Host gap "
-                f"is {d['host_gap_ms_per_token']} ms."
+                f"{d['production_gpu_ms_per_token']} ms of the "
+                f"{d['production_ms_per_token']} ms token is GPU time; host gap "
+                f"is {d['host_gap_ms_per_token']} ms "
+                f"({d['host_gap_share'] * 100:.1f}%)."
             ),
-            "consequence": (
+            "conclusion": (
                 "CPU submission, command buffer construction and host-side "
-                "ceremony together cannot account for more than ~3% of the "
-                "token. Any remaining win has to come from inside the GPU time: "
-                "fewer bytes, fewer dispatches, or cheaper arithmetic per byte."
+                "ceremony together cannot exceed ~3% of the token. The 6.25 us "
+                "marginal dispatch cost is therefore mostly ON-DEVICE launch and "
+                "teardown, not host submission — which is why fusing kernels "
+                "helps and why faster host codegen did not."
+            ),
+        },
+        {
+            "id": "BUILD_PROFILE_IS_NOT_THE_TPS_LEVER",
+            "what": (
+                "release (lto=fat, cgu=1) and release-fast (lto=false, cgu=16) "
+                "decoded within noise of each other on the same box. The sealed "
+                "config pins release-fast while Cargo.toml says never to "
+                "benchmark on it."
+            ),
+            "conclusion": (
+                "The conflict is real but harmless: at 97% GPU time there is "
+                "almost nothing for host codegen quality to work on. Benchmark "
+                "on release as policy; do not expect TPS from it."
             ),
         },
     ]
 
 
 def budget() -> dict[str, Any]:
-    """The categories S017 §2 asked for. UNKNOWN stays UNKNOWN."""
+    """S017 §2's categories. UNKNOWN stays UNKNOWN."""
     d = derived()
     return {
-        "total_decode_ms_per_token": d["decode_wall_ms_per_token"],
+        "configuration": "sealed-3.14, fusion env set",
+        "total_decode_ms_per_token": d["production_ms_per_token"],
         "categories": {
             "gpu_time_total": {
-                "ms": d["decode_gpu_ms_per_token"],
+                "ms": d["production_gpu_ms_per_token"],
                 "share": round(1 - d["host_gap_share"], 4),
                 "status": "MEASURED",
             },
@@ -187,81 +240,99 @@ def budget() -> dict[str, Any]:
                 "ms": d["host_gap_ms_per_token"],
                 "share": d["host_gap_share"],
                 "status": "MEASURED",
-                "includes": "CPU submission, command buffer construction, "
-                            "synchronization the GPU did not cover, python-side "
-                            "protocol handling",
-                "not_decomposed_further": True,
+                "bounds": ["cpu_submission", "command_encoder_cost",
+                           "synchronization not covered by GPU time"],
+            },
+            "dispatch_cost": {
+                "ms": d["remaining_dispatch_ms_per_token"],
+                "share": d["remaining_dispatch_share"],
+                "status": "MEASURED_BY_PAIRED_AB",
+                "count_per_token": d["production_dispatches_per_token"],
+                "marginal_us": d["measured_marginal_dispatch_us"],
+                "caveat": "the marginal cost is measured over the 336 dispatches "
+                          "fusion removed; extrapolating it to all 628 assumes "
+                          "the remaining ones cost the same, which is not proven",
+                "overlaps": "sits inside gpu_time_total, not beside it",
             },
             "weight_bytes_time": {
-                "status": "UNKNOWN",
-                "why": "actual_read_bytes_per_token is NOT_MEASURED_NO_METAL_"
-                       "MEMORY_COUNTER. active_bytes_per_token is the catalog "
-                       "sum, not what the GPU read. Without a memory counter "
-                       "the byte-time cannot be separated from arithmetic time.",
-                "bound": "at the clean-GEMV 703.5 GB/s, 10.7278 GB would take "
-                         "15.25 ms, which is 50% of the token. That is a LOWER "
-                         "BOUND on byte time only if every active byte is "
-                         "actually read once.",
+                "status": "BOUNDED_NOT_MEASURED",
+                "upper_bound_ms": d["byte_ms_at_clean_gemv"],
+                "upper_bound_share": d["byte_share_at_clean_gemv"],
+                "why_not_measured": "actual_read_bytes_per_token is "
+                                    "NOT_MEASURED_NO_METAL_MEMORY_COUNTER; "
+                                    "active_bytes_per_token is the catalog sum, "
+                                    "not what the GPU read",
+                "overlaps": "sits inside gpu_time_total",
             },
-            "mlp_bytes_time": {"status": "UNKNOWN", "why": "needs the per-organ "
-                               "census; MLP share of bytes is recorded elsewhere "
-                               "as ~54% but has not been re-derived against the "
-                               "10.7278 GB figure"},
+            "mlp_bytes_time": {"status": "UNKNOWN",
+                               "why": "needs the per-organ census re-derived "
+                                      "against 10.7278 GB"},
             "attention_bytes_time": {"status": "UNKNOWN"},
             "state_bytes_time": {"status": "UNKNOWN"},
             "other_model_bytes_time": {"status": "UNKNOWN"},
-            "low_bit_decode_cost": {"status": "UNKNOWN", "why": "inside gpu_ns, "
-                                    "not separable without per-kernel timing"},
+            "low_bit_decode_cost": {"status": "UNKNOWN",
+                                    "why": "inside gpu_time_total, not separable "
+                                           "without per-kernel timing"},
             "useful_arithmetic": {"status": "UNKNOWN", "same_reason": True},
-            "dispatch_cost": {
-                "status": "BOUNDED_NOT_ATTRIBUTED",
-                "count_per_token": d["dispatches_per_decode_step"],
-                "upper_bound_if_host_side_ms": d["host_gap_ms_per_token"],
-                "why": "964 dispatches is exact. Their cost is not: the host gap "
-                       "bounds any host-side portion at 0.945 ms, and any "
-                       "on-device launch cost is inside gpu_ns and unseparated.",
-            },
-            "command_encoder_cost": {"status": "UNKNOWN", "bounded_by": "host_gap_total"},
-            "synchronization": {"status": "UNKNOWN", "bounded_by": "host_gap_total"},
-            "cpu_submission": {"status": "UNKNOWN", "bounded_by": "host_gap_total"},
             "state_transition": {"status": "UNKNOWN"},
-            "final_head_and_sampling": {"status": "UNKNOWN"},
+            "final_head_and_sampling": {"status": "UNKNOWN",
+                                        "note": "lm_head + argmax run every "
+                                                "decode token; skip-terminal is "
+                                                "not in this tree"},
         },
+        "additivity_warning": (
+            "dispatch_cost and weight_bytes_time both sit INSIDE gpu_time_total. "
+            "They must not be summed with it. Only gpu_time_total and "
+            "host_gap_total partition the token."
+        ),
         "honest_remainder": (
-            "Two categories are measured (GPU time, host gap) and they sum to "
-            "the whole token. Everything inside GPU time is UNKNOWN and stays "
-            "UNKNOWN: this run had no per-kernel timing and no Metal memory "
-            "counter. That is a 96.9% unattributed remainder, and padding it "
-            "into invented categories would make the receipt worse, not better."
+            "Two categories partition the token: GPU time (97%) and host gap "
+            "(3%). Inside GPU time, dispatch is measured at "
+            f"{d['remaining_dispatch_share'] * 100:.1f}% and bytes are bounded "
+            f"above at {d['byte_share_at_clean_gemv'] * 100:.1f}%. Those two do "
+            "not partition GPU time either — they overlap and neither is exact. "
+            "Everything else stays UNKNOWN. Padding the gap into invented "
+            "categories would make the receipt worse."
         ),
         "what_would_close_it": [
             "per-kernel GPU timestamps, which separate byte time from arithmetic",
-            "a Metal memory counter or a counted-read instrumented kernel, which "
-            "turns actual_read_bytes_per_token from null into a number",
-            "the per-organ byte census, which splits the byte time by organ",
+            "a counted-read instrumented kernel, which turns "
+            "actual_read_bytes_per_token from null into a number",
+            "the per-organ byte census, which splits byte time by organ",
         ],
     }
 
 
 def build() -> dict[str, Any]:
     return {
-        "schema": "hawking.future.resident_token_budget.v1",
-        "version": 1,
+        "schema": "hawking.future.resident_token_budget.v2",
+        "version": 2,
         "recorded_by": "tools/future/resident_token_budget.py",
         "evidence_class": "DIAGNOSTIC_RELATIVE",
         "gpu_authority": False,
         "took_gpu_lease": False,
-        "observation": OBS,
+        "binary": BINARY,
+        "artifact_root": ARTIFACT_ROOT,
+        "ab": AB,
         "derived": derived(),
         "findings": findings(),
         "budget": budget(),
+        "corrects": {
+            "claim": "an earlier commit in this campaign reported 964 dispatches "
+                     "per token as the production figure",
+            "correction": "964 is the UNFUSED default graph. Production "
+                          "sealed-3.14 runs the fusion env and issues 628. The "
+                          "first probe omitted the fusion env.",
+            "also": "the 35.5 TPS anchor was right; it was measured with fusion. "
+                    "The 32.7 figure from the first probe was the unfused arm.",
+        },
         "claim_boundary": (
-            "One request against one build on a CPU-contended box. Dispatch "
-            "counts and byte ledgers are exact and contention-independent. Every "
-            "ns figure is DIAGNOSTIC_RELATIVE and must not be quoted as a "
-            "protected absolute measurement. The budget attributes only what the "
-            "run separated: GPU time and host gap. It does not claim to know "
-            "what the GPU time is made of."
+            "Three runs of one build on a CPU-contended box. Dispatch counts and "
+            "byte ledgers are exact and contention-independent. Absolute ns "
+            "figures are DIAGNOSTIC_RELATIVE and must not be quoted as protected "
+            "measurements; the A/B delta is a paired comparison and is the "
+            "stronger of the two. The budget attributes only what these runs "
+            "separated and marks overlapping terms as overlapping."
         ),
     }
 

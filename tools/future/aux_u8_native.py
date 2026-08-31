@@ -643,6 +643,13 @@ def score_u8_aux(*, extra_flops_per_output_element: float, count_exp_as: float |
         consuming_primitive="FusedDecodeCompute",
         bandwidth_regime="affine_q2_family",
         organ="mlp",
+        # BROADCAST AUX, not weight codes. The per-group scale and bias are read
+        # by many threads, so they are cache-served and were never on the
+        # critical path - which is why this lever billed +1.5541 ms and measured
+        # 29.04 us SLOWER for 8,355,840 fewer bytes. executable_economics now
+        # refuses an undeclared stream_class rather than defaulting to the organ
+        # average, and this candidate is the reason that guard exists.
+        stream_class="broadcast_aux",
         reusable_family=True,
         candidate_id=LEVER_ID,
         status="OPEN",

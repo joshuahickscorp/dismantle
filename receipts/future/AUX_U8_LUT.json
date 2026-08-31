@@ -29,7 +29,12 @@
      0.0
     ],
     "host_gap_floor_ms": 0.989,
-    "incremental_byte_rate_gb_s": 344.1
+    "incremental_byte_rate_gb_s": 0.0,
+    "organ_average_gb_s": 344.1,
+    "stream_billing_gb_s": 0.0,
+    "stream_class": "broadcast_aux",
+    "stream_on_critical_path": false,
+    "stream_rate_source": "ECONOMICS_CALIBRATION.json"
    },
    "byte_model": {
     "bytes_added_metadata": 393216,
@@ -61,42 +66,42 @@
    "net_bytes": -534380544,
    "ok": true,
    "organ": "mlp",
-   "predicted_ms_delta": -1.552980366172624,
+   "predicted_ms_delta": 0.0,
    "predicted_ms_delta_range": [
-    -1.552980366172624,
-    -1.418583870453942
+    0.0,
+    0.0
    ],
-   "predicted_ms_saved": 1.552980366172624,
-   "predicted_token_ms": 27.16901963382738,
+   "predicted_ms_saved": -0.0,
+   "predicted_token_ms": 28.722,
    "predicted_token_ms_range": [
-    27.16901963382738,
-    27.303416129546058
+    28.722,
+    28.722
    ],
-   "predicted_tps": 36.806628044647155,
+   "predicted_tps": 34.816516955643756,
    "predicted_tps_range": [
-    36.62545357897037,
-    36.806628044647155
+    34.816516955643756,
+    34.816516955643756
    ],
    "retime_organ": false,
    "s020_section_20": {
     "bar_frac": 0.01,
     "bar_ms": 0.28722000000000003,
-    "clears_time_bar": true,
+    "clears_time_bar": false,
     "high_information_falsifier": false,
-    "plausible_ms_saved": 1.552980366172624,
+    "plausible_ms_saved": 0.0,
     "reusable_family": true
    },
    "status": "OPEN",
+   "stream_class": "broadcast_aux",
    "terms": {
-    "byte_added_ms": 0.0011427375762859632,
-    "byte_ms_delta": -1.552980366172624,
-    "byte_removed_ms": -1.55412310374891,
+    "byte_added_ms": 0.0,
+    "byte_ms_delta": 0.0,
+    "byte_removed_ms": 0.0,
     "dispatch_ms_delta": 0.0,
     "flop_ms_delta": 0.0
    },
    "verdict": "MATERIAL",
    "verdict_reasons": [
-    "clears_s020_section_20_time_bar",
     "reusable_representation_family"
    ]
   },
@@ -124,7 +129,12 @@
      7.7705
     ],
     "host_gap_floor_ms": 0.989,
-    "incremental_byte_rate_gb_s": 344.1
+    "incremental_byte_rate_gb_s": 0.0,
+    "organ_average_gb_s": 344.1,
+    "stream_billing_gb_s": 0.0,
+    "stream_class": "broadcast_aux",
+    "stream_on_critical_path": false,
+    "stream_rate_source": "ECONOMICS_CALIBRATION.json"
    },
    "byte_model": {
     "bytes_added_metadata": 1536,
@@ -154,49 +164,49 @@
    "net_bytes": -534772224,
    "ok": true,
    "organ": "mlp",
-   "predicted_ms_delta": 0.38850636006974737,
+   "predicted_ms_delta": 1.942625,
    "predicted_ms_delta_range": [
-    -1.5541186399302527,
-    6.350876363153704
+    0.0,
+    7.7705
    ],
-   "predicted_ms_saved": -0.38850636006974737,
-   "predicted_token_ms": 29.11050636006975,
+   "predicted_ms_saved": -1.942625,
+   "predicted_token_ms": 30.664625,
    "predicted_token_ms_range": [
-    27.16788136006975,
-    35.0728763631537
+    28.722,
+    36.4925
    ],
-   "predicted_tps": 34.35185865992624,
+   "predicted_tps": 32.61086675607479,
    "predicted_tps_range": [
-    28.512061276233503,
-    36.80817016043656
+    27.402891005001027,
+    34.816516955643756
    ],
    "retime_organ": false,
    "s020_section_20": {
     "bar_frac": 0.01,
     "bar_ms": 0.28722000000000003,
-    "clears_time_bar": true,
+    "clears_time_bar": false,
     "high_information_falsifier": false,
-    "plausible_ms_saved": 1.5541186399302527,
+    "plausible_ms_saved": 0.0,
     "reusable_family": true
    },
    "status": "OPEN",
+   "stream_class": "broadcast_aux",
    "terms": {
-    "byte_added_ms": 4.463818657367044e-06,
-    "byte_ms_delta": -1.5541186399302527,
-    "byte_removed_ms": -1.55412310374891,
+    "byte_added_ms": 0.0,
+    "byte_ms_delta": 0.0,
+    "byte_removed_ms": 0.0,
     "dispatch_ms_delta": 0.0,
     "flop_ms_delta": 1.942625
    },
    "verdict": "MATERIAL",
    "verdict_reasons": [
-    "clears_s020_section_20_time_bar",
     "reusable_representation_family"
    ]
   },
   "extra_flops_per_output_element_exp_fma_only": 1673.8461538461538,
   "extra_flops_per_output_element_lut": 0.0,
-  "net_sign_bytes_only": "POSITIVE",
-  "net_sign_with_aux_decode_fma": "POSITIVE",
+  "net_sign_bytes_only": "ZERO",
+  "net_sign_with_aux_decode_fma": "ZERO",
   "note": "The capability screen billed extra_flops_per_output_element=0 and got +1.554 ms. The exp-variant's 2 aux-decode FMA per 8 weights flipped the sign (flop_ms 1.9426, net -0.3885 ms). LUT extra FMA is 0, so both billings share the byte-lever sign. The GPU A/B is the physical number: billed-positive can still be wall-negative if the indexed load costs more than the exp.",
   "with_aux_decode_fma": {
    "assumptions": {
@@ -222,7 +232,12 @@
      0.0
     ],
     "host_gap_floor_ms": 0.989,
-    "incremental_byte_rate_gb_s": 344.1
+    "incremental_byte_rate_gb_s": 0.0,
+    "organ_average_gb_s": 344.1,
+    "stream_billing_gb_s": 0.0,
+    "stream_class": "broadcast_aux",
+    "stream_on_critical_path": false,
+    "stream_rate_source": "ECONOMICS_CALIBRATION.json"
    },
    "byte_model": {
     "bytes_added_metadata": 393216,
@@ -254,42 +269,42 @@
    "net_bytes": -534380544,
    "ok": true,
    "organ": "mlp",
-   "predicted_ms_delta": -1.552980366172624,
+   "predicted_ms_delta": 0.0,
    "predicted_ms_delta_range": [
-    -1.552980366172624,
-    -1.418583870453942
+    0.0,
+    0.0
    ],
-   "predicted_ms_saved": 1.552980366172624,
-   "predicted_token_ms": 27.16901963382738,
+   "predicted_ms_saved": -0.0,
+   "predicted_token_ms": 28.722,
    "predicted_token_ms_range": [
-    27.16901963382738,
-    27.303416129546058
+    28.722,
+    28.722
    ],
-   "predicted_tps": 36.806628044647155,
+   "predicted_tps": 34.816516955643756,
    "predicted_tps_range": [
-    36.62545357897037,
-    36.806628044647155
+    34.816516955643756,
+    34.816516955643756
    ],
    "retime_organ": false,
    "s020_section_20": {
     "bar_frac": 0.01,
     "bar_ms": 0.28722000000000003,
-    "clears_time_bar": true,
+    "clears_time_bar": false,
     "high_information_falsifier": false,
-    "plausible_ms_saved": 1.552980366172624,
+    "plausible_ms_saved": 0.0,
     "reusable_family": true
    },
    "status": "OPEN",
+   "stream_class": "broadcast_aux",
    "terms": {
-    "byte_added_ms": 0.0011427375762859632,
-    "byte_ms_delta": -1.552980366172624,
-    "byte_removed_ms": -1.55412310374891,
+    "byte_added_ms": 0.0,
+    "byte_ms_delta": 0.0,
+    "byte_removed_ms": 0.0,
     "dispatch_ms_delta": 0.0,
     "flop_ms_delta": 0.0
    },
    "verdict": "MATERIAL",
    "verdict_reasons": [
-    "clears_s020_section_20_time_bar",
     "reusable_representation_family"
    ]
   }
@@ -307,7 +322,7 @@
   "unchanged_from_exp": true
  },
  "evidence_class": "SELF_MEASURED_DIRTY",
- "finding": "LUT u8-aux consumer binds uchar scale/bias and indexes two 256-entry tables (log-scale, linear bias) instead of calling exp. It does not expand the compact aux back to f16. LUT removes the aux-decode arithmetic tax: exp-variant decode 2.5 FMA/weight-byte at 4 B/iter vs LUT 2.0 (dequant only) vs incumbent 1.3333 at 6 B/iter. Remaining LUT-vs-incumbent intensity is the same 8+8 FMA over fewer bytes (4.0 vs 2.6667) plus two indexed loads. executable_economics bytes-only: 1.5530 ms saved (sign POSITIVE). With aux-decode FMA billed (LUT extra FMA=0): 1.5530 ms (sign POSITIVE, flop_ms 0.0000, byte_ms -1.5530). Exp-variant billed -0.3885 ms (flop_ms 1.9426). GPU A/B layer 3: incumbent 330.7619 GB/s in 252.624 us, exp-variant 267.269 GB/s in 281.374 us, LUT-threadgroup 288.6855 GB/s in 260.5 us (\u0394inc 7.876 us, \u0394exp -20.874 us). Token projection 0.504064 ms (PROJECTION_ARITHMETIC_OVER_PROBE). Placement rates: constant 288.2705 GB/s 260.875 us; threadgroup 288.6855 GB/s 260.5 us; device 288.5935 GB/s 260.583 us. LUT output is byte-unchanged from the exp-variant (down_proj relfro vs incumbent 0.02629999837482214, native receipt 0.02629999837482214, bar 0.03). LUT variant is faster than the exp variant but still slower than incumbent \u2014 the arithmetic tax is real but not only the exp. loadavg { 7.39 6.74 7.25 }.",
+ "finding": "LUT u8-aux consumer binds uchar scale/bias and indexes two 256-entry tables (log-scale, linear bias) instead of calling exp. It does not expand the compact aux back to f16. LUT removes the aux-decode arithmetic tax: exp-variant decode 2.5 FMA/weight-byte at 4 B/iter vs LUT 2.0 (dequant only) vs incumbent 1.3333 at 6 B/iter. Remaining LUT-vs-incumbent intensity is the same 8+8 FMA over fewer bytes (4.0 vs 2.6667) plus two indexed loads. executable_economics bytes-only: -0.0000 ms saved (sign ZERO). With aux-decode FMA billed (LUT extra FMA=0): -0.0000 ms (sign ZERO, flop_ms 0.0000, byte_ms 0.0000). Exp-variant billed -1.9426 ms (flop_ms 1.9426). GPU A/B layer 3: incumbent 330.7619 GB/s in 252.624 us, exp-variant 267.269 GB/s in 281.374 us, LUT-threadgroup 288.6855 GB/s in 260.5 us (\u0394inc 7.876 us, \u0394exp -20.874 us). Token projection 0.504064 ms (PROJECTION_ARITHMETIC_OVER_PROBE). Placement rates: constant 288.2705 GB/s 260.875 us; threadgroup 288.6855 GB/s 260.5 us; device 288.5935 GB/s 260.583 us. LUT output is byte-unchanged from the exp-variant (down_proj relfro vs incumbent 0.02629999837482214, native receipt 0.02629999837482214, bar 0.03). LUT variant is faster than the exp variant but still slower than incumbent \u2014 the arithmetic tax is real but not only the exp. loadavg { 7.39 6.74 7.25 }.",
  "fma_per_byte_by_class": {
   "exp_counted_as_1": {
    "claim": "LUT removes the aux-decode arithmetic tax: exp-variant decode 2.75 FMA/weight-byte at 4 B/iter vs LUT 2.0 (dequant only) vs incumbent 1.3333 at 6 B/iter. Remaining LUT-vs-incumbent intensity is the same 8+8 FMA over fewer bytes (4.0 vs 2.6667) plus two indexed loads.",
@@ -1405,7 +1420,7 @@
  },
  "gpu_authority": false,
  "honest_outcome": {
-  "billed_net_sign": "POSITIVE",
+  "billed_net_sign": "ZERO",
   "exp_gpu_us": 281.374,
   "incumbent_gpu_us": 252.624,
   "kind": "LUT_BEATS_EXP_STILL_SLOWER_THAN_INCUMBENT",

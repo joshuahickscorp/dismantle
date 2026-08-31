@@ -564,6 +564,15 @@ def score_lut_aux(*, extra_flops_per_output_element: float) -> dict[str, Any]:
         consuming_primitive="FusedDecodeCompute",
         bandwidth_regime="affine_q2_family",
         organ="mlp",
+        # The bytes this lever removes come from the BROADCAST AUX stream - a
+        # per-group scale and bias that many threads read - not from the
+        # per-thread-unique weight codes. That distinction is the whole reason
+        # the lever billed +1.5530 ms and measured SLOWER: broadcast bytes are
+        # cache-served and were never on the critical path, so removing them
+        # removes no time. executable_economics now REFUSES an undeclared
+        # stream_class rather than defaulting to the organ average, which is
+        # exactly the defect this candidate exposed.
+        stream_class="broadcast_aux",
         reusable_family=True,
         candidate_id=LEVER_ID,
         status="OPEN",

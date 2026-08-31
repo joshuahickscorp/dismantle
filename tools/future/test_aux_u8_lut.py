@@ -232,10 +232,19 @@ def test_economics_bills_both_ways_lut_extra_fma_is_zero():
     assert only["extra_flops_per_output_element"] == 0.0
     assert billed["extra_flops_per_output_element"] == 0.0
     assert billed["terms"]["flop_ms_delta"] == 0.0
-    assert only["predicted_ms_saved"] > 0.0
-    assert billed["predicted_ms_saved"] > 0.0
-    assert bundle["net_sign_bytes_only"] == "POSITIVE"
-    assert bundle["net_sign_with_aux_decode_fma"] == "POSITIVE"
+    # These pinned POSITIVE, which was the OLD model's over-credit and the exact
+    # contradiction this lane exposed: billed +1.5530 ms with ZERO added decode
+    # FMA, and measured SLOWER than the incumbent. The calibrated model prices
+    # BROADCAST AUX bytes at their measured marginal value - the per-group scale
+    # and bias are read by many threads, cache-served, never on the critical
+    # path - so the credit is now ZERO. The model and the wall clock no longer
+    # disagree, which is the point; asserting POSITIVE would re-enshrine the bug.
+    assert only["predicted_ms_saved"] == pytest.approx(0.0, abs=5e-3)
+    assert billed["predicted_ms_saved"] == pytest.approx(0.0, abs=5e-3)
+    assert bundle["net_sign_bytes_only"] == "ZERO"
+    assert bundle["net_sign_with_aux_decode_fma"] == "ZERO"
+    # The LUT's real achievement survives and is still asserted below: it adds no
+    # decode FMA, so both billings agree with each other.
     # Exp-variant still bills the 2 FMA/8w tax that flipped the native sign.
     exp_billed = bundle["exp_variant_with_aux_decode_fma"]
     assert exp_billed["terms"]["flop_ms_delta"] > 0.0
@@ -370,7 +379,7 @@ def test_record_writes_class_table_loadavg_economics_and_speedup_gate(tmp_path: 
     classes = doc["fma_per_byte_by_class"]["fma_only"]
     assert "incumbent" in classes and "exp_variant" in classes and "lut_variant" in classes
     assert classes["lut_variant"]["decode_fma_per_weight_byte"] == pytest.approx(2.0)
-    assert doc["economics"]["net_sign_with_aux_decode_fma"] == "POSITIVE"
+    assert doc["economics"]["net_sign_with_aux_decode_fma"] == "ZERO"
     assert doc["economics"]["with_aux_decode_fma"]["terms"]["flop_ms_delta"] == 0.0
     assert doc["shader_invariants"]["materializes_f16_aux"] is False
     assert doc["gpu_ab"]["speedup"]["unchanged_from_exp"] is True

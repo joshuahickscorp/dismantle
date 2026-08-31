@@ -37,7 +37,12 @@
      0.0
     ],
     "host_gap_floor_ms": 0.989,
-    "incremental_byte_rate_gb_s": 344.1
+    "incremental_byte_rate_gb_s": 0.0,
+    "organ_average_gb_s": 344.1,
+    "stream_billing_gb_s": 0.0,
+    "stream_class": "broadcast_aux",
+    "stream_on_critical_path": false,
+    "stream_rate_source": "ECONOMICS_CALIBRATION.json"
    },
    "byte_model": {
     "bytes_added_metadata": 1536,
@@ -67,42 +72,42 @@
    "net_bytes": -534772224,
    "ok": true,
    "organ": "mlp",
-   "predicted_ms_delta": -1.5541186399302527,
+   "predicted_ms_delta": 0.0,
    "predicted_ms_delta_range": [
-    -1.5541186399302527,
-    -1.4196236368462967
+    0.0,
+    0.0
    ],
-   "predicted_ms_saved": 1.5541186399302527,
-   "predicted_token_ms": 27.16788136006975,
+   "predicted_ms_saved": -0.0,
+   "predicted_token_ms": 28.722,
    "predicted_token_ms_range": [
-    27.16788136006975,
-    27.302376363153705
+    28.722,
+    28.722
    ],
-   "predicted_tps": 36.80817016043656,
+   "predicted_tps": 34.816516955643756,
    "predicted_tps_range": [
-    36.626848399524796,
-    36.80817016043656
+    34.816516955643756,
+    34.816516955643756
    ],
    "retime_organ": false,
    "s020_section_20": {
     "bar_frac": 0.01,
     "bar_ms": 0.28722000000000003,
-    "clears_time_bar": true,
+    "clears_time_bar": false,
     "high_information_falsifier": false,
-    "plausible_ms_saved": 1.5541186399302527,
+    "plausible_ms_saved": 0.0,
     "reusable_family": true
    },
    "status": "OPEN",
+   "stream_class": "broadcast_aux",
    "terms": {
-    "byte_added_ms": 4.463818657367044e-06,
-    "byte_ms_delta": -1.5541186399302527,
-    "byte_removed_ms": -1.55412310374891,
+    "byte_added_ms": 0.0,
+    "byte_ms_delta": 0.0,
+    "byte_removed_ms": 0.0,
     "dispatch_ms_delta": 0.0,
     "flop_ms_delta": 0.0
    },
    "verdict": "MATERIAL",
    "verdict_reasons": [
-    "clears_s020_section_20_time_bar",
     "reusable_representation_family"
    ]
   },
@@ -133,7 +138,12 @@
      7.7705
     ],
     "host_gap_floor_ms": 0.989,
-    "incremental_byte_rate_gb_s": 344.1
+    "incremental_byte_rate_gb_s": 0.0,
+    "organ_average_gb_s": 344.1,
+    "stream_billing_gb_s": 0.0,
+    "stream_class": "broadcast_aux",
+    "stream_on_critical_path": false,
+    "stream_rate_source": "ECONOMICS_CALIBRATION.json"
    },
    "byte_model": {
     "bytes_added_metadata": 1536,
@@ -163,42 +173,42 @@
    "net_bytes": -534772224,
    "ok": true,
    "organ": "mlp",
-   "predicted_ms_delta": 0.38850636006974737,
+   "predicted_ms_delta": 1.942625,
    "predicted_ms_delta_range": [
-    -1.5541186399302527,
-    6.350876363153704
+    0.0,
+    7.7705
    ],
-   "predicted_ms_saved": -0.38850636006974737,
-   "predicted_token_ms": 29.11050636006975,
+   "predicted_ms_saved": -1.942625,
+   "predicted_token_ms": 30.664625,
    "predicted_token_ms_range": [
-    27.16788136006975,
-    35.0728763631537
+    28.722,
+    36.4925
    ],
-   "predicted_tps": 34.35185865992624,
+   "predicted_tps": 32.61086675607479,
    "predicted_tps_range": [
-    28.512061276233503,
-    36.80817016043656
+    27.402891005001027,
+    34.816516955643756
    ],
    "retime_organ": false,
    "s020_section_20": {
     "bar_frac": 0.01,
     "bar_ms": 0.28722000000000003,
-    "clears_time_bar": true,
+    "clears_time_bar": false,
     "high_information_falsifier": false,
-    "plausible_ms_saved": 1.5541186399302527,
+    "plausible_ms_saved": 0.0,
     "reusable_family": true
    },
    "status": "OPEN",
+   "stream_class": "broadcast_aux",
    "terms": {
-    "byte_added_ms": 4.463818657367044e-06,
-    "byte_ms_delta": -1.5541186399302527,
-    "byte_removed_ms": -1.55412310374891,
+    "byte_added_ms": 0.0,
+    "byte_ms_delta": 0.0,
+    "byte_removed_ms": 0.0,
     "dispatch_ms_delta": 0.0,
     "flop_ms_delta": 1.942625
    },
    "verdict": "MATERIAL",
    "verdict_reasons": [
-    "clears_s020_section_20_time_bar",
     "reusable_representation_family"
    ]
   },
@@ -226,7 +236,12 @@
      11.655750000000001
     ],
     "host_gap_floor_ms": 0.989,
-    "incremental_byte_rate_gb_s": 344.1
+    "incremental_byte_rate_gb_s": 0.0,
+    "organ_average_gb_s": 344.1,
+    "stream_billing_gb_s": 0.0,
+    "stream_class": "broadcast_aux",
+    "stream_on_critical_path": false,
+    "stream_rate_source": "ECONOMICS_CALIBRATION.json"
    },
    "byte_model": {
     "bytes_added_metadata": 1536,
@@ -256,48 +271,48 @@
    "net_bytes": -534772224,
    "ok": true,
    "organ": "mlp",
-   "predicted_ms_delta": 1.3598188600697476,
+   "predicted_ms_delta": 2.9139375000000003,
    "predicted_ms_delta_range": [
-    -1.5541186399302527,
-    10.236126363153705
+    0.0,
+    11.655750000000001
    ],
-   "predicted_ms_saved": -1.3598188600697476,
-   "predicted_token_ms": 30.08181886006975,
+   "predicted_ms_saved": -2.9139375000000003,
+   "predicted_token_ms": 31.6359375,
    "predicted_token_ms_range": [
-    27.16788136006975,
-    38.95812636315371
+    28.722,
+    40.377750000000006
    ],
-   "predicted_tps": 33.24267075244536,
+   "predicted_tps": 31.60962117844619,
    "predicted_tps_range": [
-    25.668585564879532,
-    36.80817016043656
+    24.766115001455006,
+    34.816516955643756
    ],
    "retime_organ": false,
    "s020_section_20": {
     "bar_frac": 0.01,
     "bar_ms": 0.28722000000000003,
-    "clears_time_bar": true,
+    "clears_time_bar": false,
     "high_information_falsifier": false,
-    "plausible_ms_saved": 1.5541186399302527,
+    "plausible_ms_saved": 0.0,
     "reusable_family": true
    },
    "status": "OPEN",
+   "stream_class": "broadcast_aux",
    "terms": {
-    "byte_added_ms": 4.463818657367044e-06,
-    "byte_ms_delta": -1.5541186399302527,
-    "byte_removed_ms": -1.55412310374891,
+    "byte_added_ms": 0.0,
+    "byte_ms_delta": 0.0,
+    "byte_removed_ms": 0.0,
     "dispatch_ms_delta": 0.0,
     "flop_ms_delta": 2.9139375000000003
    },
    "verdict": "MATERIAL",
    "verdict_reasons": [
-    "clears_s020_section_20_time_bar",
     "reusable_representation_family"
    ]
   }
  },
  "evidence_class": "SELF_MEASURED_DIRTY",
- "finding": "Native u8-aux consumer binds uchar scale/bias and decodes them in-register (log-scale exp + linear bias). It does not expand the compact aux back to f16. Inner-loop tax: incumbent 1.3333 decode-FMA/weight-byte at 6 B/iter; native 2.5 at 4 B/iter (4.5 FMA/byte vs 2.6667 before). executable_economics bytes-only: 1.5541 ms saved (the screen's +1.554 ms). With aux-decode FMA billed: -0.3885 ms (flop_ms 1.9426, byte_ms -1.5541). GPU A/B layer 3: incumbent 334.5682 GB/s in 249.75 us, native 269.7453 GB/s in 278.791 us, delta 29.041 us / -8355840 bytes. Token projection 1.858624 ms (PROJECTION_ARITHMETIC_OVER_PROBE).",
+ "finding": "Native u8-aux consumer binds uchar scale/bias and decodes them in-register (log-scale exp + linear bias). It does not expand the compact aux back to f16. Inner-loop tax: incumbent 1.3333 decode-FMA/weight-byte at 6 B/iter; native 2.5 at 4 B/iter (4.5 FMA/byte vs 2.6667 before). executable_economics bytes-only: -0.0000 ms saved (the screen's +1.554 ms). With aux-decode FMA billed: -1.9426 ms (flop_ms 1.9426, byte_ms 0.0000). GPU A/B layer 3: incumbent 334.5682 GB/s in 249.75 us, native 269.7453 GB/s in 278.791 us, delta 29.041 us / -8355840 bytes. Token projection 1.858624 ms (PROJECTION_ARITHMETIC_OVER_PROBE).",
  "fma_per_byte": {
   "exp_counted_as_1": {
    "after": {

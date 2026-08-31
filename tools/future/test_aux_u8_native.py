@@ -256,7 +256,17 @@ def test_economics_bills_bytes_added_and_extra_decode_arithmetic():
     # Arithmetic cost is visible: flop term is positive, so saved ms drops.
     assert billed["terms"]["flop_ms_delta"] > 0.0
     assert billed["predicted_ms_saved"] < only["predicted_ms_saved"]
-    assert only["predicted_ms_saved"] == pytest.approx(1.5541, abs=5e-3)
+    # 1.5541 was the OLD model's over-credit and pinning it here is what made
+    # this test fail once the model was corrected. quantize_aux_u8 removes
+    # BROADCAST AUX bytes - a per-group scale and bias many threads read, so
+    # cache-served and never on the critical path - and the calibrated model
+    # prices them at their measured marginal value, which is ~0. That the
+    # bytes-only figure collapsed from +1.5541 to 0.0 IS the finding: the lever
+    # billed positive and measured 29.04 us SLOWER, and the model no longer
+    # disagrees with the wall clock.
+    assert only["stream_class"] == "broadcast_aux"
+    assert only["predicted_ms_saved"] == pytest.approx(0.0, abs=5e-3)
+    assert only["terms"]["byte_removed_ms"] == pytest.approx(0.0, abs=5e-3)
     # Nominal extra decode FMA exceeds the byte saving: the lever can be a slowdown.
     assert billed["terms"]["flop_ms_delta"] > abs(only["terms"]["byte_removed_ms"])
     assert billed["predicted_ms_saved"] < 0.0

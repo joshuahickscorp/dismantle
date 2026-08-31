@@ -346,12 +346,84 @@ def _ensure_hcli_on_path() -> Path:
 # ---------------------------------------------------------------------------
 
 
+
+# THE GPU LANE LOCK IS A DIRECTORY, NOT AN FLOCK FILE.
+#
+# GpuPark used to `path.touch()` and flock /tmp/hawking-gpu-lane.lock, while
+# tools/gpu_lane_lock.sh (and every other holder in this repo) uses mkdir-atomic
+# directories with pid/owner files inside. Two incompatible protocols on ONE
+# path, so whichever ran first broke the other:
+#
+#   shell lock first  -> the directory exists, and this park dies with
+#                        [Errno 21] Is a directory. That is today's failure.
+#   this park first   -> touch() creates the 0-byte REGULAR FILE that mkdir can
+#                        never succeed against, and every shell caller spins to
+#                        its 5400 s deadline and exits 75. That is the wedge seen
+#                        at 05:58 and cleared at 06:21, which the reclaim branch
+#                        in gpu_lane_lock.sh was written for without knowing its
+#                        cause. The comment there - "nothing in this repo creates
+#                        it as a file" - was wrong about this and about the wedge
+#                        test both.
+#
+# The park's INTENT is right: interlock with the civilization lock rather than
+# contend. So speak its protocol, do not move to a private path, which would
+# make the interlock silently vacuous.
+MKDIR_PROTOCOL_LOCKS = frozenset({str(GPU_LOCK)})
+
+
+def _mkdir_lock_acquire(path: Path, *, owner: str, timeout_s: float = 5400.0) -> dict[str, Any]:
+    """Same protocol as tools/gpu_lane_lock.sh: mkdir is the atom."""
+    t0 = time.time()
+    holder: Any = None
+    parked = False
+    while True:
+        try:
+            path.mkdir()
+            break
+        except FileExistsError:
+            if path.exists() and not path.is_dir():
+                # Not a lock, a wedge: nothing can be holding a regular file.
+                path.unlink(missing_ok=True)
+                continue
+            pid_f = path / "pid"
+            try:
+                pid = int(pid_f.read_text().strip())
+                os.kill(pid, 0)
+            except (OSError, ValueError):
+                if pid_f.exists() or (path / "owner").exists():
+                    shutil.rmtree(path, ignore_errors=True)
+                    continue
+            if holder is None:
+                try:
+                    holder = (path / "owner").read_text().strip()
+                except OSError:
+                    holder = None
+            parked = True
+            if time.time() - t0 >= timeout_s:
+                raise TimeoutError(f"gpu lane lock held by {holder!r} for {timeout_s}s")
+            time.sleep(1.0)
+    (path / "pid").write_text(str(os.getpid()))
+    (path / "owner").write_text(owner)
+    return {"path": str(path), "holder_when_parked": holder, "parked": parked,
+            "waited_s": round(time.time() - t0, 3), "protocol": "mkdir"}
+
+
+def _mkdir_lock_release(path: Path) -> None:
+    try:
+        if (path / "pid").read_text().strip() != str(os.getpid()):
+            return  # not ours; never remove someone else's lock
+    except OSError:
+        return
+    shutil.rmtree(path, ignore_errors=True)
+
+
 class GpuPark:
     """Park on the civilization GPU lock instead of contending."""
 
     def __init__(self, paths: Sequence[Path] | None = None) -> None:
         self.paths = [Path(p) for p in (paths if paths is not None else (GPU_LOCK, hcli_lock_path()))]
         self._handles: list[Any] = []
+        self._mkdir_held: list[Path] = []
         self.record: dict[str, Any] = {
             "held": False,
             "waited_s": 0.0,
@@ -367,6 +439,12 @@ class GpuPark:
         try:
             for path in self.paths:
                 path.parent.mkdir(parents=True, exist_ok=True)
+                if str(path) in MKDIR_PROTOCOL_LOCKS:
+                    rec = _mkdir_lock_acquire(path, owner=RECORDED_BY)
+                    self._mkdir_held.append(path)
+                    if rec["parked"]:
+                        waited_for.append(rec)
+                    continue
                 path.touch(exist_ok=True)
                 fh = open(path, "a+")
                 holder = _read_lock_holder(fh)
@@ -422,6 +500,9 @@ class GpuPark:
         return dict(self.record)
 
     def release(self) -> None:
+        for path in self._mkdir_held:
+            _mkdir_lock_release(path)
+        self._mkdir_held = []
         for fh in self._handles:
             try:
                 fh.seek(0)

@@ -1543,6 +1543,19 @@ def materially_participated(log: Sequence[Mapping[str, Any]] | None = None) -> d
         r for r in rows
         if r.get("kind") == "choose" and r.get("diverged_from_fixed_policy") and r.get("chose")
     ]
+    # DIVERGENCE HAS A DENOMINATOR, AND IT IS NOT THE NUMBER OF ASKS.
+    # The first honest 30m run asked choose() 56 times and got 56 identical
+    # verdicts, which reads as "the model agreed 56 times" - except only FIVE of
+    # those asks were distinct, one prompt firing 52 times. At temperature 0 a
+    # deterministic body answering a byte-identical question identically is
+    # arithmetic, not a decision, and 5 unique prompts produced 5 unique replies.
+    # Scoring "never diverged" over 56 opportunities overstates the evidence 11x.
+    # The distinct-ask count is the real denominator; the repeat count is a fact
+    # about the frontier, not about the model's judgment.
+    choose_rows = [r for r in rows if r.get("kind") == "choose"]
+    ask_digests = [r.get("prompt_sha256") for r in choose_rows if r.get("prompt_sha256")]
+    distinct_asks = len(set(ask_digests))
+    repeated_asks = len(ask_digests) - distinct_asks
     different_hyps = [
         r for r in rows
         if r.get("kind") == "next_hypothesis" and r.get("meaningfully_different")
@@ -1577,11 +1590,27 @@ def materially_participated(log: Sequence[Mapping[str, Any]] | None = None) -> d
             "cognition": UNAVAILABLE,
             "n_decisions": len(rows),
         }
+    scope = {
+        "n_choose_asks": len(choose_rows),
+        "n_distinct_choose_asks": distinct_asks,
+        "n_repeated_choose_asks": repeated_asks,
+        "divergence_denominator": "distinct asks, not total asks",
+        "why": (
+            "a deterministic body re-asked a byte-identical question answers it "
+            "identically by construction; counting that as agreement inflates the "
+            "denominator and reports a property of the frontier as a property of "
+            "the model"
+        ),
+    }
     finding = None
     if not diverged:
         finding = (
-            "model choices never diverged from the fixed policy at this resident; "
-            "that is a finding, not a decorated timeline"
+            f"model choices never diverged from the fixed policy across "
+            f"{distinct_asks} DISTINCT choose asks ({len(choose_rows)} total, "
+            f"{repeated_asks} of them byte-identical repeats). That is a finding "
+            "about this resident on this frontier, not a decorated timeline - and "
+            "the scope is the distinct count, because a deterministic body cannot "
+            "disagree with itself on the same question"
         )
     participated = bool(diverged and different_hyps and changed and reasoned)
     why = "model proposed, tools admitted, pick diverged, hyp B differed, and the pick ran"
@@ -1600,6 +1629,7 @@ def materially_participated(log: Sequence[Mapping[str, Any]] | None = None) -> d
         "participated": participated,
         "why": why,
         "divergence_count": len(diverged),
+        "divergence_scope": scope,
         "different_hypothesis_count": len(different_hyps),
         "changed_what_ran_next_count": len(changed),
         "reasoned_decision_count": len(reasoned),

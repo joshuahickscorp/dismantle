@@ -42,6 +42,11 @@ INCUMBENT_TYPE = "qwen4_exp"
 # far architecture is worth more for attacking a law than a near one.
 ROLE_WEIGHT = {"NEAR": 1.0, "MID": 1.4, "FAR": 1.8}
 
+# A question already answered on a specimen still has SOME value - a repeat can
+# confirm - but not full value. This is what makes the scheduler explore instead
+# of returning to its cheapest specimen forever.
+REPEAT_DISCOUNT = 0.05
+
 
 class ScheduleRefused(RuntimeError):
     """A ranking was requested with no question or no candidates."""
@@ -90,25 +95,46 @@ def scar_verdict(hypothesis_family: str, model_type: str | None,
 
 
 def rank(*, hypothesis_family: str, expected_information_gain: float = 1.0,
-         scars: list[Any] | None = None) -> dict[str, Any]:
-    """Rank sealed specimens for one question. Cost is measured, not assumed."""
+         scars: list[Any] | None = None,
+         warm: set[str] | None = None,
+         already_asked: set[tuple[str, str]] | None = None) -> dict[str, Any]:
+    """Rank sealed specimens for one question. Cost is measured, not assumed.
+
+    `warm` prices a resident specimen at the measured WARM rate instead of the
+    cold one - the 142x difference G102 measured is the single largest term in
+    any real schedule, and ignoring it made an earlier version pick the same
+    specimen forever.
+
+    `already_asked` holds (family, specimen) pairs whose answer is in hand.
+    Re-asking has near-zero information gain, and without this the ranking is
+    stable and the scheduler never explores. S027 §15 still applies: scientific
+    priority outranks cache locality, so this DISCOUNTS a repeat rather than
+    forbidding it.
+    """
     if not hypothesis_family:
         raise ScheduleRefused("a ranking needs a hypothesis family to rank FOR")
     cands = sr.schedulable()
     if not cands:
         raise ScheduleRefused("no sealed specimen is available to rank")
 
-    cold = lc.rates()["quiet_cold_MB_per_s"] * 1e6
+    r = lc.rates()
+    cold = r["quiet_cold_MB_per_s"] * 1e6
+    hot = r["quiet_warm_MB_per_s"] * 1e6
+    warm = warm or set()
+    already_asked = already_asked or set()
     rows = []
     for c in cands:
         b = c["source_bytes"] or 0
         d = distance(c["model_type"])
         verdict = scar_verdict(hypothesis_family, c["model_type"], scars)
         admit = ul.predict_peak(b)
-        load_s = b / cold
+        is_warm = c["id"] in warm
+        load_s = b / (hot if is_warm else cold)
         # Cost in minutes, floored so a tiny specimen is not infinitely good.
         cost = max(load_s / 60.0, 0.5)
-        value = expected_information_gain * ROLE_WEIGHT[d] / cost
+        repeat = (hypothesis_family, c["id"]) in already_asked
+        gain = expected_information_gain * (REPEAT_DISCOUNT if repeat else 1.0)
+        value = gain * ROLE_WEIGHT[d] / cost
         rows.append({
             "id": c["id"],
             "model_type": c["model_type"],
@@ -116,14 +142,17 @@ def rank(*, hypothesis_family: str, expected_information_gain: float = 1.0,
             "role": {"NEAR": "transfer", "MID": "transfer_or_adversary",
                      "FAR": "adversary"}[d],
             "source_gb": round(b / 1e9, 2),
-            "measured_cold_load_minutes": round(load_s / 60.0, 2),
+            "measured_load_minutes": round(load_s / 60.0, 3),
+            "measured_cold_load_minutes": round(b / cold / 60.0, 2),
+            "is_warm": is_warm,
+            "already_asked": repeat,
             "fits_admissible": admit["fits"],
             "exceeds_total_memory": admit["exceeds_total_memory"],
             "scar_action": verdict["action"],
             "score": round(value, 4) if verdict["action"] == "LOAD_PERMITTED" else 0.0,
             "suppressed": verdict["action"] == "DO_NOT_LOAD",
         })
-    rows.sort(key=lambda r: (-r["score"], r["measured_cold_load_minutes"]))
+    rows.sort(key=lambda r: (-r["score"], r["measured_load_minutes"]))
     return {
         "hypothesis_family": hypothesis_family,
         "n_candidates": len(rows),

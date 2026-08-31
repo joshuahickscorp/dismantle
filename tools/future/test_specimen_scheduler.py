@@ -85,3 +85,41 @@ def test_information_gain_is_an_input_not_an_invention():
     w = ss.build()["what_this_does_not_do"]
     assert "it does not estimate information gain per specimen" in w
     assert "ranking on a number nobody measured" in w
+
+
+def test_warmth_is_priced_from_the_measured_warm_rate():
+    """Ignoring warmth made an earlier scheduler pick the same specimen forever."""
+    r = ss.rank(hypothesis_family="x_none")
+    target = r["ranked"][-1]["id"]
+    w = ss.rank(hypothesis_family="x_none", warm={target})
+    hot = next(x for x in w["ranked"] if x["id"] == target)
+    cool = next(x for x in r["ranked"] if x["id"] == target)
+    assert hot["is_warm"] is True and cool["is_warm"] is False
+    assert hot["measured_load_minutes"] < cool["measured_load_minutes"] / 10
+
+
+def test_the_cold_figure_survives_alongside_the_effective_one():
+    """A warm specimen must still report what a reload would cost."""
+    r = ss.rank(hypothesis_family="x_none")
+    t = r["ranked"][0]["id"]
+    w = next(x for x in ss.rank(hypothesis_family="x_none", warm={t})["ranked"]
+             if x["id"] == t)
+    assert w["measured_cold_load_minutes"] > 0
+    assert w["measured_load_minutes"] <= w["measured_cold_load_minutes"]
+
+
+def test_a_repeat_is_discounted_but_still_rankable():
+    base = ss.rank(hypothesis_family="x_none")
+    top = base["ranked"][0]["id"]
+    again = ss.rank(hypothesis_family="x_none", already_asked={("x_none", top)})
+    row = next(x for x in again["ranked"] if x["id"] == top)
+    assert 0 < row["score"] < base["ranked"][0]["score"]
+    assert ss.REPEAT_DISCOUNT < 1.0
+
+
+def test_the_discount_makes_the_ranking_move():
+    """Without it the order is stable and the scheduler never explores."""
+    base = ss.rank(hypothesis_family="x_none")
+    top = base["ranked"][0]["id"]
+    again = ss.rank(hypothesis_family="x_none", already_asked={("x_none", top)})
+    assert again["ranked"][0]["id"] != top

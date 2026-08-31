@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T23:04:09Z",
+  "recorded_at": "2026-08-31T23:11:33Z",
   "recorded_by": "tools/future/specimen_scheduler.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -16,15 +16,18 @@
  "example_ranking": {
   "hypothesis_family": "a_family_with_no_recorded_negative",
   "n_candidates": 8,
-  "n_refused_by_memory": 6,
+  "n_refused_by_memory": 5,
   "n_suppressed_by_scars": 0,
   "ranked": [
    {
+    "already_asked": false,
     "distance": "MID",
     "exceeds_total_memory": false,
     "fits_admissible": true,
     "id": "Qwen--Qwen3-0.6B@c1899de289a0",
+    "is_warm": false,
     "measured_cold_load_minutes": 0.33,
+    "measured_load_minutes": 0.326,
     "model_type": "qwen3",
     "role": "transfer_or_adversary",
     "scar_action": "LOAD_PERMITTED",
@@ -33,11 +36,14 @@
     "suppressed": false
    },
    {
+    "already_asked": false,
     "distance": "FAR",
     "exceeds_total_memory": false,
     "fits_admissible": true,
     "id": "tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+    "is_warm": false,
     "measured_cold_load_minutes": 3.26,
+    "measured_load_minutes": 3.257,
     "model_type": "falcon_h1",
     "role": "adversary",
     "scar_action": "LOAD_PERMITTED",
@@ -46,11 +52,14 @@
     "suppressed": false
    },
    {
+    "already_asked": false,
     "distance": "FAR",
     "exceeds_total_memory": false,
-    "fits_admissible": false,
+    "fits_admissible": true,
     "id": "moonshotai--Kimi-VL-A3B-Instruct@398eede0903c",
+    "is_warm": false,
     "measured_cold_load_minutes": 7.04,
+    "measured_load_minutes": 7.041,
     "model_type": "kimi_vl",
     "role": "adversary",
     "scar_action": "LOAD_PERMITTED",
@@ -59,11 +68,14 @@
     "suppressed": false
    },
    {
+    "already_asked": false,
     "distance": "MID",
     "exceeds_total_memory": false,
     "fits_admissible": false,
     "id": "Qwen--Qwen3-30B-A3B@ad44e777bcd1",
+    "is_warm": false,
     "measured_cold_load_minutes": 13.1,
+    "measured_load_minutes": 13.103,
     "model_type": "qwen3_moe",
     "role": "transfer_or_adversary",
     "scar_action": "LOAD_PERMITTED",
@@ -72,11 +84,14 @@
     "suppressed": false
    },
    {
+    "already_asked": false,
     "distance": "MID",
     "exceeds_total_memory": false,
     "fits_admissible": false,
     "id": "Qwen--Qwen3-VL-30B-A3B-Instruct@9c4b90e1e4ba",
+    "is_warm": false,
     "measured_cold_load_minutes": 13.33,
+    "measured_load_minutes": 13.332,
     "model_type": "qwen3_vl_moe",
     "role": "transfer_or_adversary",
     "scar_action": "LOAD_PERMITTED",
@@ -85,11 +100,14 @@
     "suppressed": false
    },
    {
+    "already_asked": false,
     "distance": "FAR",
     "exceeds_total_memory": false,
     "fits_admissible": false,
     "id": "mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",
+    "is_warm": false,
     "measured_cold_load_minutes": 20.61,
+    "measured_load_minutes": 20.609,
     "model_type": "mistral3",
     "role": "adversary",
     "scar_action": "LOAD_PERMITTED",
@@ -98,11 +116,14 @@
     "suppressed": false
    },
    {
+    "already_asked": false,
     "distance": "FAR",
     "exceeds_total_memory": true,
     "fits_admissible": false,
     "id": "deepseek-ai--DeepSeek-V4-Flash@60d8d70770c6",
+    "is_warm": false,
     "measured_cold_load_minutes": 34.24,
+    "measured_load_minutes": 34.241,
     "model_type": "deepseek_v4",
     "role": "adversary",
     "scar_action": "LOAD_PERMITTED",
@@ -111,11 +132,14 @@
     "suppressed": false
    },
    {
+    "already_asked": false,
     "distance": "NEAR",
     "exceeds_total_memory": true,
     "fits_admissible": false,
     "id": "Qwen--Qwen3.8-Flash-Next@34567a4712bc",
+    "is_warm": false,
     "measured_cold_load_minutes": 77.23,
+    "measured_load_minutes": 77.232,
     "model_type": "qwen4_exp",
     "role": "transfer",
     "scar_action": "LOAD_PERMITTED",
@@ -168,6 +192,6 @@
   "none_suppressed_when_live": true,
   "statement": "the hypothesis family 'low_rank' has recorded negatives, so all 8 sealed specimens are suppressed and NOTHING IS LOADED. A family with no recorded negative suppresses none. The scar query is what stands between a dead hypothesis and 77 minutes of disk read."
  },
- "seal_sha256": "179df23acb3488e1f4ce60c3cae0babb34ed8b899ccc992cf8008e0c01b137d5",
+ "seal_sha256": "5330af70206de8a7c01a11843533a183ba7c62540b2743037e31122d37929d74",
  "what_this_does_not_do": "it does not estimate information gain per specimen - that is passed in. A scheduler that invented its own information-gain estimates would be ranking on a number nobody measured, so the term is an input and the receipt says so."
 }

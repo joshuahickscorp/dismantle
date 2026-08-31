@@ -5615,6 +5615,17 @@
    "organ": "mlp",
    "parent": "qwen3.8-27b sealed-3.14",
    "status": "MEASURED_NEGATIVE"
+  },
+  {
+   "family": "MLP_FUNCTION_REPLACEMENT",
+   "level": "MODEL_SPECIFIC",
+   "mechanism": "the UMBRELLA closure, MLP_FUNCTION_REPLACEMENT_CLOSED. Every bottleneck-shaped family died (rank, dictionary, conditional, generated-block, nonlinear generator, factorwise), and the full-width structured operators died too. The DISTILLED CONTROL is what closes it: with no narrow layer anywhere it BEATS the mean predictor (0.442 vs 0.859 pooled) yet still cannot carry F under the incumbent 5,347,795,776 bytes. A control with more capacity than any structured family and no structural constraint at all still fails, so the remaining error is not a missing SHAPE.",
+   "not": "a retry of SHARED_*, FACTORIZE_THE_FACTORS, a dictionary, a routed mixture, a per-block factorization, Monarch, butterfly or Kronecker",
+   "object": "F(x)=down(silu(gate(x))*up(x)) on the teacher corpus",
+   "organ": "mlp",
+   "parent": "qwen3.8-27b sealed-3.14",
+   "reopen": "a materially larger byte budget, a different parent, or an operator class that is neither an r-bottleneck nor a full-width structured transform",
+   "status": "MEASURED_NEGATIVE"
   }
  ],
  "schema": "hawking.future.mlp_structured_operator.v1",

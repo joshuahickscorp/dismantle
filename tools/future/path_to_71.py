@@ -70,6 +70,36 @@ COMPONENTS: dict[str, dict[str, Any]] = {
         "source": "receipts/future/MLP_CODE_INFORMATION.json",
         "cost": "a codec plus a native consumer",
     },
+    "mlp_low_rank_program": {
+        "gb_saved": 0.0, "evidence": "REFUTED",
+        "why": "activation-WEIGHTED functional rank, not raw SVD: 10% held-out "
+               "output error needs rank 5120 (full) on three of four layers. The "
+               "largest rank whose complete ledger is under the incumbent "
+               "5,347,795,776 bytes is r=617, and there hold error is 35-84%. "
+               "Reaching 10% costs 44.3 GB added.",
+        "source": "receipts/future/MLP_FUNCTIONAL_RANK.json",
+    },
+    "mlp_nonlinear_program": {
+        "gb_saved": 0.0, "evidence": "REFUTED",
+        "why": "six families on the real corpus, all held-out by prompt: "
+               "FACTORIZE_THE_FACTORS 0.977, PRODUCT_DICTIONARY 0.997 (0.928 "
+               "even with an unfair Y-oracle), NONLINEAR_GENERATOR 0.918, "
+               "CONDITIONAL_PROGRAM 0.917, GENERATED_BLOCK 0.943. The MEAN "
+               "PREDICTOR on the same hold set is 0.970, so the factorized "
+               "program is worse than predicting the mean. Common mechanism: "
+               "every one is an r-bottleneck. Reopen is a full-width structured "
+               "operator only.",
+        "source": "receipts/future/MLP_NONLINEAR_PROGRAM.json",
+    },
+    "deltanet_generated_transition": {
+        "gb_saved": 0.0, "evidence": "REFUTED",
+        "why": "the candidate removed 2,139,096,960 bytes and added 4,548,560 - "
+               "worth about 5.8 ms/token if the function had held. It does not: "
+               "the shared map does not emit this layer's coefficients and the "
+               "state diverges at STEP 1, not after a long horizon. "
+               "MEASURED_NEGATIVE, economics IMMATERIAL.",
+        "source": "receipts/future/DELTANET_GENERATED_TRANSITION.json",
+    },
     "deltanet_q3": {
         "gb_saved": 0.503316480, "evidence": "REFUTED",
         "why": "entropies are 3.465-3.479 of 4 across q/k/v/z and any_supported "
@@ -79,10 +109,13 @@ COMPONENTS: dict[str, dict[str, Any]] = {
 }
 
 SCHOOLS_RUNNING = (
-    "mlp functional/programmatic replacement (corpus building)",
-    "capability-sensitive information map",
-    "deltanet state-function replacement",
-    "executable economics cost model",
+    "mlp full-width structured operator (Monarch/butterfly/distilled control) - "
+    "the only reopen left after six r-bottleneck families died",
+    "mlp error budget: what relative output error the model actually tolerates",
+    "auxiliary byte levers under a real capability screen",
+    "is the MLP kernel ALU-bound or memory-bound",
+    "deltanet multi-step authority (the instrument, after the one-step candidate died)",
+    "sparse residual concentration curve",
 )
 
 

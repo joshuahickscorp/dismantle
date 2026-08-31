@@ -25,11 +25,24 @@ from _common import REPO  # noqa: E402
 
 RECEIPT = REPO / "receipts" / "future" / "PATH_TO_71.json"
 
-# 28.722 was the pre-widen_f4 baseline and is STALE. The post-widen_f4 incumbent
-# arm re-measured at 26.3026 ms under load (receipts/future/FOLD_ADDQX_AB.json).
-# Kept as the historical anchor every landed path was computed against; a rebase
-# onto 26.3026 is G075 and must recompute every row, not just this constant.
-TOKEN_MS = 28.722
+# THE BASELINE IS READ, NOT REMEMBERED. G075 measured the post-widen_f4 body in a
+# protected window on a release build: 27.2896 ms, 36.644 TPS, token-identical
+# over 48 decode steps. 28.722 was the pre-widen_f4 anchor and is now history.
+# S025 §14 and §15: every verified speedup becomes the new parent, and widen_f4
+# stays. A rebase is not editing one constant - every row recomputes from here.
+def _current_token_ms() -> float:
+    rel = "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
+    path = REPO / rel
+    if not path.is_file():
+        raise RuntimeError(
+            f"{rel} is not on disk; the ladder refuses to compute against a "
+            "remembered baseline. Run tools/future/resident_reprofile.py --build."
+        )
+    return float(json.loads(path.read_text())["decode_wall_ms_per_token"])
+
+
+HISTORICAL_TOKEN_MS = 28.722   # pre-widen_f4, kept so the move is auditable
+TOKEN_MS = _current_token_ms()
 HOST_MS = 0.989
 ACTIVE_GB = 9.878901136
 MLP_GB = 5.347795776

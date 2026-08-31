@@ -1211,6 +1211,19 @@
    "unique_bytes_dropped": 0
   }
  ],
+ "scars": [
+  {
+   "family": "BYTE_COUNT_TIMES_ORGAN_AVERAGE",
+   "level": "MODEL_SPECIFIC",
+   "mechanism": "BYTE_COUNT x ORGAN_AVERAGE_RATE IS NOT A VALID COST MODEL WHEN BYTE CLASSES HAVE DIFFERENT PHYSICAL BEHAVIOUR. Dropping fractions of each stream and timing it: codes_keep_50 is faster than 2*MAD, aux_keep_50 is NOT. weight_codes bill at 0.547282 ms/GB (an effective 1827.21 GB/s, not the 344.1 organ average); broadcast_aux bills at 0.0. Billing an auxiliary byte at the organ average credited quantize_aux_u8 with 1.99 TPS and group_size_256 with 3.08 on the 71 ladder. Both are 0.00.",
+   "not": "a claim that auxiliary bytes are free to STORE, or that a different packing could not make them cost time; it is a measurement of THIS packing on THIS body",
+   "object": "any projection of token time from a byte count",
+   "organ": "mlp",
+   "parent": "qwen3.8-27b sealed-3.14",
+   "requires": "every candidate declares stream_class or score() refuses",
+   "status": "MEASURED_NEGATIVE"
+  }
+ ],
  "schema": "hawking.future.economics_calibration.v1",
  "source": "crates/hawking-core/examples/stream_criticality_probe.rs; paired MTLCommandBuffer GPUStartTime/GPUEndTime; one MLP layer of sealed-3.14, arithmetic stripped, trip count held",
  "stream_classes": {

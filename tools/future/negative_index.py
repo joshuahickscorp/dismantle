@@ -93,6 +93,10 @@ SEED_SOURCES: tuple[str, ...] = (
     "receipts/future/AUX_U8_LUT.json",
     "receipts/future/MLP_STREAM_COUNT.json",
     "receipts/future/MLP_ISSUE_RATE_LADDER.json",
+    # S025 §16-17. Not a representation school - a COST MODEL scar, and the one
+    # that priced two of the schools above. Listed here so refuse_if_dead can
+    # refuse the next candidate whose whole case is a byte count.
+    "receipts/future/ECONOMICS_CALIBRATION.json",
 )
 
 SKIP_PREFIXES = ("tools/future/", "receipts/future/", "crates/")

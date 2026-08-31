@@ -720,6 +720,37 @@ def calibrate_from_raw(raw: Mapping[str, Any]) -> dict[str, Any]:
         "rungs": list(raw.get("rungs") or []),
         "projections": raw.get("projections") or [],
         "pre_registered_interpretation": raw.get("pre_registered_interpretation"),
+        # THE SCAR, EMITTED BY THE PRODUCER so a rebuild cannot delete it (S025
+        # §19: a generated artifact is not fixed by hand-editing its receipt).
+        # negative_index reads the `scars` ARRAY, so it goes there and nowhere else.
+        "scars": [
+            {
+                "family": "BYTE_COUNT_TIMES_ORGAN_AVERAGE",
+                "status": "MEASURED_NEGATIVE",
+                "level": "MODEL_SPECIFIC",
+                "parent": "qwen3.8-27b sealed-3.14",
+                "organ": "mlp",
+                "object": "any projection of token time from a byte count",
+                "mechanism": (
+                    "BYTE_COUNT x ORGAN_AVERAGE_RATE IS NOT A VALID COST MODEL "
+                    "WHEN BYTE CLASSES HAVE DIFFERENT PHYSICAL BEHAVIOUR. Dropping "
+                    "fractions of each stream and timing it: codes_keep_50 is "
+                    "faster than 2*MAD, aux_keep_50 is NOT. weight_codes bill at "
+                    f"{codes.get('ms_per_gb_saved')} ms/GB (an effective "
+                    f"{codes.get('billing_gb_s')} GB/s, not the 344.1 organ "
+                    f"average); broadcast_aux bills at {aux.get('ms_per_gb_saved')}. "
+                    "Billing an auxiliary byte at the organ average credited "
+                    "quantize_aux_u8 with 1.99 TPS and group_size_256 with 3.08 on "
+                    "the 71 ladder. Both are 0.00."
+                ),
+                "not": (
+                    "a claim that auxiliary bytes are free to STORE, or that a "
+                    "different packing could not make them cost time; it is a "
+                    "measurement of THIS packing on THIS body"
+                ),
+                "requires": "every candidate declares stream_class or score() refuses",
+            }
+        ],
         "loads_survived": {
             "codes_50pct_faster_than_noise": codes_ok,
             "aux_50pct_within_noise": aux_free,

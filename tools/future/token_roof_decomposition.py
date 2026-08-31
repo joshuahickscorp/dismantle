@@ -119,7 +119,7 @@ CLAIM_BOUNDARY = (
     "copied from a named prior receipt or derived by arithmetic over those "
     "copies (DERIVED_FROM_CITED_RECEIPTS). 703 GB/s is recorded as a MEASURED "
     "CLEAN KERNEL ROOF with the no-input-vector-load caveat, never as "
-    "guaranteed production bandwidth; the causal budget's 66.54 TPS rung "
+    "guaranteed production bandwidth; the causal budget's 66.13 TPS rung "
     "rests on it and carries the same caveat. Bytes per token and useful "
     "bytes per token are different columns: broadcast aux is not on the "
     "critical path. Unrelated losses (decode arithmetic, addressing, the "
@@ -683,11 +683,17 @@ def assemble(injected: Mapping[str, Any] | None = None) -> dict[str, Any]:
 
     byte_ms_campaign = nested(token_budget, "derived", "byte_ms_at_clean_gemv")
     causal_ladder = causal.get("ladder") or []
+    # KEY ON THE RUNG, NOT ITS VALUE. This looked up the ladder row whose tps
+    # equalled a literal, so every correction to the budget silently turned the
+    # lookup into None and the decomposition kept its own stale copy. The rung
+    # NAME is what identifies it; the number is what moves. It has moved three
+    # times - 66.54, 65.15, 66.13 - and all three moves were accounting.
+    ROOF_RUNG = "every organ at the clean GEMV roof 703.5 GB/s"
     rung_6654 = next(
         (
             r
             for r in causal_ladder
-            if isinstance(r, Mapping) and r.get("tps") == 66.54
+            if isinstance(r, Mapping) and r.get("rung") == ROOF_RUNG
         ),
         None,
     )
@@ -1245,7 +1251,10 @@ def assemble(injected: Mapping[str, Any] | None = None) -> dict[str, Any]:
     }
 
     rung_66 = {
-        "quoted_value": 66.54,
+        # read from the ladder rung, never re-typed here
+        "quoted_value": (
+            rung_6654.get("tps") if isinstance(rung_6654, Mapping) else None
+        ),
         "unit": "tokens_per_second_arithmetic",
         "rung": "every organ at the clean GEMV roof 703.5 GB/s",
         "class": "ROOF_ON_TODAYS_BYTES",
@@ -1354,7 +1363,7 @@ def assemble(injected: Mapping[str, Any] | None = None) -> dict[str, Any]:
     finding = (
         "CLEAN ROOF 703.5 GB/s is a MEASURED CLEAN KERNEL ROOF (max 703.61, "
         "median 699.57, no input-vector load) — NEVER guaranteed production "
-        "bandwidth; the 66.54 TPS rung rests on it and carries the same caveat. "
+        "bandwidth; the 66.13 TPS rung rests on it and carries the same caveat. "
         f"ADDRESSING drops {t1_ms:.4f} ms / {clean_campaign - catalog_addr_gb_s:.2f} GB/s "
         f"to catalog 530.65 (401 vs 1 dispatch; topology + mixed organs; "
         f"native {native_addressing_loss_ms:.4f} ms on 13.612 GB). "
@@ -1399,7 +1408,7 @@ def assemble(injected: Mapping[str, Any] | None = None) -> dict[str, Any]:
         "no_input_vector_load": True,
         "usable_as_production_streaming_roof": False,
         "guaranteed_production_bandwidth": False,
-        "causal_budget_66p54": rung_66,
+        "causal_budget_roof_on_todays_bytes": rung_66,
         "bytes": useful_block,
         "stages": stages,
         "transitions": transitions,

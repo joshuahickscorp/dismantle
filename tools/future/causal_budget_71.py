@@ -31,14 +31,26 @@ RECEIPT = REPO / "receipts" / "future" / "RESIDENT_71TPS_CAUSAL_BUDGET.json"
 CLEAN_GEMV_GB_S = 703.5          # single clean GEMV, measured
 DEMONSTRATED_GB_S = 497.4        # the LM head, measured on this box TODAY
 HOST_GAP_MS = 0.989              # measured, 3 runs, stable to 5 decimals
-# GPU time inside the decode step that belongs to NO organ: decode_gpu_ms 28.054
-# minus the four independently timed organs 27.733. Leaving it out made every
-# rung in this ladder 0.321 ms optimistic - token_ms() reconstructed 28.722 while
-# the measured wall is 29.0434, so the baseline was a body 1.1% faster than the
-# one that ran. It is carried at a FIXED ms because it scales with neither bytes
-# nor bandwidth in any way this receipt has measured; that is a bound on what a
-# lever can claim, not an assumption that it is irreducible. G038 would name it.
-UNATTRIBUTED_GPU_MS = 0.321
+# GPU time inside the decode step that belongs to no organ, taken from the run
+# that measured BOTH the parts and the total: ORGAN_BANDWIDTH.coverage
+# gpu_ms_unattributed. The uncovered work is NAMED there - norms, the embedding
+# row, A_log and dt_bias, 0.028% of the token - so this is a small measured
+# remainder, not a mystery.
+#
+# I first computed this as 0.321 ms by subtracting ORGAN_BANDWIDTH's covered
+# 27.733 from WALL_GPU_RECONCILIATION's decode_gpu_ms 28.054. Those are DIFFERENT
+# RUNS, and one of them has the region trace ON, which that receipt measures at
+# 1.8% of GPU time (27.2 -> 27.696 with dispatches and greedy text identical). So
+# 0.321 was one real 0.095 ms remainder plus 0.226 ms of trace overhead and
+# run-to-run variation, presented as if it were unexplained physics. Mixing a
+# total from one receipt with parts from another is precisely the cross-receipt
+# error the citation machinery in this module exists to prevent, and I made it
+# while building that machinery.
+#
+# Leaving it out entirely is still wrong: a reconstruction that sums only the
+# organs it can name reports a token faster than the one measured. The honest
+# term is the same-run remainder.
+UNATTRIBUTED_GPU_MS = 0.095
 ACTIVE_BYTES = 9_878_901_136
 
 
@@ -124,6 +136,18 @@ CITATIONS: tuple[dict[str, Any], ...] = (
     {"id": "group_size_1024_bytes", "expect": 1_002_700_800,
      "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
      "path": ["group_size_curve", {"group_size": 1024}, "bytes_eliminated_vs_incumbent"]},
+    {"id": "unattributed_gpu_ms", "expect": 0.095,
+     "source": "receipts/future/ORGAN_BANDWIDTH.json",
+     "path": ["coverage", "gpu_ms_unattributed"]},
+    {"id": "organ_gpu_ms_covered", "expect": 27.733,
+     "source": "receipts/future/ORGAN_BANDWIDTH.json",
+     "path": ["coverage", "gpu_ms_covered"]},
+    {"id": "traced_token_gpu_ms", "expect": 27.828,
+     "source": "receipts/future/ORGAN_BANDWIDTH.json",
+     "path": ["token_gpu_ms"]},
+    {"id": "region_trace_overhead_pct", "expect": 1.8,
+     "source": "receipts/future/ORGAN_BANDWIDTH.json",
+     "path": ["trace_overhead", "gpu_overhead_pct"]},
     {"id": "host_gap_worth_tps", "expect": 1.214,
      "source": "receipts/future/WALL_GPU_RECONCILIATION.json",
      "path": ["derived", "tps_gain_from_deleting_all_host_work"]},
@@ -314,40 +338,62 @@ def experiments() -> list[dict[str, Any]]:
 
 
 def causal_residual() -> dict[str, Any]:
-    """What fraction of the token measurement actually explains, and what it does not.
+    """What measurement explains, what it does not, and which total to compare to.
 
     G072 asks for this and adds the clause that makes it worth having: the
     residual "must not stay a miscellaneous bucket".
 
-    Two residuals, and only one of them is real:
+    THREE numbers, and only one of them is a residual.
 
-    HOST GAP is not a residual at all. It is wall minus GPU, a SUBTRACTION, so
-    it absorbs everything unmeasured by construction and can never be nonzero-
-    surprising. Reporting wall-minus-parts as "the unexplained fraction" would
-    have produced a reassuring zero that means nothing.
+    HOST GAP is not one. It is wall minus GPU, a SUBTRACTION, so it absorbs
+    everything unmeasured by construction and can never be nonzero-surprising.
+    Reporting wall-minus-parts as "the unexplained fraction" produces a
+    reassuring zero that means nothing.
 
-    THE GPU RESIDUAL IS REAL. The four organs are timed independently and sum to
-    27.733 ms, while decode_gpu_ms_per_token is 28.054. The 0.321 ms difference
-    - 1.1% of the wall token - is GPU time inside the decode step that belongs to
-    no organ. It is small, and it is unattributed, which are different things.
-    It is not billed to any organ's GB/s, so no organ's bandwidth figure is
-    inflated or deflated by it.
+    THE REAL REMAINDER IS 0.095 ms, from the run that measured both the parts
+    and the total. ORGAN_BANDWIDTH covers 99.972% of the bytes and 27.733 of
+    27.828 GPU ms, and it NAMES what is left: norms, the embedding row, A_log
+    and dt_bias. Small, measured, named.
+
+    THE 0.226 ms GAP TO THE UNTRACED WALL IS NOT A RESIDUAL EITHER, and this is
+    where I went wrong first: I subtracted ORGAN_BANDWIDTH's covered 27.733 from
+    WALL_GPU_RECONCILIATION's 28.054 and called the 0.321 difference unattributed
+    GPU time. Those are different runs, and the organ run has the region trace ON
+    - measured at 1.8% of GPU time, dispatches and greedy text identical. So
+    0.321 was one real 0.095 remainder plus 0.226 of trace overhead and
+    run-to-run variation, presented as unexplained physics. A total from one
+    receipt against parts from another is the cross-receipt error this module's
+    citation machinery exists to prevent.
     """
     cited = resolve_all()
     organ_ms = sum(float(o["ms"]) for o in ORGANS)
+    traced_total = float(cited["traced_token_gpu_ms"])
+    covered = float(cited["organ_gpu_ms_covered"])
+    unattributed = float(cited["unattributed_gpu_ms"])
     rp = REPO / "receipts" / "future" / "WALL_GPU_RECONCILIATION.json"
     derived = json.loads(rp.read_text())["derived"]
-    gpu_ms = float(derived["decode_gpu_ms_per_token"])
+    untraced_gpu_ms = float(derived["decode_gpu_ms_per_token"])
     wall_ms = float(derived["decode_wall_ms_per_token"])
-    gpu_residual = gpu_ms - organ_ms
     return {
         "wall_ms": wall_ms,
-        "gpu_ms": gpu_ms,
+        "untraced_gpu_ms": untraced_gpu_ms,
+        "traced_gpu_ms": traced_total,
         "organ_ms_sum": round(organ_ms, 4),
-        "organs_explain_of_gpu": round(organ_ms / gpu_ms, 6),
-        "gpu_residual_ms": round(gpu_residual, 4),
-        "gpu_residual_frac_of_wall": round(gpu_residual / wall_ms, 6),
-        "gpu_residual_is_unattributed_not_absent": True,
+        "organ_ms_covered_in_receipt": covered,
+        "organs_explain_of_traced_gpu": round(covered / traced_total, 6),
+        "gpu_residual_ms": unattributed,
+        "gpu_residual_is_named_not_mysterious": (
+            "norms, the embedding row, A_log and dt_bias - 0.028% of the token"
+        ),
+        "byte_coverage": 0.99972,
+        "trace_overhead_pct": float(cited["region_trace_overhead_pct"]),
+        "traced_vs_untraced_ms": round(untraced_gpu_ms - traced_total, 4),
+        "why_that_gap_is_not_a_residual": (
+            "the organ parts come from a run with the region trace ON, which that "
+            "receipt measures at 1.8% of GPU time with dispatches and greedy text "
+            "identical. Comparing traced parts against an untraced total mixes "
+            "runs; the difference is overhead and variation, not physics."
+        ),
         "host_gap_ms": cited["host_gap_ms"],
         "host_gap_is_a_subtraction_not_a_residual": (
             "host_gap = wall - gpu by construction, so it absorbs every unmeasured "
@@ -355,9 +401,12 @@ def causal_residual() -> dict[str, Any]:
             "the unexplained fraction; it is definitionally zero."
         ),
         "next_prey": (
-            "0.321 ms of GPU time inside the decode step belongs to no organ. "
-            "G038 (per-region GPU timestamps) is the instrument that would name it. "
-            "Until then it is UNATTRIBUTED, not miscellaneous, and not zero."
+            "not the remainder. ORGAN_BANDWIDTH's own finding is "
+            "THE_LOSS_IS_UNIFORM_NOT_LOCALIZED: MLP, DeltaNet and GQA sit between "
+            "341.9 and 360.0 GB/s, inside 5% of each other, against a 703.5 clean "
+            "roof. There is no hot organ to attack. The loss is distributed in "
+            "proportion to bytes, which is why byte elimination outranks execution "
+            "tuning from here."
         ),
         "baseline_is_stale": {
             "computed_against_ms": wall_ms,
@@ -370,6 +419,7 @@ def causal_residual() -> dict[str, Any]:
             ),
         },
     }
+
 
 def build() -> dict[str, Any]:
     # Read every cited number off disk FIRST. A receipt that cannot be emitted

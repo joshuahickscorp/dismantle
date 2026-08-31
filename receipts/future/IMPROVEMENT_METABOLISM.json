@@ -28,26 +28,26 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T13:20:54Z",
+  "recorded_at": "2026-08-31T14:46:49Z",
   "recorded_by": "tools/future/improvement_metabolism.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "cited": {
   "causal_budget": {
-   "cited_token_ms": 29.043,
-   "cited_tps": 34.43,
+   "cited_token_ms": 28.817,
+   "cited_tps": 34.7,
    "deltanet_dispatches": 337,
    "deltanet_ms_saved_at_497": 2.273,
    "deltanet_organ_gb": 2.961659904,
    "deltanet_organ_gb_s": 360.0,
    "deltanet_organ_ms": 8.227,
-   "demonstrated_regime_cited_tps": 47.25,
+   "demonstrated_regime_cited_tps": 47.76,
    "mlp_ms_saved_at_497": 4.79,
    "mlp_organ_gb": 5.347795776,
    "mlp_organ_gb_s": 344.1,
    "mlp_organ_ms": 15.541,
-   "roof_on_todays_bytes_cited_tps": 65.15,
+   "roof_on_todays_bytes_cited_tps": 66.13,
    "source": "receipts/future/RESIDENT_71TPS_CAUSAL_BUDGET.json"
   },
   "deltanet_generated": {
@@ -1967,7 +1967,7 @@
   "unbalanced": false
  },
  "schema": "hawking.future.improvement_metabolism.v1",
- "seal_sha256": "bf4d81ff63cc0f68db3cc3c75146e7488aeea24c280f95746f58fcf92d7b05ef",
+ "seal_sha256": "5897332bb1acdf24c4f42c503da9f1fd248b20b4e10275c9eb5292b4a3bb2b64",
  "sources": {
   "receipts/future/DELTANET_GENERATED_TRANSITION.json": "disk:/Users/scammermike/Downloads/hawking/receipts/future/DELTANET_GENERATED_TRANSITION.json",
   "receipts/future/DELTANET_MULTISTEP.json": "disk:/Users/scammermike/Downloads/hawking/receipts/future/DELTANET_MULTISTEP.json",

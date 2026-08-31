@@ -177,10 +177,21 @@ def test_703_caveat_wherever_it_appears():
         trd.assert_703_qualified({"gb_s": 703.5, "note": "the roof"})
 
 
-def test_6654_carries_the_same_caveat():
+def test_the_roof_rung_carries_the_same_caveat():
+    """NOT the digits. The rung's value has moved three times - 66.54, 65.15,
+    66.13 - and every move was accounting in the budget, not a change to this
+    rung's standing. What must hold is that it reads its value from the budget
+    and carries the no-input-vector-load caveat whatever that value is."""
     doc = trd.build()
-    rung = doc["causal_budget_66p54"]
-    assert rung["quoted_value"] == pytest.approx(66.54)
+    rung = doc["causal_budget_roof_on_todays_bytes"]
+    import json as _json
+    from tools.future import causal_budget_71 as _cb
+    _ladder = _json.loads((_cb.RECEIPT).read_text())["ladder"]
+    _live = next(
+        r["tps"] for r in _ladder
+        if r["rung"] == "every organ at the clean GEMV roof 703.5 GB/s"
+    )
+    assert rung["quoted_value"] == pytest.approx(_live)
     assert rung["no_input_vector_load"] is True
     assert rung["usable_as_production_streaming_roof"] is False
     assert rung["guaranteed_production_bandwidth"] is False

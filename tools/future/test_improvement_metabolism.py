@@ -419,8 +419,17 @@ def test_receipt_tree_is_the_why_330_instance_with_real_alu_numbers(doc):
 
 def test_receipt_cites_the_causal_budget_and_path_to_71(doc):
     budget = doc["cited"]["causal_budget"]
-    assert budget["cited_token_ms"] == 28.722
-    assert budget["cited_tps"] == 34.82
+    # The RECONSTRUCTION moves whenever the budget's accounting is corrected -
+    # 28.722 with no unattributed term, 29.043 with a wrong 0.321, 28.817 with the
+    # measured 0.095 remainder. This test's own name says it checks that the
+    # receipt CITES the budget, so compare against the budget rather than against
+    # whichever value it held the day this was written.
+    from tools.future import causal_budget_71 as _cb
+    _now = _cb.token_ms()
+    assert budget["cited_token_ms"] == pytest.approx(round(_now, 3), abs=1e-3)
+    assert budget["cited_tps"] == pytest.approx(round(_cb.tps(_now), 2), abs=1e-2)
+    # The ORGAN measurements are pinned on purpose: those are measured constants,
+    # and if one moves this test SHOULD fire.
     assert budget["mlp_organ_ms"] == 15.541
     assert budget["mlp_organ_gb_s"] == 344.1
     assert budget["deltanet_organ_ms"] == 8.227

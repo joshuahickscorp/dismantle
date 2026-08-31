@@ -760,10 +760,10 @@
    },
    "note": "Quoted from receipts/future/RESIDENT_71TPS_CAUSAL_BUDGET.json arithmetic (clean GEMV 703.5 GB/s + 0.989 ms host gap). Not a hardware measurement and not a key named tps.",
    "quoted_delta": 0.17,
-   "quoted_roof_after_allocation": 65.32,
-   "quoted_roof_ms_after": 15.309,
-   "quoted_roof_ms_today": 15.349,
-   "quoted_roof_on_todays_bytes": 65.15,
+   "quoted_roof_after_allocation": 66.3,
+   "quoted_roof_ms_after": 15.083,
+   "quoted_roof_ms_today": 15.123,
+   "quoted_roof_on_todays_bytes": 66.13,
    "seventy_one_ms": 14.085,
    "seventy_one_reachable_at_roof": false,
    "source": "receipts/future/RESIDENT_71TPS_CAUSAL_BUDGET.json"
@@ -814,10 +814,10 @@
    },
    "note": "Quoted from receipts/future/RESIDENT_71TPS_CAUSAL_BUDGET.json arithmetic (clean GEMV 703.5 GB/s + 0.989 ms host gap). Not a hardware measurement and not a key named tps.",
    "quoted_delta": 0.17,
-   "quoted_roof_after_allocation": 65.32,
-   "quoted_roof_ms_after": 15.309,
-   "quoted_roof_ms_today": 15.349,
-   "quoted_roof_on_todays_bytes": 65.15,
+   "quoted_roof_after_allocation": 66.3,
+   "quoted_roof_ms_after": 15.083,
+   "quoted_roof_ms_today": 15.123,
+   "quoted_roof_on_todays_bytes": 66.13,
    "seventy_one_ms": 14.085,
    "seventy_one_reachable_at_roof": false,
    "source": "receipts/future/RESIDENT_71TPS_CAUSAL_BUDGET.json"
@@ -897,7 +897,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T13:32:41Z",
+  "recorded_at": "2026-08-31T14:45:30Z",
   "recorded_by": "tools/future/capability_information_map.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1169,7 +1169,7 @@
   "used_for_this_map": "CPU consume of the same packed tensors the resident uploads. GPU generate was not required for the organ-level probe and is UNMEASURED as a generate identity gate."
  },
  "schema": "hawking.future.capability_information_map.v1",
- "seal_sha256": "f2bc032d86aced73ed03b80a0c89483f33e4e03d77e1249bf90482ff979dfda7",
+ "seal_sha256": "fb19a2f6555d727f818c844c77f6aa9b1401dc2db621562119381767350ed8ed",
  "sensitivity": {
   "any_supported": true,
   "baseline_argmax": 579,

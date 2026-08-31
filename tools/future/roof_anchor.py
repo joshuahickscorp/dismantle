@@ -982,17 +982,21 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         id="causal_budget_demonstrated_regime",
         receipt=BUDGET_REL,
         field="ladder[rung=every organ at the LM head's demonstrated 497.4 GB/s].tps",
-        quoted_value=47.25,
+        quoted_value=47.76,
         rests_on_roof_id="lm_head_production_497p4",
         roof_named_in_record=True,
         defect=None,
         reading=(
             "Named. Demonstrated regime: every organ at the LM head's 497.4 GB/s "
             "plus the 0.989 ms host gap. ARM A stripped MLP independently lands "
-            "on the same 497.4. This rung names its roof. Was 47.97 until the "
-            "budget's reconstruction was corrected to include the 0.321 ms of GPU "
-            "time that belongs to no organ; summing only the named organs reported "
-            "a 28.722 ms token against a measured 29.0434."
+            "on the same 497.4. This rung names its roof. It has moved twice and "
+            "both moves were accounting, not physics: 47.97 when the "
+            "reconstruction summed only the organs it could name, 47.25 when an "
+            "unattributed term of 0.321 ms was added, and 47.76 once that term was "
+            "corrected to the 0.095 ms remainder ORGAN_BANDWIDTH measures in the "
+            "run that timed both the parts and the total. The 0.321 was that "
+            "remainder plus 0.226 ms of region-trace overhead and run-to-run "
+            "variation, taken across two receipts."
         ),
         extra={"formula": "organ bytes / 497.4 GB/s + 0.989 ms host gap"},
     ),
@@ -1000,7 +1004,7 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         id="causal_budget_roof_on_todays_bytes",
         receipt=BUDGET_REL,
         field="ladder[rung=every organ at the clean GEMV roof 703.5 GB/s].tps",
-        quoted_value=65.15,
+        quoted_value=66.13,
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=True,
         defect="wrong_roof_shape",
@@ -1009,8 +1013,9 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
             "The rung NAMES 703.5 ('clean GEMV roof') so this is not an unstated "
             "roof. It is the wrong shape: 703.5 is the addr_probe that never "
             "loads the activation. the_two_numbers_that_matter.roof_on_todays_bytes_tps "
-            "= 65.15 (66.54 before the unattributed 0.321 ms entered the "
-            "reconstruction) has been steering priorities. Flag: NO INPUT-VECTOR LOAD. "
+            "= 66.13 (66.54 before an unattributed term entered the "
+            "reconstruction, 65.15 while that term was wrongly 0.321) has been "
+            "steering priorities. Flag: NO INPUT-VECTOR LOAD. "
             "A 66.54 TPS ceiling is a ceiling for a kernel that does not exist "
             "in production. Recomputed against the recommended 497.4 with the "
             "same host-gap formula this receipt uses, the demonstrated rung is "
@@ -1075,7 +1080,7 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         id="capability_map_inherits_roof_on_todays_bytes",
         receipt=CAP_MAP_REL,
         field="answers.roof_movement_on_the_71tps_ladder.quoted_roof_on_todays_bytes",
-        quoted_value=65.15,  # was 66.54; the hops check caught it and the receipt was rebuilt
+        quoted_value=66.13,  # 66.54 -> 65.15 -> 66.13; the hops check caught each move
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=True,
         defect="wrong_roof_shape",
@@ -1091,7 +1096,7 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         id="improvement_metabolism_inherits_roof_on_todays_bytes",
         receipt=METABOLISM_REL,
         field="cited.causal_budget.roof_on_todays_bytes_cited_tps",
-        quoted_value=65.15,  # was 66.54; the hops check caught it and the receipt was rebuilt
+        quoted_value=66.13,  # 66.54 -> 65.15 -> 66.13; the hops check caught each move
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=False,
         defect="unstated_roof",

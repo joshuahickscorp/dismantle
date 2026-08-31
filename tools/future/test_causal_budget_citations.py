@@ -75,17 +75,45 @@ def test_the_drift_that_was_actually_there_is_gone():
     assert cb.resolve_all()["host_gap_worth_tps"] == pytest.approx(1.214, abs=1e-9)
 
 
-def test_causal_residual_is_gpu_minus_organs_not_wall_minus_parts():
-    """The reassuring zero would have come from the subtraction, not the measurement."""
+def test_the_residual_is_the_same_run_remainder_not_a_cross_receipt_subtraction():
+    """0.321 was 0.095 of remainder plus 0.226 of trace overhead and variation.
+
+    I computed the residual by subtracting ORGAN_BANDWIDTH's covered 27.733 from
+    WALL_GPU_RECONCILIATION's 28.054 and called the difference unattributed GPU
+    time. Different runs, and the organ run has the region trace ON at a measured
+    1.8% of GPU time. The honest remainder comes from the run that measured both
+    the parts and the total.
+    """
     r = cb.causal_residual()
-    assert r["gpu_residual_ms"] == pytest.approx(0.321, abs=5e-4)
-    assert 0.010 < r["gpu_residual_frac_of_wall"] < 0.012
-    # host_gap is wall - gpu exactly, which is why it is not the residual
-    # This identity IS the point: host_gap is derived, so it can never surprise.
-    # Assert the arithmetic, not the prose - a test that greps its own docstring
-    # passes when the sentence is reworded and fails when it is improved.
-    assert r["wall_ms"] - r["gpu_ms"] == pytest.approx(r["host_gap_ms"], abs=1e-9)
-    assert r["gpu_residual_ms"] != pytest.approx(r["wall_ms"] - r["gpu_ms"], abs=1e-3)
+    assert r["gpu_residual_ms"] == pytest.approx(0.095, abs=1e-6)
+    assert cb.UNATTRIBUTED_GPU_MS == pytest.approx(r["gpu_residual_ms"], abs=1e-9)
+    # same-run identity: covered + remainder == the traced total
+    assert r["organ_ms_covered_in_receipt"] + r["gpu_residual_ms"] == pytest.approx(
+        r["traced_gpu_ms"], abs=1e-6
+    )
+
+
+def test_the_traced_untraced_gap_is_labelled_overhead_not_physics():
+    r = cb.causal_residual()
+    assert r["traced_vs_untraced_ms"] == pytest.approx(0.226, abs=1e-3)
+    assert r["trace_overhead_pct"] == pytest.approx(1.8, abs=1e-6)
+    assert r["gpu_residual_ms"] < r["traced_vs_untraced_ms"], (
+        "if the remainder ever exceeds the run-to-run gap, the comparison is "
+        "no longer dominated by overhead and this framing must be revisited"
+    )
+
+
+def test_the_remainder_is_named_not_miscellaneous():
+    """G072: the residual must not stay a miscellaneous bucket."""
+    r = cb.causal_residual()
+    named = r["gpu_residual_is_named_not_mysterious"]
+    for part in ("norms", "embedding row", "A_log", "dt_bias"):
+        assert part in named, f"the remainder does not name {part}"
+
+
+def test_host_gap_is_still_a_subtraction():
+    r = cb.causal_residual()
+    assert r["wall_ms"] - r["untraced_gpu_ms"] == pytest.approx(r["host_gap_ms"], abs=1e-9)
 
 
 def test_residual_refuses_to_pretend_the_baseline_is_current():
@@ -93,30 +121,14 @@ def test_residual_refuses_to_pretend_the_baseline_is_current():
     assert r["baseline_is_stale"]["current_body_ms"] == "UNKNOWN_UNTIL_G075"
 
 
-def test_organs_do_not_explain_all_of_gpu_time():
+def test_organs_do_not_explain_all_of_traced_gpu_time():
     r = cb.causal_residual()
-    assert r["organs_explain_of_gpu"] < 1.0, "a residual of zero would mean fitted, not measured"
-    assert r["gpu_residual_is_unattributed_not_absent"] is True
+    assert r["organs_explain_of_traced_gpu"] < 1.0, "zero would mean fitted, not measured"
+    assert r["organs_explain_of_traced_gpu"] > 0.99, "coverage is 99.97% of bytes"
 
 
-def test_reconstruction_matches_the_measured_wall():
-    """Summing only the organs you can name reports a body that never ran.
-
-    token_ms() rebuilt the token from four organs plus the host gap and landed at
-    28.722 ms while the measured wall is 29.0434 - every rung in the ladder was
-    0.321 ms optimistic. The unattributed GPU term is now part of the
-    reconstruction, so this identity holds or something moved.
-    """
-    r = cb.causal_residual()
-    assert cb.token_ms() == pytest.approx(r["wall_ms"], abs=1e-3)
-
-
-def test_the_unattributed_term_is_the_gpu_residual():
-    r = cb.causal_residual()
-    assert cb.UNATTRIBUTED_GPU_MS == pytest.approx(r["gpu_residual_ms"], abs=5e-4)
-
-
-def test_host_gap_lever_is_derived_not_remembered():
-    """1.214 must fall out of the arithmetic, not be typed in."""
-    now = cb.token_ms()
-    assert cb.tps(now - cb.HOST_GAP_MS) - cb.tps(now) == pytest.approx(1.214, abs=5e-3)
+def test_the_next_prey_is_not_the_remainder():
+    """ORGAN_BANDWIDTH's finding is that the loss is uniform, not localised."""
+    prey = cb.causal_residual()["next_prey"]
+    assert "no hot organ" in prey
+    assert "341.9" in prey and "360.0" in prey

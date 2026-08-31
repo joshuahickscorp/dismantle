@@ -153,7 +153,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T23:33:30Z",
+  "recorded_at": "2026-08-31T01:10:57Z",
   "recorded_by": "tools/future/negative_index.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -251,6 +251,10 @@
     "n": 1
    },
    {
+    "family": "catalog_addressing_not_primary_703_530_cause",
+    "n": 1
+   },
+   {
     "family": "cb_encoder_dispatch_topology_collapse_as_the_token_lever",
     "n": 1
    },
@@ -264,6 +268,10 @@
    },
    {
     "family": "complete_bpw_predicts_coherence_that_complete_or_active_bpw_predicts_coherence_denser_is_worse_cheaper_is_worse_the_number_is_the_capability",
+    "n": 1
+   },
+   {
+    "family": "complete_vs_decode_gap_prefill_accounting_not_ceremony",
     "n": 1
    },
    {
@@ -911,6 +919,10 @@
     "n": 1
    },
    {
+    "family": "tested_geometry_not_primary_530_337_cause",
+    "n": 1
+   },
+   {
     "family": "the_attention_receipt_diagnosed_its_loss_as_scalar_dot_products_every_score_computed_as_head_dim_scalar_multiply_adds_instead_of_simdgroup_matrix_instructions_that_was_the_third_diagnosis_this_program_wrote_down_and_like_the_other_two_it_was_tested_rather_than_believed_gk_simd",
     "n": 1
    },
@@ -1026,7 +1038,7 @@
    },
    {
     "model": "qwen3.8-27b",
-    "n": 39
+    "n": 42
    },
    {
     "model": "unrecorded",
@@ -1082,6 +1094,13 @@
     "n_unparsed": 0,
     "origin": "disk",
     "path": "receipts/ascent-2026-08-18/PHASE_B_HYBRID_REFUTED.json"
+   },
+   {
+    "n_parsed": 3,
+    "n_scars": 3,
+    "n_unparsed": 0,
+    "origin": "disk",
+    "path": "receipts/future/TPS_FALSIFICATIONS.jsonl"
    },
    {
     "n_parsed": 1,
@@ -1261,10 +1280,10 @@
    "ramanujan.scaffold.core.stores Graveyard (in-process bury/revive, not a corpus index).",
    "Worktrees and grok/* branches the noetic sweeper walked; this index is HEAD + disk only."
   ],
-  "n_parsed": 646,
-  "n_refuse_eligible": 576,
-  "n_scars": 653,
-  "n_sources": 31,
+  "n_parsed": 649,
+  "n_refuse_eligible": 579,
+  "n_scars": 656,
+  "n_sources": 32,
   "n_unparsed": 7
  },
  "evidence_class": "STATIC_ONLY",
@@ -1278,7 +1297,7 @@
   "Sparse-checkout ingest via git show HEAD:<path> so missing-on-disk is not treated as missing-in-git."
  ],
  "gpu_authority": false,
- "head": "2dd9fc8c0a0113e389e25842bc832c1c1c7accb5",
+ "head": "12a76e3e5b12319ee0ca1c4d8dbfa3856b6d9b7c",
  "how_to_use": {
   "proposal_keys": [
    "model",
@@ -3548,6 +3567,84 @@
    "source_path": "receipts/ascent-2026-08-18/PHASE_B_HYBRID_REFUTED.json",
    "unparsed_reason": "",
    "verdict": "MEASURED NEGATIVE for byte reduction. No low-rank + correction split beats q3's density-quality point: q2-base cannot be corrected back to q3 quality cheaply, and q3-base+correction is more bytes for better quality (Matryoshka, not speed). q3 is Pareto-optimal on the MLP density-quality frontier. The hybrid GENERALIZES (unlike pure low-rank) but does not move active bytes below q3 at q3 quality."
+  },
+  {
+   "claim_refuted": "The 24% did not follow the catalog indirection. Isolating host catalog lookup off the GPU addr-probe timestamp left the gap in place. What the 24% tracks instead is dispatch topology and mixed organ sizes: the marginal cost of a dispatch (~15us for this host/catalog ceremony class) multiplied by how many the token issues, plus the fact that organs of very different sizes do not amortise a dispatch equally.",
+   "failure_mechanism": "catalog_addressing_not_primary_703_530_cause",
+   "hypothesis_family": "catalog_addressing_not_primary_703_530_cause",
+   "keys_filled": 3,
+   "level": "MODEL_SPECIFIC",
+   "machine": "unrecorded",
+   "model": "qwen3.8-27b",
+   "models": [
+    "qwen3.8-27b"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "CATALOG_ADDRESSING_NOT_PRIMARY_703_530_CAUSE",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "A catalog change that leaves dispatch count and organ size mix unchanged and still moves the 703->530 step.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/TPS_FALSIFICATIONS.jsonl#CATALOG_ADDRESSING_NOT_PRIMARY_703_530_CAUSE",
+   "source_origin": "disk",
+   "source_path": "receipts/future/TPS_FALSIFICATIONS.jsonl",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "The gap is an arithmetic artifact of generate_greedy's Instant identity: complete-token TPS amortises prefill across a short generation as P/(P+N-1). It is teacher-forced prefill accounting, not work the runtime performs and could remove. Shortening the generation widens the 'gap' without changing any runtime cost.",
+   "failure_mechanism": "complete_vs_decode_gap_prefill_accounting_not_ceremony",
+   "hypothesis_family": "complete_vs_decode_gap_prefill_accounting_not_ceremony",
+   "keys_filled": 3,
+   "level": "MODEL_SPECIFIC",
+   "machine": "unrecorded",
+   "model": "qwen3.8-27b",
+   "models": [
+    "qwen3.8-27b"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "COMPLETE_VS_DECODE_GAP_PREFILL_ACCOUNTING_NOT_CEREMONY",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "A measurement at large N where the complete-vs-decode gap persists after P/(P+N-1) is divided out.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/TPS_FALSIFICATIONS.jsonl#COMPLETE_VS_DECODE_GAP_PREFILL_ACCOUNTING_NOT_CEREMONY",
+   "source_origin": "disk",
+   "source_path": "receipts/future/TPS_FALSIFICATIONS.jsonl",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
+  },
+  {
+   "claim_refuted": "Parity holds across K=5120, 6144 and 17408 with occupancy unchanged; the geometry is not mis-tuned for the shapes it runs on. The lane's own handoff names two other things: affine2-vs-q4 ALU cost in the low-bit decode, and the fact that MLP is ~54% of the bytes, so the shape that dominates is not the one being tuned.",
+   "failure_mechanism": "tested_geometry_not_primary_530_337_cause",
+   "hypothesis_family": "tested_geometry_not_primary_530_337_cause",
+   "keys_filled": 3,
+   "level": "MODEL_SPECIFIC",
+   "machine": "unrecorded",
+   "model": "qwen3.8-27b",
+   "models": [
+    "qwen3.8-27b"
+   ],
+   "organ": "unrecorded",
+   "organs": [
+    "unrecorded"
+   ],
+   "original_id": "TESTED_GEOMETRY_NOT_PRIMARY_530_337_CAUSE",
+   "parse_status": "PARSED",
+   "refuse_eligible": true,
+   "reopen_condition": "An untested geometry family, or a shape not covered by K in {5120, 6144, 17408}, that moves the 530->337 step.",
+   "representation": "unrecorded",
+   "scar_id": "receipts/future/TPS_FALSIFICATIONS.jsonl#TESTED_GEOMETRY_NOT_PRIMARY_530_337_CAUSE",
+   "source_origin": "disk",
+   "source_path": "receipts/future/TPS_FALSIFICATIONS.jsonl",
+   "unparsed_reason": "",
+   "verdict": "FALSIFIED"
   },
   {
    "claim_refuted": "the attention receipt diagnosed its loss as SCALAR DOT PRODUCTS -- every score computed as head_dim scalar multiply-adds instead of simdgroup matrix instructions. That was the third diagnosis this program wrote down, and like the other two it was tested rather than believed.",
@@ -18453,6 +18550,6 @@
   }
  ],
  "schema": "hawking.future.negative_index.v1",
- "seal_sha256": "489148a3758b0de3b023da8fa4c58c6db40d2237bea2b84e484a5421cd614a29",
+ "seal_sha256": "3b414ab3a03057325484cc6c17305d9a6e4fae6b733f22010ee5af48be009a7c",
  "version": 1
 }

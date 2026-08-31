@@ -65,6 +65,10 @@ SEED_SOURCES: tuple[str, ...] = (
     "workspace/campaign/governance/odyssey/state/graveyard/GRAVEYARD.json",
     "receipts/ascent-2026-08-18/PHASE_B_HYBRID_REFUTED.json",
     "lab/operators/ascension_graveyard.py",
+    # Emitted by tools/future/tps_falsifications.py. Named here because
+    # SKIP_PREFIXES excludes receipts/future/ from the discovery sweep,
+    # and SEED_SOURCES is appended after that filter.
+    "receipts/future/TPS_FALSIFICATIONS.jsonl",
 )
 
 SKIP_PREFIXES = ("tools/future/", "receipts/future/", "crates/")
@@ -204,6 +208,9 @@ DEAD_WORDS = frozenset(
         "kills",
         "closed",
         "refuted",
+        # A lane that kills its own hypothesis records FALSIFIED. That is the
+        # project's most precise dead verdict and the index did not know it.
+        "falsified",
         "unreachable",
         "deauthorised",
         "deauthorized",

@@ -1,0 +1,153 @@
+{
+ "budget": {
+  "categories": {
+   "attention_bytes_time": {
+    "status": "UNKNOWN"
+   },
+   "command_encoder_cost": {
+    "bounded_by": "host_gap_total",
+    "status": "UNKNOWN"
+   },
+   "cpu_submission": {
+    "bounded_by": "host_gap_total",
+    "status": "UNKNOWN"
+   },
+   "dispatch_cost": {
+    "count_per_token": 964.0,
+    "status": "BOUNDED_NOT_ATTRIBUTED",
+    "upper_bound_if_host_side_ms": 0.945,
+    "why": "964 dispatches is exact. Their cost is not: the host gap bounds any host-side portion at 0.945 ms, and any on-device launch cost is inside gpu_ns and unseparated."
+   },
+   "final_head_and_sampling": {
+    "status": "UNKNOWN"
+   },
+   "gpu_time_total": {
+    "ms": 29.735,
+    "share": 0.9692,
+    "status": "MEASURED"
+   },
+   "host_gap_total": {
+    "includes": "CPU submission, command buffer construction, synchronization the GPU did not cover, python-side protocol handling",
+    "ms": 0.945,
+    "not_decomposed_further": true,
+    "share": 0.0308,
+    "status": "MEASURED"
+   },
+   "low_bit_decode_cost": {
+    "status": "UNKNOWN",
+    "why": "inside gpu_ns, not separable without per-kernel timing"
+   },
+   "mlp_bytes_time": {
+    "status": "UNKNOWN",
+    "why": "needs the per-organ census; MLP share of bytes is recorded elsewhere as ~54% but has not been re-derived against the 10.7278 GB figure"
+   },
+   "other_model_bytes_time": {
+    "status": "UNKNOWN"
+   },
+   "state_bytes_time": {
+    "status": "UNKNOWN"
+   },
+   "state_transition": {
+    "status": "UNKNOWN"
+   },
+   "synchronization": {
+    "bounded_by": "host_gap_total",
+    "status": "UNKNOWN"
+   },
+   "useful_arithmetic": {
+    "same_reason": true,
+    "status": "UNKNOWN"
+   },
+   "weight_bytes_time": {
+    "bound": "at the clean-GEMV 703.5 GB/s, 10.7278 GB would take 15.25 ms, which is 50% of the token. That is a LOWER BOUND on byte time only if every active byte is actually read once.",
+    "status": "UNKNOWN",
+    "why": "actual_read_bytes_per_token is NOT_MEASURED_NO_METAL_MEMORY_COUNTER. active_bytes_per_token is the catalog sum, not what the GPU read. Without a memory counter the byte-time cannot be separated from arithmetic time."
+   }
+  },
+  "honest_remainder": "Two categories are measured (GPU time, host gap) and they sum to the whole token. Everything inside GPU time is UNKNOWN and stays UNKNOWN: this run had no per-kernel timing and no Metal memory counter. That is a 96.9% unattributed remainder, and padding it into invented categories would make the receipt worse, not better.",
+  "total_decode_ms_per_token": 30.68,
+  "what_would_close_it": [
+   "per-kernel GPU timestamps, which separate byte time from arithmetic",
+   "a Metal memory counter or a counted-read instrumented kernel, which turns actual_read_bytes_per_token from null into a number",
+   "the per-organ byte census, which splits the byte time by organ"
+  ]
+ },
+ "claim_boundary": "One request against one build on a CPU-contended box. Dispatch counts and byte ledgers are exact and contention-independent. Every ns figure is DIAGNOSTIC_RELATIVE and must not be quoted as a protected absolute measurement. The budget attributes only what the run separated: GPU time and host gap. It does not claim to know what the GPU time is made of.",
+ "derived": {
+  "active_gb_per_token": 10.7278,
+  "decode_gpu_ms_per_token": 29.735,
+  "decode_gpu_ns_per_token": 29734792,
+  "decode_wall_ms_per_token": 30.68,
+  "decode_wall_ns_per_token": 30680203,
+  "dispatches_per_decode_step": 964.0,
+  "dispatches_per_prefill_step": 964.0,
+  "host_gap_ms_per_token": 0.945,
+  "host_gap_share": 0.0308,
+  "implied_effective_bandwidth_gb_s": 349.7,
+  "roof_tps_at_clean_gemv": 65.58,
+  "roof_tps_at_published_peak": 76.34
+ },
+ "evidence_class": "DIAGNOSTIC_RELATIVE",
+ "findings": [
+  {
+   "exact_regardless_of_contention": true,
+   "id": "DISPATCH_COUNT_IS_964_PER_DECODE_STEP",
+   "measured": true,
+   "what": "964.0 dispatches per decoded token, and the same 964.0 per prefill step. Not 'hundreds' \u2014 about a thousand.",
+   "why_it_matters": "This is the number S017 \u00a75 asked for and it had never been measured on the serving binary, because the serving binary could not report it."
+  },
+  {
+   "conclusion": "The 15 us marginal cost does NOT apply additively to this class. Host submission is at most 3% of the token; the dispatch cost, if any, is inside gpu_ns as per-dispatch launch and teardown on device, not as host gap. Multiplying count by marginal cost would have produced a 47% attribution that the same run refutes.",
+   "id": "DISPATCH_COST_IS_NOT_ADDITIVE_HOST_TIME",
+   "supersedes": "any budget line that charges 964 x 15 us to the host",
+   "what": "At the L40 marginal figure of 15.0 us, 964.0 dispatches would be 14.46 ms, i.e. 47% of the 30.68 ms token. But wall minus GPU is only 0.945 ms (3.1%)."
+  },
+  {
+   "consequence": "The clean-GEMV roof is 65.58 TPS, not 71. At the published 819 GB/s peak it is 76.34 TPS. 71 is therefore NOT reachable by executor recovery alone \u2014 it is above the clean-addressing roof for this byte count and needs bytes to fall as well.",
+   "id": "ACTIVE_BYTES_PER_TOKEN_IS_10.73_GB_NOT_9.88",
+   "resolves": "the 4% anchor inconsistency recorded OPEN in receipts/future/TOKEN_NS_OBJECTIVE.json \u2014 in the other direction. 10.7278 GB x 32.594 TPS = 349.7 GB/s, which matches the implied figure, so the outlier was the recorded 337.3 GB/s and the low byte count, not the TPS.",
+   "what": "The serving resident reports 10727793882 active bytes per generated token (10.7278 GB). The anchor the ladder was built on was 9,878,901,136 \u2014 8.6% low."
+  },
+  {
+   "conclusion": "The Cargo.toml warning is still correct policy \u2014 benchmark on release \u2014 but the profile was NOT hiding TPS. This resident is GPU-bound: gpu_ns is 96.9% of wall, so host codegen quality has almost nothing to work on.",
+   "id": "BUILD_PROFILE_IS_NOT_THE_TPS_LEVER",
+   "what": "release (lto=fat, cgu=1) decoded at 32.594 TPS; release-fast (lto=false, cgu=16) decoded at 32.774 TPS on the same box minutes apart. The difference is within run-to-run noise and the wrong sign for the 'benchmark profile is faster' story."
+  },
+  {
+   "consequence": "CPU submission, command buffer construction and host-side ceremony together cannot account for more than ~3% of the token. Any remaining win has to come from inside the GPU time: fewer bytes, fewer dispatches, or cheaper arithmetic per byte.",
+   "id": "THE_TOKEN_IS_GPU_BOUND",
+   "what": "29.735 ms of the 30.68 ms token is GPU time. Host gap is 0.945 ms."
+  }
+ ],
+ "gpu_authority": false,
+ "observation": {
+  "active_bytes_per_token": 10727793881.75,
+  "actual_read_bytes_per_token": null,
+  "actual_read_bytes_status": "NOT_MEASURED_NO_METAL_MEMORY_COUNTER",
+  "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+  "binary": "workspace/ops/build/rust/release/examples/ascension_qwen38_resident",
+  "complete_tps": 30.008027149606896,
+  "contamination": "4 Grok delegate lanes at maximum effort; CPU contended, GPU otherwise idle",
+  "decode_dispatches": 122428,
+  "decode_gpu_ns": 3776318607,
+  "decode_steps": 127,
+  "decode_tps": 32.594308018571425,
+  "decode_wall_ns": 3896385833,
+  "dispatches_per_generated_token": 1046.84375,
+  "dispatches_total": 133996,
+  "fallbacks": 0,
+  "generated_tokens": 128,
+  "gpu_ns_per_generated_token": 32250937.9453125,
+  "prefill_dispatches": 11568,
+  "profile": "release (lto=fat, codegen-units=1) \u2014 the profile Cargo.toml says to benchmark with",
+  "prompt_tokens": 12,
+  "resident_identity": "sealed-3.14",
+  "resident_weight_bytes": 10554259456,
+  "wall_minus_gpu_ns_total": 137471693,
+  "workspace_resident_bytes": 1232327492
+ },
+ "recorded_by": "tools/future/resident_token_budget.py",
+ "schema": "hawking.future.resident_token_budget.v1",
+ "took_gpu_lease": false,
+ "version": 1
+}

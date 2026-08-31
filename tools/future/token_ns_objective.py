@@ -33,9 +33,21 @@ RECEIPT = REPO / "receipts" / "future" / "TOKEN_NS_OBJECTIVE.json"
 SCHEMA = "hawking.future.token_ns_objective.v1"
 
 # --- measured anchors, each from a committed receipt ------------------------
-CURRENT_DECODE_TPS = 35.5                    # steady decode, not complete-token
-ACTIVE_WEIGHT_BYTES_PER_TOKEN = 9_878_901_136
-PRODUCTION_DECODE_GB_S = 337.3
+# Superseded 2026-08-30 by receipts/future/RESIDENT_TOKEN_BUDGET.json, which is
+# the first reading taken from a resident build that could actually report its
+# own byte ledger. The old anchors (35.5 TPS, 9,878,901,136 bytes, 337.3 GB/s)
+# could not all be true at once; the release-profile probe says the byte count
+# was 8.6% low and the bandwidth figure was the outlier.
+CURRENT_DECODE_TPS = 32.594                  # steady decode, not complete-token
+ACTIVE_WEIGHT_BYTES_PER_TOKEN = 10_727_793_882
+PRODUCTION_DECODE_GB_S = 349.7
+SUPERSEDED_ANCHORS = {
+    "decode_tps": 35.5,
+    "active_weight_bytes_per_token": 9_878_901_136,
+    "production_decode_gb_s": 337.3,
+    "superseded_by": "receipts/future/RESIDENT_TOKEN_BUDGET.json",
+    "why": "measured on a build that could not report its own byte ledger",
+}
 CLEAN_GEMV_GB_S = 703.5                      # single GEMV clean addressing
 PUBLISHED_PEAK_GB_S = 819.0                  # M3 Ultra published
 MLP_SHARE_OF_BYTES = 0.54
@@ -150,11 +162,19 @@ def ladder(bytes_per_token: float = ACTIVE_WEIGHT_BYTES_PER_TOKEN,
 
 
 def reconciliation() -> dict[str, Any]:
-    """The three anchors do not multiply out. Say so; do not pick one silently."""
+    """Was OPEN at 4%. The release-profile probe closed it."""
     implied_bw = ACTIVE_WEIGHT_BYTES_PER_TOKEN / 1e9 * CURRENT_DECODE_TPS
     implied_bytes = PRODUCTION_DECODE_GB_S / CURRENT_DECODE_TPS
     return {
-        "status": "OPEN",
+        "status": "CLOSED",
+        "closed_by": "receipts/future/RESIDENT_TOKEN_BUDGET.json",
+        "resolution": (
+            "The serving resident reports 10,727,793,882 active bytes per "
+            "generated token, not 9,878,901,136 — the old anchor was 8.6% low. "
+            "10.7278 GB x 32.594 TPS = 349.7 GB/s, so the recorded 337.3 GB/s "
+            "was the outlier, not the TPS. The anchors now multiply out."
+        ),
+        "superseded": SUPERSEDED_ANCHORS,
         "claim": (
             "35.5 TPS x 9.8789 GB/token = 350.7 GB/s, but the production decode "
             "receipt records 337.3 GB/s. The three anchors are mutually "

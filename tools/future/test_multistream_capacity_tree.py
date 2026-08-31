@@ -173,3 +173,39 @@ def test_the_next_cheapest_moved_on_as_classes_resolved():
     nxt = tree.summary()["next_cheapest"]
     assert not any(x.startswith(("B_", "D_", "C_")) for x in nxt)
     assert nxt[0].startswith("E_memory_level")
+
+
+def test_arithmetic_is_a_throughput_term_not_a_dependency_term():
+    """Removing arithmetic buys 1.51x; making it parallel buys nothing.
+
+    ARM A strips the arithmetic at identical bytes: 1.5089x. The ILP ladder
+    splits the same 16-FMA inner loop into 2, 4 and 8 independent accumulator
+    chains, all bit-identical: 328.5, 325.5, 327.4 GB/s - flat inside 1%. The
+    machine is not stalling on the chain, it is spending issue slots.
+    """
+    d = next(c for c in tree.classes() if c["id"].startswith("D_"))
+    ev = d["sharpened_by"]
+    assert "MLP_ISSUE_RATE_LADDER" in ev
+    assert "328.5" in ev and "327.4" in ev and "flat inside 1%" in ev
+    assert "THROUGHPUT" in ev and "not dependency-chain LATENCY" in ev
+    assert "1.3333" in ev, "the remedy must point at the decode tax"
+
+
+def test_class_e_is_protected_from_its_lookalike():
+    """The ILP ladder varies accumulator chains, not the load pipeline.
+
+    Closing E on it would be the easiest available mistake, so the class names
+    the receipt that does NOT answer it.
+    """
+    e = next(c for c in tree.classes() if c["id"].startswith("E_"))
+    assert e["status"] == tree.OPEN
+    assert e["sharpened_by"] is None
+    guard = e["not_answered_by"]
+    assert "MLP_ISSUE_RATE_LADDER" in guard
+    assert "ACCUMULATOR CHAINS" in guard
+    assert "not the load pipeline" in guard
+
+
+def test_only_e_carries_a_lookalike_guard_so_far():
+    guarded = [c["id"] for c in tree.classes() if c.get("not_answered_by")]
+    assert guarded == ["E_memory_level_parallelism"]

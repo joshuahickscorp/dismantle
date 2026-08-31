@@ -52,6 +52,7 @@ def _cls(
     status: str = OPEN,
     killed_by: str | None = None,
     sharpened_by: str | None = None,
+    not_answered_by: str | None = None,
 ) -> dict[str, Any]:
     if len(discriminator) < 40:
         raise TreeRefused(f"{id}: a class without a cheap discriminator is a guess")
@@ -74,6 +75,10 @@ def _cls(
         "status": status,
         "killed_by": killed_by,
         "sharpened_by": sharpened_by,
+        # A lookalike receipt that does NOT answer this class. Naming it is
+        # cheaper than someone re-deriving that it does not apply, and stops a
+        # class being quietly closed by the wrong evidence.
+        "not_answered_by": not_answered_by,
     }
 
 
@@ -139,6 +144,15 @@ def classes() -> list[dict[str, Any]]:
                           "bytes and arithmetic identical, output bit-identical",
             kills_if="deeper per-thread load pipelining does not move GB/s",
             reopens_if="the representation changes the access pattern",
+            not_answered_by=(
+                "MLP_ISSUE_RATE_LADDER looks like this discriminator and is NOT. "
+                "Its ilp2/ilp4/ilp8 vary INDEPENDENT ACCUMULATOR CHAINS - its own "
+                "note reads 'production 16 FMA split into 2 independent acc "
+                "chains' - which is arithmetic structure, not the load pipeline. "
+                "Nothing landed has varied how many independent LOADS a thread "
+                "holds in flight, so this class is untouched. Reading the ILP "
+                "ladder as an answer here would be the easiest available mistake."
+            ),
         ),
         _cls(
             id="D_instruction_dependency_chain",
@@ -167,7 +181,18 @@ def classes() -> list[dict[str, Any]]:
                 "magnitude. "
                 "SELF_MEASURED_DIRTY and taken under load 8.41, so the ABSOLUTE "
                 "GB/s are not promotable - but ARM A is a back-to-back RATIO at "
-                "identical bytes, and ratios hold under load."
+                "identical bytes, and ratios hold under load. "
+                "REFINED BY MLP_ISSUE_RATE_LADDER, which splits the production "
+                "16-FMA inner loop into 2, 4 and 8 INDEPENDENT accumulator "
+                "chains, every variant bit-identical to production: 328.5, "
+                "325.5 and 327.4 GB/s, flat inside 1%. So making the arithmetic "
+                "more PARALLEL buys nothing while REMOVING it buys 1.51x. The "
+                "term is arithmetic THROUGHPUT, not dependency-chain LATENCY - "
+                "the machine is not stalling on the chain, it is spending real "
+                "issue slots. That narrows the remedy: restructuring cannot "
+                "recover this, only having LESS arithmetic can, which points at "
+                "the decode tax of 1.3333 decode-FMA per weight byte inside a "
+                "2.6667 total."
             ),
         ),
         _cls(

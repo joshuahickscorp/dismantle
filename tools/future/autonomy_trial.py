@@ -1206,7 +1206,35 @@ def _idle_justification_ok(event: Mapping[str, Any]) -> bool:
 def _work_remained_across_gap(
     view: TimelineView, gap_start_t: int, gap_end_t: int
 ) -> list[str]:
-    """Ids showing runnable leftover still existed at or after the silent interval."""
+    """Ids showing runnable leftover still existed at or after the silent interval.
+
+    FIRST, ask the evidence rather than the driver. A runnability_snapshot taken
+    AT the wait reports, per frontier, what it held, what survived the scars and
+    what had not been launched - so n_runnable is a COUNT, not a claim. Zero
+    means the wait was justified and there is nothing for this condition to
+    convict.
+
+    Why it has to be the snapshot and nothing else: I first keyed this on the
+    driver's own `exhausted` flag, and the archived 477 s control caught it
+    inside a minute. That run emits the IDENTICAL pre-gap signal - next_work_left
+    t=88, exhausted True, n 0, ids [] - and ended with twelve frontiers holding
+    novel work the driver had missed. The flag was FALSE there, so any rule
+    keyed on it acquits the original defect.
+
+    The snapshot cannot lie the same way: it is derived from the frontier set,
+    the scar list and the launched set at that instant. And the archived control
+    carries no snapshot at all, so it stays convicted - which is what a negative
+    control is for.
+    """
+    for event in view.of("runnability_snapshot"):
+        t_ev = int(event.get("t_s") or 0)
+        if not (gap_start_t - 30 <= t_ev <= gap_start_t + 5):
+            continue
+        payload = _payload(event)
+        if payload.get("error"):
+            continue  # a snapshot that failed is not evidence either way
+        if int(payload.get("n_runnable") or 0) == 0:
+            return []
     named: list[str] = []
     for event in view.of("next_work_left", "work_refilled"):
         t_ev = int(event.get("t_s") or 0)

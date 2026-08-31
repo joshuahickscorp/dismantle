@@ -1218,3 +1218,44 @@ def test_frozen_30m_receipt_if_present_hashes_substrate_and_quotes_four():
     assert "degeneracy" in inst and "no_wait" in inst
     assert run.get("staged_event_used") is False
     assert run.get("judged_from") == "sealed_timeline"
+
+
+def test_a_snapshot_of_zero_runnable_acquits_and_the_control_still_convicts():
+    """The distinction two timelines could not make, now made by evidence.
+
+    A runnability_snapshot at the wait reports a COUNT derived from the frontier
+    set, the scar list and the launched set. Zero runnable means the wait was
+    justified. The archived 477 s control carries NO snapshot, so it stays
+    convicted - which is the whole job of a negative control.
+
+    I first keyed this on the driver's `exhausted` flag and this control caught
+    it inside a minute: the archived run emits the identical exhausted True, n 0,
+    ids [] and ended with twelve frontiers holding novel work. The flag was false
+    there; the snapshot cannot be false the same way.
+    """
+    live = json.loads((at.REPO / "receipts/future/AUTONOMY_TIMELINE_30m.json").read_text())
+    snaps = [e for e in (live.get("events") or [])
+             if e.get("kind") == "runnability_snapshot"]
+    if not snaps:
+        pytest.skip("the live timeline predates the snapshot instrument")
+    assert int(snaps[0]["payload"]["n_runnable"]) == 0
+    assert at.eval_no_idle_while_work_exists(at.TimelineView(live, "30m"))["met"] is True
+
+    control = _load_sealed_30m_timeline()
+    assert not [e for e in (control.get("events") or [])
+                if e.get("kind") == "runnability_snapshot"], (
+        "the control must stay snapshot-free or it stops being the control"
+    )
+    assert at.eval_no_idle_while_work_exists(at.TimelineView(control, "30m"))["met"] is False
+
+
+def test_a_failed_snapshot_is_not_evidence_either_way():
+    """An errored snapshot must not acquit; it recorded nothing."""
+    doc = {"events": [
+        {"kind": "runnability_snapshot", "t_s": 10,
+         "payload": {"error": "boom", "n_runnable": 0}},
+        {"kind": "next_work_left", "t_s": 10, "payload": {"ids": ["FT.A"], "n": 1}},
+        {"kind": "mission_state_written", "t_s": 400, "payload": {}},
+    ]}
+    got = at._work_remained_across_gap(at.TimelineView(doc, "30m"), 10, 400)
+    assert got, "an errored snapshot must not be read as zero runnable"

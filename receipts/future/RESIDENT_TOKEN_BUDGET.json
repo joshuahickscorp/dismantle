@@ -162,7 +162,8 @@
    "what": "628.0 remaining dispatches at 6.25 us is 3.925 ms, 13.8% of the 28.44 ms token. Removing ALL of it \u2014 not achievable, taken as a bound \u2014 gives 40.79 TPS."
   },
   {
-   "caveat": "This charges every active byte as one read. Without a Metal memory counter, actual_read_bytes_per_token stays null, so this is an upper bound on byte time under a perfect-locality assumption, not a measurement of it.",
+   "and_it_cannot_be_measured_here": "receipts/future/MEMORY_TRAFFIC_PROBE.json enumerated every counter surface on this M3 Ultra: MTLDevice.counterSets is ['timestamp'] alone, stageutilization and statistic are absent from the device, dispatch-boundary sampling resolves to [0,0], and GPURawCounter fails to instantiate without the Instruments entitlement. No surface reports DRAM bytes to an ordinary Metal process. So this assumption cannot be confirmed OR refuted from inside the process, and the byte term stays a bound rather than becoming a measurement.",
+   "caveat": "This charges every active byte as one read. It is an upper bound on byte time under a perfect-locality assumption, not a measurement.",
    "conclusion": "Byte traffic is the largest single identified term and the roof it implies is 71.21 TPS. This is why the campaign moves to representation.",
    "id": "BYTES_ARE_THE_MAJORITY_OF_THE_TOKEN",
    "what": "9.8789 GB at the clean-GEMV 703.5 GB/s would take 14.043 ms, 49.4% of the token. Actual effective bandwidth during GPU time is 357.4 GB/s."

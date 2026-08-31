@@ -191,10 +191,20 @@ def findings() -> list[dict[str, Any]]:
                 "the campaign moves to representation."
             ),
             "caveat": (
-                "This charges every active byte as one read. Without a Metal "
-                "memory counter, actual_read_bytes_per_token stays null, so this "
-                "is an upper bound on byte time under a perfect-locality "
-                "assumption, not a measurement of it."
+                "This charges every active byte as one read. It is an upper "
+                "bound on byte time under a perfect-locality assumption, not a "
+                "measurement."
+            ),
+            "and_it_cannot_be_measured_here": (
+                "receipts/future/MEMORY_TRAFFIC_PROBE.json enumerated every "
+                "counter surface on this M3 Ultra: MTLDevice.counterSets is "
+                "['timestamp'] alone, stageutilization and statistic are absent "
+                "from the device, dispatch-boundary sampling resolves to [0,0], "
+                "and GPURawCounter fails to instantiate without the Instruments "
+                "entitlement. No surface reports DRAM bytes to an ordinary Metal "
+                "process. So this assumption cannot be confirmed OR refuted from "
+                "inside the process, and the byte term stays a bound rather than "
+                "becoming a measurement."
             ),
         },
         {

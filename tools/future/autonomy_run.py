@@ -56,6 +56,7 @@ from tools.future import negative_index as ni
 from tools.future import no_wait_scheduler as nws
 from tools.future import orchestration as orch
 from tools.future._common import REPO, RECEIPTS, bench_block, seal, write_receipt
+from tools.future import runnability_snapshot as rsnap
 
 RECEIPT = "AUTONOMY_RUN.json"
 RECORDED_BY = "tools/future/autonomy_run.py"
@@ -1565,9 +1566,39 @@ def run(trial: str = "15m", timeline: Path | None = None,
                                 "unit_id": handle.get("unit_id") or job.get("composed_unit_id"),
                                 "frontier_id": job.get("frontier_id"),
                             })
+                        # TAKE THE COUNT, DO NOT CLAIM IT. Two 30m timelines emit
+                        # the identical "exhausted True, n 0, ids []" and mean
+                        # opposite things - in the archived 477 s run that claim
+                        # was FALSE and twelve frontiers held novel work. So the
+                        # wait records a per-frontier RUNNABILITY SNAPSHOT: what
+                        # each frontier held, what survived the scars, what had
+                        # not been launched. A judge can then convict or acquit
+                        # this wait instead of being unable to tell it from that
+                        # one.
+                        try:
+                            snap = rsnap.snapshot(
+                                [
+                                    {"id": str(f.get("id") or f.get("frontier_id") or ""),
+                                     "entry_ids": [str(x) for x in (f.get("entry_ids") or [])]}
+                                    for f in (survey or [])
+                                    if isinstance(f, Mapping)
+                                ],
+                                already_launched=launched,
+                                scar_dead=refused,
+                                t_s=t(),
+                            )
+                        except Exception as exc:  # a snapshot must never kill a run
+                            snap = {"error": f"{type(exc).__name__}: {exc}"}
+                        doc = _emit(doc, "runnability_snapshot", snap, t_s=t())
                         try:
                             doc = emit_idle_justified(
                                 doc, asked=survey, waiting_on=waiting_on, t_s=t(),
+                                runnable_ids=[
+                                    i for r in snap.get("runnable_by_frontier", [])
+                                    for i in r.get("runnable_ids", [])
+                                ],
+                                extra={"runnability_snapshot_taken": "error" not in snap,
+                                       "n_runnable": snap.get("n_runnable")},
                             )
                         except EmitRefused as exc:
                             doc = _emit(doc, "process_failed", {

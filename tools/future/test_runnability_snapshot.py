@@ -80,3 +80,31 @@ def test_the_two_timelines_are_recorded_as_indistinguishable():
     assert "exhausted True, n 0, ids []" in d["run_three_482s"]["signal"]
     assert "FALSE" in d["archived_477s"]["truth"]
     assert "acquits the archived defect" in d["conclusion"]
+
+
+def test_the_driver_takes_a_snapshot_at_the_wait():
+    """An instrument nobody calls is not an instrument.
+
+    The wait path emits runnability_snapshot BEFORE emit_idle_justified and
+    passes the runnable ids into it, so the refusal and the evidence agree.
+    """
+    from tools.future import autonomy_run as ar
+
+    src = open(ar.__file__, encoding="utf-8").read()
+    snap_at = src.index('doc = _emit(doc, "runnability_snapshot", snap, t_s=t())')
+    idle_at = src.index("doc = emit_idle_justified(")
+    assert snap_at < idle_at, "the snapshot must be taken before the wait is justified"
+    between = src[snap_at:idle_at]
+    assert len(between) < 400, "the snapshot and the justification must stay adjacent"
+    assert "runnable_ids=[" in src[idle_at:idle_at + 500]
+
+
+def test_a_snapshot_failure_never_kills_a_run():
+    """Evidence is worth having; it is not worth losing thirty minutes over."""
+    from tools.future import autonomy_run as ar
+
+    src = open(ar.__file__, encoding="utf-8").read()
+    i = src.index('doc = _emit(doc, "runnability_snapshot", snap, t_s=t())')
+    guard = src[max(0, i - 600):i]
+    assert "a snapshot must never kill a run" in guard
+    assert "except Exception" in guard

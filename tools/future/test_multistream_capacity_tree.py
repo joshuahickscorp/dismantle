@@ -74,15 +74,24 @@ def test_payoffs_are_null_rather_than_invented():
 
 def test_the_summary_refuses_to_name_the_cause():
     s = tree.summary()
-    assert s["n_killed"] == 1 and s["n_open"] + s["n_sharpened"] == 8
+    assert s["n_killed"] == 1
+    assert s["n_open"] + s["n_sharpened"] + s["n_blocked_on_tooling"] == 8
     assert "concurrency helping is the OBSERVATION" in s["do_not_call_it_serial_dependency"]
 
 
 def test_the_next_cheapest_are_the_within_kernel_classes():
-    """The DAG pointed the search at the kernels; the tree must follow."""
+    """The DAG pointed the search at the kernels; the tree must follow.
+
+    NOT a fixed list - as classes resolve the frontier moves, and pinning the
+    day's ordering would fail every time the campaign advanced. What must hold is
+    that the next cheapest are still WITHIN-KERNEL classes and never the killed
+    executor-serialization one.
+    """
     nxt = tree.summary()["next_cheapest"]
-    assert nxt[0].startswith("B_occupancy")
-    assert any(x.startswith("E_memory_level") for x in nxt)
+    assert nxt, "a tree with open classes must name what to run next"
+    assert all(not x.startswith("H_") for x in nxt), "the killed class cannot return"
+    within_kernel = ("B_", "C_", "D_", "E_", "F_", "G_", "I_")
+    assert all(x.startswith(within_kernel) for x in nxt)
 
 
 def test_class_d_is_sharpened_by_the_alu_roofline_not_killed():
@@ -117,6 +126,50 @@ def test_the_two_independent_probes_agree_on_the_magnitude():
 
 
 def test_the_summary_counts_sharpened_separately_from_killed():
+    """Conflating them would let a narrowed class read as a dead one."""
     s = tree.summary()
-    assert s["n_killed"] == 1 and s["n_sharpened"] == 1 and s["n_open"] == 7
-    assert s["sharpened"] == ["D_instruction_dependency_chain"]
+    assert s["n_killed"] == 1
+    assert "D_instruction_dependency_chain" in s["sharpened"]
+    assert s["n_sharpened"] >= 1 and s["n_open"] >= 1
+
+
+def test_class_b_was_already_swept_and_is_not_flat():
+    """GEOMETRY_TABLE ran this discriminator: 11 shapes, 8 distinct winners."""
+    b = next(c for c in tree.classes() if c["id"].startswith("B_"))
+    assert b["status"] == tree.SHARPENED
+    ev = b["sharpened_by"]
+    assert "GEOMETRY_TABLE" in ev
+    assert "flat is FALSE" in ev and "EIGHT distinct launch winners" in ev
+    assert "must not be assumed" in ev, "the open sub-question must stay open"
+
+
+def test_class_c_is_blocked_on_tooling_not_silently_open():
+    """registers_per_thread is null because the reflection does not carry it."""
+    c = next(x for x in tree.classes() if x["id"].startswith("C_"))
+    assert c["status"] == tree.BLOCKED_ON_TOOLING
+    ev = c["sharpened_by"]
+    assert "registers_per_thread NULL" in ev
+    assert "xcrun metal is not on PATH" in ev
+    assert "neither confirmed nor killed" in ev
+    assert "toolchain that reports the register count" in c["reopens_if"]
+
+
+def test_blocked_on_tooling_also_requires_its_evidence():
+    long = "a discriminator long enough to clear the forty character bar here"
+    with pytest.raises(tree.TreeRefused, match="without naming"):
+        tree._cls(id="x", claim="c", max_payoff_ms=None, discriminator=long,
+                  kills_if="a", reopens_if="b", status=tree.BLOCKED_ON_TOOLING)
+
+
+def test_the_four_statuses_are_counted_apart():
+    """Killed, sharpened, blocked-on-tooling and open are different things."""
+    s = tree.summary()
+    assert s["n_killed"] + s["n_sharpened"] + s["n_blocked_on_tooling"] + s["n_open"] == 9
+    assert s["n_killed"] == 1 and s["n_blocked_on_tooling"] == 1
+
+
+def test_the_next_cheapest_moved_on_as_classes_resolved():
+    """B and D are no longer the frontier; E, F and G are."""
+    nxt = tree.summary()["next_cheapest"]
+    assert not any(x.startswith(("B_", "D_", "C_")) for x in nxt)
+    assert nxt[0].startswith("E_memory_level")

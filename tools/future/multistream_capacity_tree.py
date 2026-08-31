@@ -34,6 +34,7 @@ CONC_REL = "receipts/future/RESIDENT_CONCURRENCY_MEASURED.json"
 OPEN = "OPEN"
 KILLED = "KILLED"
 SHARPENED = "SHARPENED"
+BLOCKED_ON_TOOLING = "BLOCKED_ON_TOOLING"
 
 
 class TreeRefused(RuntimeError):
@@ -58,7 +59,7 @@ def _cls(
         raise TreeRefused(f"{id}: kill and reopen criteria are written BEFORE the run")
     if status == KILLED and not killed_by:
         raise TreeRefused(f"{id}: killed without naming the evidence that killed it")
-    if status == SHARPENED and not sharpened_by:
+    if status in {SHARPENED, BLOCKED_ON_TOOLING} and not sharpened_by:
         raise TreeRefused(
             f"{id}: SHARPENED without naming the evidence that sharpened it. A "
             "class that narrowed for no stated reason is a class nobody can check."
@@ -110,6 +111,23 @@ def classes() -> list[dict[str, Any]]:
             kills_if="GB/s is flat across a real occupancy sweep at identical bytes",
             reopens_if="a kernel is changed in a way that alters its register or "
                        "threadgroup footprint",
+            status=SHARPENED,
+            sharpened_by=(
+                "receipts/future/GEOMETRY_TABLE.json already RAN this "
+                "discriminator: threadgroup size and rows-per-threadgroup swept "
+                "at fixed bytes across 11 production shapes. flat is FALSE with "
+                "EIGHT distinct launch winners - mlp.gate_proj wins at tg128_r2, "
+                "up_proj at tg256_r4, down_proj at tg512_r2, in_proj_qkvz at "
+                "tg64_r2. So the kill criterion is not met and this class "
+                "survives: geometry is a TABLE, not a constant, and the winner "
+                "depends on the hot dimension. "
+                "The spread is shape-dependent and mostly small - gate_proj "
+                "220.8 against 217.4 for its runner-up, up_proj 188.8 against "
+                "188.4 - but down_proj is 214.7 against 191.6, about 12%. "
+                "WHAT IS NOT ESTABLISHED, and must not be assumed: whether "
+                "production already selects the per-shape winner. That is the "
+                "next question on this class, not a payoff to claim."
+            ),
         ),
         _cls(
             id="E_memory_level_parallelism",
@@ -162,7 +180,25 @@ def classes() -> list[dict[str, Any]]:
                           "then compare against the occupancy sweep in class B",
             kills_if="the achieved threadgroup size is already at the device "
                      "maximum and occupancy is not the binding term",
-            reopens_if="a kernel rewrite changes the register footprint",
+            reopens_if="a toolchain that reports the register count becomes "
+                       "available, or a kernel rewrite changes the footprint",
+            status=BLOCKED_ON_TOOLING,
+            sharpened_by=(
+                "UNANSWERABLE ON THIS TOOLCHAIN, and that is a finding rather "
+                "than a gap. MLP_ALU_ROOFLINE's occupancy block reports "
+                "registers_per_thread NULL with the reason: 'Metal pipeline "
+                "state does not report register count on this toolchain; xcrun "
+                "metal is not on PATH'. The discriminator asked for the register "
+                "footprint from the reflection and the reflection does not carry "
+                "it. "
+                "What IS known: threads_per_threadgroup 128 against a device "
+                "maximum of 1024 - occupancy_of_max_threads 0.125 - with 8704 "
+                "threadgroups over 60 cores, so 145 per core. Whether 128 is "
+                "chosen BECAUSE of register pressure or for another reason "
+                "cannot be read here, so the class is neither confirmed nor "
+                "killed. Same shape as the memory-traffic counter: this device "
+                "does not expose what the question needs."
+            ),
         ),
         _cls(
             id="F_cache_behaviour",
@@ -229,6 +265,8 @@ def summary() -> dict[str, Any]:
         "n_killed": sum(1 for c in cs if c["status"] == KILLED),
         "n_open": sum(1 for c in cs if c["status"] == OPEN),
         "n_sharpened": sum(1 for c in cs if c["status"] == SHARPENED),
+        "n_blocked_on_tooling": sum(1 for c in cs if c["status"] == BLOCKED_ON_TOOLING),
+        "blocked_on_tooling": [c["id"] for c in cs if c["status"] == BLOCKED_ON_TOOLING],
         "killed": [c["id"] for c in cs if c["status"] == KILLED],
         "sharpened": [c["id"] for c in cs if c["status"] == SHARPENED],
         "next_cheapest": [c["id"] for c in cs if c["status"] == OPEN][:3],

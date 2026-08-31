@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T20:14:37Z",
+  "recorded_at": "2026-08-31T20:17:46Z",
   "recorded_by": "tools/future/multistream_capacity_tree.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -29,8 +29,8 @@
    "kills_if": "GB/s is flat across a real occupancy sweep at identical bytes",
    "max_payoff_ms": null,
    "reopens_if": "a kernel is changed in a way that alters its register or threadgroup footprint",
-   "sharpened_by": null,
-   "status": "OPEN"
+   "sharpened_by": "receipts/future/GEOMETRY_TABLE.json already RAN this discriminator: threadgroup size and rows-per-threadgroup swept at fixed bytes across 11 production shapes. flat is FALSE with EIGHT distinct launch winners - mlp.gate_proj wins at tg128_r2, up_proj at tg256_r4, down_proj at tg512_r2, in_proj_qkvz at tg64_r2. So the kill criterion is not met and this class survives: geometry is a TABLE, not a constant, and the winner depends on the hot dimension. The spread is shape-dependent and mostly small - gate_proj 220.8 against 217.4 for its runner-up, up_proj 188.8 against 188.4 - but down_proj is 214.7 against 191.6, about 12%. WHAT IS NOT ESTABLISHED, and must not be assumed: whether production already selects the per-shape winner. That is the next question on this class, not a payoff to claim.",
+   "status": "SHARPENED"
   },
   {
    "cheapest_discriminator": "unroll the per-thread load stride on one matvec so each thread issues N independent loads before consuming any; bytes and arithmetic identical, output bit-identical",
@@ -61,9 +61,9 @@
    "killed_by": null,
    "kills_if": "the achieved threadgroup size is already at the device maximum and occupancy is not the binding term",
    "max_payoff_ms": null,
-   "reopens_if": "a kernel rewrite changes the register footprint",
-   "sharpened_by": null,
-   "status": "OPEN"
+   "reopens_if": "a toolchain that reports the register count becomes available, or a kernel rewrite changes the footprint",
+   "sharpened_by": "UNANSWERABLE ON THIS TOOLCHAIN, and that is a finding rather than a gap. MLP_ALU_ROOFLINE's occupancy block reports registers_per_thread NULL with the reason: 'Metal pipeline state does not report register count on this toolchain; xcrun metal is not on PATH'. The discriminator asked for the register footprint from the reflection and the reflection does not carry it. What IS known: threads_per_threadgroup 128 against a device maximum of 1024 - occupancy_of_max_threads 0.125 - with 8704 threadgroups over 60 cores, so 145 per core. Whether 128 is chosen BECAUSE of register pressure or for another reason cannot be read here, so the class is neither confirmed nor killed. Same shape as the memory-traffic counter: this device does not expose what the question needs.",
+   "status": "BLOCKED_ON_TOOLING"
   },
   {
    "cheapest_discriminator": "vary only the per-launch working-set size at constant bytes and constant arithmetic and look for a knee",
@@ -113,22 +113,27 @@
  "evidence_class": "STATIC_ONLY",
  "gpu_authority": false,
  "schema": "hawking.future.multistream_capacity_tree.v1",
- "seal_sha256": "3f694aaf8675347f67d4d374c72e93b3319aabca52f492164953cd92061cd0be",
+ "seal_sha256": "fd9613ce06b9e941ef7d1fb8b6e41ae90a69f592da145a82640a63029f27b4f0",
  "summary": {
+  "blocked_on_tooling": [
+   "C_register_limited_occupancy"
+  ],
   "do_not_call_it_serial_dependency": "concurrency helping is the OBSERVATION, not the cause. Class H - the one that would have made 'serial dependency' literally true at the dispatch grain - is the one class already dead. What remains is inside the kernels, and naming it before measuring would be the error this tree exists to prevent.",
   "killed": [
    "H_artificial_executor_serialization"
   ],
+  "n_blocked_on_tooling": 1,
   "n_classes": 9,
   "n_killed": 1,
-  "n_open": 7,
-  "n_sharpened": 1,
+  "n_open": 5,
+  "n_sharpened": 2,
   "next_cheapest": [
-   "B_occupancy_too_few_active_threads",
    "E_memory_level_parallelism",
-   "C_register_limited_occupancy"
+   "F_cache_behaviour",
+   "G_command_scheduling_topology"
   ],
   "sharpened": [
+   "B_occupancy_too_few_active_threads",
    "D_instruction_dependency_chain"
   ],
   "the_effect_being_explained": {

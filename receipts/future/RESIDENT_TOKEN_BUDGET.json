@@ -9,7 +9,7 @@
    "result": "NO_VALID_RESPONSE"
   },
   "sealed_fusion": {
-   "active_bytes_per_token": 10727793881.75,
+   "active_bytes_per_token": 9878901136,
    "decode_gpu_ms_per_token": 27.64,
    "decode_tps": 35.158,
    "decode_wall_ms_per_token": 28.44,
@@ -24,7 +24,7 @@
    "is_production": true
   },
   "unfused": {
-   "active_bytes_per_token": 10727793881.75,
+   "active_bytes_per_token": 9878901136,
    "decode_gpu_ms_per_token": 29.57,
    "decode_tps": 32.745,
    "decode_wall_ms_per_token": 30.54,
@@ -94,13 +94,13 @@
    "weight_bytes_time": {
     "overlaps": "sits inside gpu_time_total",
     "status": "BOUNDED_NOT_MEASURED",
-    "upper_bound_ms": 15.249,
-    "upper_bound_share": 0.5362,
+    "upper_bound_ms": 14.043,
+    "upper_bound_share": 0.4938,
     "why_not_measured": "actual_read_bytes_per_token is NOT_MEASURED_NO_METAL_MEMORY_COUNTER; active_bytes_per_token is the catalog sum, not what the GPU read"
    }
   },
   "configuration": "sealed-3.14, fusion env set",
-  "honest_remainder": "Two categories partition the token: GPU time (97%) and host gap (3%). Inside GPU time, dispatch is measured at 13.8% and bytes are bounded above at 53.6%. Those two do not partition GPU time either \u2014 they overlap and neither is exact. Everything else stays UNKNOWN. Padding the gap into invented categories would make the receipt worse.",
+  "honest_remainder": "Two categories partition the token: GPU time (97%) and host gap (3%). Inside GPU time, dispatch is measured at 13.8% and bytes are bounded above at 49.4%. Those two do not partition GPU time either \u2014 they overlap and neither is exact. Everything else stays UNKNOWN. Padding the gap into invented categories would make the receipt worse.",
   "total_decode_ms_per_token": 28.44,
   "what_would_close_it": [
    "per-kernel GPU timestamps, which separate byte time from arithmetic",
@@ -114,12 +114,19 @@
   "claim": "an earlier commit in this campaign reported 964 dispatches per token as the production figure",
   "correction": "964 is the UNFUSED default graph. Production sealed-3.14 runs the fusion env and issues 628. The first probe omitted the fusion env."
  },
+ "corrects_again": {
+  "caught_by": "receipts/future/MLP_BYTE_CENSUS.json \u2014 an independent per-tensor sum over the HQ38M20 catalog that reconciled to 9,878,901,136 and disagreed with the resident",
+  "claim": "v2 of this receipt reported active bytes per token as 10,727,793,881.75 and therefore a clean-GEMV roof of 65.58 TPS, with 71 TPS moved above the roof",
+  "class": "receipts/future/PER_GENERATED_TOKEN_INFLATION.json",
+  "correction": "That figure is the resident's active_bytes_per_token, which divides prefill+decode totals by generated tokens and is inflated by (P+N)/G = 139/128. The true per-forward-pass value is 9,878,901,136, the roof is 71.21 TPS, and 71 is back below it.",
+  "lesson": "The same prefill-over-generated-tokens arithmetic L42 found in TPS is present in the byte and dispatch ledgers. Finding it once should have triggered a search for the same denominator elsewhere; it did not, and an inflated anchor moved the whole milestone ladder for two commits."
+ },
  "derived": {
-  "active_gb_per_token": 10.7278,
-  "byte_ms_at_clean_gemv": 15.249,
-  "byte_share_at_clean_gemv": 0.5362,
+  "active_gb_per_token": 9.8789,
+  "byte_ms_at_clean_gemv": 14.043,
+  "byte_share_at_clean_gemv": 0.4938,
   "dispatches_removed_by_fusion": 336.0,
-  "effective_bandwidth_during_gpu_time_gb_s": 388.1,
+  "effective_bandwidth_during_gpu_time_gb_s": 357.4,
   "host_gap_ms_per_token": 0.8,
   "host_gap_share": 0.0281,
   "measured_marginal_dispatch_us": 6.25,
@@ -131,8 +138,8 @@
   "production_ms_per_token": 28.44,
   "remaining_dispatch_ms_per_token": 3.925,
   "remaining_dispatch_share": 0.138,
-  "roof_tps_at_clean_gemv": 65.58,
-  "roof_tps_at_published_peak": 76.34,
+  "roof_tps_at_clean_gemv": 71.21,
+  "roof_tps_at_published_peak": 82.9,
   "tps_gained_by_fusion": 2.413,
   "tps_if_all_dispatch_overhead_vanished": 40.79
  },
@@ -156,9 +163,9 @@
   },
   {
    "caveat": "This charges every active byte as one read. Without a Metal memory counter, actual_read_bytes_per_token stays null, so this is an upper bound on byte time under a perfect-locality assumption, not a measurement of it.",
-   "conclusion": "Byte traffic is the largest single identified term and the roof it implies is 65.58 TPS. This is why the campaign moves to representation.",
+   "conclusion": "Byte traffic is the largest single identified term and the roof it implies is 71.21 TPS. This is why the campaign moves to representation.",
    "id": "BYTES_ARE_THE_MAJORITY_OF_THE_TOKEN",
-   "what": "10.7278 GB at the clean-GEMV 703.5 GB/s would take 15.249 ms, 53.6% of the token. Actual effective bandwidth during GPU time is 388.1 GB/s."
+   "what": "9.8789 GB at the clean-GEMV 703.5 GB/s would take 14.043 ms, 49.4% of the token. Actual effective bandwidth during GPU time is 357.4 GB/s."
   },
   {
    "conclusion": "CPU submission, command buffer construction and host-side ceremony together cannot exceed ~3% of the token. The 6.25 us marginal dispatch cost is therefore mostly ON-DEVICE launch and teardown, not host submission \u2014 which is why fusing kernels helps and why faster host codegen did not.",

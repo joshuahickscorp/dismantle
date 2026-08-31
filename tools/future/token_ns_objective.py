@@ -39,18 +39,26 @@ SCHEMA = "hawking.future.token_ns_objective.v1"
 # could not all be true at once; the release-profile probe says the byte count
 # was 8.6% low and the bandwidth figure was the outlier.
 CURRENT_DECODE_TPS = 35.158                  # sealed-3.14, fusion env SET
-ACTIVE_WEIGHT_BYTES_PER_TOKEN = 10_727_793_882
-PRODUCTION_DECODE_GB_S = 377.2  # 10.7278 GB / 28.44 ms
+ACTIVE_WEIGHT_BYTES_PER_TOKEN = 9_878_901_136
+PRODUCTION_DECODE_GB_S = 347.4  # 9.8789 GB / 28.44 ms
 SUPERSEDED_ANCHORS = {
     "decode_tps": 35.5,
     "active_weight_bytes_per_token": 9_878_901_136,
     "production_decode_gb_s": 337.3,
-    "superseded_by": "receipts/future/RESIDENT_TOKEN_BUDGET.json",
-    "why": "measured on a build that could not report its own byte ledger",
+    "superseded_by": None,
+    "why": (
+        "NOT superseded after all. Both survived measurement: the byte count "
+        "was confirmed by an independent catalog census, and 35.5 TPS was "
+        "confirmed as the fusion-enabled rate (35.158 measured). Kept here "
+        "because two intermediate readings briefly appeared to replace them "
+        "and the reversal should stay visible."
+    ),
 }
 CLEAN_GEMV_GB_S = 703.5                      # single GEMV clean addressing
 PUBLISHED_PEAK_GB_S = 819.0                  # M3 Ultra published
-MLP_SHARE_OF_BYTES = 0.54
+# Measured per-tensor from the HQ38M20 catalog, not the rounded 0.54:
+# 5,347,795,776 / 9,878,901,136. See receipts/future/MLP_BYTE_CENSUS.json.
+MLP_SHARE_OF_BYTES = 5_347_795_776 / 9_878_901_136
 
 MILESTONES: tuple[dict[str, Any], ...] = (
     {"name": "M1", "tps": 50.0},
@@ -171,10 +179,14 @@ def reconciliation() -> dict[str, Any]:
         "resolution": (
             "The serving resident reports 10,727,793,882 active bytes per "
             "generated token, not 9,878,901,136 — the old anchor was 8.6% low. "
-            "10.7278 GB x 35.158 TPS = 377.2 GB/s, so the recorded 337.3 GB/s "
-            "was the outlier, not the TPS. The 35.5 anchor was right all along "
-            "and was measured with the fusion env set; the 32.7 reading that "
-            "briefly looked like a correction was the UNFUSED arm of an A/B."
+            "9.8789 GB x 35.158 TPS = 347.4 GB/s against a recorded 337.3, "
+            "which is 3% and within the spread of one contended run. Both "
+            "original anchors survive: the byte count was right, and 35.5 was "
+            "right and was measured with the fusion env set. The two readings "
+            "that briefly looked like corrections were artifacts — 32.7 TPS was "
+            "the UNFUSED arm of an A/B, and 10.73 GB was the resident's "
+            "active_bytes_per_token inflated by (P+N)/G. See "
+            "receipts/future/PER_GENERATED_TOKEN_INFLATION.json."
         ),
         "superseded": SUPERSEDED_ANCHORS,
         "claim": (

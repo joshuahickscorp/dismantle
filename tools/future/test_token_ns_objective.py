@@ -11,8 +11,10 @@ def test_roof_is_a_function_of_bytes_not_a_constant():
     full = obj.roof_tps(obj.ACTIVE_WEIGHT_BYTES_PER_TOKEN)
     half = obj.roof_tps(obj.ACTIVE_WEIGHT_BYTES_PER_TOKEN / 2)
     assert abs(half - 2 * full) < 1e-6, "halving bytes must double the roof"
-    # 65.58 from the measured 10.7278 GB/token at the clean-GEMV 703.5 GB/s.
-    assert 64.0 < full < 67.0, f"current-byte roof drifted: {full}"
+    # 71.21 from 9.8789 GB/token at the clean-GEMV 703.5 GB/s. This band moved
+    # to 64-67 for two commits on an inflated byte anchor and moved back when an
+    # independent catalog census caught it; see PER_GENERATED_TOKEN_INFLATION.
+    assert 70.0 < full < 72.0, f"current-byte roof drifted: {full}"
 
 
 def test_target_above_the_mlp_ceiling_is_flagged_not_fudged():
@@ -45,33 +47,35 @@ def test_the_ladder_splits_at_todays_roof():
     )
 
 
-def test_moonshot_is_above_the_mlp_alone_ceiling():
-    """With the measured byte count the 150 moonshot sits ABOVE the MLP wall.
+def test_moonshot_sits_just_under_the_mlp_alone_ceiling():
+    """150 TPS needs 2.7% of MLP bytes to survive: reachable, with no headroom.
 
-    Deleting every MLP byte leaves the other 46% of traffic, which caps MLP-only
-    progress at ~142.6 TPS. The moonshot therefore cannot be an MLP story at
-    all — non-MLP bytes, state, routing, attention or dispatch have to fall too.
-    The earlier 154.8 ceiling came from the 8.6%-low byte anchor.
+    Deleting every MLP byte still leaves the other 46% of traffic, capping
+    MLP-only progress at ~155 TPS. So the moonshot is an MLP story, but only
+    barely, and it means near-total information elimination on the largest
+    organ rather than compression.
     """
     ceiling = obj.mlp_alone_ceiling_tps()
-    assert 140.0 < ceiling < 146.0, f"ceiling drifted: {ceiling}"
+    assert 153.0 < ceiling < 158.0, f"ceiling drifted: {ceiling}"
     moon = next(r for r in obj.ladder() if r["name"] == "MOONSHOT")
-    assert not moon["reachable_by_mlp_bytes_alone"]
-    assert moon["lever"] == "UNREACHABLE_BY_MLP_ALONE"
-    assert moon["required_remaining_mlp_fraction"] is None
+    assert moon["reachable_by_mlp_bytes_alone"]
+    assert moon["required_remaining_mlp_fraction"] < 0.05
 
 
-def test_71_is_no_longer_free_executor_recovery():
-    """The measured byte count moved 71 above the clean-addressing roof.
+def test_71_sits_at_the_roof_and_100_above_it():
+    """50 and 71 are executor-recovery targets; no byte reduction is required.
 
-    At 9.88 GB/token the roof was 71.2 and 71 TPS looked like pure executor
-    recovery. At the measured 10.73 GB/token the roof is 65.6, so 71 now
-    requires bytes to fall as well. This is the single most consequential
-    correction the release-profile probe produced.
+    This assertion inverted for two commits on a byte anchor inflated by
+    (P+N)/G, which is exactly why the roof is computed rather than stored.
+    71 TPS against a 71.21 roof leaves essentially no margin, so it is the last
+    milestone the executor alone can reach.
     """
     rows = {r["name"]: r for r in obj.ladder()}
-    assert rows["M1"]["lever"] == "EXECUTOR_RECOVERY_ONLY", "50 TPS is still under the roof"
-    assert rows["M2"]["lever"] == "BYTES_MUST_FALL", "71 TPS is now above the roof"
+    assert rows["M1"]["lever"] == "EXECUTOR_RECOVERY_ONLY"
+    assert rows["M2"]["lever"] == "EXECUTOR_RECOVERY_ONLY"
+    assert rows["M3"]["lever"] == "BYTES_MUST_FALL", "100 TPS is above the roof"
+    roof = obj.roof_tps(obj.ACTIVE_WEIGHT_BYTES_PER_TOKEN)
+    assert 0 < roof - 71.0 < 0.01 * roof, roof
 
 
 def test_ladder_is_monotone_in_difficulty():
@@ -93,13 +97,15 @@ def test_anchor_reconciliation_closed_with_evidence_not_by_averaging():
     rec = obj.build()["anchor_reconciliation"]
     assert rec["status"] == "CLOSED"
     assert rec["closed_by"].endswith("RESIDENT_TOKEN_BUDGET.json")
-    # The anchors must now actually multiply out.
-    assert abs(rec["disagreement_pct"]) < 0.5, rec["disagreement_pct"]
-    # And the superseded values must be preserved, not deleted.
+    # 9.8789 GB x 35.158 TPS = 347.4 GB/s against a recorded 337.3: 3%, inside
+    # the spread of one contended run, where it started at 4% on numbers that
+    # could not all be true.
+    assert abs(rec["disagreement_pct"]) < 3.5, rec["disagreement_pct"]
+    # Both original anchors survived. The record of the reversal must survive too.
     old = rec["superseded"]
     assert old["active_weight_bytes_per_token"] == 9_878_901_136
     assert old["decode_tps"] == 35.5
-    assert old["production_decode_gb_s"] == 337.3
+    assert old["superseded_by"] is None, "these anchors were vindicated, not replaced"
 
 
 def test_record_round_trips():

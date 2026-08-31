@@ -40,7 +40,13 @@ FUSION_ENV = {
     "HAWKING_QWEN38_FUSE_MLP": "swiglu",
 }
 
-ACTIVE_BYTES_PER_TOKEN = 10_727_793_881.75
+# The resident's own active_bytes_per_token is 10,727,793,881.75, but that field
+# divides prefill+decode totals by generated tokens and is inflated by
+# (P+N)/G = 139/128. See receipts/future/PER_GENERATED_TOKEN_INFLATION.json.
+# The true per-forward-pass figure is the catalog census, confirmed to 7 ppm.
+ACTIVE_BYTES_PER_TOKEN = 9_878_901_136
+RESIDENT_REPORTED_ACTIVE_BYTES = 10_727_793_881.75
+PER_GENERATED_TOKEN_INFLATION = 139 / 128
 CLEAN_GEMV_GB_S = 703.5
 PUBLISHED_PEAK_GB_S = 819.0
 L40_HOST_PROBE_MARGINAL_US = 15.0
@@ -325,6 +331,31 @@ def build() -> dict[str, Any]:
                           "first probe omitted the fusion env.",
             "also": "the 35.5 TPS anchor was right; it was measured with fusion. "
                     "The 32.7 figure from the first probe was the unfused arm.",
+        },
+        "corrects_again": {
+            "claim": "v2 of this receipt reported active bytes per token as "
+                     "10,727,793,881.75 and therefore a clean-GEMV roof of "
+                     "65.58 TPS, with 71 TPS moved above the roof",
+            "correction": (
+                "That figure is the resident's active_bytes_per_token, which "
+                "divides prefill+decode totals by generated tokens and is "
+                "inflated by (P+N)/G = 139/128. The true per-forward-pass value "
+                f"is {ACTIVE_BYTES_PER_TOKEN:,}, the roof is 71.21 TPS, and 71 "
+                "is back below it."
+            ),
+            "caught_by": (
+                "receipts/future/MLP_BYTE_CENSUS.json — an independent "
+                "per-tensor sum over the HQ38M20 catalog that reconciled to "
+                "9,878,901,136 and disagreed with the resident"
+            ),
+            "class": "receipts/future/PER_GENERATED_TOKEN_INFLATION.json",
+            "lesson": (
+                "The same prefill-over-generated-tokens arithmetic L42 found in "
+                "TPS is present in the byte and dispatch ledgers. Finding it "
+                "once should have triggered a search for the same denominator "
+                "elsewhere; it did not, and an inflated anchor moved the whole "
+                "milestone ladder for two commits."
+            ),
         },
         "claim_boundary": (
             "Three runs of one build on a CPU-contended box. Dispatch counts and "

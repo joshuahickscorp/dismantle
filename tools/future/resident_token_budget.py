@@ -278,6 +278,16 @@ def budget() -> dict[str, Any]:
                                     "NOT_MEASURED_NO_METAL_MEMORY_COUNTER; "
                                     "active_bytes_per_token is the catalog sum, "
                                     "not what the GPU read",
+                "and_it_cannot_be_measured_here": (
+                    "receipts/future/MEMORY_TRAFFIC_PROBE.json enumerated every "
+                    "counter surface on this M3 Ultra. MTLDevice.counterSets is "
+                    "['timestamp'] alone; stageutilization and statistic are "
+                    "absent from the device; dispatch-boundary sampling resolves "
+                    "to [0,0]; GPURawCounter fails to instantiate without the "
+                    "Instruments entitlement. Nothing reports DRAM bytes to an "
+                    "ordinary Metal process, so this bound cannot be confirmed "
+                    "OR refuted from inside the process. It stays a bound."
+                ),
                 "overlaps": "sits inside gpu_time_total",
             },
             "mlp_bytes_time": {"status": "UNKNOWN",

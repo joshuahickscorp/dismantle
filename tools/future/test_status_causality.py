@@ -387,3 +387,242 @@ def test_module_parses():
             # A pass in a body that is not `except: pass` on a documented path
             # would be a stub. This module must not have any.
             raise AssertionError(f"pass at line {node.lineno}")
+
+
+def test_emit_time_entry_point_returns_the_five_fields_and_a_verdict():
+    """A gate calls emit() as it stamps a status. This is the emit-time path,
+    not scan() of a receipt after the fact."""
+    row = sc.emit(
+        "declared_path_absent",
+        probe_performed="Path.exists() on /tmp/does-not-exist-for-this-test",
+        direct_observation="exists=False",
+        interpretation="the declared path is absent",
+        probe_kind=sc.PROBE_PATH_EXISTENCE,
+    )
+    assert row["entry"] == "emit"
+    assert row["verdict"] == sc.SUPPORTED
+    for field in sc.FIVE_RECORDED_FIELDS:
+        assert field in row and row[field] not in (None, "", [], {})
+    assert set(row["confidence"]) >= {"level", "about", "would_raise", "would_lower"}
+    assert row["verdict"] in sc.VERDICTS
+    assert row["verdict"] not in sc.FORBIDDEN_VERDICTS
+
+
+def test_emit_does_not_touch_disk_or_the_catalog(monkeypatch):
+    """Cheap enough that a gate has no excuse not to call it."""
+
+    def boom(*_a, **_k):
+        raise AssertionError("emit touched disk or git")
+
+    monkeypatch.setattr(sc, "_load_receipt", boom)
+    monkeypatch.setattr(sc, "git", boom)
+    monkeypatch.setattr(sc, "_read_text", boom)
+    bare = sc.emit("BLOCKED_NO_METAL_GPU")
+    assert bare["verdict"] == sc.UNTESTED, (
+        "emit() of a bare historical label must not catalog-lookup; "
+        "that would hide an unrecorded probe behind the teaching set"
+    )
+    assert bare["entry"] == "emit"
+    assert sc.challenge("BLOCKED_NO_METAL_GPU")["verdict"] == sc.OVERREACHING
+
+
+def test_stamp_writes_the_five_fields_onto_the_status_the_gate_emits():
+    status_row = {"id": "doctor_callable", "met": False, "reason": "measured unmet"}
+    rec = sc.stamp(
+        status_row,
+        probe_kind=sc.PROBE_MEASURED_FLAGS,
+        probe_performed="evaluate launch criterion doctor_callable against disk evidence",
+        direct_observation="met=False unmet_flags=['schedule'] reason=measured",
+        interpretation="doctor_callable unmet for named measured reasons",
+        claim_kind=sc.CLAIM_MEASURED_UNMET,
+    )
+    assert rec["verdict"] == sc.SUPPORTED
+    for field in sc.FIVE_RECORDED_FIELDS:
+        assert field in status_row
+        assert status_row[field] == rec[field]
+    assert status_row["causality_verdict"] == sc.SUPPORTED
+    assert sc.records_five_fields(status_row)
+
+
+def test_shape_regression_fires_on_a_reemitted_overreach():
+    """The five historical overreaches had no regression that would fire on
+    the next similar label. This is that regression: same SHAPE, new name."""
+    fired = []
+    for shape in sc.OVERREACH_SHAPES:
+        row = sc.emit(
+            shape["reemit_status"],
+            probe_kind=shape["probe_kind"],
+            probe_performed=shape["reemit_probe"],
+            direct_observation=shape["reemit_observation"],
+            interpretation=shape["reemit_interpretation"],
+            claim_kind=shape["claim_kind"],
+        )
+        assert row["verdict"] == sc.OVERREACHING, (
+            f"{shape['id']} re-emitted as {shape['reemit_status']!r} "
+            f"verdict={row['verdict']} (must OVERREACH)"
+        )
+        matched = sc.matching_overreach_shape(row)
+        assert matched == shape["id"], (
+            f"{shape['id']} matching_overreach_shape={matched!r}"
+        )
+        fired.append(shape["id"])
+    assert len(fired) == 6
+    assert "SHAPE.MIXED_LAYER_AS_ALU_BOUND" in fired
+    historical = {s["historical_id"] for s in sc.OVERREACH_SHAPES if s.get("historical_id")}
+    assert historical == {
+        "HC.BLOCKED_NO_METAL_GPU",
+        "HC.MODEL_MISSING",
+        "HC.SPECIMEN_NOT_PRESENT",
+        "HC.WEIGHTS_NOT_PRESENT",
+        "HC.DOCTOR_GRAVITY_LITERAL",
+    }
+
+
+def test_mixed_one_layer_roofline_as_alu_bound_agrees_with_improvement_trial():
+    """The live example this week: MIXED one-layer probe reported as ALU_BOUND.
+    IMPROVEMENT_TRIAL's misleading_narrow_probe control already fails that pair.
+    The two must agree."""
+    row = sc.emit(
+        "ALU_BOUND",
+        probe_performed=sc.ALU_BOUND_MIXED_PROBE,
+        direct_observation="verdict=MIXED",
+        interpretation=sc.ALU_BOUND_ALL_ORGANS_CLAIM,
+    )
+    assert row["verdict"] == sc.OVERREACHING
+    assert row["probe_kind"] == sc.PROBE_ONE_LAYER_ROOFLINE
+    assert row["claim_kind"] == sc.CLAIM_GLOBAL_BINDING
+    assert sc.matching_overreach_shape(row) == "SHAPE.MIXED_LAYER_AS_ALU_BOUND"
+    assert any(
+        a["consistent_with_observation"] and not a["consistent_with_claim"]
+        for a in row["alternatives"]
+    )
+    trial = sc.improvement_trial_alu_bound_control()
+    assert trial["readable"] is True, trial
+    assert trial["agrees"] is True, trial
+    assert trial["failed"] is True
+    assert trial["verdict"] == "FAIL"
+    assert "ALU_BOUND" in trial["detail"]
+    assert "MIXED" in trial["detail"]
+    assert trial["detail"] == sc.IMPROVEMENT_TRIAL_ALU_BOUND_DETAIL
+
+
+def test_the_same_one_layer_probe_supports_mixed_and_overreaches_alu_bound():
+    probe = {
+        "probe_kind": sc.PROBE_ONE_LAYER_ROOFLINE,
+        "probe_performed": sc.ALU_BOUND_MIXED_PROBE,
+        "direct_observation": "verdict=MIXED",
+    }
+    broad = sc.emit(
+        "ALU_BOUND",
+        interpretation=sc.ALU_BOUND_ALL_ORGANS_CLAIM,
+        **probe,
+    )
+    narrow = sc.emit(
+        "MIXED",
+        interpretation="this layer's roofline verdict is MIXED",
+        claim_kind=sc.CLAIM_FIELD_VALUE,
+        **probe,
+    )
+    assert broad["verdict"] == sc.OVERREACHING
+    assert narrow["verdict"] == sc.SUPPORTED
+
+
+def test_consequential_gates_are_explicit_and_the_selection_rule_is_stated():
+    gates = sc.consequential_gates()
+    names = [g["name"] for g in gates]
+    assert names, "an empty gate list is not a coverage claim"
+    assert len(names) == len(set(names)), f"duplicate gate names: {names}"
+    for required in sc.G007_NAMED_GATES:
+        assert required in names, f"G007 named {required} missing from inventory"
+    for extra in (
+        "native_mission_gate",
+        "autonomy_gate",
+        "modellake_gate",
+        "vmcp_gate",
+        "recovery_gate",
+        "research_gate",
+        "metal_reachability",
+        "flash_nx_audit",
+        "odyssey2_law_store",
+        "contamination",
+        "qualification_pipeline",
+        "protected_scheduler",
+        "flash_meta_teacher_capture_boundary",
+    ):
+        assert extra in names, (
+            f"{extra} is consequential under the stated rule and was dropped; "
+            "do not report coverage by narrowing the definition of consequential"
+        )
+    assert sc.SELECTION_RULE
+    assert "named in the G007 obligation" in sc.SELECTION_RULE
+    assert "odyssey_launch" in sc.SELECTION_RULE
+    assert "integration_gate" in sc.SELECTION_RULE
+    cov = sc.coverage()
+    assert cov["selection_rule"] == sc.SELECTION_RULE
+    assert tuple(g["name"] for g in gates) == tuple(r["name"] for r in cov["gates"])
+
+
+def test_coverage_reports_gates_by_name_not_a_percentage():
+    cov = sc.coverage()
+    for banned in ("percent", "percentage", "coverage_pct", "pct"):
+        assert banned not in cov
+    recording = cov["recording_five_fields"]
+    missing = cov["not_recording_five_fields"]
+    unread = cov["unreadable"]
+    assert isinstance(recording, list)
+    assert isinstance(missing, list)
+    assert isinstance(unread, list)
+    names = {g["name"] for g in sc.consequential_gates()}
+    assert set(recording) | set(missing) | set(unread) == names
+    assert set(recording).isdisjoint(missing)
+    assert set(recording).isdisjoint(unread)
+    assert set(missing).isdisjoint(unread)
+    # Honest form of the obligation: the G007-named gates do not currently
+    # record the five fields at emit time. Naming them is the coverage claim.
+    for required in sc.G007_NAMED_GATES:
+        assert required in missing, (
+            f"{required} is not in not_recording_five_fields={missing}; "
+            "if it now records the five fields, the receipt must show them"
+        )
+    assert "integration_gate" in missing
+    assert "resident_gate" in missing
+    assert "native_gate" in missing
+    assert "specimen_verify" in missing
+    assert "odyssey_launch" in missing
+    criteria_missing = cov["odyssey_launch_criteria_not_recording_five_fields"]
+    for cid in sc.ODYSSEY_LAUNCH_CRITERIA:
+        assert cid in criteria_missing, (
+            f"odyssey_launch criterion {cid} is not a named five-field gap"
+        )
+
+
+def test_build_receipt_names_odyssey_iii_call_and_coverage_lists():
+    out = sc.build()
+    doc = json.loads(out.read_text())
+    iii = doc["odyssey_iii"]
+    assert iii["inherits"] is True
+    assert iii["calls"] == "tools.future.status_causality.emit"
+    assert iii["caller"].startswith("tools.future.odyssey3_adversary")
+    args = iii["arguments"]
+    assert args["status"] == "law['law_id']"
+    assert "evidence_refs" in args["probe_performed"]
+    assert args["interpretation"] == "law['statement']"
+    assert "law['scope']" in args["probe_kind"]
+    assert doc["resident_callable"]["emit_entry_point"] == (
+        "tools.future.status_causality.emit()"
+    )
+    assert isinstance(doc["gates_recording_five_fields"], list)
+    assert isinstance(doc["gates_not_recording_five_fields"], list)
+    assert "odyssey_launch" in doc["gates_not_recording_five_fields"]
+    assert doc["alu_bound_mixed_agreement"]["agrees"] is True
+    assert doc["n_overreach_shapes"] == 6
+    assert "percent" not in doc["coverage"]
+    _assert_no_hardware_claims(doc)
+
+
+def test_odyssey_launch_criteria_match_the_module_when_importable():
+    try:
+        from tools.future import odyssey_launch as ol
+    except Exception as exc:
+        raise AssertionError(f"odyssey_launch should import in this checkout: {exc}")
+    assert tuple(sc.ODYSSEY_LAUNCH_CRITERIA) == ol.CRITERION_IDS

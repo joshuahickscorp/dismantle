@@ -2216,12 +2216,17 @@ def _protected_capability_report() -> dict[str, Any]:
 def _eval_protected_scheduling() -> dict[str, Any]:
     """Capability of the scheduler, not availability of the window.
 
-    A capable scheduler on an unavailable window is CAPABLE. No protected work
-    can run right now, and that is reported as PROTECTED_WINDOW_AVAILABLE=false.
-    A completed protected physical run is a SEPARATE named requirement and is
-    not this criterion: Odyssey I start needs a scheduler that can handle
-    protected work, not a PROTECTED_ABSOLUTE result this sidecar cannot produce.
-    Never fabricate a lease; never seize a contested lock.
+    HANDLE (this criterion) is PROTECTED_SCHEDULER_CAPABLE. START of protected
+    work is CAPABLE and PROTECTED_WINDOW_AVAILABLE. A no-window host is still
+    CAPABLE; the refusal to start is named PROTECTED_WINDOW_AVAILABLE, never
+    folded into the capability flag. Operational flags follow CAPABLE, never
+    lease_ok / QUIESCENT / gpu_authority.
+
+    A completed protected physical run is a SEPARATE named requirement: this
+    sidecar cannot produce PROTECTED_ABSOLUTE, and this criterion does not
+    pretend a missing bench result is scheduler-incapability. The start bar
+    (window) is recorded, not deleted. Never fabricate a lease; never seize
+    a contested lock.
     """
     cap = _protected_capability_report()
     capable = cap.get("PROTECTED_SCHEDULER_CAPABLE") is True and cap.get("invoked") is True
@@ -2229,8 +2234,16 @@ def _eval_protected_scheduling() -> dict[str, Any]:
     available = cap.get("PROTECTED_WINDOW_AVAILABLE") is True
     if klass != "QUIESCENT":
         available = False
+    # Name WHICH of the two a refusal is on. None means neither field refuses.
+    if not capable:
+        refusing_on: str | None = "PROTECTED_SCHEDULER_CAPABLE"
+    elif not available:
+        refusing_on = "PROTECTED_WINDOW_AVAILABLE"
+    else:
+        refusing_on = None
     future_pw = _module_file("tools/future/protected_window.py")
     odyssey_pw = _module_file("tools/odyssey/protected_window.py")
+    # HANDLE axes: CAPABLE, never AVAILABLE. lease_ok is not an input.
     bar = operational_bar(
         discover=bool(cap.get("invoked") or future_pw.get("present")),
         invoke=bool(cap.get("invoked")),
@@ -2244,6 +2257,8 @@ def _eval_protected_scheduling() -> dict[str, Any]:
             "PROTECTED_SCHEDULER_CAPABLE": str(capable),
             "PROTECTED_WINDOW_AVAILABLE": str(available),
             "availability_is_not_capability": "true",
+            "refusing_on": str(refusing_on),
+            "operational_flags_follow_capability_not_availability": "true",
             "contamination_class": str(klass),
             "did_not_fabricate_lease": str(cap.get("did_not_fabricate_lease")),
             "did_not_flock": str(cap.get("did_not_flock")),
@@ -2251,20 +2266,28 @@ def _eval_protected_scheduling() -> dict[str, Any]:
         },
     )
     met = bool(capable)
-    reason = (
-        (
-            "protected scheduler is CAPABLE; window "
-            f"AVAILABLE={available} (contamination_class={klass!r}). "
-            "Capability is not availability; no lock was seized"
+    if refusing_on is None:
+        reason = (
+            "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true; "
+            "PROTECTED_WINDOW_AVAILABLE=true. Start of protected work is not "
+            "refused on either field. No lock was seized and no lease was fabricated"
         )
-        if met
-        else (
-            "protected scheduler is not CAPABLE: "
-            f"invoked={cap.get('invoked')} why={cap.get('why')!r} "
-            f"contamination_class={klass!r}. "
-            "The sidecar will not flock a contested bench lock and will not fabricate a lease"
+    elif refusing_on == "PROTECTED_WINDOW_AVAILABLE":
+        reason = (
+            "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true. "
+            "Start of protected work is REFUSED on PROTECTED_WINDOW_AVAILABLE="
+            f"false (contamination_class={klass!r}, lease_present="
+            f"{cap.get('lease_present')}). These are separate fields; the "
+            "scheduler is not incapable. No lock was seized and no lease was fabricated"
         )
-    )
+    else:
+        reason = (
+            "protected_scheduling UNMET: REFUSED on PROTECTED_SCHEDULER_CAPABLE="
+            f"false (invoked={cap.get('invoked')} why={cap.get('why')!r}). "
+            f"PROTECTED_WINDOW_AVAILABLE={available} is recorded separately "
+            "and is not this refusal. The sidecar will not flock a contested "
+            "bench lock and will not fabricate a lease"
+        )
     return _criterion(
         "protected_scheduling",
         met=met,
@@ -2275,6 +2298,7 @@ def _eval_protected_scheduling() -> dict[str, Any]:
                 "invoked": cap.get("invoked"),
                 "PROTECTED_SCHEDULER_CAPABLE": capable,
                 "PROTECTED_WINDOW_AVAILABLE": available,
+                "refusing_on": refusing_on,
                 "contamination_class": klass,
                 "live_verdict": cap.get("live_verdict"),
                 "lease_present": cap.get("lease_present"),
@@ -2292,17 +2316,33 @@ def _eval_protected_scheduling() -> dict[str, Any]:
         extra={
             "PROTECTED_SCHEDULER_CAPABLE": capable,
             "PROTECTED_WINDOW_AVAILABLE": available,
+            "refusing_on": refusing_on,
             "contamination_class": klass,
+            "did_not_fabricate_lease": cap.get("did_not_fabricate_lease") is not False,
+            "did_not_flock": cap.get("did_not_flock") is not False,
+            "start_of_protected_work": {
+                "allowed": bool(capable and available),
+                "refusing_on": refusing_on,
+                "rule": (
+                    "HANDLE is PROTECTED_SCHEDULER_CAPABLE; START is CAPABLE and "
+                    "AVAILABLE. A missing window refuses START on "
+                    "PROTECTED_WINDOW_AVAILABLE, not the scheduler on "
+                    "PROTECTED_SCHEDULER_CAPABLE"
+                ),
+            },
             "protected_physical_run_completed": {
                 "id": "protected_physical_run_completed",
                 "required_for_this_criterion": False,
+                "required_for_start_of_protected_work": True,
                 "required_for_odyssey_i_start": False,
                 "status": "NOT_THIS_CRITERION",
                 "why": (
                     "A completed protected physical run would be PROTECTED_ABSOLUTE "
-                    "evidence this sidecar cannot produce. Odyssey I start needs a "
-                    "capable protected scheduler, not a finished protected bench. "
-                    "This field is named so it cannot be smuggled into CAPABLE."
+                    "evidence this sidecar cannot produce. This criterion is HANDLE "
+                    "(CAPABLE), not START (AVAILABLE) and not a finished bench. The "
+                    "start bar still stands: start_of_protected_work.allowed is "
+                    "CAPABLE and AVAILABLE. Naming the physical-run requirement "
+                    "keeps it from being smuggled into CAPABLE or deleted."
                 ),
             },
         },

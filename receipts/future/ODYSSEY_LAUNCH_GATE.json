@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T08:13:42Z",
+  "recorded_at": "2026-08-31T08:51:01Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -870,7 +870,7 @@
       "error": "no_entry_point",
       "stage": "DeviceCompiler",
       "status": "BLOCKED",
-      "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='hybrid_recurrent'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 7 organ(s) (compiled=0, native_unmeasured=7); there is still no compiler that can lower that plan"
+      "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan"
      },
      "flash_why": "FLASH_COMPLETE_V0.nx status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION'; check_nx.promotable=False",
      "import_ok": true,
@@ -905,7 +905,7 @@
     },
     "resident_operational": false
    },
-   "reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage=\"DeviceCompiler: no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='hybrid_recurrent'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 7 organ(s) (compiled=0, native_unmeasured=7); there is still no compiler that can lower that plan\". invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path."
+   "reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage=\"DeviceCompiler: no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan\". invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path."
   },
   {
    "evidence": [
@@ -1096,6 +1096,8 @@
    "PROTECTED_SCHEDULER_CAPABLE": true,
    "PROTECTED_WINDOW_AVAILABLE": false,
    "contamination_class": "HEAVY",
+   "did_not_fabricate_lease": true,
+   "did_not_flock": true,
    "evidence": [
     {
      "PROTECTED_SCHEDULER_CAPABLE": true,
@@ -1121,7 +1123,8 @@
       "rel": "tools/odyssey/protected_window.py",
       "resolved": "/Users/scammermike/Downloads/hawking/tools/odyssey/protected_window.py"
      },
-     "receipt_path_taken": "worktree"
+     "receipt_path_taken": "worktree",
+     "refusing_on": "PROTECTED_WINDOW_AVAILABLE"
     }
    ],
    "id": "protected_scheduling",
@@ -1145,6 +1148,8 @@
      "did_not_fabricate_lease": "True",
      "did_not_flock": "True",
      "integration": "tools/future/protected_scheduler.py \u2014 PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE",
+     "operational_flags_follow_capability_not_availability": "true",
+     "refusing_on": "PROTECTED_WINDOW_AVAILABLE",
      "sidecar_must_not_seize_lock": "true"
     },
     "resident_operational": true
@@ -1152,11 +1157,18 @@
    "protected_physical_run_completed": {
     "id": "protected_physical_run_completed",
     "required_for_odyssey_i_start": false,
+    "required_for_start_of_protected_work": true,
     "required_for_this_criterion": false,
     "status": "NOT_THIS_CRITERION",
-    "why": "A completed protected physical run would be PROTECTED_ABSOLUTE evidence this sidecar cannot produce. Odyssey I start needs a capable protected scheduler, not a finished protected bench. This field is named so it cannot be smuggled into CAPABLE."
+    "why": "A completed protected physical run would be PROTECTED_ABSOLUTE evidence this sidecar cannot produce. This criterion is HANDLE (CAPABLE), not START (AVAILABLE) and not a finished bench. The start bar still stands: start_of_protected_work.allowed is CAPABLE and AVAILABLE. Naming the physical-run requirement keeps it from being smuggled into CAPABLE or deleted."
    },
-   "reason": "protected scheduler is CAPABLE; window AVAILABLE=False (contamination_class='HEAVY'). Capability is not availability; no lock was seized"
+   "reason": "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true. Start of protected work is REFUSED on PROTECTED_WINDOW_AVAILABLE=false (contamination_class='HEAVY', lease_present=False). These are separate fields; the scheduler is not incapable. No lock was seized and no lease was fabricated",
+   "refusing_on": "PROTECTED_WINDOW_AVAILABLE",
+   "start_of_protected_work": {
+    "allowed": false,
+    "refusing_on": "PROTECTED_WINDOW_AVAILABLE",
+    "rule": "HANDLE is PROTECTED_SCHEDULER_CAPABLE; START is CAPABLE and AVAILABLE. A missing window refuses START on PROTECTED_WINDOW_AVAILABLE, not the scheduler on PROTECTED_SCHEDULER_CAPABLE"
+   }
   },
   {
    "evidence": [
@@ -1256,7 +1268,7 @@
   {
    "evidence": [
     {
-     "n_json": 162,
+     "n_json": 179,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
@@ -1279,7 +1291,7 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=162 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=179 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2031,7 +2043,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "825f12323fee444965a5aaab088fe11e61919dd4",
+ "head": "71e1869098a2258fe459b39d160c3add6f9cfeb5",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -3695,14 +3707,14 @@
     "after_met": false,
     "before_met": false,
     "id": "nr_nx_path_callable",
-    "live_reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage=\"DeviceCompiler: no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='hybrid_recurrent'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 7 organ(s) (compiled=0, native_unmeasured=7); there is still no compiler that can lower that plan\". invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path.",
+    "live_reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage=\"DeviceCompiler: no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan\". invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path.",
     "why": "now reads nr_nx_generic GENERIC_NR_NX_PIPELINE_CALLABLE; used to key on FLASH_NX_COMPLETENESS_AUDIT / Flash NX metadata"
    },
    {
     "after_met": true,
     "before_met": false,
     "id": "protected_scheduling",
-    "live_reason": "protected scheduler is CAPABLE; window AVAILABLE=False (contamination_class='HEAVY'). Capability is not availability; no lock was seized",
+    "live_reason": "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true. Start of protected work is REFUSED on PROTECTED_WINDOW_AVAILABLE=false (contamination_class='HEAVY', lease_present=False). These are separate fields; the scheduler is not incapable. No lock was seized and no lease was fabricated",
     "why": "now reads protected_scheduler.capability_report() CAPABLE vs AVAILABLE; used to AND capability with QUIESCENT+gpu_authority so a HEAVY machine looked incapable"
    }
   ],
@@ -3760,7 +3772,7 @@
   ]
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "b1d8194db6414f6b7617937e868d340db5d109edda59bdb26ef57d46a738574b",
+ "seal_sha256": "c941cfd2497aa6ae6096575960238dbc74faede971c62b573d23318362bd62da",
  "sleeping_workunits": [
   {
    "assigned_backend": null,

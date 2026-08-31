@@ -578,6 +578,7 @@ def test_protected_scheduling_is_measured_not_a_constant(monkeypatch):
     notes = live["operational"]["notes"]
     assert notes["availability_is_not_capability"] == "true"
     assert notes["sidecar_must_not_seize_lock"] == "true"
+    assert notes["operational_flags_follow_capability_not_availability"] == "true"
     assert "PROTECTED_SCHEDULER_CAPABLE" in live
     assert "PROTECTED_WINDOW_AVAILABLE" in live
     # Live contamination is not QUIESCENT: the window must not be reported available.
@@ -605,7 +606,12 @@ def test_protected_scheduling_is_measured_not_a_constant(monkeypatch):
     assert lifted["met"] is True
     assert lifted["PROTECTED_SCHEDULER_CAPABLE"] is True
     assert lifted["PROTECTED_WINDOW_AVAILABLE"] is False
+    assert lifted["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
+    assert lifted["start_of_protected_work"]["allowed"] is False
     assert lifted["operational"]["flags"]["invoke"] is True
+    assert lifted["operational"]["resident_operational"] is True
+    for flag, val in lifted["operational"]["flags"].items():
+        assert val is True, f"{flag} was ANDed with the closed window"
 
 
 def test_refusing_to_seize_a_lock_is_not_the_same_claim_as_cannot_schedule():
@@ -801,6 +807,7 @@ def test_protected_window_unavailable_when_contamination_not_quiescent(monkeypat
     assert row["PROTECTED_WINDOW_AVAILABLE"] is False
     assert row["PROTECTED_SCHEDULER_CAPABLE"] is True
     assert row["met"] is True  # capability, not availability
+    assert row["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
 
 
 def test_incapable_scheduler_does_not_meet(monkeypatch):
@@ -825,6 +832,9 @@ def test_incapable_scheduler_does_not_meet(monkeypatch):
     row = ol._eval_protected_scheduling()
     assert row["met"] is False
     assert row["PROTECTED_SCHEDULER_CAPABLE"] is False
+    assert row["refusing_on"] == "PROTECTED_SCHEDULER_CAPABLE"
+    assert "REFUSED on PROTECTED_SCHEDULER_CAPABLE" in row["reason"]
+    assert row["start_of_protected_work"]["allowed"] is False
 
 
 def test_flash_nx_ready_stays_false_and_is_not_the_generic_path():
@@ -908,3 +918,145 @@ def test_gate_never_writes_launch_receipt_while_any_criterion_unmet(tmp_path, mo
     assert rewire["gate_count_after"]["n_unmet"] >= 1
     assert rewire["still_refused_if_any_unmet"] is True
     assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False
+
+
+# ---------------------------------------------------------------------------
+# G005: CAPABLE vs AVAILABLE are separate; the gate names which it refuses on.
+# ---------------------------------------------------------------------------
+
+
+_LOCK_RELS = (
+    ".hcli/locks/protected-accelerator-bench.lock",
+    ".hcli/locks/qwen-protected-bench.lock",
+)
+
+
+def _lock_mtime_snapshot() -> dict[str, tuple[int, int] | None]:
+    paths = [ol.REPO / rel for rel in _LOCK_RELS]
+    paths.append(Path("/tmp/hawking_protected_window.lease"))
+    out: dict[str, tuple[int, int] | None] = {}
+    for p in paths:
+        try:
+            st = p.stat()
+            out[str(p)] = (st.st_mtime_ns, st.st_size)
+        except FileNotFoundError:
+            out[str(p)] = None
+    return out
+
+
+def test_no_window_host_reports_capable_true_and_available_false():
+    """A busy GPU is not scheduler-incapability."""
+    row = ol._eval_protected_scheduling()
+    assert row["PROTECTED_SCHEDULER_CAPABLE"] is True
+    assert row["PROTECTED_WINDOW_AVAILABLE"] is False
+    assert row["met"] is True
+    assert row["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
+    assert row["start_of_protected_work"]["allowed"] is False
+    assert row["operational"]["resident_operational"] is True
+    for flag, val in row["operational"]["flags"].items():
+        assert val is True, f"{flag} was folded into the closed window"
+
+
+def test_gate_names_which_of_the_two_it_refuses_on(monkeypatch):
+    """A refusal must name CAPABLE or AVAILABLE, never collapse them."""
+
+    def report(*, capable: bool, available: bool, klass: str, invoked: bool = True):
+        return {
+            "invoked": invoked,
+            "why": "injected",
+            "PROTECTED_SCHEDULER_CAPABLE": capable,
+            "PROTECTED_WINDOW_AVAILABLE": available,
+            "contamination_class": klass,
+            "lease_present": bool(available),
+            "live_verdict": "RUNNABLE" if (capable and available) else "BLOCKED_ON_PROTECTED_WINDOW",
+            "did_not_fabricate_lease": True,
+            "did_not_flock": True,
+            "receipt_path_taken": "injected",
+            "import_path_taken": "injected",
+            "availability_overridden_because_not_quiescent": False,
+        }
+
+    monkeypatch.setattr(
+        ol,
+        "_protected_capability_report",
+        lambda: report(capable=True, available=False, klass="HEAVY"),
+    )
+    closed = ol._eval_protected_scheduling()
+    assert closed["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
+    assert "REFUSED on PROTECTED_WINDOW_AVAILABLE" in closed["reason"]
+    assert "UNMET: REFUSED on PROTECTED_SCHEDULER_CAPABLE" not in closed["reason"]
+    assert closed["met"] is True
+
+    monkeypatch.setattr(
+        ol,
+        "_protected_capability_report",
+        lambda: report(capable=False, available=False, klass="HEAVY"),
+    )
+    dead = ol._eval_protected_scheduling()
+    assert dead["refusing_on"] == "PROTECTED_SCHEDULER_CAPABLE"
+    assert "REFUSED on PROTECTED_SCHEDULER_CAPABLE" in dead["reason"]
+    assert dead["met"] is False
+    assert dead["PROTECTED_WINDOW_AVAILABLE"] is False
+
+    monkeypatch.setattr(
+        ol,
+        "_protected_capability_report",
+        lambda: report(capable=True, available=True, klass="QUIESCENT"),
+    )
+    open_window = ol._eval_protected_scheduling()
+    assert open_window["refusing_on"] is None
+    assert open_window["met"] is True
+    assert open_window["PROTECTED_WINDOW_AVAILABLE"] is True
+    assert open_window["start_of_protected_work"]["allowed"] is True
+    assert "not refused on either field" in open_window["reason"]
+
+
+def test_eval_protected_scheduling_does_not_fabricate_a_lease_or_seize_a_lock():
+    """Evaluating the criterion is a READ. Lock files must not appear or change."""
+    before = _lock_mtime_snapshot()
+    locks_dir = ol.REPO / ".hcli" / "locks"
+    existed = locks_dir.exists()
+    row = ol._eval_protected_scheduling()
+    after = _lock_mtime_snapshot()
+    assert after == before
+    if not existed:
+        assert not locks_dir.exists(), "evaluator must not create .hcli/locks"
+    assert row["did_not_fabricate_lease"] is True
+    assert row["did_not_flock"] is True
+    assert row["operational"]["notes"]["sidecar_must_not_seize_lock"] == "true"
+
+
+def test_eval_protected_scheduling_source_does_not_and_lease_ok():
+    """The old lease_ok AND into invoke/schedule/frontier/refill must stay gone."""
+    import inspect
+
+    src = inspect.getsource(ol._eval_protected_scheduling)
+    tree = ast.parse(src)
+    names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    assert "lease_ok" not in names
+    assert "gpu_auth" not in names
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+            continue
+        if node.func.id != "operational_bar":
+            continue
+        for kw in node.keywords:
+            if kw.arg not in {"invoke", "schedule", "frontier", "refill"}:
+                continue
+            dumped = ast.dump(kw.value)
+            assert "available" not in dumped, f"{kw.arg} still ANDs availability"
+            assert "lease" not in dumped.lower(), f"{kw.arg} still ANDs a lease"
+    body = inspect.getsource(ol._protected_capability_report)
+    assert "capability_report" in body
+    file_tree = ast.parse(pathlib.Path(ol.__file__).read_text())
+    imported: set[str] = set()
+    for node in ast.walk(file_tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+    assert "fcntl" not in imported
+    src_all = pathlib.Path(ol.__file__).read_text()
+    assert "import fcntl" not in src_all
+    assert "fcntl.flock" not in src_all
+    assert "LOCK_EX" not in src_all

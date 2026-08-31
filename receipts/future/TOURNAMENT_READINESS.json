@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:47:27Z",
+  "recorded_at": "2026-08-30T23:17:57Z",
   "recorded_by": "tools/future/tournament.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -489,6 +489,6 @@
   "source": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_SCOREBOARD.json",
   "status": "DERIVED_RECEIPT_VIEW"
  },
- "seal_sha256": "66877413ae0cee8cbf45727fbd3315c4db15e73c408417f27bc1cf79cd3a8a20",
+ "seal_sha256": "08543da13104aa8ce9396d72ab810f2930a28cd33378f7640e94c3721909601f",
  "version": 1
 }

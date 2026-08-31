@@ -153,7 +153,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:57:10Z",
+  "recorded_at": "2026-08-30T23:33:30Z",
   "recorded_by": "tools/future/negative_index.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1278,7 +1278,7 @@
   "Sparse-checkout ingest via git show HEAD:<path> so missing-on-disk is not treated as missing-in-git."
  ],
  "gpu_authority": false,
- "head": "0e4e9a93b3a196ba5c4472bf6d1998be6ae2dc75",
+ "head": "2dd9fc8c0a0113e389e25842bc832c1c1c7accb5",
  "how_to_use": {
   "proposal_keys": [
    "model",
@@ -18453,6 +18453,6 @@
   }
  ],
  "schema": "hawking.future.negative_index.v1",
- "seal_sha256": "6f49e0efc2ba4945589ba558d436332963e8344a499bae9f27ff762e60027dd8",
+ "seal_sha256": "489148a3758b0de3b023da8fa4c58c6db40d2237bea2b84e484a5421cd614a29",
  "version": 1
 }

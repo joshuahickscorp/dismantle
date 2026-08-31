@@ -7,6 +7,12 @@ A guard nobody has watched fail is not a guard. These tests actually fire:
 - model_open_count stays 1 across a multi-request session; a climb is a defect
 - a malformed reply raises rather than being treated as an answer
 - no hardware-named field is written to any receipt
+- a repeating fragment is DEGENERATE, never CLEAN
+- a budget-hit mid-sentence is TRUNCATED, never CLEAN
+- the applied template is the artifact's own chat_template.jinja
+- session turns are templated, not User:/Assistant: concatenated
+- thinking arm is recorded; the sealed false is not assumed obeyed on the body
+- hbm_doctor.py is not regex-fished out of the measured loop garbage
 
 No pytest.skip: absent inputs are asserted as refusals. The 9.9GB sealed body
 is never spawned; every process here is a protocol double.
@@ -426,3 +432,329 @@ def test_write_receipt_rejects_hardware_named_field(tmp_path: Path, monkeypatch)
     trap = RECEIPTS / "RESIDENT_PROVIDER_HW_TRAP.json"
     if trap.is_file():
         trap.unlink()
+
+
+# ---------------------------------------------------------------------------
+# Chat template: the artifact's own jinja, not an invented format
+# ---------------------------------------------------------------------------
+
+
+GOLD_FRANCE_THINK_OFF = (
+    "<|im_start|>user\n"
+    f"{rp.PROMPT_FRANCE}<|im_end|>\n"
+    "<|im_start|>assistant\n"
+    "<think>\n\n</think>\n\n"
+)
+GOLD_FRANCE_THINK_ON = (
+    "<|im_start|>system\n"
+    f"{rp.REASONING_XHIGH}<|im_end|>\n"
+    "<|im_start|>user\n"
+    f"{rp.PROMPT_FRANCE}<|im_end|>\n"
+    "<|im_start|>assistant\n"
+    "<think>\n"
+)
+
+
+def test_template_came_from_artifact_chat_template_jinja():
+    binding = rp.load_chat_template()
+    artifact = Path("/Users/scammermike/noetic/NOETIC_PARENT_A") / "chat_template.jinja"
+    assert binding["present"] is True, binding.get("reason")
+    assert binding["filename"] == "chat_template.jinja"
+    assert artifact.is_file(), binding.get("reason")
+    assert binding["sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
+    assert Path(binding["path"]).resolve() == artifact.resolve()
+    assert binding["tokenizer_config_chat_template_match"] is True
+
+
+def test_render_matches_artifact_gold_thinking_off():
+    binding = rp.load_chat_template()
+    assert binding["present"] is True, binding.get("reason")
+    got = rp.render_chat(
+        [{"role": "user", "content": rp.PROMPT_FRANCE}],
+        enable_thinking=False,
+        template_text=binding["text"],
+        template_sha256=binding["sha256"],
+    )
+    assert got["text"] == GOLD_FRANCE_THINK_OFF
+    assert got["source_sha256"] == binding["sha256"]
+    assert got["templated"] is True
+    assert got["concatenated"] is False
+    assert "User: " not in got["text"]
+    assert got["applied_arm"] == "thinking_off"
+    assert got["text"].endswith(rp.CLOSED_THINK)
+
+
+def test_render_thinking_on_arm_is_available_and_not_the_applied_default():
+    binding = rp.load_chat_template()
+    assert binding["present"] is True, binding.get("reason")
+    got = rp.render_chat(
+        [{"role": "user", "content": rp.PROMPT_FRANCE}],
+        enable_thinking=True,
+        template_text=binding["text"],
+        template_sha256=binding["sha256"],
+    )
+    assert got["text"] == GOLD_FRANCE_THINK_ON
+    assert got["applied_arm"] == "thinking_on"
+    declared = rp.load_declared_thinking()
+    assert declared["present"] is True
+    assert declared["enable_thinking"] is False
+    assert got["enable_thinking"] is not declared["enable_thinking"]
+
+
+def test_session_turns_are_templated_not_concatenated():
+    binding = rp.load_chat_template()
+    assert binding["present"] is True, binding.get("reason")
+    got = rp.render_chat(
+        [
+            {"role": "user", "content": "one"},
+            {"role": "assistant", "content": "two"},
+            {"role": "user", "content": "three"},
+        ],
+        enable_thinking=False,
+        template_text=binding["text"],
+        template_sha256=binding["sha256"],
+    )
+    assert "<|im_start|>user\none<|im_end|>" in got["text"]
+    assert "<|im_start|>assistant\n<think>\n\n</think>\n\ntwo<|im_end|>" in got["text"]
+    assert "<|im_start|>user\nthree<|im_end|>" in got["text"]
+    assert "User: one" not in got["text"]
+    assert "Assistant: two" not in got["text"]
+    assert got["text"].endswith(rp.CLOSED_THINK)
+
+
+def test_foreign_template_is_refused():
+    with pytest.raises(rp.TemplateRefuse):
+        rp.render_chat(
+            [{"role": "user", "content": "hi"}],
+            enable_thinking=False,
+            template_text="not a qwen chat template",
+        )
+
+
+def test_tool_role_is_refused_not_guessed():
+    binding = rp.load_chat_template()
+    assert binding["present"] is True, binding.get("reason")
+    with pytest.raises(rp.TemplateRefuse) as exc:
+        rp.render_chat(
+            [{"role": "tool", "content": "x"}, {"role": "user", "content": "q"}],
+            enable_thinking=False,
+            template_text=binding["text"],
+        )
+    assert "tool" in exc.value.reason
+
+
+def test_empty_messages_refused():
+    binding = rp.load_chat_template()
+    assert binding["present"] is True, binding.get("reason")
+    with pytest.raises(rp.TemplateRefuse):
+        rp.render_chat([], enable_thinking=False, template_text=binding["text"])
+
+
+def test_declared_thinking_arm_is_false_not_assumed_obeyed():
+    arm = rp.load_declared_thinking()
+    assert arm["present"] is True
+    assert arm["enable_thinking"] is False
+    assert arm["source"].endswith("generation.enable_thinking")
+    rec = rp.thinking_arm_record(
+        declared=arm,
+        applied=False,
+        observed="no_think_tag",
+        observed_on="protocol_double",
+    )
+    assert rec["config_obeyed"] == "UNPROBED_ON_SEALED_BODY"
+    assert rec["applied"] is False
+    live = rp.thinking_arm_record(
+        declared=arm,
+        applied=False,
+        observed="thinking_opened",
+        observed_on="sealed_resident",
+    )
+    assert live["config_obeyed"] is False
+
+
+# ---------------------------------------------------------------------------
+# Stop + quality. Negative controls that actually reject.
+# ---------------------------------------------------------------------------
+
+
+def test_repeating_fragment_is_degenerate_never_clean():
+    got = rp.finalize_generation(
+        text=rp.MEASURED_DEGENERATE_CHOICE,
+        generated_tokens=64,
+        max_new_tokens=64,
+    )
+    assert got["quality"] == rp.QUALITY_DEGENERATE
+    assert rp.quality(
+        {
+            "raw_text": rp.MEASURED_DEGENERATE_CHOICE,
+            "generated_tokens": 64,
+            "max_new_tokens": 64,
+        }
+    ) == rp.QUALITY_DEGENERATE
+    assert got["text"] != "hbm_doctor.py"
+    assert "hbm_doctor.py" not in got["text"]
+
+
+def test_status_loop_is_degenerate_never_clean():
+    got = rp.finalize_generation(
+        text=rp.MEASURED_DEGENERATE_STATUS,
+        generated_tokens=48,
+        max_new_tokens=48,
+    )
+    assert got["quality"] == rp.QUALITY_DEGENERATE
+    assert got["text"] in {"", "h"} or got["quality"] == rp.QUALITY_DEGENERATE
+
+
+def test_truncated_mid_sentence_is_not_clean():
+    got = rp.finalize_generation(
+        text="A status label is a claim about",
+        generated_tokens=16,
+        max_new_tokens=16,
+    )
+    assert got["quality"] == rp.QUALITY_TRUNCATED
+    assert got["stopped_at"] == "max_new_tokens"
+    assert rp.quality(
+        {
+            "text": "A status label is a claim about",
+            "generated_tokens": 16,
+            "max_new_tokens": 16,
+        }
+    ) == rp.QUALITY_TRUNCATED
+
+
+def test_clean_paris_is_extractable():
+    got = rp.finalize_generation(
+        text=rp.MEASURED_CLEAN_FRANCE,
+        generated_tokens=3,
+        max_new_tokens=32,
+        new_token_ids=[11, 12, rp.EOS_IM_END_ID],
+    )
+    assert got["quality"] == rp.QUALITY_CLEAN
+    assert got["text"] == "Paris"
+    assert got["extractable"] is True
+
+
+def test_cut_at_im_end_keeps_the_answer():
+    got = rp.finalize_generation(
+        text="hbm_doctor.py<|im_end|>\n<|im_start|>user\njunk",
+        generated_tokens=8,
+        max_new_tokens=32,
+    )
+    assert got["text"] == "hbm_doctor.py"
+    assert got["quality"] == rp.QUALITY_CLEAN
+    assert got["stopped_at"] == "eos_im_end"
+
+
+def test_cut_at_fabricated_turn_does_not_fish_the_middle():
+    # Prefix empty: the measured defect starts with Assistant:. Must not
+    # become CLEAN by scanning ahead for a filename.
+    got = rp.finalize_generation(
+        text="\nAssistant:\n\nhbm_doctor.py\n",
+        generated_tokens=8,
+        max_new_tokens=32,
+        new_token_ids=[rp.EOS_IM_END_ID],
+    )
+    assert got["text"] != "hbm_doctor.py"
+    assert got["quality"] == rp.QUALITY_DEGENERATE
+
+
+def test_answer_then_one_fabricated_turn_is_clean_cut():
+    got = rp.finalize_generation(
+        text="hbm_doctor.py\nAssistant:\nmore",
+        generated_tokens=6,
+        max_new_tokens=32,
+        new_token_ids=[1, 2, 3, rp.EOS_IM_END_ID],
+    )
+    assert got["text"] == "hbm_doctor.py"
+    assert got["quality"] == rp.QUALITY_CLEAN
+    assert got["stopped_at"] in {"fabricated_turn", "eos_token_id"}
+
+
+def test_quality_without_budget_refuses_rather_than_calling_clean():
+    with pytest.raises(rp.QualityUnproven):
+        rp.quality({"text": "Paris"})
+    with pytest.raises(rp.QualityUnproven):
+        rp.finalize_generation(text="maybe done", generated_tokens=None, max_new_tokens=8)
+
+
+def test_is_degenerate_negative_on_real_answers():
+    assert rp.is_degenerate("Paris") is False
+    assert rp.is_degenerate("hbm_doctor.py") is False
+    assert rp.is_degenerate(
+        "A status label is a claim; the world state is independently true."
+    ) is False
+    assert rp.is_degenerate(rp.MEASURED_DEGENERATE_CHOICE) is True
+
+
+def test_ask_quality_scripted_three_prompts_clean(provider, tmp_path: Path):
+    provider.start(
+        rp.write_protocol_double(tmp_path / "q", mode="quality_scripted"),
+        ready_timeout_s=rp.DOUBLE_READY_TIMEOUT_S,
+    )
+    france = provider.ask("s1", rp.PROMPT_FRANCE, 32)
+    choice = provider.ask("s2", rp.PROMPT_CHOICE, 32)
+    status = provider.ask("s3", rp.PROMPT_STATUS, 32)
+    assert france["quality"] == rp.QUALITY_CLEAN
+    assert france["text"] == "Paris"
+    assert choice["quality"] == rp.QUALITY_CLEAN
+    assert choice["text"] == "hbm_doctor.py"
+    assert status["quality"] == rp.QUALITY_CLEAN
+    assert status["text"]
+    assert france["templated"] is True
+    assert france["thinking_arm"]["applied"] is False
+    assert france["thinking_arm"]["declared"] is False
+    assert france["thinking_arm"]["config_obeyed"] == "UNPROBED_ON_SEALED_BODY"
+    wire = provider._last_wire_prompt or ""
+    assert "<|im_start|>user" in wire
+    assert rp.CLOSED_THINK in wire
+    assert "User: " not in wire
+
+
+def test_ask_session_history_is_templated(provider, tmp_path: Path):
+    provider.start(
+        rp.write_protocol_double(tmp_path / "hist", mode="quality_scripted"),
+        ready_timeout_s=rp.DOUBLE_READY_TIMEOUT_S,
+    )
+    provider.ask("hist", "one", 8)
+    provider.ask("hist", "two", 8)
+    wire = provider._last_wire_prompt or ""
+    assert "<|im_start|>user\none<|im_end|>" in wire
+    assert "User: one" not in wire
+    assert "Assistant: " not in wire
+    snap = provider.sessions()
+    assert snap["templated"] is True
+    assert snap["concatenated"] is False
+
+
+def test_ask_degenerate_mode_is_labelled(provider, tmp_path: Path):
+    provider.start(
+        rp.write_protocol_double(tmp_path / "d", mode="degenerate"),
+        ready_timeout_s=rp.DOUBLE_READY_TIMEOUT_S,
+    )
+    got = provider.ask("s", rp.PROMPT_CHOICE, 64)
+    assert got["quality"] == rp.QUALITY_DEGENERATE
+    assert got["text"] != "hbm_doctor.py"
+    assert rp.quality(got) == rp.QUALITY_DEGENERATE
+
+
+def test_ask_truncated_mode_is_labelled(provider, tmp_path: Path):
+    provider.start(
+        rp.write_protocol_double(tmp_path / "t", mode="truncated"),
+        ready_timeout_s=rp.DOUBLE_READY_TIMEOUT_S,
+    )
+    got = provider.ask("s", rp.PROMPT_STATUS, 16)
+    assert got["quality"] == rp.QUALITY_TRUNCATED
+    assert rp.quality(got) == rp.QUALITY_TRUNCATED
+
+
+def test_build_records_unprobed_sealed_quality():
+    doc = json.loads(rp.build().read_text())
+    assert doc["quality_probes"]["proved_on_sealed_body"] is False
+    assert doc["thinking_arm"]["observed_on_sealed_body"] == "UNPROBED"
+    assert doc["thinking_arm"]["declared"] is False
+    assert doc["thinking_arm"]["applied_arm"] == "thinking_off"
+    assert doc["chat_template"]["filename"] == "chat_template.jinja"
+    assert doc["chat_template"]["present"] is True
+    assert "text" not in doc["chat_template"]
+    assert doc["started_sealed_resident"] is False
+    assert "tps" not in json.dumps(doc["quality_probes"])

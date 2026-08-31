@@ -17,7 +17,17 @@ import pytest
 
 from tools.future import autonomy_run as ar
 from tools.future import negative_index as ni
-from tools.future._common import REPO
+from tools.future._common import REPO, git
+
+
+def _source_resolves(src: str) -> bool:
+    """A citation must resolve. Sparse checkout absence is not git absence."""
+    if not src:
+        return False
+    if (REPO / src).exists():
+        return True
+    listed = git("ls-tree", "-r", "--name-only", "HEAD", "--", src)
+    return src in listed.splitlines() or listed.strip() == src
 
 
 def test_proposal_space_is_the_fixed_taxonomy_not_the_set_of_dead_ideas():
@@ -72,7 +82,7 @@ def test_every_rejection_cites_a_scar_source_that_exists_on_disk():
                     continue
                 src = str(dead.get("source_path") or "")
                 assert src, "refusal with no source_path cannot be cited"
-                assert (REPO / src).exists(), f"cited scar source is absent: {src}"
+                assert _source_resolves(src), f"cited scar source is absent: {src}"
                 assert dead.get("reopen_condition"), "a scar with no reopen condition is a wall"
                 checked += 1
                 if checked >= 25:
@@ -258,3 +268,198 @@ def test_a_composed_unit_that_needs_a_blocked_resource_sleeps(monkeypatch):
         assert unit.get("id")
     for unit in composed["units"]:
         assert not unit.get("gpu_authority"), "a runnable composed unit claimed GPU authority"
+
+
+def test_detached_started_without_a_live_process_is_refused():
+    """NEGATIVE CONTROL: a started event with no live pid is the hardcoded-True failure."""
+    doc = {"events": []}
+    with pytest.raises(ar.EmitRefused, match="no live pid"):
+        ar.emit_detached_started(doc, {"job_id": "ghost"}, t_s=0)
+    with pytest.raises(ar.EmitRefused, match="not alive"):
+        ar.emit_detached_started(
+            doc, {"job_id": "ghost", "pid": 2147483647, "launched_at": 0.0}, t_s=0
+        )
+    assert not [e for e in doc.get("events") or [] if e.get("kind") == "detached_started"]
+
+
+def test_detached_started_requires_a_live_pid(tmp_path):
+    proc = __import__("subprocess").Popen(
+        [__import__("sys").executable, "-c", "import time; time.sleep(8)"]
+    )
+    try:
+        doc = ar.emit_detached_started(
+            {"events": []},
+            {"job_id": "live-job", "pid": proc.pid, "launched_at": 1.5},
+            t_s=0,
+        )
+        event = doc["events"][-1]
+        assert event["kind"] == "detached_started"
+        assert event["payload"]["job_id"] == "live-job"
+        assert event["payload"]["pid"] == proc.pid
+    finally:
+        proc.kill()
+        proc.wait()
+
+
+def test_priority_altered_with_unchanged_order_is_refused():
+    """NEGATIVE CONTROL: emitting before == after would score a reorder that did not happen."""
+    doc = {"events": []}
+    same = ["a", "b", "c"]
+    with pytest.raises(ar.EmitRefused, match="before == after"):
+        ar.emit_priority_altered(doc, same, list(same), t_s=0, cites=["receipts/future/X.json"])
+    assert not [e for e in doc.get("events") or [] if e.get("kind") == "priority_altered"]
+    doc = ar.emit_priority_altered(
+        {"events": []}, ["a", "b"], ["b", "a"], t_s=0, cites=["receipts/future/X.json"]
+    )
+    event = doc["events"][-1]
+    assert event["kind"] == "priority_altered"
+    assert event["payload"]["before"] == ["a", "b"]
+    assert event["payload"]["after"] == ["b", "a"]
+    assert event["payload"]["before"] != event["payload"]["after"]
+
+
+def test_negative_science_refusal_requires_the_scar_source_path():
+    """NEGATIVE CONTROL: a refusal that cites nothing refused nothing."""
+    doc = {"events": []}
+    query = {"model": "qwen3-80b", "organ": "routed_experts", "hypothesis_family": "x"}
+    with pytest.raises(ar.EmitRefused, match="source_path"):
+        ar.emit_negative_science_refusal(doc, {"scar_id": "scar-1", "refused": True}, query, t_s=0)
+    assert not [e for e in doc.get("events") or [] if e.get("kind") == "negative_science_refusal"]
+
+    scars = ni.ingest()
+    dead = None
+    for parent in ar.LIVE_PARENTS:
+        for organ in ("routed_experts", "router", "attention"):
+            for fam in ar.FAMILY_TAXONOMY:
+                dead = ni.refuse_if_dead(
+                    {"model": parent, "organ": organ, "hypothesis_family": fam}, scars
+                )
+                if dead and dead.get("source_path"):
+                    break
+            if dead and dead.get("source_path"):
+                break
+        if dead and dead.get("source_path"):
+            break
+    assert dead and dead.get("source_path"), "no real scar refusal available to cite"
+    src = dead["source_path"]
+    assert _source_resolves(src), f"cited scar source is absent: {src}"
+    doc = ar.emit_negative_science_refusal(
+        {"events": []},
+        dead,
+        {"model": dead.get("model"), "organ": dead.get("organ"),
+         "hypothesis_family": dead.get("hypothesis_family")},
+        t_s=0,
+    )
+    event = doc["events"][-1]
+    assert event["kind"] == "negative_science_refusal"
+    assert event["payload"]["source_path"] == src
+    assert src in (event.get("cites") or [])
+
+
+def test_reorder_from_evidence_mutates_the_queue_or_returns_none():
+    """The event is a report of a mutation. A no-op must not claim a reorder."""
+    cause = {
+        "capability": "negative_index.py",
+        "composed_unit_id": "WU.CAUSE.neg",
+        "frontier_id": "FT.VERIFICATION.negative-index",
+    }
+    effect = {
+        "capability": "ngram_school.py",
+        "composed_unit_id": "WU.EFFECT.ngram",
+        "frontier_id": "FT.MODEL_REPRESENTATION.ngram-school",
+    }
+    other = {
+        "capability": "freshness.py",
+        "frontier_id": "FT.EXPERIMENT_TURNAROUND.refresh",
+    }
+    queue = [cause, other, effect]
+    pairs = [{
+        "cause_module": "negative_index.py",
+        "effect_module": "ngram_school.py",
+        "cause_frontier_id": "FT.VERIFICATION.negative-index",
+        "effect_frontier_id": "FT.MODEL_REPRESENTATION.ngram-school",
+    }]
+    changed = ar.reorder_queue_from_evidence(queue, 1, cause, pairs)
+    assert changed is not None
+    before, after = changed
+    assert before != after
+    assert queue[1]["capability"] == "ngram_school.py"
+    assert ar.reorder_queue_from_evidence(queue, 1, cause, pairs) is None
+
+
+def _overlap_from_timestamps(events):
+    """Interval overlap from started_at/finished_at, not from adjacency of kinds."""
+    starts, ends = {}, {}
+    for event in events:
+        payload = event.get("payload") or {}
+        jid = payload.get("job_id")
+        if not jid:
+            continue
+        if event.get("kind") == "detached_started":
+            starts[jid] = float(payload.get("started_at") or event.get("t_s") or 0)
+        elif event.get("kind") in {"detached_completed", "detached_failed"}:
+            ends[jid] = float(payload.get("finished_at") or event.get("t_s") or 0)
+    jobs = list(starts)
+    for i, a in enumerate(jobs):
+        for b in jobs[i + 1 :]:
+            sa, sb = starts[a], starts[b]
+            ea = ends.get(a, sa + 1e9)
+            eb = ends.get(b, sb + 1e9)
+            overlap = min(ea, eb) - max(sa, sb)
+            if overlap > 0:
+                return True, a, b, overlap
+    return False, None, None, 0.0
+
+
+def test_short_smoke_emits_all_four_with_real_backing(tmp_path):
+    """End to end: the four missing 30m conditions, each backed by the act."""
+    tl = tmp_path / "smoke.json"
+    ar.run(trial="15m", duration_s=40, timeline=tl)
+    doc = json.loads(tl.read_text())
+    events = doc["events"]
+    kinds = {e["kind"] for e in events}
+
+    assert "result_ingested" in kinds
+    assert "idea_rejected" in kinds
+    assert "workunit_sleeping" in kinds
+    assert "mission_state_written" in kinds
+    assert not (kinds & {"idle", "awaiting_instructions", "all_tasks_complete"})
+
+    started = [e for e in events if e["kind"] == "detached_started"]
+    assert len(started) >= 2, "need two real detached jobs, not a single handle"
+    for event in started:
+        pid = event["payload"].get("pid")
+        assert isinstance(pid, int) and pid > 0
+        assert event["payload"].get("job_id")
+        assert event["payload"].get("started_at")
+    overlapped, a, b, overlap = _overlap_from_timestamps(events)
+    assert overlapped, "detached_started events were adjacent, not an open interval"
+    assert overlap > 0
+
+    refusals = [e for e in events if e["kind"] == "negative_science_refusal"]
+    queries = [e for e in events if e["kind"] == "negative_science_query"]
+    assert refusals or queries, "use_negative_science has nothing to score"
+    assert queries, "consulted the index without emitting the query the judge scores"
+    assert refusals, "refused ideas without emitting negative_science_refusal"
+    for event in refusals[:20]:
+        src = event["payload"].get("source_path")
+        assert src, "refusal carried no scar source path"
+        assert _source_resolves(src), f"cited scar source is absent: {src}"
+        assert event.get("cites")
+
+    altered = [e for e in events if e["kind"] == "priority_altered"]
+    assert altered, "no priority_altered; the reorder condition cannot be met"
+    for event in altered:
+        before, after = event["payload"].get("before"), event["payload"].get("after")
+        assert isinstance(before, list) and isinstance(after, list)
+        assert before != after
+        assert event.get("cites")
+
+    ingests = [e for e in events if e["kind"] == "result_ingested"]
+    refills = [e for e in events if e["kind"] == "work_refilled"]
+    assert refills, "no work_refilled after leaving frontier headroom"
+    t_ing = min(int(e.get("t_s") or 0) for e in ingests)
+    later = [e for e in refills if int(e.get("t_s") or 0) > t_ing]
+    assert later, "refill did not follow an ingest (same-second refill is not after)"
+    for event in later:
+        assert event["payload"].get("unit_ids"), "a refill that added nothing is not a refill"

@@ -1,21 +1,25 @@
-"""DRIVE THE REAL RESIDENT — own one model body; serve many logical sessions.
+"""DRIVE THE REAL RESIDENT — own one body; return the model's ANSWER, not a transcript.
 
-The sealed-3.14 resident already starts and generates
-(receipts/future/evidence/RESIDENT_LIVE_PROBE.json). Nothing in this sidecar
-owned the process. This module does: spawn, wait for status ready, correlated
-JSONL ask, independent logical sessions over the SAME weights, health, stop,
-and a restart that reaches ready again and serves.
+The sealed-3.14 resident already starts and generates. This module owns the
+process AND the prompt/stop contract the live probe never had: apply the
+artifact's own chat_template.jinja, honour EOS and turn boundaries, detect
+degenerate repetition, and label CLEAN | TRUNCATED | DEGENERATE so a decision
+is extractable without a human fishing it out of loop garbage.
 
-Refuses: a second copy of a 9.9GB body for concurrency; an ask before ready
-(silently queued forever); treating a dead pid as healthy-with-zero-RSS;
-rounding a malformed reply into an answer; copying hardware-named fields into
-a receipt; stdin=DEVNULL (that is why the first live probe died — EOF is not
-a failed start); a restart-per-request.
+The cognition is there (the model chose hbm_doctor.py). The harness was wrong:
+raw concatenated text made the model continue a fabricated transcript, and
+generation ran until max_new_tokens instead of stopping at the turn.
+
+Refuses: a second 9.9GB body; ask before ready; dead pid as healthy-with-zero;
+malformed reply as an answer; hardware-named receipt fields; stdin=DEVNULL;
+inventing a chat format when the jinja is missing or fails its anchors; a
+User:/Assistant: concatenation; calling a repeating fragment CLEAN; calling a
+budget-hit mid-sentence CLEAN; regex-fishing an answer out of loop garbage.
 
 Cannot establish: a qualified throughput number (no GPU lease; timings are
-SELF_MEASURED_DIRTY and rank nothing); that the 9.9GB sealed body is running
-right now (a live campaign holds the machine; build() proves the driver
-against a protocol double that speaks hawking.qwen38.resident.v1).
+SELF_MEASURED_DIRTY); that the 9.9GB sealed body, once templated, answers the
+three quality probes CLEAN — build() does not spawn it; a live campaign holds
+the machine. Observed thinking-arm obedience is UNPROBED on the sealed body.
 """
 from __future__ import annotations
 
@@ -27,6 +31,7 @@ import hashlib
 import json
 import os
 import queue
+import re
 import signal
 import subprocess
 import tempfile
@@ -35,7 +40,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator, Mapping
+from typing import Any, Iterator, Mapping, Sequence
 
 from hcli.resources import pid_is_alive, process_start_token
 from tools.future._common import (
@@ -85,6 +90,7 @@ REPLY_KEEP: tuple[str, ...] = (
     "resident_pid",
     "max_seq_len",
     "error",
+    "new_token_ids",
 )
 READY_KEEP: tuple[str, ...] = (
     "status",
@@ -101,6 +107,87 @@ READY_KEEP: tuple[str, ...] = (
 # resident puts on the wire and must never be copied into a sidecar document.
 RATE_FIELDS = frozenset({"decode_tps", "complete_tps"})
 FORBIDDEN_WIRE = HARDWARE_FIELDS | RATE_FIELDS
+
+# Quality is computed, never assumed. A validator nobody has watched reject
+# is a validator that will silently drift into fiction.
+QUALITY_CLEAN = "CLEAN"
+QUALITY_TRUNCATED = "TRUNCATED"
+QUALITY_DEGENERATE = "DEGENERATE"
+QUALITY_LABELS = (QUALITY_CLEAN, QUALITY_TRUNCATED, QUALITY_DEGENERATE)
+
+# tokenizer_config.json / generation_config.json / qwen38_geometry.rs agree.
+# Used only to recognise a stop, never as a hardware claim.
+EOS_IM_END_ID = 248046
+EOS_EOT_ID = 248044
+EOS_TOKEN_IDS = (EOS_IM_END_ID, EOS_EOT_ID)
+
+IM_START = "<|im_start|>"
+IM_END = "<|im_end|>"
+EOT = "<|endoftext|>"
+CLOSED_THINK = "<think>\n\n</think>\n\n"
+OPEN_THINK = "<think>\n"
+CHAT_TEMPLATE_NAME = "chat_template.jinja"
+
+# Jinja arm when enable_thinking is true / undefined. Copied from the artifact
+# template; not an invented system prompt.
+REASONING_XHIGH = (
+    "Reasoning effort is set to xhigh. Please think carefully through the task, "
+    "validate key assumptions, consider plausible alternatives, and prioritize "
+    "correctness, consistency, and clarity in the final answer."
+)
+
+# Anchors the renderer requires of the artifact jinja. A foreign/rewritten
+# template fails closed rather than silently changing the token stream.
+TEMPLATE_ANCHORS: tuple[str, ...] = (
+    "{%- if add_generation_prompt %}",
+    "{{- '<|im_start|>assistant\\n' }}",
+    "enable_thinking is defined and enable_thinking is false",
+    "{{- '<think>\\n\\n</think>\\n\\n' }}",
+    "{{- '<think>\\n' }}",
+    "{%- if enable_thinking is undefined or enable_thinking is true %}",
+    "{{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}",
+)
+
+# Stub used only when the sealed artifact is not on disk. Must carry every
+# anchor so the renderer still refuses a foreign dialect.
+QWEN_TEMPLATE_STUB = (
+    "{%- if enable_thinking is undefined or enable_thinking is true %}\n"
+    "{%- endif %}\n"
+    "{%- for message in messages %}\n"
+    "    {{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}\n"
+    "{%- endfor %}\n"
+    "{%- if add_generation_prompt %}\n"
+    "    {{- '<|im_start|>assistant\\n' }}\n"
+    "    {%- if enable_thinking is defined and enable_thinking is false %}\n"
+    "        {{- '<think>\\n\\n</think>\\n\\n' }}\n"
+    "    {%- else %}\n"
+    "        {{- '<think>\\n' }}\n"
+    "    {%- endif %}\n"
+    "{%- endif %}\n"
+)
+
+PROMPT_FRANCE = "What is the capital of France? Answer in one word."
+PROMPT_CHOICE = (
+    "Choose ONE and reply with only its name: freshness.py, "
+    "negative_index.py, hbm_doctor.py. Which most likely reveals a stale "
+    "artifact?"
+)
+PROMPT_STATUS = "In one sentence: why is a status label not the same as the world state?"
+
+# Measured on the real resident with the old harness (raw prompt, no stop).
+# Negative control: this must never be classified CLEAN, and hbm_doctor.py
+# must not be regex-fished out of it.
+MEASURED_DEGENERATE_CHOICE = (
+    "\nAssistant:\n\nAssistant:\n\nhbm_doctor.py\n\nAssistant:\n\nhbm_do\n\nAssistant:\n\nh"
+)
+MEASURED_DEGENERATE_STATUS = (
+    "\nAssistant:\n\nAssistant:\n\nh\n\nAssistant:\n\nh\n\nAssistant:\n\nh"
+)
+MEASURED_CLEAN_FRANCE = "\n\nParis"
+
+_FABRICATED_TURN = re.compile(r"(?:^|\n)(?:Assistant|User|System)\s*:")
+_ASSISTANT_TURN = re.compile(r"(?:^|\n)\s*Assistant\s*:")
+_USER_TURN = re.compile(r"(?:^|\n)\s*User\s*:")
 
 CLAIM_BOUNDARY = (
     "Static sidecar artifact. No hardware measurement. "
@@ -204,6 +291,7 @@ for raw in sys.stdin:
             "protocol": PROTOCOL,
             "text": "dirty",
             "generated_tokens": 1,
+            "new_token_ids": [248046],
             "model_open_count": 1,
             "weight_upload_count": 1,
             "fallbacks": 0,
@@ -221,13 +309,86 @@ for raw in sys.stdin:
         n = int(body.get("max_new_tokens") or 1)
     except (TypeError, ValueError):
         n = 1
+    if mode == "degenerate":
+        emit({
+            "id": rid,
+            "status": "ok",
+            "protocol": PROTOCOL,
+            "text": (
+                "\\nAssistant:\\n\\nAssistant:\\n\\nhbm_doctor.py\\n\\n"
+                "Assistant:\\n\\nhbm_do\\n\\nAssistant:\\n\\nh"
+            ),
+            "generated_tokens": n,
+            "model_open_count": 1,
+            "weight_upload_count": 1,
+            "fallbacks": 0,
+            "resident_identity": identity,
+            "resident_pid": pid,
+        })
+        continue
+    if mode == "truncated":
+        emit({
+            "id": rid,
+            "status": "ok",
+            "protocol": PROTOCOL,
+            "text": "A status label is a claim about",
+            "generated_tokens": n,
+            "model_open_count": 1,
+            "weight_upload_count": 1,
+            "fallbacks": 0,
+            "resident_identity": identity,
+            "resident_pid": pid,
+        })
+        continue
+    if mode == "thinking_echo":
+        emit({
+            "id": rid,
+            "status": "ok",
+            "protocol": PROTOCOL,
+            "text": "<think>\\nsecret\\n</think>\\n\\nParis",
+            "generated_tokens": 8,
+            "new_token_ids": [248046],
+            "model_open_count": 1,
+            "weight_upload_count": 1,
+            "fallbacks": 0,
+            "resident_identity": identity,
+            "resident_pid": pid,
+        })
+        continue
+    if mode == "quality_scripted":
+        low = str(prompt)
+        if "capital of France" in low:
+            out = "Paris"
+        elif "hbm_doctor.py" in low and "freshness.py" in low:
+            out = "hbm_doctor.py"
+        elif "status label" in low.lower() and "world state" in low.lower():
+            out = "A status label is a claim; the world state is independently true."
+        else:
+            out = "ok"
+        emit({
+            "id": rid,
+            "status": "ok",
+            "protocol": PROTOCOL,
+            "text": out,
+            "generated_text": out,
+            "generated_tokens": 1,
+            "new_token_ids": [248046],
+            "model_open_count": 1,
+            "weight_upload_count": 1,
+            "fallbacks": 0,
+            "resident_identity": identity,
+            "resident_pid": pid,
+            "dense_w_materialized": 0,
+        })
+        continue
     emit({
         "id": rid,
         "status": "ok",
         "protocol": PROTOCOL,
-        "text": "echo:" + str(prompt)[:200],
-        "generated_text": "echo:" + str(prompt)[:200],
-        "generated_tokens": n,
+        "text": "ok",
+        "generated_text": "ok",
+        "generated_tokens": 1,
+        "new_token_ids": [248046],
         "model_open_count": 1,
         "weight_upload_count": 1,
         "fallbacks": 0,
@@ -270,6 +431,532 @@ class AskFailed(ProviderRefuse):
 class WeightReload(ProviderRefuse):
     def __init__(self, reason: str) -> None:
         super().__init__(reason, fault="weight_reload")
+
+
+class TemplateRefuse(ProviderRefuse):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason, fault="template_absent")
+
+
+class QualityUnproven(ProviderRefuse):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason, fault="quality_unproven")
+
+
+# ---------------------------------------------------------------------------
+# Artifact chat template. The model's own jinja, not an invented format.
+# We do not run a general Jinja engine (jinja2 is not a sidecar dependency).
+# The renderer implements the text-only, no-tools path of THIS template and
+# refuses any other branch; missing anchors fail closed.
+# ---------------------------------------------------------------------------
+
+
+def load_declared_thinking() -> dict[str, Any]:
+    """Sealed generation.enable_thinking. Absence is UNDECLARED, not a default."""
+    src, ident = load_authority(SEALED_REL)
+    if not isinstance(ident, dict):
+        return {
+            "present": False,
+            "enable_thinking": None,
+            "source": src,
+            "reason": f"{SEALED_REL} was not locatable as a JSON object ({src})",
+        }
+    gen = ident.get("generation")
+    if not isinstance(gen, dict) or "enable_thinking" not in gen:
+        return {
+            "present": False,
+            "enable_thinking": None,
+            "source": f"{SEALED_REL}#generation",
+            "reason": "sealed generation.enable_thinking is absent; jinja default is thinking ON",
+        }
+    val = gen.get("enable_thinking")
+    if not isinstance(val, bool):
+        return {
+            "present": False,
+            "enable_thinking": None,
+            "source": f"{SEALED_REL}#generation.enable_thinking",
+            "reason": f"sealed enable_thinking is {val!r}, not a bool; refusing to coerce",
+        }
+    return {
+        "present": True,
+        "enable_thinking": val,
+        "source": f"{SEALED_REL}#generation.enable_thinking",
+        "reason": None,
+        "jinja_default_if_undefined": "thinking_on_with_xhigh_reasoning_system",
+    }
+
+
+def _artifact_root_from_launch(spec: Mapping[str, Any] | None) -> Path | None:
+    if not isinstance(spec, Mapping):
+        return None
+    raw = spec.get("artifact_root")
+    if isinstance(raw, str) and raw.strip():
+        return Path(raw)
+    argv = spec.get("argv")
+    if isinstance(argv, list):
+        for i, tok in enumerate(argv):
+            if str(tok) == "--artifact-root" and i + 1 < len(argv):
+                return Path(str(argv[i + 1]))
+    return None
+
+
+def load_chat_template(artifact_root: str | Path | None = None) -> dict[str, Any]:
+    """Load chat_template.jinja from the sealed artifact. Missing → present=False."""
+    ident_src, ident = load_authority(SEALED_REL)
+    tried: list[dict[str, str]] = []
+    candidates: list[tuple[str, Path]] = []
+    if artifact_root is not None:
+        candidates.append(("explicit_artifact_root", Path(artifact_root) / CHAT_TEMPLATE_NAME))
+    if isinstance(ident, dict) and isinstance(ident.get("artifact_root"), str):
+        candidates.append(
+            (f"sealed:{ident_src}", Path(ident["artifact_root"]) / CHAT_TEMPLATE_NAME)
+        )
+    chosen: tuple[str, Path] | None = None
+    for source, path in candidates:
+        tried.append({"source": source, "path": str(path)})
+        if path.is_file():
+            chosen = (source, path)
+            break
+    if chosen is None:
+        return {
+            "present": False,
+            "filename": CHAT_TEMPLATE_NAME,
+            "reason": (
+                f"{CHAT_TEMPLATE_NAME} was not locatable at artifact_root; "
+                "refusing to invent a chat format"
+            ),
+            "tried": tried,
+            "text": None,
+            "sha256": None,
+            "path": None,
+            "gpu_authority": False,
+        }
+    source, path = chosen
+    try:
+        raw = path.read_bytes()
+        text = raw.decode("utf-8")
+    except (OSError, UnicodeError) as exc:
+        return {
+            "present": False,
+            "filename": CHAT_TEMPLATE_NAME,
+            "path": str(path),
+            "source": source,
+            "reason": f"{path} unreadable: {type(exc).__name__}: {exc}",
+            "tried": tried,
+            "text": None,
+            "sha256": None,
+            "gpu_authority": False,
+        }
+    missing = [a for a in TEMPLATE_ANCHORS if a not in text]
+    if missing:
+        return {
+            "present": False,
+            "filename": CHAT_TEMPLATE_NAME,
+            "path": str(path),
+            "source": source,
+            "reason": (
+                f"{CHAT_TEMPLATE_NAME} is missing required anchors {missing}; "
+                "refusing to invent a format"
+            ),
+            "missing_anchors": missing,
+            "tried": tried,
+            "text": None,
+            "sha256": None,
+            "gpu_authority": False,
+        }
+    digest = hashlib.sha256(raw).hexdigest()
+    tok_path = path.parent / "tokenizer_config.json"
+    tok_match: bool | None = None
+    tok_reason: str | None = None
+    if tok_path.is_file():
+        try:
+            cfg = json.loads(tok_path.read_text(encoding="utf-8"))
+            embedded = cfg.get("chat_template") if isinstance(cfg, dict) else None
+            if not isinstance(embedded, str):
+                tok_match = False
+                tok_reason = "tokenizer_config.json has no string chat_template"
+            else:
+                emb = embedded.encode("utf-8")
+                tok_match = emb == raw or emb + b"\n" == raw or emb == raw + b"\n"
+                if not tok_match:
+                    tok_reason = (
+                        "tokenizer_config chat_template differs from chat_template.jinja "
+                        "by more than a trailing LF"
+                    )
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            tok_match = False
+            tok_reason = f"tokenizer_config.json unreadable: {type(exc).__name__}"
+    else:
+        tok_reason = "tokenizer_config.json absent beside the jinja"
+    return {
+        "present": True,
+        "filename": CHAT_TEMPLATE_NAME,
+        "path": str(path),
+        "source": source,
+        "sha256": digest,
+        "n_bytes": len(raw),
+        "text": text,
+        "missing_anchors": [],
+        "tried": tried,
+        "tokenizer_config_path": str(tok_path) if tok_path.is_file() else None,
+        "tokenizer_config_chat_template_match": tok_match,
+        "tokenizer_config_reason": tok_reason,
+        "gpu_authority": False,
+    }
+
+
+def _message_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if content is None:
+        return ""
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict) and isinstance(item.get("text"), str):
+                parts.append(item["text"])
+            elif isinstance(item, dict) and (
+                "image" in item
+                or "image_url" in item
+                or item.get("type") == "image"
+                or "video" in item
+                or item.get("type") == "video"
+            ):
+                raise TemplateRefuse(
+                    "vision content is not rendered by this path; refuse rather than guess"
+                )
+            else:
+                raise TemplateRefuse(
+                    f"unexpected item in message content: {type(item).__name__}"
+                )
+        return "".join(parts)
+    raise TemplateRefuse(f"unexpected content type {type(content).__name__}")
+
+
+def _assert_template_anchors(template_text: str) -> None:
+    missing = [a for a in TEMPLATE_ANCHORS if a not in template_text]
+    if missing:
+        raise TemplateRefuse(
+            f"chat template is not the Qwen artifact jinja (missing {missing}); "
+            "refusing to render"
+        )
+
+
+def render_chat(
+    messages: Sequence[Mapping[str, Any]],
+    *,
+    enable_thinking: bool,
+    template_text: str,
+    template_sha256: str = "",
+) -> dict[str, Any]:
+    """Apply the artifact template's text-only, no-tools path.
+
+    Matches the jinja byte-for-byte for ordinary system/user/assistant turns
+    (gold-checked against jinja2 ImmutableSandboxedEnvironment with
+    trim_blocks/lstrip_blocks). Tool/vision branches are refused.
+    """
+    _assert_template_anchors(template_text)
+    if not messages:
+        raise TemplateRefuse("chat template requires at least one message")
+    rows: list[dict[str, Any]] = []
+    for item in messages:
+        if not isinstance(item, Mapping):
+            raise TemplateRefuse("message must be an object")
+        role = str(item.get("role") or "")
+        if role == "tool":
+            raise TemplateRefuse(
+                "tool/observation turns are not rendered; refuse rather than guess a tool render"
+            )
+        if role not in {"system", "user", "assistant"}:
+            raise TemplateRefuse(
+                f"unexpected message role {role!r} (expected system/user/assistant)"
+            )
+        rows.append(dict(item))
+        rows[-1]["role"] = role
+        rows[-1]["content"] = _message_text(item.get("content"))
+    if not any(r["role"] == "user" for r in rows):
+        raise TemplateRefuse("No user query found in messages.")
+
+    parts: list[str] = []
+    first_role = rows[0]["role"]
+    if enable_thinking:
+        if first_role == "system":
+            sys_content = str(rows[0]["content"]).strip()
+            body = (REASONING_XHIGH + "\n\n" + sys_content) if sys_content else REASONING_XHIGH
+            parts.append(f"{IM_START}system\n{body}{IM_END}\n")
+        else:
+            parts.append(f"{IM_START}system\n{REASONING_XHIGH}{IM_END}\n")
+    elif first_role == "system":
+        sys_content = str(rows[0]["content"]).strip()
+        if sys_content:
+            parts.append(f"{IM_START}system\n{sys_content}{IM_END}\n")
+
+    for i, message in enumerate(rows):
+        role = message["role"]
+        content = str(message["content"]).strip()
+        if role == "system":
+            if i != 0:
+                raise TemplateRefuse("System message must be at the beginning.")
+            continue
+        if role == "user":
+            parts.append(f"{IM_START}{role}\n{content}{IM_END}\n")
+            continue
+        reasoning_content = message.get("reasoning_content")
+        rc = reasoning_content.strip() if isinstance(reasoning_content, str) else ""
+        # preserve_thinking is undefined in this path, so history keeps the
+        # think wrapper the jinja emits by default.
+        parts.append(
+            f"{IM_START}{role}\n<think>\n{rc}\n</think>\n\n{content}{IM_END}\n"
+        )
+
+    parts.append(f"{IM_START}assistant\n")
+    if enable_thinking:
+        parts.append(OPEN_THINK)
+        applied_arm = "thinking_on"
+        applied_prefix = OPEN_THINK
+    else:
+        parts.append(CLOSED_THINK)
+        applied_arm = "thinking_off"
+        applied_prefix = CLOSED_THINK
+    text = "".join(parts)
+    return {
+        "text": text,
+        "enable_thinking": enable_thinking,
+        "applied_arm": applied_arm,
+        "applied_prefix": applied_prefix,
+        "n_messages": len(rows),
+        "templated": True,
+        "concatenated": False,
+        "source_filename": CHAT_TEMPLATE_NAME,
+        "source_sha256": template_sha256,
+        "contains_im_start": IM_START in text,
+        "contains_user_colon_blob": "User: " in text and IM_START not in text,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Stop + quality. Cut at the turn boundary; never fish an answer out of junk.
+# ---------------------------------------------------------------------------
+
+
+def cut_at_stop(text: str) -> tuple[str, str | None]:
+    """Keep bytes before the first EOS / next-turn / fabricated role marker."""
+    if not isinstance(text, str) or not text:
+        return "", None
+    hits: list[tuple[int, int, str]] = []
+    for marker, reason in (
+        (IM_END, "eos_im_end"),
+        (EOT, "eos_endoftext"),
+        (IM_START, "turn_boundary"),
+    ):
+        idx = text.find(marker)
+        if idx >= 0:
+            hits.append((idx, 0 if reason.startswith("eos") else 1, reason))
+    match = _FABRICATED_TURN.search(text)
+    if match is not None:
+        hits.append((match.start(), 2, "fabricated_turn"))
+    if not hits:
+        return text, None
+    hits.sort()
+    idx, _prio, reason = hits[0]
+    return text[:idx], reason
+
+
+def is_degenerate(text: str) -> bool:
+    """True when a short fragment repeats. Empty is a different condition."""
+    if not isinstance(text, str) or not text:
+        return False
+    if len(_ASSISTANT_TURN.findall(text)) >= 2:
+        return True
+    if len(_USER_TURN.findall(text)) >= 2:
+        return True
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    run = 1
+    for prev, cur in zip(lines, lines[1:]):
+        if prev == cur and 1 <= len(cur) <= 80:
+            run += 1
+            if run >= 3:
+                return True
+        else:
+            run = 1
+    compact = re.sub(r"\s+", "", text)
+    n = len(compact)
+    if n >= 8:
+        for size in range(1, 17):
+            need = size * 4
+            if need > n:
+                break
+            limit = n - need + 1
+            for i in range(limit):
+                chunk = compact[i : i + size]
+                if chunk and compact[i : i + need] == chunk * 4:
+                    return True
+    return False
+
+
+def observe_thinking(raw: str) -> str:
+    """What the generated text did, not what the config said it would do."""
+    if not isinstance(raw, str) or not raw:
+        return "no_text"
+    stripped = raw.lstrip()
+    if stripped.startswith("<think>") and "</think>" in stripped[:200]:
+        head = stripped.split("</think>", 1)[0]
+        inner = head[len("<think>") :].strip()
+        if not inner:
+            return "closed_think_echo"
+        return "thinking_opened"
+    if stripped.startswith("<think>"):
+        return "thinking_opened"
+    if "<think>" in raw:
+        return "think_tag_present"
+    return "no_think_tag"
+
+
+def finalize_generation(
+    *,
+    text: Any,
+    generated_tokens: Any,
+    max_new_tokens: int,
+    new_token_ids: Any = None,
+) -> dict[str, Any]:
+    """Cut, classify, and refuse to call junk CLEAN.
+
+    Does not regex-extract a plausible token from the middle of a loop.
+    Text before the first turn marker is the reply; a repeating fragment
+    is DEGENERATE even when a prefix looks like an answer.
+    """
+    if not isinstance(max_new_tokens, int) or isinstance(max_new_tokens, bool) or max_new_tokens <= 0:
+        raise ProviderRefuse(
+            f"max_new_tokens must be a positive integer, got {max_new_tokens!r}",
+            fault="bad_request",
+        )
+    raw = text if isinstance(text, str) else ""
+    cut, stop_reason = cut_at_stop(raw)
+    answer = cut.strip()
+    ids = new_token_ids if isinstance(new_token_ids, list) else []
+    eos_hit = False
+    if ids:
+        last = ids[-1]
+        if last in EOS_TOKEN_IDS:
+            eos_hit = True
+            if stop_reason is None:
+                stop_reason = "eos_token_id"
+    n_gen: int | None
+    if isinstance(generated_tokens, int) and not isinstance(generated_tokens, bool):
+        n_gen = generated_tokens
+    else:
+        n_gen = None
+    budget_hit = n_gen is not None and n_gen >= max_new_tokens
+    early_stop = n_gen is not None and n_gen < max_new_tokens
+    if early_stop and stop_reason is None:
+        stop_reason = "early_stop"
+
+    degenerate = is_degenerate(raw) or is_degenerate(answer)
+    if not answer and stop_reason in {"fabricated_turn", "turn_boundary"}:
+        degenerate = True
+
+    if degenerate:
+        label = QUALITY_DEGENERATE
+    elif eos_hit or stop_reason in {
+        "eos_im_end",
+        "eos_endoftext",
+        "eos_token_id",
+        "early_stop",
+        "turn_boundary",
+        "fabricated_turn",
+    }:
+        if answer:
+            label = QUALITY_CLEAN
+        elif stop_reason == "fabricated_turn":
+            label = QUALITY_DEGENERATE
+        elif budget_hit:
+            label = QUALITY_TRUNCATED
+        else:
+            label = QUALITY_CLEAN
+    elif budget_hit:
+        label = QUALITY_TRUNCATED
+    elif n_gen is None and stop_reason is None:
+        raise QualityUnproven(
+            "quality refused: no stop marker and generated_tokens omitted; "
+            "cannot call CLEAN"
+        )
+    else:
+        label = QUALITY_TRUNCATED
+
+    return {
+        "text": answer,
+        "raw_text": raw,
+        "quality": label,
+        "stopped_at": stop_reason if stop_reason is not None else ("max_new_tokens" if budget_hit else None),
+        "generated_tokens": n_gen,
+        "max_new_tokens": max_new_tokens,
+        "eos_token_seen": eos_hit,
+        "degenerate": degenerate,
+        "extractable": label == QUALITY_CLEAN and bool(answer),
+        "observed_thinking": observe_thinking(raw),
+    }
+
+
+def quality(reply: Mapping[str, Any]) -> str:
+    """CLEAN | TRUNCATED | DEGENERATE, recomputed from evidence. Never trusted."""
+    if not isinstance(reply, Mapping):
+        raise ProviderRefuse("quality() needs a mapping reply", fault="bad_request")
+    raw = reply.get("raw_text")
+    if not isinstance(raw, str):
+        raw = reply.get("text")
+    if not isinstance(raw, str):
+        raise QualityUnproven(
+            "quality() refused: reply has no text/raw_text; cannot call CLEAN"
+        )
+    max_new = reply.get("max_new_tokens")
+    if not isinstance(max_new, int) or isinstance(max_new, bool) or max_new <= 0:
+        raise QualityUnproven(
+            "quality() refused: max_new_tokens missing; cannot distinguish "
+            "CLEAN from TRUNCATED"
+        )
+    got = finalize_generation(
+        text=raw,
+        generated_tokens=reply.get("generated_tokens"),
+        max_new_tokens=max_new,
+        new_token_ids=reply.get("new_token_ids"),
+    )
+    return str(got["quality"])
+
+
+def thinking_arm_record(
+    *,
+    declared: Mapping[str, Any],
+    applied: bool,
+    observed: str,
+    observed_on: str,
+) -> dict[str, Any]:
+    """Declared vs applied vs observed. Config obedience is not assumed."""
+    declared_val = declared.get("enable_thinking") if isinstance(declared, Mapping) else None
+    declared_present = bool(isinstance(declared, Mapping) and declared.get("present"))
+    if observed_on != "sealed_resident":
+        obeyed: bool | str = "UNPROBED_ON_SEALED_BODY"
+    elif observed in {"no_text"}:
+        obeyed = "UNPROBED"
+    elif applied is False:
+        obeyed = observed in {"no_think_tag", "closed_think_echo"}
+    else:
+        obeyed = observed in {"thinking_opened", "think_tag_present", "closed_think_echo"}
+    return {
+        "declared": declared_val,
+        "declared_present": declared_present,
+        "declared_source": None if not isinstance(declared, Mapping) else declared.get("source"),
+        "applied": applied,
+        "applied_arm": "thinking_on" if applied else "thinking_off",
+        "applied_prefix": OPEN_THINK if applied else CLOSED_THINK,
+        "observed": observed,
+        "observed_on": observed_on,
+        "config_obeyed": obeyed,
+        "jinja_default_if_undefined": "thinking_on_with_xhigh_reasoning_system",
+        "campaign_note": (
+            "same body scored 0/43 with thinking on and 14/43 with it off; "
+            "the closed-think generation prefix is load-bearing"
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -598,6 +1285,25 @@ def explicit_launch(
     }
 
 
+def _seed_chat_template(art: Path) -> None:
+    """Put the artifact jinja next to the double so ask() does not invent a format."""
+    dest = art / CHAT_TEMPLATE_NAME
+    _, ident = load_authority(SEALED_REL)
+    src: Path | None = None
+    if isinstance(ident, dict) and isinstance(ident.get("artifact_root"), str):
+        cand = Path(ident["artifact_root"]) / CHAT_TEMPLATE_NAME
+        if cand.is_file():
+            src = cand
+    if src is not None:
+        dest.write_bytes(src.read_bytes())
+        for name in ("tokenizer_config.json", "generation_config.json"):
+            side = src.parent / name
+            if side.is_file():
+                (art / name).write_bytes(side.read_bytes())
+        return
+    dest.write_text(QWEN_TEMPLATE_STUB)
+
+
 def write_protocol_double(root: str | os.PathLike[str], *, mode: str = "ok", sleep_s: float = 0.0) -> dict[str, Any]:
     """Materialize the protocol double. Tests and proofs inject this, never the 9.9GB body."""
     path = Path(root)
@@ -609,6 +1315,7 @@ def write_protocol_double(root: str | os.PathLike[str], *, mode: str = "ok", sle
     tok = art / "tokenizer.json"
     if not tok.is_file():
         tok.write_text("{}\n")
+    _seed_chat_template(art)
     env = {
         "HAWKING_PROVIDER_DOUBLE": str(mode),
         "PYTHONUNBUFFERED": "1",
@@ -709,6 +1416,11 @@ class ResidentProvider:
         self._spawned_at: float | None = None
         self._ready_at: float | None = None
         self._start_token: str | None = None
+        self._template: dict[str, Any] | None = None
+        self._thinking_declared: dict[str, Any] | None = None
+        self._last_wire_prompt: str | None = None
+        self._last_render: dict[str, Any] | None = None
+        self._applied_thinking: bool = False
 
     def _alive(self) -> bool:
         proc = self._proc
@@ -776,6 +1488,21 @@ class ResidentProvider:
                     "argv[0] is not absolute; refusing PATH resolution at start",
                     fault="runtime_resolution_refused",
                 )
+            art_root = _artifact_root_from_launch(launch)
+            template = load_chat_template(art_root)
+            if not template.get("present"):
+                raise TemplateRefuse(
+                    template.get("reason") or "chat_template.jinja is absent; refusing a raw prompt"
+                )
+            thinking = load_declared_thinking()
+            # Sealed body declares false. If undeclared, still apply closed-think:
+            # the jinja default (thinking on) is the 0/43 arm. Record the choice.
+            applied = False
+            if thinking.get("present") is True and thinking.get("enable_thinking") is True:
+                applied = True
+            self._template = template
+            self._thinking_declared = thinking
+            self._applied_thinking = applied
             timeout = float(
                 DOUBLE_READY_TIMEOUT_S
                 if launch.get("source") == "explicit" and ready_timeout_s is None
@@ -938,6 +1665,7 @@ class ResidentProvider:
                         "n_turns": len(turns),
                         "last_request_id": None if not turns else turns[-1].get("id"),
                         "process_generation": rec.get("process_generation"),
+                        "templated": bool(rec.get("templated")),
                     }
                 )
             pid = self._proc.pid if self._proc is not None else None
@@ -947,20 +1675,43 @@ class ResidentProvider:
                 "generation": self._generation,
                 "same_process": True,
                 "second_model_body": False,
+                "templated": True,
+                "concatenated": False,
                 "sessions": rows,
             }
 
     def _compose_prompt(self, session: Mapping[str, Any], text: str) -> str:
-        turns = session.get("turns") or []
-        if not turns:
-            return text
-        parts = [
-            f"User: {row.get('prompt')}\nAssistant: {row.get('text')}"
-            for row in turns
-            if isinstance(row, dict)
-        ]
-        parts.append(f"User: {text}")
-        return "\n".join(parts)
+        """Template session turns as real chat turns. Never concatenate a blob."""
+        tmpl = self._template
+        if not isinstance(tmpl, dict) or not tmpl.get("present"):
+            raise TemplateRefuse(
+                (tmpl or {}).get("reason")
+                if isinstance(tmpl, dict)
+                else "chat template is not loaded; refusing a raw concatenated prompt"
+            )
+        template_text = tmpl.get("text")
+        if not isinstance(template_text, str) or not template_text:
+            raise TemplateRefuse("loaded chat template has no text")
+        messages: list[dict[str, Any]] = []
+        for row in session.get("turns") or []:
+            if not isinstance(row, dict):
+                continue
+            prompt = row.get("prompt")
+            answer = row.get("text")
+            if isinstance(prompt, str) and prompt.strip():
+                messages.append({"role": "user", "content": prompt})
+                if isinstance(answer, str):
+                    messages.append({"role": "assistant", "content": answer})
+        messages.append({"role": "user", "content": text})
+        rendered = render_chat(
+            messages,
+            enable_thinking=self._applied_thinking,
+            template_text=template_text,
+            template_sha256=str(tmpl.get("sha256") or ""),
+        )
+        self._last_wire_prompt = rendered["text"]
+        self._last_render = rendered
+        return rendered["text"]
 
     def ask(
         self,
@@ -1059,23 +1810,58 @@ class ResidentProvider:
                     f"public reply still carried hardware fields {leaked}",
                     fault="hardware_leak",
                 )
+            raw_text = public.get("text") or public.get("generated_text") or ""
+            if not isinstance(raw_text, str):
+                raw_text = str(raw_text)
+            try:
+                final = finalize_generation(
+                    text=raw_text,
+                    generated_tokens=public.get("generated_tokens"),
+                    max_new_tokens=n_new,
+                    new_token_ids=public.get("new_token_ids"),
+                )
+            except ProviderRefuse:
+                self._failures += 1
+                raise
+            sealed_body = bool((self._spec or {}).get("source", "").startswith("sealed"))
+            arm = thinking_arm_record(
+                declared=self._thinking_declared or {},
+                applied=self._applied_thinking,
+                observed=str(final["observed_thinking"]),
+                observed_on="sealed_resident" if sealed_body else "protocol_double",
+            )
             turn = {
                 "id": request_id,
                 "prompt": prompt_text,
-                "text": public.get("text") or public.get("generated_text") or "",
+                "text": final["text"],
+                "raw_text": final["raw_text"],
+                "quality": final["quality"],
+                "stopped_at": final["stopped_at"],
                 "generated_tokens": public.get("generated_tokens"),
                 "fallbacks": public.get("fallbacks"),
+                "templated": True,
             }
             with self._life:
                 rec["turns"].append(turn)
                 rec["process_generation"] = self._generation
+                rec["templated"] = True
                 self._requests_served += 1
             return {
                 "id": request_id,
                 "session": sid,
                 "status": "ok",
                 "text": turn["text"],
+                "raw_text": turn["raw_text"],
+                "quality": final["quality"],
+                "stopped_at": final["stopped_at"],
+                "extractable": final["extractable"],
+                "templated": True,
+                "template_sha256": (self._template or {}).get("sha256"),
+                "template_path": (self._template or {}).get("path"),
+                "thinking_arm": arm,
                 "generated_tokens": public.get("generated_tokens"),
+                "max_new_tokens": n_new,
+                "new_token_ids": public.get("new_token_ids"),
                 "fallbacks": public.get("fallbacks"),
                 "model_open_count": open_c,
                 "weight_upload_count": up_c,
@@ -1401,6 +2187,170 @@ def run_proofs(tmp: Path | None = None) -> dict[str, Any]:
             undeclared,
         )
 
+        tmpl = load_chat_template()
+        proofs["template_from_artifact_jinja"] = _demand(
+            "template_from_artifact_jinja",
+            bool(tmpl.get("present"))
+            and str(tmpl.get("filename")) == CHAT_TEMPLATE_NAME
+            and str(tmpl.get("path") or "").endswith(CHAT_TEMPLATE_NAME),
+            {
+                "path": tmpl.get("path"),
+                "sha256": tmpl.get("sha256"),
+                "reason": tmpl.get("reason"),
+                "match": tmpl.get("tokenizer_config_chat_template_match"),
+            },
+        )
+        if tmpl.get("present"):
+            rendered = render_chat(
+                [{"role": "user", "content": PROMPT_FRANCE}],
+                enable_thinking=False,
+                template_text=str(tmpl["text"]),
+                template_sha256=str(tmpl.get("sha256") or ""),
+            )
+            gold = (
+                f"{IM_START}user\n{PROMPT_FRANCE}{IM_END}\n"
+                f"{IM_START}assistant\n{CLOSED_THINK}"
+            )
+            proofs["template_matches_artifact_gold"] = _demand(
+                "template_matches_artifact_gold",
+                rendered["text"] == gold
+                and "User: " not in rendered["text"]
+                and rendered["templated"] is True
+                and rendered["concatenated"] is False,
+                {"head": rendered["text"][:120], "n": len(rendered["text"])},
+            )
+            hist = render_chat(
+                [
+                    {"role": "user", "content": "one"},
+                    {"role": "assistant", "content": "two"},
+                    {"role": "user", "content": "three"},
+                ],
+                enable_thinking=False,
+                template_text=str(tmpl["text"]),
+                template_sha256=str(tmpl.get("sha256") or ""),
+            )
+            proofs["session_turns_templated_not_concatenated"] = _demand(
+                "session_turns_templated_not_concatenated",
+                f"{IM_START}user\none{IM_END}" in hist["text"]
+                and f"{IM_START}assistant\n<think>\n\n</think>\n\ntwo{IM_END}" in hist["text"]
+                and "User: one" not in hist["text"]
+                and "Assistant: two" not in hist["text"],
+                {"head": hist["text"][:220]},
+            )
+        else:
+            proofs["template_matches_artifact_gold"] = _demand(
+                "template_matches_artifact_gold", False, tmpl.get("reason")
+            )
+            proofs["session_turns_templated_not_concatenated"] = _demand(
+                "session_turns_templated_not_concatenated", False, tmpl.get("reason")
+            )
+
+        deg = finalize_generation(
+            text=MEASURED_DEGENERATE_CHOICE, generated_tokens=64, max_new_tokens=64
+        )
+        proofs["degenerate_never_clean"] = _demand(
+            "degenerate_never_clean",
+            deg["quality"] == QUALITY_DEGENERATE
+            and deg["text"] != "hbm_doctor.py"
+            and quality(
+                {
+                    "raw_text": MEASURED_DEGENERATE_CHOICE,
+                    "generated_tokens": 64,
+                    "max_new_tokens": 64,
+                }
+            )
+            == QUALITY_DEGENERATE,
+            {"text": deg["text"], "quality": deg["quality"]},
+        )
+        trunc = finalize_generation(
+            text="A status label is a claim about",
+            generated_tokens=16,
+            max_new_tokens=16,
+        )
+        proofs["truncated_not_clean"] = _demand(
+            "truncated_not_clean",
+            trunc["quality"] == QUALITY_TRUNCATED,
+            {"text": trunc["text"], "stopped_at": trunc["stopped_at"]},
+        )
+        clean = finalize_generation(
+            text=MEASURED_CLEAN_FRANCE,
+            generated_tokens=3,
+            max_new_tokens=32,
+            new_token_ids=[11, 12, EOS_IM_END_ID],
+        )
+        proofs["clean_paris"] = _demand(
+            "clean_paris",
+            clean["quality"] == QUALITY_CLEAN and clean["text"] == "Paris",
+            clean,
+        )
+
+        thinking = load_declared_thinking()
+        proofs["thinking_arm_declared_false"] = _demand(
+            "thinking_arm_declared_false",
+            thinking.get("present") is True and thinking.get("enable_thinking") is False,
+            thinking,
+        )
+
+        qspec = write_protocol_double(root / "qscript", mode="quality_scripted")
+        qp = _prov()
+        qp.start(qspec, ready_timeout_s=DOUBLE_READY_TIMEOUT_S)
+        r_fr = qp.ask("s1", PROMPT_FRANCE, 32)
+        r_ch = qp.ask("s2", PROMPT_CHOICE, 32)
+        r_st = qp.ask("s3", PROMPT_STATUS, 32)
+        proofs["scripted_three_prompts_clean"] = _demand(
+            "scripted_three_prompts_clean",
+            r_fr["quality"] == QUALITY_CLEAN
+            and r_fr["text"] == "Paris"
+            and r_ch["quality"] == QUALITY_CLEAN
+            and r_ch["text"] == "hbm_doctor.py"
+            and r_st["quality"] == QUALITY_CLEAN
+            and bool(r_st["text"]),
+            {
+                "france": r_fr["text"],
+                "choice": r_ch["text"],
+                "status": r_st["text"],
+                "arm": r_fr.get("thinking_arm"),
+            },
+        )
+        wire = qp._last_wire_prompt or ""
+        proofs["ask_sends_templated_prompt"] = _demand(
+            "ask_sends_templated_prompt",
+            IM_START + "user" in wire
+            and CLOSED_THINK in wire
+            and "User: " not in wire
+            and qp._applied_thinking is False,
+            {"head": wire[:160], "applied_thinking": qp._applied_thinking},
+        )
+        qp.ask("hist", "one", 8)
+        qp.ask("hist", "two", 8)
+        hist_wire = qp._last_wire_prompt or ""
+        proofs["ask_session_history_templated"] = _demand(
+            "ask_session_history_templated",
+            f"{IM_START}user\none{IM_END}" in hist_wire
+            and "User: one" not in hist_wire
+            and "Assistant: " not in hist_wire,
+            {"head": hist_wire[:260]},
+        )
+
+        dspec = write_protocol_double(root / "deg", mode="degenerate")
+        dp = _prov()
+        dp.start(dspec, ready_timeout_s=DOUBLE_READY_TIMEOUT_S)
+        drep = dp.ask("s", PROMPT_CHOICE, 64)
+        proofs["ask_degenerate_labelled"] = _demand(
+            "ask_degenerate_labelled",
+            drep["quality"] == QUALITY_DEGENERATE and drep["text"] != "hbm_doctor.py",
+            {"text": drep["text"], "quality": drep["quality"]},
+        )
+        tspec = write_protocol_double(root / "trunc", mode="truncated")
+        tp = _prov()
+        tp.start(tspec, ready_timeout_s=DOUBLE_READY_TIMEOUT_S)
+        trep = tp.ask("s", PROMPT_STATUS, 16)
+        proofs["ask_truncated_labelled"] = _demand(
+            "ask_truncated_labelled",
+            trep["quality"] == QUALITY_TRUNCATED,
+            {"text": trep["text"], "stopped_at": trep["stopped_at"]},
+        )
+
         sealed = resolve_launch()
         argv = sealed.get("argv") or []
         flags = [t for t in argv if str(t).startswith("--")]
@@ -1453,9 +2403,10 @@ def emit_workunits() -> list[dict[str, Any]]:
         id="future.resident_provider.drive",
         role="science",
         description=(
-            "Own one hawking.qwen38.resident.v1 process: start, correlated ask, "
-            "logical sessions over shared weights, health, stop, restart. "
-            "CPU/protocol-double proven; sealed 9.9GB spawn is a later MODEL_SESSION."
+            "Own one hawking.qwen38.resident.v1 process: start, templated ask "
+            "with stop+quality, logical sessions over shared weights, health, "
+            "stop, restart. CPU/protocol-double proven; sealed 9.9GB spawn is "
+            "a later MODEL_SESSION."
         ),
         dependencies=[],
         resource_class="STATIC_ANALYSIS",
@@ -1482,22 +2433,29 @@ def emit_workunits() -> list[dict[str, Any]]:
 
 def recovered_implementation() -> list[str]:
     return [
-        "receipts/future/evidence/RESIDENT_LIVE_PROBE.json (proof the resident starts and generates; records the invocation)",
-        "hcli/hawking-native.sealed-3.14.json (artifact_root, tokenizer, resident_binary, fusion_env, protocol)",
-        "crates/hawking-core/examples/ascension_qwen38_resident.rs (JSONL protocol; session.reset per request; model_open_count=1)",
-        "hcli/hawking_native.py ResidentProcess (cited, not imported: stdin PIPE, await ready, correlated request)",
-        "hcli/providers.py ResidentProvider Protocol (start/stop/generate/health; this sidecar is the future-partition driver)",
-        "tools/future/restart_supervisor.py (stop SIGTERM/SIGKILL, start_token; its restart() uses stdin=DEVNULL which kills this protocol)",
-        "tools/future/resident_health.py (rss_bytes_of; ABSENT rss_bytes null, never healthy-with-zero)",
-        "tools/future/super_resident.py (provider-neutral daemon contract; StubProvider is in-process and does not spawn)",
-        "tools/future/fallback_resident.py (sealed identity surfaces; does not start a process)",
-        "tools/future/no_wait_scheduler.py (do not pin the resident while doing nothing; inference slot)",
+        "tools/future/resident_provider.py (start/ask/sessions/health/stop/restart; model_open_count=1; protocol double)",
+        "receipts/future/evidence/RESIDENT_LIVE_PROBE.json (resident starts and generates; r1='\\n\\nParis' 3 tokens; r2 truncated at 40)",
+        "hcli/hawking-native.sealed-3.14.json (generation.enable_thinking=false; prompt_contract.fallback_template=qwen_closed_think)",
+        "/Users/scammermike/noetic/NOETIC_PARENT_A/chat_template.jinja (artifact template; thinking-off arm emits closed <think>)",
+        "/Users/scammermike/noetic/NOETIC_PARENT_A/tokenizer_config.json (chat_template byte-identical to the jinja; eos=<|im_end|>)",
+        "/Users/scammermike/noetic/NOETIC_PARENT_A/generation_config.json (eos_token_id 248046/248044)",
+        "hcli/hawking_native.py _TokenizerRenderer._qwen_fallback_render (cited, not imported: closed-think generation prefix)",
+        "crates/hawking-core/examples/ascension_qwen38_resident.rs (JSONL; raw prompt; generate_greedy)",
+        "crates/hawking-core/src/model/qwen38_hybrid_decode.rs generate_greedy (stops on IM_END/EOT unless HAWKING_QWEN38_IGNORE_EOS)",
+        "crates/hawking-serve/src/glm_chat.rs (pattern: validate artifact jinja anchors, render the no-tools path, refuse tools)",
         "tools/future/resident_identity.py (load_authority for the sealed profile)",
+        "tools/future/resident_health.py (rss_bytes_of; ABSENT rss_bytes null)",
     ]
 
 
 def gaps_closed() -> list[str]:
     return [
+        "ask() applies the artifact chat_template.jinja; session history is real turns not a User:/Assistant: blob",
+        "generation is cut at <|im_end|>, <|endoftext|>, <|im_start|>, and fabricated Assistant:/User: markers",
+        "quality(reply) computes CLEAN | TRUNCATED | DEGENERATE; a repeating fragment is never CLEAN",
+        "a budget-hit mid-sentence is TRUNCATED, not CLEAN",
+        "thinking arm is recorded as declared/applied/observed; sealed enable_thinking=false is applied as closed-think",
+        "a decision-style reply is extractable as text when CLEAN; hbm_doctor.py is not regex-fished from loop garbage",
         "a future-partition driver that spawns the JSONL resident, waits for ready, and correlates ask/reply",
         "logical sessions multiplexed over one process (no second 9.9GB body)",
         "inference slot held only while a request is in flight",
@@ -1510,11 +2468,15 @@ def gaps_closed() -> list[str]:
 def negative_findings() -> list[str]:
     return [
         "build() did not spawn the sealed 9.9GB resident: a live campaign is running and this sidecar has no GPU lease",
+        "the three quality probes were not re-run on the sealed body; CLEAN on those prompts is proven on the harness and a protocol double, not on this resident",
+        "observed thinking-arm obedience on the sealed body is UNPROBED; a raw prompt producing <think> is consistent with the jinja default (thinking on) when the template is unused",
+        "the rust resident still decodes with skip_special_tokens and does not accept stop strings on the wire; stop handling here is post-decode plus the kernel's existing EOS break",
         "timings are SELF_MEASURED_DIRTY and rank nothing",
         "orchestration.py BINDINGS was not edited (not in this lane's WRITE list)",
         "hcli/hawking_native.ResidentProcess remains the HCLI driver; this module does not replace it",
         "the rust resident resets KV per request; logical sessions are prompt-side history over shared weights",
         "restart_supervisor.restart cannot drive this protocol (stdin=DEVNULL)",
+        "jinja2 is not a sidecar dependency; the renderer is the artifact template's text-only path, gold-checked, and refuses tools/vision",
     ]
 
 
@@ -1523,12 +2485,19 @@ def build() -> Path:
     proofs = run_proofs()
     units = emit_workunits()
     probe, probe_src = load_live_probe()
+    tmpl = load_chat_template()
+    thinking = load_declared_thinking()
+    template_public = {
+        k: v for k, v in tmpl.items() if k != "text"
+    }
     doc = {
         "schema": SCHEMA,
         "version": VERSION,
         "purpose": (
             "Durable provider that owns one hawking.qwen38.resident.v1 process "
-            "and serves many logical sessions over that one model body."
+            "and returns the model's ANSWER: artifact chat template applied, "
+            "stopped at the turn boundary, quality labelled CLEAN|TRUNCATED|"
+            "DEGENERATE."
         ),
         "evidence_class": "STATIC_ONLY",
         "gpu_authority": False,
@@ -1565,6 +2534,42 @@ def build() -> Path:
         },
         "proofs": proofs,
         "work_units": units,
+        "chat_template": template_public,
+        "thinking_arm": {
+            "declared": thinking.get("enable_thinking"),
+            "declared_present": thinking.get("present"),
+            "declared_source": thinking.get("source"),
+            "declared_reason": thinking.get("reason"),
+            "applied_by_ask": True,
+            "applied_on_sealed_body": False,
+            "applied_arm": "thinking_off",
+            "applied_prefix": CLOSED_THINK,
+            "applied_why": (
+                "sealed generation.enable_thinking is false; the jinja arm "
+                "emits <think>\\n\\n</think>\\n\\n so the model continues the "
+                "answer instead of opening a think block"
+            ),
+            "observed_on_sealed_body": "UNPROBED",
+            "observed_on_sealed_body_reason": (
+                "build() did not spawn the 9.9GB body; config obedience is not assumed"
+            ),
+            "jinja_default_if_undefined": "thinking_on_with_xhigh_reasoning_system",
+            "campaign_note": (
+                "same body scored 0/43 with thinking on and 14/43 with it off"
+            ),
+        },
+        "quality_probes": {
+            "france": PROMPT_FRANCE,
+            "choice": PROMPT_CHOICE,
+            "status": PROMPT_STATUS,
+            "proved_on": "protocol_double_plus_artifact_template",
+            "proved_on_sealed_body": False,
+            "measured_defect_replayed": {
+                "choice": MEASURED_DEGENERATE_CHOICE,
+                "classification": QUALITY_DEGENERATE,
+                "did_not_extract": "hbm_doctor.py",
+            },
+        },
         "recovered_implementation": recovered_implementation(),
         "gaps_closed": gaps_closed(),
         "negative_findings": negative_findings(),
@@ -1573,8 +2578,8 @@ def build() -> Path:
         "resident_callable": {
             "entry_point": "tools.future.resident_provider.ResidentProvider.start()",
             "workunit": (
-                "one CPU_ANALYSIS unit; protocol-double start/ask/sessions/health/"
-                "stop/restart; does not take a GPU lease"
+                "one CPU_ANALYSIS unit; protocol-double start/templated-ask/"
+                "stop+quality/sessions/health/stop/restart; does not take a GPU lease"
             ),
             "receipt": f"receipts/future/{RECEIPT}",
             "frontier": "FT.CHILD_RESIDENT.launch",
@@ -1582,11 +2587,16 @@ def build() -> Path:
                 "ask before ready → NotReady; dead pid → health presence=ABSENT "
                 "rss_bytes=null; climbing model_open_count → WeightReload; "
                 "malformed JSONL → MalformedReply; missing binary → launch_absent; "
+                "missing/foreign chat_template.jinja → TemplateRefuse; "
+                "repeating fragment → DEGENERATE not CLEAN; "
+                "budget-hit mid-sentence → TRUNCATED not CLEAN; "
                 "hardware-named fields stripped and refused in receipts"
             ),
             "python_api": {
                 "start": "ResidentProvider.start(spec=None) -> handle",
-                "ask": "ResidentProvider.ask(session, text, max_new_tokens) -> reply+cost",
+                "ask": "ResidentProvider.ask(session, text, max_new_tokens) -> reply+quality+cost",
+                "quality": "quality(reply) -> CLEAN|TRUNCATED|DEGENERATE, recomputed",
+                "render_chat": "render_chat(messages, enable_thinking, template_text) -> templated prompt",
                 "sessions": "ResidentProvider.sessions() -> logical states, one pid",
                 "health": "ResidentProvider.health() -> presence/rss/queue_depth",
                 "stop": "ResidentProvider.stop()",

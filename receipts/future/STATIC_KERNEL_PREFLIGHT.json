@@ -8,7 +8,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:47:27Z",
+  "recorded_at": "2026-08-30T23:34:12Z",
   "recorded_by": "tools/future/static_kernel_verify.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1974,7 +1974,7 @@
    "verification": "NAME_RECOVERED_FROM_MACRO; body binding and PSO geometry remain compiler/runtime checks"
   }
  },
- "head": "0e4e9a93b3a196ba5c4472bf6d1998be6ae2dc75",
+ "head": "2dd9fc8c0a0113e389e25842bc832c1c1c7accb5",
  "library_membership_files": [
   [
    "attn.metal",
@@ -2155,7 +2155,7 @@
   "metal_mod_trace_name_tests": "crates/hawking-core/src/metal/mod.rs \u2014 static_kernel_name plus per-family `SHADER_X.contains(kernel void {name}()` tests. Compile/trace-name contract, not host bind vs [[buffer(N)]]."
  },
  "schema": "hawking.future.static_kernel_verify.v1",
- "seal_sha256": "f4602b765d9739db5560ce0676b59c61b74bf1131e69b98c7084aad9ad40f984",
+ "seal_sha256": "c9ba9b0a97ad9254ef54c0910d5f676abb073834a8c569c5126e5b3138e8504d",
  "static_correctness_does_not_prove_speed": "Static correctness does NOT prove speed and does NOT substitute for a protected measurement. A finding of no static ERROR is not a tps number, not a token_ns, not a complete-token, and not PROTECTED_ABSOLUTE. This tool exists to stop wasting a protected GPU window on a defect that was detectable from the .metal sources and their Rust hosts. It produces neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. Everything here is STATIC_ONLY with bench state UNKNOWN.",
  "version": 1,
  "would_waste_a_protected_window": false

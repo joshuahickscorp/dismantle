@@ -3,12 +3,12 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:46:30Z",
+  "recorded_at": "2026-08-30T23:18:38Z",
   "recorded_by": "tools/future/repro_science.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
- "branch": "odyssey-i",
+ "branch": "grok/l36-torture-wiring-20260830-182109",
  "claim_boundary": "Static sidecar artifact. No hardware measurement. Neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE.",
  "claim_downgrade": {
   "after": {
@@ -528,6 +528,6 @@
   }
  },
  "schema": "hawking.future.repro_science.v1",
- "seal_sha256": "23677a27ee1fd469bde0d7950262ee2b0c63be289e68a4187b0c8ebabe29e88e",
+ "seal_sha256": "e1a01c2717af15d0f93897b74ca47637cd5dc58f0d71c20cfe7751d86a633c88",
  "version": 1
 }

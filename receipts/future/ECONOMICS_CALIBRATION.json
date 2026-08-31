@@ -1222,6 +1222,17 @@
    "parent": "qwen3.8-27b sealed-3.14",
    "requires": "every candidate declares stream_class or score() refuses",
    "status": "MEASURED_NEGATIVE"
+  },
+  {
+   "family": "BYTES_TRADED_FOR_DECODE_ARITHMETIC",
+   "level": "MODEL_SPECIFIC",
+   "mechanism": "A REPRESENTATION CHANGE THAT TRADES BYTES FOR DECODE ARITHMETIC TRADES A FREE RESOURCE FOR THE BINDING ONE. broadcast_aux bytes measure 0.000 ms/GB while stripping arithmetic at identical bytes buys 1.51x (MLP_ALU_ROOFLINE ARM A), so the trade is negative before it starts. Both attempts went the wrong way and were measured doing it: the incumbent decodes at 1.3333 FMA/weight-byte, aux_u8_lut at 2.0, aux_u8_native at 2.5. That is aux_u8's measured slowdown explained without a second theory - it removed bytes that cost nothing and added arithmetic that costs.",
+   "not": "a claim that no cheaper decode exists, or that storing aux compactly is wrong in itself. It refuses the TRADE, not the storage: a decode cheaper than 1.3333 would be welcome and nobody has built one.",
+   "object": "any representation that stores fewer bytes at the cost of more decode FMA per weight byte",
+   "organ": "mlp",
+   "parent": "qwen3.8-27b sealed-3.14",
+   "requires": "a candidate must state its decode-FMA per weight byte",
+   "status": "MEASURED_NEGATIVE"
   }
  ],
  "schema": "hawking.future.economics_calibration.v1",

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T20:27:35Z",
+  "recorded_at": "2026-08-31T20:29:32Z",
   "recorded_by": "tools/future/decode_tax_target.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,6 +11,29 @@
  "claim_boundary": "Static sidecar artifact. Every rate is READ from MLP_ALU_ROOFLINE and every millisecond from the measured post-widen_f4 organ census; nothing is measured here. This is an OPPORTUNITY BOUND computed by scaling measured organ time by a measured ARM A ratio, not a prediction that any decode achieves it. Both roofline arms are SELF_MEASURED_DIRTY under load, so the RATIO is the usable part.",
  "evidence_class": "STATIC_ONLY",
  "gpu_authority": false,
+ "prior_from_every_decode_tried": {
+  "attempts": [
+   {
+    "decode_fma_per_weight_byte": 2.0,
+    "direction": "WORSE",
+    "id": "aux_u8_lut",
+    "source": "receipts/future/AUX_U8_LUT.json",
+    "what": "two 256-entry tables instead of exp; dequant only"
+   },
+   {
+    "decode_fma_per_weight_byte": 2.5,
+    "direction": "WORSE",
+    "id": "aux_u8_native",
+    "source": "receipts/future/AUX_U8_NATIVE.json",
+    "what": "uchar scale/bias decoded in-register, log-scale exp"
+   }
+  ],
+  "incumbent_decode_fma_per_weight_byte": 1.3333,
+  "law": "A REPRESENTATION CHANGE THAT TRADES BYTES FOR DECODE ARITHMETIC TRADES A FREE RESOURCE FOR THE BINDING ONE. broadcast_aux bytes measure 0.000 ms/GB and arithmetic measures 1.51x, so removing aux bytes at the cost of decode FMA is negative before it starts. That is aux_u8's measured slowdown explained without a second theory.",
+  "nothing_built_is_below": 1.3333,
+  "target": 0.8835,
+  "what_would_be_needed": "a decode cheaper than the incumbent's 1.3333, which is the opposite direction from both attempts. Fewer int_to_float and fewer dequant FMA per weight, not a different place to store the scale."
+ },
  "ranking": {
   "decode_tax_at_arm_a_rate_ms": 7.3099,
   "entire_auxiliary_school_ms": 0.0,
@@ -40,7 +63,7 @@
   "target_decode_fma_per_weight_byte": 0.8835
  },
  "schema": "hawking.future.decode_tax_target.v1",
- "seal_sha256": "8d5c0b1e2235c2df0327bc1e1869419079e38c5891f131f5c6ca9c0b333fcca1",
+ "seal_sha256": "cf25042e02da854a7fa51e07cf0d150161b0afc26787f600c6b8977a4d6e894c",
  "version": 1,
  "worth": {
   "closes_the_residual": true,

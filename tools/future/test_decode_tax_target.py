@@ -69,3 +69,33 @@ def test_a_missing_receipt_refuses_rather_than_assuming_a_rate(monkeypatch):
     monkeypatch.setattr(dt, "ROOFLINE_REL", "receipts/future/NO_SUCH.json")
     with pytest.raises(dt.TargetRefused, match="read, not assumed"):
         dt.requirement()
+
+
+def test_every_decode_tried_so_far_went_the_wrong_way():
+    """Both alternative decodes cost MORE arithmetic than the incumbent."""
+    p = dt.every_decode_tried_so_far()
+    assert p["incumbent_decode_fma_per_weight_byte"] == pytest.approx(1.3333, abs=1e-3)
+    for a in p["attempts"]:
+        assert a["direction"] == "WORSE"
+        assert a["decode_fma_per_weight_byte"] > p["incumbent_decode_fma_per_weight_byte"]
+        assert a["source"].startswith("receipts/future/")
+
+
+def test_the_target_is_below_anything_ever_built():
+    p = dt.every_decode_tried_so_far()
+    assert p["target"] < p["nothing_built_is_below"]
+    assert p["nothing_built_is_below"] == pytest.approx(1.3333, abs=1e-3)
+
+
+def test_the_law_names_the_trade_that_makes_it_negative():
+    """Free bytes for binding arithmetic. This is aux_u8's slowdown explained."""
+    law = dt.every_decode_tried_so_far()["law"]
+    assert "FREE RESOURCE FOR THE BINDING ONE" in law
+    assert "0.000 ms/GB" in law and "1.51x" in law
+    assert "without a second theory" in law
+
+
+def test_it_says_what_a_real_candidate_would_have_to_do():
+    need = dt.every_decode_tried_so_far()["what_would_be_needed"]
+    assert "cheaper than the incumbent" in need
+    assert "not a different place to store the scale" in need

@@ -138,6 +138,50 @@ def against_everything_else() -> dict[str, Any]:
     }
 
 
+def every_decode_tried_so_far() -> dict[str, Any]:
+    """The direction of travel has been the WRONG WAY, and that is the prior.
+
+    Two alternative aux decodes were built and measured. Both cost MORE
+    arithmetic per weight byte than the incumbent, not less:
+
+        incumbent   1.3333 decode-FMA/weight-byte at 6 B/iter
+        LUT         2.0    (dequant only, two 256-entry tables)
+        native exp  2.5    at 4 B/iter (4.5 FMA/byte total vs 2.6667)
+
+    So the cheapest decode this campaign has is the one already shipping, and
+    the 0.8835 target is below anything anyone has built.
+
+    It also explains aux_u8's measured slowdown without needing a second theory:
+    it removed BYTES, which cost 0.000 ms, and added ARITHMETIC, which is the
+    term that costs. It traded a free resource for the binding one.
+    """
+    return {
+        "incumbent_decode_fma_per_weight_byte": 1.3333,
+        "attempts": [
+            {"id": "aux_u8_lut", "decode_fma_per_weight_byte": 2.0,
+             "direction": "WORSE", "source": "receipts/future/AUX_U8_LUT.json",
+             "what": "two 256-entry tables instead of exp; dequant only"},
+            {"id": "aux_u8_native", "decode_fma_per_weight_byte": 2.5,
+             "direction": "WORSE", "source": "receipts/future/AUX_U8_NATIVE.json",
+             "what": "uchar scale/bias decoded in-register, log-scale exp"},
+        ],
+        "target": 0.8835,
+        "nothing_built_is_below": 1.3333,
+        "law": (
+            "A REPRESENTATION CHANGE THAT TRADES BYTES FOR DECODE ARITHMETIC "
+            "TRADES A FREE RESOURCE FOR THE BINDING ONE. broadcast_aux bytes "
+            "measure 0.000 ms/GB and arithmetic measures 1.51x, so removing aux "
+            "bytes at the cost of decode FMA is negative before it starts. That "
+            "is aux_u8's measured slowdown explained without a second theory."
+        ),
+        "what_would_be_needed": (
+            "a decode cheaper than the incumbent's 1.3333, which is the opposite "
+            "direction from both attempts. Fewer int_to_float and fewer dequant "
+            "FMA per weight, not a different place to store the scale."
+        ),
+    }
+
+
 def build() -> dict[str, Any]:
     return {
         "schema": "hawking.future.decode_tax_target.v1",
@@ -147,6 +191,7 @@ def build() -> dict[str, Any]:
         "requirement": requirement(),
         "worth": worth(),
         "ranking": against_everything_else(),
+        "prior_from_every_decode_tried": every_decode_tried_so_far(),
         "claim_boundary": (
             "Static sidecar artifact. Every rate is READ from MLP_ALU_ROOFLINE "
             "and every millisecond from the measured post-widen_f4 organ census; "

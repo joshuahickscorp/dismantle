@@ -749,7 +749,35 @@ def calibrate_from_raw(raw: Mapping[str, Any]) -> dict[str, Any]:
                     "measurement of THIS packing on THIS body"
                 ),
                 "requires": "every candidate declares stream_class or score() refuses",
-            }
+            },
+            {
+                "family": "BYTES_TRADED_FOR_DECODE_ARITHMETIC",
+                "status": "MEASURED_NEGATIVE",
+                "level": "MODEL_SPECIFIC",
+                "parent": "qwen3.8-27b sealed-3.14",
+                "organ": "mlp",
+                "object": "any representation that stores fewer bytes at the cost "
+                          "of more decode FMA per weight byte",
+                "mechanism": (
+                    "A REPRESENTATION CHANGE THAT TRADES BYTES FOR DECODE "
+                    "ARITHMETIC TRADES A FREE RESOURCE FOR THE BINDING ONE. "
+                    "broadcast_aux bytes measure 0.000 ms/GB while stripping "
+                    "arithmetic at identical bytes buys 1.51x (MLP_ALU_ROOFLINE "
+                    "ARM A), so the trade is negative before it starts. Both "
+                    "attempts went the wrong way and were measured doing it: the "
+                    "incumbent decodes at 1.3333 FMA/weight-byte, aux_u8_lut at "
+                    "2.0, aux_u8_native at 2.5. That is aux_u8's measured "
+                    "slowdown explained without a second theory - it removed "
+                    "bytes that cost nothing and added arithmetic that costs."
+                ),
+                "not": (
+                    "a claim that no cheaper decode exists, or that storing aux "
+                    "compactly is wrong in itself. It refuses the TRADE, not the "
+                    "storage: a decode cheaper than 1.3333 would be welcome and "
+                    "nobody has built one."
+                ),
+                "requires": "a candidate must state its decode-FMA per weight byte",
+            },
         ],
         "loads_survived": {
             "codes_50pct_faster_than_noise": codes_ok,

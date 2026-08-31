@@ -228,9 +228,16 @@ def escalation_clock() -> dict[str, Any]:
 ARM_A_RATIO = {
     "q2": (1.5128, ("mlp_gate_up", "mlp_down"),
            "receipts/future/OP_CLASS_ABLATION.json"),
-    "q4": (1.5599, ("deltanet", "q4_remainder", "gqa_attention"),
+    "q4": (1.5599, ("q4_remainder", "gqa_attention"),
            "receipts/future/Q4_BITCAST_AB.json"),
 }
+
+# The DeltaNet ORGAN is 5.5971 ms but only its in-projection is a q4 matvec.
+# The state update, rearrange and gated norm are different kernels with
+# different arithmetic, so applying the q4 arm_a ratio to the whole organ
+# OVERSTATES the ceiling. Measured isolated component, same receipt family.
+DN_INPROJ_MS = 3.5885
+DN_INPROJ_SOURCE = "receipts/future/_G094_RESIDENT_CTRL_raw.json isolated_components.dn_inproj"
 
 
 def arithmetic_ceiling() -> dict[str, Any]:
@@ -250,6 +257,9 @@ def arithmetic_ceiling() -> dict[str, Any]:
         if missing:
             raise GapRefused(f"{codec}: budget has no rows for {missing}")
         ms = sum(rows[o] for o in organs)
+        if codec == "q4":
+            # DeltaNet contributes only its in-projection, not the whole organ.
+            ms += DN_INPROJ_MS
         saved = ms - ms / ratio
         total += saved
         parts.append({
@@ -259,6 +269,14 @@ def arithmetic_ceiling() -> dict[str, Any]:
             "arm_a_over_production": ratio,
             "ms_saved_at_perfect_removal": round(saved, 4),
             "source": source,
+            "deltanet_in_projection_only_ms": DN_INPROJ_MS if codec == "q4" else None,
+            "deltanet_note": (
+                "the DeltaNet ORGAN is 5.5971 ms; only its 3.5885 ms "
+                "in-projection is a q4 matvec. The state update, rearrange and "
+                "gated norm are different kernels and are NOT counted here. "
+                "Counting the whole organ would overstate this ceiling by "
+                "about 0.72 ms."
+            ) if codec == "q4" else None,
         })
     after = cur - total
     return {

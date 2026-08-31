@@ -5,6 +5,8 @@
    {
     "arm_a_over_production": 1.5128,
     "codec": "q2",
+    "deltanet_in_projection_only_ms": null,
+    "deltanet_note": null,
     "ms_saved_at_perfect_removal": 5.304,
     "organ_ms": 15.6473,
     "organs": [
@@ -16,10 +18,11 @@
    {
     "arm_a_over_production": 1.5599,
     "codec": "q4",
-    "ms_saved_at_perfect_removal": 3.4789,
-    "organ_ms": 9.6923,
+    "deltanet_in_projection_only_ms": 3.5885,
+    "deltanet_note": "the DeltaNet ORGAN is 5.5971 ms; only its 3.5885 ms in-projection is a q4 matvec. The state update, rearrange and gated norm are different kernels and are NOT counted here. Counting the whole organ would overstate this ceiling by about 0.72 ms.",
+    "ms_saved_at_perfect_removal": 2.7579,
+    "organ_ms": 7.6837,
     "organs": [
-     "deltanet",
      "q4_remainder",
      "gqa_attention"
     ],
@@ -27,11 +30,11 @@
    }
   ],
   "reaches_60": false,
-  "still_short_of_60_by_ms": 1.84,
-  "token_ms_after": 18.5067,
-  "total_ms_at_perfect_removal": 8.7829,
-  "tps_after": 54.035,
-  "verdict": "THE DECODE-ARITHMETIC SCHOOL CANNOT REACH 60 EVEN IF IT PERFECTLY SUCCEEDS. Removing every arithmetic operation from every q2 and q4 matvec reaches 54.0 TPS. 60 needs 1.84 ms from a DIFFERENT class - fewer bytes, less host time, or work removed rather than made cheaper.",
+  "still_short_of_60_by_ms": 2.561,
+  "token_ms_after": 19.2276,
+  "total_ms_at_perfect_removal": 8.062,
+  "tps_after": 52.008,
+  "verdict": "THE DECODE-ARITHMETIC SCHOOL CANNOT REACH 60 EVEN IF IT PERFECTLY SUCCEEDS. Removing every arithmetic operation from every q2 and q4 matvec reaches 52.0 TPS. 60 needs 2.56 ms from a DIFFERENT class - fewer bytes, less host time, or work removed rather than made cheaper.",
   "what_this_does_not_say": "it does not say the arithmetic school is not worth working. It is the largest single block on the board and the bitcast candidates have already taken a measured 3.854 ms of it. It says the school must not be the ONLY thing running if 60 is the target."
  },
  "authority": "S026 \u00a70, \u00a71, \u00a711, \u00a712, \u00a748",
@@ -68,8 +71,8 @@
  "does_the_open_set_reach_60": false,
  "escalation_clock": {
   "deprivilege_condition_would_fire": true,
-  "elapsed_hours": 0.785,
-  "hours_to_next_phase": 5.215,
+  "elapsed_hours": 0.912,
+  "hours_to_next_phase": 5.088,
   "next_phase": "SURVIVOR_OR_COLLAPSE",
   "not_an_abandonment": "the clock forbids complacency, not the incumbent. Passing a phase boundary licenses widening the search; it never requires dropping work that is producing evidence.",
   "phase": "DISCOVERY",
@@ -108,10 +111,10 @@
   "absolutes_are_measured_under_load": true,
   "gpu_lane_lock_held": null,
   "lane": "derived",
-  "loadavg": "{ 8.21 7.73 7.53 }",
+  "loadavg": "{ 6.58 6.80 7.10 }",
   "measured_at": null,
   "measured_at_source": "RETROFIT_UNKNOWN",
-  "receipt_regenerated_at": "2026-08-31T22:18:40Z",
+  "receipt_regenerated_at": "2026-08-31T22:26:13Z",
   "why": "this receipt predates measurement provenance; the raw capture carries no timestamp, so the measurement time is genuinely unknown and is recorded as unknown rather than invented"
  },
  "obligation": "G095",
@@ -312,7 +315,7 @@
   }
  ],
  "recorded_by": "tools/future/gap_ledger_60.py",
- "seal_sha256": "f139d860e176962ffc76b7eaf68bb0b544672545934047be300009c07cd5bcbf",
+ "seal_sha256": "7cb79f5f0a029f2a3ff8d098b7977c335df61b031c01de2e90b525c5965d40ac",
  "sum_of_material_open_ms": 7.063,
  "three_dominant_kernels": {
   "combined_ms": 21.2444,

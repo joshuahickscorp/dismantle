@@ -110,6 +110,15 @@ def test_the_ceiling_does_not_dismiss_the_school_it_bounds_it():
     assert "must not be the ONLY thing running" in a["what_this_does_not_say"]
 
 
+def test_deltanet_is_counted_by_its_in_projection_not_the_whole_organ():
+    """Counting the whole 5.5971 ms organ would overstate the ceiling."""
+    a = g.arithmetic_ceiling()
+    q4 = next(p for p in a["parts"] if p["codec"] == "q4")
+    assert "deltanet" not in q4["organs"], "the organ must not be counted whole"
+    assert q4["deltanet_in_projection_only_ms"] == g.DN_INPROJ_MS
+    assert "would overstate this ceiling" in q4["deltanet_note"]
+
+
 def test_each_ratio_cites_the_receipt_it_was_measured_in():
     a = g.arithmetic_ceiling()
     for part in a["parts"]:
@@ -125,7 +134,7 @@ def test_the_organ_level_estimate_is_labelled_as_one():
 def test_a_missing_organ_refuses(monkeypatch):
     d = g._budget()
     trimmed = {**d, "organs": {**d["organs"], "rows": [
-        r for r in d["organs"]["rows"] if r["organ"] != "deltanet"]}}
+        r for r in d["organs"]["rows"] if r["organ"] != "q4_remainder"]}}
     monkeypatch.setattr(g, "_budget", lambda: trimmed)
     with pytest.raises(g.GapRefused, match="budget has no rows for"):
         g.arithmetic_ceiling()

@@ -68,7 +68,9 @@ def test_lm_head_is_excluded_from_the_projection_with_a_reason():
 def test_the_projection_is_prospective_and_refuses_to_be_scaled_up():
     t = q4.token_projection()
     assert t["evidence_class"] == "PROSPECTIVE"
-    assert t["ms_saved_if_it_lands"] > 1.0, "material by the S025 threshold"
+    assert t["below_the_materiality_threshold"] is True, \
+        "counting DeltaNet by its in-projection put this under the 1 ms bar"
+    assert "governs what to START, not what to discard" in t["why_keep_it_anyway"]
     assert "not licence to scale it up" in t["the_isolated_number_has_been_a_LOWER_bound_twice"]
 
 

@@ -46,8 +46,15 @@ BUDGET_REL = "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
 
 STEADY_MAX_SPREAD = 1.10
 # The organs the uniform-q4 matvecs run in. lm_head is EXCLUDED: it uses a
-# different fused kernel that this candidate does not touch.
-Q4_ORGANS = ("deltanet", "q4_remainder", "gqa_attention")
+# different fused kernel that this candidate does not touch. DeltaNet is
+# counted by its IN-PROJECTION only - the state update, rearrange and gated norm
+# are different kernels, and counting the whole 5.5971 ms organ would overstate
+# this projection by about 0.25 ms.
+Q4_ORGANS = ("q4_remainder", "gqa_attention")
+DN_INPROJ_MS = 3.5885
+DN_INPROJ_SOURCE = (
+    "receipts/future/_G094_RESIDENT_CTRL_raw.json isolated_components.dn_inproj"
+)
 
 
 class Q4Refused(RuntimeError):
@@ -116,12 +123,19 @@ def token_projection() -> dict[str, Any]:
     missing = [o for o in Q4_ORGANS if o not in rows]
     if missing:
         raise Q4Refused(f"budget has no rows for {missing}")
-    organ_ms = sum(rows[o] for o in Q4_ORGANS)
+    organ_ms = sum(rows[o] for o in Q4_ORGANS) + DN_INPROJ_MS
     speedup = measured()["speedup"]
     saved = organ_ms - organ_ms / speedup
     return {
-        "organs_this_kernel_runs": list(Q4_ORGANS),
+        "organs_this_kernel_runs": list(Q4_ORGANS) + ["deltanet_in_projection"],
         "organ_ms_today": round(organ_ms, 4),
+        "deltanet_in_projection_ms": DN_INPROJ_MS,
+        "deltanet_counted_by_component_because": (
+            "the DeltaNet ORGAN is 5.5971 ms and only its in-projection is a q4 "
+            "matvec; the state update, rearrange and gated norm are different "
+            "kernels this candidate does not touch"
+        ),
+        "deltanet_source": DN_INPROJ_SOURCE,
         "lm_head_excluded_because": (
             "it runs qwen_uniform_q4_group64_final_norm_lm_head_simdgroup8, a "
             "different kernel this candidate does not touch"
@@ -129,6 +143,15 @@ def token_projection() -> dict[str, Any]:
         "measured_kernel_speedup": speedup,
         "ms_saved_if_it_lands": round(saved, 4),
         "evidence_class": "PROSPECTIVE",
+        "below_the_materiality_threshold": round(saved, 4) < 1.0,
+        "why_keep_it_anyway": (
+            "0.97 ms is under the 1 ms bar S025 set for what deserves serious "
+            "effort, and this candidate is already BUILT, token-identical and "
+            "free to keep - the bar governs what to START, not what to discard "
+            "after it is finished. It would not have justified being built on "
+            "its own; it was built because the q2 ladder had already paid for "
+            "the construction."
+        ),
         "the_isolated_number_has_been_a_LOWER_bound_twice": (
             "the q2 bitcast predicted 2.7985 ms from its isolated speedup and "
             "the graph delivered 3.8541. widen_f4 predicted 0.7046 and "

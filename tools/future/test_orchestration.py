@@ -222,3 +222,61 @@ def test_call_bound_fails_closed_on_unbound_or_missing_fn():
         orch.bound_module("not_a_real_module.py")
     with pytest.raises(orch.BindingError):
         orch.call_bound("protected_scheduler.py", "this_function_does_not_exist")
+
+
+def test_mutation_engine_is_bound_and_callable_through_orchestration(tmp_path):
+    """An unbound engine is not resident-callable. This one is bound and called.
+
+    autonomy_run.py is not edited. The resident reaches propose/apply/
+    evidence/rollback/verdict through BINDINGS (resident_mutation_engine
+    / call_bound). invoke() would rewrite MUTATION_ENGINE.json from a
+    module this lane cannot edit.
+    """
+    key = "mutation_engine.py"
+    assert key in orch.BINDINGS, "mutation_engine must be in BINDINGS"
+    frontier, species = orch.BINDINGS[key]
+    assert frontier == "FT.HCLI_SELF.emit-workunits"
+    assert species == "MUTATION_ENGINE"
+
+    locks_dir = REPO / ".hcli" / "locks"
+    existed = locks_dir.exists()
+    before = _lock_mtime_snapshot()
+
+    from tools.future import mutation_engine as me
+
+    me.unbind()
+    try:
+        engine = orch.resident_mutation_engine(tmp_path)
+        assert engine is me._need()
+        proposed = orch.call_bound(key, "propose", "FT.HCLI_SELF.emit-workunits")
+        assert proposed["mutation_class"] == me.PIPELINE_SELF
+        assert proposed["state"] == "PROPOSED"
+        applied = orch.call_bound(key, "apply", proposed)
+        assert applied["state"] == "APPLIED"
+        assert applied["before_digest"] != applied["after_digest"]
+        ev = orch.call_bound(key, "evidence", proposed)
+        assert ev["digest_changed"] is True
+        decided = orch.call_bound(key, "verdict", proposed)
+        assert decided["verdict"] in me.VERDICTS
+        if decided["verdict"] == me.VERDICT_KEPT:
+            undone = orch.call_bound(key, "rollback", proposed)
+            assert undone["digest_match"] is True
+        else:
+            assert decided["verdict"] == me.VERDICT_ROLLED_BACK
+            assert decided.get("digest_match") is True
+    finally:
+        orch.call_bound(key, "unbind")
+
+    after = _lock_mtime_snapshot()
+    assert after == before
+    if not existed:
+        assert not locks_dir.exists(), "bound mutation_engine must not create .hcli/locks"
+
+    wu = orch.emit_workunit(key)
+    assert wu["frontier_item"] == frontier
+    assert wu["species"] == species
+    assert wu["module"] == "tools/future/mutation_engine.py"
+    assert wu["output_contract"] == "receipts/future/MUTATION_ENGINE.json"
+    assert wu["gpu_authority"] is False
+    receipt = REPO / "receipts" / "future" / "MUTATION_ENGINE.json"
+    assert receipt.is_file()

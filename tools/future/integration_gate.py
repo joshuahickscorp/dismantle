@@ -26,11 +26,126 @@ import sys
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import REPO  # noqa: E402
+from tools.future import status_causality as sc  # noqa: E402
 
 RECEIPT = REPO / "receipts" / "future" / "INTEGRATION_GATE.json"
 TEST_TIMEOUT_S = 1200
+
+FIVE_RECORDED_FIELDS: tuple[str, ...] = getattr(
+    sc,
+    "FIVE_RECORDED_FIELDS",
+    (
+        "probe_performed",
+        "direct_observation",
+        "interpretation",
+        "confidence",
+        "alternatives",
+    ),
+)
+
+
+def _bind_emit() -> None:
+    """Consumer-side emit. Sibling owns the routine; this checkout may predate it."""
+    if hasattr(sc, "emit"):
+        return
+
+    def emit(
+        status: str,
+        *,
+        probe_performed: str = "",
+        direct_observation: Any = "",
+        interpretation: str = "",
+        probe_kind: str = "",
+        claim_kind: str | None = None,
+        falsifier: str = "",
+        source: str = "",
+    ) -> dict[str, Any]:
+        row: dict[str, Any] = {
+            "status": status,
+            "probe_performed": probe_performed,
+            "direct_observation": direct_observation,
+            "interpretation": interpretation or status,
+            "probe_kind": probe_kind,
+            "use_catalog": False,
+            "source": source or "<emit>",
+        }
+        if claim_kind:
+            row["claim_kind"] = claim_kind
+        if falsifier:
+            row["falsifier"] = falsifier
+        out = sc.challenge(row)
+        out["entry"] = "emit"
+        return out
+
+    sc.emit = emit  # type: ignore[attr-defined]
+
+
+_bind_emit()
+
+
+def records_five_fields(node: Any) -> bool:
+    fn = getattr(sc, "records_five_fields", None)
+    if callable(fn):
+        return bool(fn(node))
+    if not isinstance(node, dict):
+        return False
+    if not all(k in node for k in FIVE_RECORDED_FIELDS):
+        return False
+    if not str(node.get("probe_performed") or "").strip():
+        return False
+    if node.get("direct_observation") in (None, "", [], {}):
+        return False
+    if not str(node.get("interpretation") or "").strip():
+        return False
+    conf = node.get("confidence")
+    if not isinstance(conf, dict):
+        return False
+    if not {"would_raise", "would_lower", "level", "about"} <= set(conf):
+        return False
+    alts = node.get("alternatives")
+    return isinstance(alts, list) and bool(alts)
+
+
+def record_check_causality(
+    result: dict[str, Any],
+    *,
+    probe_performed: str = "",
+    direct_observation: Any = "",
+    interpretation: str | None = None,
+    probe_kind: str = "",
+    claim_kind: str | None = None,
+) -> dict[str, Any]:
+    """Stamp the five causality fields. Does not change green/verdict.
+
+    An unsupplied observation is UNTESTED, never a restatement of GREEN/RED.
+    """
+    green_before = result.get("green")
+    verdict_before = result.get("verdict")
+    status = str(result.get("verdict") or ("GREEN" if result.get("green") else "RED"))
+    unsupplied = direct_observation in (None, "", [], {})
+    rec = sc.emit(
+        status,
+        probe_performed=str(probe_performed or ""),
+        direct_observation="" if unsupplied else direct_observation,
+        interpretation=interpretation if interpretation is not None else status,
+        probe_kind="" if unsupplied else (probe_kind or sc.PROBE_MEASURED_FLAGS),
+        claim_kind=None if unsupplied else claim_kind,
+        source="tools/future/integration_gate.py::check",
+    )
+    for key in FIVE_RECORDED_FIELDS:
+        result[key] = rec[key]
+    result["causality_verdict"] = rec["verdict"]
+    result["falsifier"] = rec.get("falsifier")
+    if rec.get("probe_kind"):
+        result["probe_kind"] = rec["probe_kind"]
+    if rec.get("claim_kind") is not None:
+        result["claim_kind"] = rec["claim_kind"]
+    if result.get("green") != green_before or result.get("verdict") != verdict_before:
+        raise RuntimeError("status_causality.emit mutated the gate verdict")
+    return rec
 
 
 class GateRed(Exception):
@@ -91,13 +206,46 @@ def check(paths: list[str]) -> dict[str, Any]:
     tests = run_tests(required_tests(paths))
     rec = receipts_parse(paths)
     green = tests["green"] and rec["green"]
-    return {
+    result = {
         "paths": paths,
         "tests": tests,
         "receipts": rec,
         "green": green,
         "verdict": "GREEN" if green else "RED",
     }
+    test_list = list(tests.get("tests") or [])
+    if tests.get("ran"):
+        probe_performed = (
+            f"subprocess.run {[sys.executable, '-m', 'pytest', *test_list, '-q', '-p', 'no:cacheprovider']} "
+            f"cwd=REPO timeout={TEST_TIMEOUT_S}s; json.loads each .json path in {paths}"
+        )
+        direct_observation = (
+            f"pytest.ran=True pytest.green={tests.get('green')} "
+            f"returncode={tests.get('returncode')} why={tests.get('why')!r} "
+            f"tail={tests.get('tail')!r} receipts.green={rec.get('green')} "
+            f"malformed={rec.get('malformed')}"
+        )
+    else:
+        probe_performed = (
+            f"required_tests({paths}) looked for tools/future test_*.py; "
+            f"no corresponding test module. json.loads each .json path in {paths}"
+        )
+        direct_observation = (
+            f"pytest.ran=False why={tests.get('why')!r} "
+            f"receipts.green={rec.get('green')} malformed={rec.get('malformed')}"
+        )
+    record_check_causality(
+        result,
+        probe_performed=probe_performed,
+        direct_observation=direct_observation,
+        interpretation=(
+            f"{result['verdict']}: tests.why={tests.get('why')!r} "
+            f"receipts.green={rec.get('green')}"
+        ),
+        probe_kind=sc.PROBE_MEASURED_FLAGS,
+        claim_kind=sc.CLAIM_FIELD_VALUE if green else sc.CLAIM_MEASURED_UNMET,
+    )
+    return result
 
 
 def land(paths: list[str], message_file: str, known_red: str | None = None) -> dict[str, Any]:

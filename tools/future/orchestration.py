@@ -284,6 +284,23 @@ def call_bound(module: str, fn_name: str, *args: Any, **kwargs: Any) -> Any:
     return fn(*args, **kwargs)
 
 
+def resident_mutation_engine(scope: str | Path) -> Any:
+    """Construct and bind a MutationEngine through BINDINGS.
+
+    An unbound engine is not resident-callable. autonomy_run.py is not
+    edited; the resident reaches propose/apply/evidence/rollback/verdict
+    by this BINDINGS path (call_bound / this constructor).
+    """
+    if "mutation_engine.py" not in BINDINGS:
+        raise UnknownBinding(
+            "mutation_engine.py is not in BINDINGS; refuse rather than "
+            "construct an unbound mutation engine"
+        )
+    engine = call_bound("mutation_engine.py", "MutationEngine", scope)
+    call_bound("mutation_engine.py", "bind", engine)
+    return engine
+
+
 def emit_workunit(module: str, *, hypothesis: str | None = None) -> dict[str, Any]:
     """Wrap a bound capability as a real WorkUnit.
 

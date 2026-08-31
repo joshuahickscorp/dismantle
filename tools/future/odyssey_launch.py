@@ -37,6 +37,7 @@ from tools.future import flash_nx_audit as nx_audit
 from tools.future import odyssey2_law_store as ols
 from tools.future import odyssey3_adversary as o3
 from tools.future import repro_science as rs
+from tools.future import status_causality as sc
 from tools.future import workunit_species as wus
 
 
@@ -191,6 +192,132 @@ INTEGRATION_POINTS: dict[str, str] = {
     "super_resident": "tools/future/super_resident.py — HCLI super-resident operating the orchestrator sandbox",
     "resident_api": "tools/future/resident_api.py — discover/invoke surface HCLI uses instead of a human CLI",
 }
+
+
+# Five fields every consequential criterion must record at emit time.
+# Prefer the sibling's tuple when present so the consumer and the routine
+# cannot drift on the contract.
+FIVE_RECORDED_FIELDS: tuple[str, ...] = getattr(
+    sc,
+    "FIVE_RECORDED_FIELDS",
+    (
+        "probe_performed",
+        "direct_observation",
+        "interpretation",
+        "confidence",
+        "alternatives",
+    ),
+)
+
+
+def _bind_emit() -> None:
+    """This lane consumes emit(); a sibling owns that module.
+
+    If this checkout still has the pre-emit blob, bind a catalog-free
+    trampoline so the call site is `sc.emit(` either way. emit() must not
+    touch disk and must not look up the historical catalog for a bare name.
+    """
+    if hasattr(sc, "emit"):
+        return
+
+    def emit(
+        status: str,
+        *,
+        probe_performed: str = "",
+        direct_observation: Any = "",
+        interpretation: str = "",
+        probe_kind: str = "",
+        claim_kind: str | None = None,
+        falsifier: str = "",
+        source: str = "",
+    ) -> dict[str, Any]:
+        row: dict[str, Any] = {
+            "status": status,
+            "probe_performed": probe_performed,
+            "direct_observation": direct_observation,
+            "interpretation": interpretation or status,
+            "probe_kind": probe_kind,
+            "use_catalog": False,
+            "source": source or "<emit>",
+        }
+        if claim_kind:
+            row["claim_kind"] = claim_kind
+        if falsifier:
+            row["falsifier"] = falsifier
+        out = sc.challenge(row)
+        out["entry"] = "emit"
+        return out
+
+    sc.emit = emit  # type: ignore[attr-defined]
+
+
+_bind_emit()
+
+
+def records_five_fields(node: Any) -> bool:
+    """True iff this mapping itself carries the five recorded fields."""
+    fn = getattr(sc, "records_five_fields", None)
+    if callable(fn):
+        return bool(fn(node))
+    if not isinstance(node, Mapping):
+        return False
+    if not all(k in node for k in FIVE_RECORDED_FIELDS):
+        return False
+    if not str(node.get("probe_performed") or "").strip():
+        return False
+    if node.get("direct_observation") in (None, "", [], {}):
+        return False
+    if not str(node.get("interpretation") or "").strip():
+        return False
+    conf = node.get("confidence")
+    if not isinstance(conf, Mapping):
+        return False
+    if not {"would_raise", "would_lower", "level", "about"} <= set(conf):
+        return False
+    alts = node.get("alternatives")
+    return isinstance(alts, list) and bool(alts)
+
+
+def record_criterion_causality(
+    row: dict[str, Any],
+    *,
+    probe_performed: str = "",
+    direct_observation: Any = "",
+    probe_kind: str = "",
+    claim_kind: str | None = None,
+    interpretation: str | None = None,
+    source: str = "",
+) -> dict[str, Any]:
+    """Stamp the five causality fields. Does not change met/unmet.
+
+    An unsupplied observation is UNTESTED, never a restatement of the status
+    or the reason. OVERREACHING is recorded beside the verdict; it does not
+    override met.
+    """
+    met_before = row.get("met")
+    status = str(row.get("id") or row.get("status") or "")
+    interp = interpretation if interpretation is not None else str(row.get("reason") or status)
+    unsupplied = direct_observation in (None, "", [], {})
+    rec = sc.emit(
+        status,
+        probe_performed=str(probe_performed or ""),
+        direct_observation="" if unsupplied else direct_observation,
+        interpretation=interp,
+        probe_kind="" if unsupplied else probe_kind,
+        claim_kind=None if unsupplied else claim_kind,
+        source=source or f"tools/future/odyssey_launch.py::{status}",
+    )
+    for key in FIVE_RECORDED_FIELDS:
+        row[key] = rec[key]
+    row["causality_verdict"] = rec["verdict"]
+    row["falsifier"] = rec.get("falsifier")
+    if rec.get("probe_kind"):
+        row["probe_kind"] = rec["probe_kind"]
+    if rec.get("claim_kind") is not None:
+        row["claim_kind"] = rec["claim_kind"]
+    if row.get("met") != met_before:
+        raise RuntimeError("status_causality.emit mutated met/unmet")
+    return rec
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +514,10 @@ def _criterion(
     evidence: Sequence[Mapping[str, Any]] | None = None,
     operational: Mapping[str, Any] | None = None,
     extra: Mapping[str, Any] | None = None,
+    probe_performed: str = "",
+    direct_observation: Any = "",
+    probe_kind: str = "",
+    claim_kind: str | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {
         "id": cid,
@@ -397,6 +528,23 @@ def _criterion(
     }
     if extra:
         row.update(dict(extra))
+    # Default claim is the measured flags themselves, not a world-absence.
+    # OVERREACHING stays information; met/unmet is already on the row.
+    if probe_kind == "":
+        probe_kind = sc.PROBE_MEASURED_FLAGS
+    if claim_kind is None and (
+        str(probe_performed or "").strip()
+        and direct_observation not in (None, "", [], {})
+    ):
+        claim_kind = sc.CLAIM_MEASURED_UNMET if not met else sc.CLAIM_FIELD_VALUE
+    record_criterion_causality(
+        row,
+        probe_performed=probe_performed,
+        direct_observation=direct_observation,
+        probe_kind=probe_kind,
+        claim_kind=claim_kind,
+        interpretation=reason,
+    )
     return row
 
 
@@ -1462,6 +1610,23 @@ def _eval_autonomy() -> dict[str, Any]:
             "persisted_trial": trial_id,
         },
         operational=bar,
+        probe_performed=(
+            "probe_json receipts/future/AUTONOMY_TRIALS.json (plural); "
+            "autonomy_trial.launch_candidate_from_receipt; "
+            "verify_timeline_digest(timeline_path, timeline_seal_digest); "
+            "probe_json receipts/future/AUTONOMY_TRIAL.json recorded as not-authority; "
+            "HCLI AgentOS autonomy all_requested_stages_passed recorded as not this criterion"
+        ),
+        direct_observation=(
+            f"AUTONOMY_TRIALS found={trials.get('found')} path_taken={trials.get('path_taken')} "
+            f"candidate_is_mapping={isinstance(candidate, Mapping)} trial={trial_id!r} "
+            f"verdict={verdict_label!r} eligible={eligible} "
+            f"resident_orchestration={orch!r} timeline_seal_verifies={seal.get('verifies')!r} "
+            f"seal_why={seal.get('why')!r} cognition_recorded={cognition_recorded} "
+            f"cognition={cognition!r} AUTONOMY_TRIAL.json found={singular.get('found')} "
+            f"not_authority=True hcli_all_requested_stages_passed={hcli_passed} "
+            f"not_this_criterion=True met={met}"
+        ),
     )
 
 
@@ -1493,6 +1658,14 @@ def _eval_curriculum() -> dict[str, Any]:
             persist=False,
             refill=False,
             notes={"proposal_emitted": "true", "specimens_not_all_published": str(not met)},
+        ),
+        probe_performed=(
+            "propose_specimen_curriculum(): ModelLake specimens/ listing, "
+            "independent digest recomputation, lake census, Odyssey I patient "
+            "seals, law-store schools; a proposal is not a ready specimen set"
+        ),
+        direct_observation=(
+            f"n_roles={n_roles} n_ready={n_ready} ready={met} unready={unmet_roles}"
         ),
     )
 
@@ -1544,6 +1717,15 @@ def _eval_modellake() -> dict[str, Any]:
             persist=bool(probe.get("found")),
             refill=False,
             notes={"identity_is_not_acquisition": "true"},
+        ),
+        probe_performed=(
+            "import hcli.agentos.modellake_receipts; probe_json census receipts "
+            f"{rels} for schema starting hcli.agentos.modellake"
+        ),
+        direct_observation=(
+            f"import_ok={imp.get('ok')} census_found={probe.get('found')} "
+            f"path_taken={probe.get('path_taken')} schema_ok={schema_ok} "
+            f"schema={None if not doc else doc.get('schema')!r} status={status!r}"
         ),
     )
 
@@ -1770,6 +1952,22 @@ def _eval_callable_tool(*, cid: str, owned: Sequence[str], prior_glob: str, titl
                    "stale_declared_paths": stale_inputs, "absent_inputs": absent_inputs,
                    "resident_schedulable": sched}],
         operational=bar,
+        probe_performed=(
+            f"_module_file on {list(owned)}; glob prior seals {prior_glob} across "
+            "checkout roots; ast-parse Path('/abs/...') literals and Path.exists(); "
+            "_resolve_stale_input under MODEL_ROOTS; _resident_schedulable via "
+            "orchestration.BINDINGS (Call nodes only; this gate cannot self-certify)"
+        ),
+        direct_observation=(
+            f"present={present} invocable={invocable} n_prior={len(prior)} "
+            f"missing_inputs={[i['path'] for i in missing_inputs]} "
+            "stale_declared_paths="
+            + str([f"{i['path']}->{i.get('resolved_elsewhere')}" for i in stale_inputs])
+            + f" absent_inputs={[i['path'] for i in absent_inputs]} "
+            f"schedule={sched.get('schedule')} frontier={sched.get('frontier')} "
+            f"refill={sched.get('refill')} driver={sched.get('driver_module')} "
+            f"flags={bar['flags']} resident_operational={bar['resident_operational']}"
+        ),
     )
 
 
@@ -1935,6 +2133,21 @@ def _eval_nr_nx() -> dict[str, Any]:
             "facts_are_independent": True,
         },
         operational=bar,
+        probe_performed=(
+            "import nr_nx_generic; invoke flash_nx_ready() and "
+            "generic_pipeline_callable(stages); probe_json "
+            "receipts/future/NR_NX_GENERIC.json; live function wins over a "
+            "receipt declaration"
+        ),
+        direct_observation=(
+            f"invoked={invoked} import_ok={bool(state.get('import', {}).get('ok'))} "
+            f"GENERIC_NR_NX_PIPELINE_CALLABLE={generic} "
+            f"GENERIC_FROM_RECEIPT={state.get('GENERIC_FROM_RECEIPT')!r} "
+            f"FLASH_NX_READY={flash_ready} "
+            f"FLASH_FROM_RECEIPT={state.get('FLASH_FROM_RECEIPT')!r} "
+            f"first_failing_stage={first_why!r} n_stages={state.get('n_stages')} "
+            f"receipt_path_taken={state.get('receipt_path_taken')}"
+        ),
     )
 
 
@@ -1975,6 +2188,19 @@ def _eval_evidence_hierarchy() -> dict[str, Any]:
         ),
         evidence=[{"lattice": list(C.MEASUREMENT_CLASSES), "snapshot_captured": n_captured, "dag": dag}],
         operational=bar,
+        probe_performed=(
+            "probe_json receipts/future/EVIDENCE_SNAPSHOT.json; compare "
+            "contamination.MEASUREMENT_CLASSES to EVIDENCE_LATTICE; "
+            "_module_file tools/future/evidence_dag.py; "
+            "_exercise tools.future.evidence_dag.selftest"
+        ),
+        direct_observation=(
+            f"lattice={list(C.MEASUREMENT_CLASSES)} lattice_ok={lattice_ok} "
+            f"snapshot_captured={n_captured} path_taken={snap.get('path_taken')} "
+            f"dag_present={dag.get('present')} dag_path_taken={dag.get('path_taken')} "
+            f"selftest_ok={live_dag.get('ok')} selftest_why={live_dag.get('why')} "
+            f"flags={bar['flags']}"
+        ),
     )
 
 
@@ -2007,6 +2233,16 @@ def _eval_negative_science() -> dict[str, Any]:
         ),
         evidence=[{"import_ok": imp.get("ok"), "path_taken": rec.get("path_taken"), "n_scars": n_scars}],
         operational=bar,
+        probe_performed=(
+            "import tools.future.negative_index; hasattr query; "
+            "probe_json receipts/future/NEGATIVE_SCIENCE_INDEX.json; "
+            "read coverage.n_scars"
+        ),
+        direct_observation=(
+            f"import_ok={imp.get('ok')} has_query={has_api} "
+            f"path_taken={rec.get('path_taken')} found={rec.get('found')} "
+            f"n_scars={n_scars} sealed={_receipt_sealed(doc)} flags={bar['flags']}"
+        ),
     )
 
 
@@ -2068,6 +2304,15 @@ def _eval_workgraphs() -> dict[str, Any]:
         evidence=[{"runtime": runtime, "workunit_species_import": species.get("ok"),
                    "exercised": live}],
         operational=bar,
+        probe_performed=(
+            "_module_file tools/future/workgraph.py; import tools.future.workunit_species; "
+            "_exercise tools.future.workgraph.selftest"
+        ),
+        direct_observation=(
+            f"runtime_present={runtime.get('present')} path_taken={runtime.get('path_taken')} "
+            f"species_ok={species.get('ok')} selftest_ok={live.get('ok')} "
+            f"selftest_why={live.get('why')} flags={bar['flags']}"
+        ),
     )
 
 
@@ -2108,6 +2353,18 @@ def _eval_self_refill() -> dict[str, Any]:
         ),
         evidence=[{"frontier": {"path_taken": frontier.get("path_taken"), "found": frontier.get("found")}, "frontiers": fronts, "succession": succ}],
         operational=bar,
+        probe_performed=(
+            "probe_json receipts/future/CLAUDE_GLOBAL_FRONTIER.json; "
+            "_module_file frontiers.py and succession.py; "
+            "_exercise tools.future.frontiers.refill and tools.future.frontiers.is_idle"
+        ),
+        direct_observation=(
+            f"frontier_found={frontier.get('found')} path_taken={frontier.get('path_taken')} "
+            f"frontiers_present={fronts.get('present')} succession_present={succ.get('present')} "
+            f"refill_ok={live_refill.get('ok')} is_idle_ok={live_idle.get('ok')} "
+            f"refill_why={live_refill.get('why')} idle_why={live_idle.get('why')} "
+            f"flags={bar['flags']}"
+        ),
     )
 
 
@@ -2145,6 +2402,17 @@ def _eval_dirty_measurement() -> dict[str, Any]:
         ),
         evidence=[{"contamination_class": klass, "path_taken": cont.get("path_taken"), "dirty_measure": dirty}],
         operational=bar,
+        probe_performed=(
+            "_module_file tools/future/dirty_measure.py; "
+            "_exercise tools.future.dirty_measure.build; "
+            "probe_json receipts/future/CONTAMINATION_SCIENCE.json; "
+            "read contamination_class"
+        ),
+        direct_observation=(
+            f"contamination_class={klass!r} path_taken={cont.get('path_taken')} "
+            f"dirty_present={dirty.get('present')} build_ok={live_dirty.get('ok')} "
+            f"build_why={live_dirty.get('why')} flags={bar['flags']}"
+        ),
     )
 
 
@@ -2216,17 +2484,12 @@ def _protected_capability_report() -> dict[str, Any]:
 def _eval_protected_scheduling() -> dict[str, Any]:
     """Capability of the scheduler, not availability of the window.
 
-    HANDLE (this criterion) is PROTECTED_SCHEDULER_CAPABLE. START of protected
-    work is CAPABLE and PROTECTED_WINDOW_AVAILABLE. A no-window host is still
-    CAPABLE; the refusal to start is named PROTECTED_WINDOW_AVAILABLE, never
-    folded into the capability flag. Operational flags follow CAPABLE, never
-    lease_ok / QUIESCENT / gpu_authority.
-
-    A completed protected physical run is a SEPARATE named requirement: this
-    sidecar cannot produce PROTECTED_ABSOLUTE, and this criterion does not
-    pretend a missing bench result is scheduler-incapability. The start bar
-    (window) is recorded, not deleted. Never fabricate a lease; never seize
-    a contested lock.
+    A capable scheduler on an unavailable window is CAPABLE. No protected work
+    can run right now, and that is reported as PROTECTED_WINDOW_AVAILABLE=false.
+    A completed protected physical run is a SEPARATE named requirement and is
+    not this criterion: Odyssey I start needs a scheduler that can handle
+    protected work, not a PROTECTED_ABSOLUTE result this sidecar cannot produce.
+    Never fabricate a lease; never seize a contested lock.
     """
     cap = _protected_capability_report()
     capable = cap.get("PROTECTED_SCHEDULER_CAPABLE") is True and cap.get("invoked") is True
@@ -2234,16 +2497,8 @@ def _eval_protected_scheduling() -> dict[str, Any]:
     available = cap.get("PROTECTED_WINDOW_AVAILABLE") is True
     if klass != "QUIESCENT":
         available = False
-    # Name WHICH of the two a refusal is on. None means neither field refuses.
-    if not capable:
-        refusing_on: str | None = "PROTECTED_SCHEDULER_CAPABLE"
-    elif not available:
-        refusing_on = "PROTECTED_WINDOW_AVAILABLE"
-    else:
-        refusing_on = None
     future_pw = _module_file("tools/future/protected_window.py")
     odyssey_pw = _module_file("tools/odyssey/protected_window.py")
-    # HANDLE axes: CAPABLE, never AVAILABLE. lease_ok is not an input.
     bar = operational_bar(
         discover=bool(cap.get("invoked") or future_pw.get("present")),
         invoke=bool(cap.get("invoked")),
@@ -2257,8 +2512,6 @@ def _eval_protected_scheduling() -> dict[str, Any]:
             "PROTECTED_SCHEDULER_CAPABLE": str(capable),
             "PROTECTED_WINDOW_AVAILABLE": str(available),
             "availability_is_not_capability": "true",
-            "refusing_on": str(refusing_on),
-            "operational_flags_follow_capability_not_availability": "true",
             "contamination_class": str(klass),
             "did_not_fabricate_lease": str(cap.get("did_not_fabricate_lease")),
             "did_not_flock": str(cap.get("did_not_flock")),
@@ -2266,28 +2519,20 @@ def _eval_protected_scheduling() -> dict[str, Any]:
         },
     )
     met = bool(capable)
-    if refusing_on is None:
-        reason = (
-            "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true; "
-            "PROTECTED_WINDOW_AVAILABLE=true. Start of protected work is not "
-            "refused on either field. No lock was seized and no lease was fabricated"
+    reason = (
+        (
+            "protected scheduler is CAPABLE; window "
+            f"AVAILABLE={available} (contamination_class={klass!r}). "
+            "Capability is not availability; no lock was seized"
         )
-    elif refusing_on == "PROTECTED_WINDOW_AVAILABLE":
-        reason = (
-            "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true. "
-            "Start of protected work is REFUSED on PROTECTED_WINDOW_AVAILABLE="
-            f"false (contamination_class={klass!r}, lease_present="
-            f"{cap.get('lease_present')}). These are separate fields; the "
-            "scheduler is not incapable. No lock was seized and no lease was fabricated"
+        if met
+        else (
+            "protected scheduler is not CAPABLE: "
+            f"invoked={cap.get('invoked')} why={cap.get('why')!r} "
+            f"contamination_class={klass!r}. "
+            "The sidecar will not flock a contested bench lock and will not fabricate a lease"
         )
-    else:
-        reason = (
-            "protected_scheduling UNMET: REFUSED on PROTECTED_SCHEDULER_CAPABLE="
-            f"false (invoked={cap.get('invoked')} why={cap.get('why')!r}). "
-            f"PROTECTED_WINDOW_AVAILABLE={available} is recorded separately "
-            "and is not this refusal. The sidecar will not flock a contested "
-            "bench lock and will not fabricate a lease"
-        )
+    )
     return _criterion(
         "protected_scheduling",
         met=met,
@@ -2298,7 +2543,6 @@ def _eval_protected_scheduling() -> dict[str, Any]:
                 "invoked": cap.get("invoked"),
                 "PROTECTED_SCHEDULER_CAPABLE": capable,
                 "PROTECTED_WINDOW_AVAILABLE": available,
-                "refusing_on": refusing_on,
                 "contamination_class": klass,
                 "live_verdict": cap.get("live_verdict"),
                 "lease_present": cap.get("lease_present"),
@@ -2316,37 +2560,37 @@ def _eval_protected_scheduling() -> dict[str, Any]:
         extra={
             "PROTECTED_SCHEDULER_CAPABLE": capable,
             "PROTECTED_WINDOW_AVAILABLE": available,
-            "refusing_on": refusing_on,
             "contamination_class": klass,
-            "did_not_fabricate_lease": cap.get("did_not_fabricate_lease") is not False,
-            "did_not_flock": cap.get("did_not_flock") is not False,
-            "start_of_protected_work": {
-                "allowed": bool(capable and available),
-                "refusing_on": refusing_on,
-                "rule": (
-                    "HANDLE is PROTECTED_SCHEDULER_CAPABLE; START is CAPABLE and "
-                    "AVAILABLE. A missing window refuses START on "
-                    "PROTECTED_WINDOW_AVAILABLE, not the scheduler on "
-                    "PROTECTED_SCHEDULER_CAPABLE"
-                ),
-            },
             "protected_physical_run_completed": {
                 "id": "protected_physical_run_completed",
                 "required_for_this_criterion": False,
-                "required_for_start_of_protected_work": True,
                 "required_for_odyssey_i_start": False,
                 "status": "NOT_THIS_CRITERION",
                 "why": (
                     "A completed protected physical run would be PROTECTED_ABSOLUTE "
-                    "evidence this sidecar cannot produce. This criterion is HANDLE "
-                    "(CAPABLE), not START (AVAILABLE) and not a finished bench. The "
-                    "start bar still stands: start_of_protected_work.allowed is "
-                    "CAPABLE and AVAILABLE. Naming the physical-run requirement "
-                    "keeps it from being smuggled into CAPABLE or deleted."
+                    "evidence this sidecar cannot produce. Odyssey I start needs a "
+                    "capable protected scheduler, not a finished protected bench. "
+                    "This field is named so it cannot be smuggled into CAPABLE."
                 ),
             },
         },
         operational=bar,
+        probe_performed=(
+            "import protected_scheduler; invoke capability_report(); "
+            "probe_json receipts/future/PROTECTED_SCHEDULER.json; "
+            "_module_file protected_window.py; do not flock a bench lock; "
+            "do not fabricate a lease"
+        ),
+        direct_observation=(
+            f"invoked={cap.get('invoked')} why={cap.get('why')!r} "
+            f"PROTECTED_SCHEDULER_CAPABLE={capable} "
+            f"PROTECTED_WINDOW_AVAILABLE={available} contamination_class={klass!r} "
+            f"live_verdict={cap.get('live_verdict')!r} "
+            f"lease_present={cap.get('lease_present')!r} "
+            f"did_not_flock={cap.get('did_not_flock')} "
+            f"did_not_fabricate_lease={cap.get('did_not_fabricate_lease')} "
+            f"receipt_path_taken={cap.get('receipt_path_taken')}"
+        ),
     )
 
 
@@ -2381,6 +2625,16 @@ def _eval_transfer() -> dict[str, Any]:
         ),
         evidence=[{"n_laws": n_laws, "path_taken": rec.get("path_taken"), "schema": None if not doc else doc.get("schema")}],
         operational=bar,
+        probe_performed=(
+            "import tools.future.odyssey2_law_store; hasattr promote and "
+            "transfer_candidates; probe_json receipts/future/ODYSSEY2_LAW_STORE.json; "
+            "count n_laws"
+        ),
+        direct_observation=(
+            f"import_ok={imp.get('ok')} has_promote={has_promote} "
+            f"path_taken={rec.get('path_taken')} found={rec.get('found')} "
+            f"n_laws={n_laws} sealed={_receipt_sealed(doc)} flags={bar['flags']}"
+        ),
     )
 
 
@@ -2411,6 +2665,15 @@ def _eval_adversary() -> dict[str, Any]:
         ),
         evidence=[{"n_attack_families": len(families), "path_taken": rec.get("path_taken"), "schema": None if not doc else doc.get("schema")}],
         operational=bar,
+        probe_performed=(
+            "import tools.future.odyssey3_adversary; hasattr p_refutation; "
+            "probe_json receipts/future/ODYSSEY3_ADVERSARY.json; read attack_families"
+        ),
+        direct_observation=(
+            f"import_ok={imp.get('ok')} has_p_refutation={has_api} "
+            f"path_taken={rec.get('path_taken')} found={rec.get('found')} "
+            f"n_attack_families={len(families)} flags={bar['flags']}"
+        ),
     )
 
 
@@ -2460,6 +2723,20 @@ def _eval_crash_recovery() -> dict[str, Any]:
             }
         ],
         operational=bar,
+        probe_performed=(
+            "import tools.future.repro_science; hasattr admit; "
+            "probe_json receipts/future/REPRO_SCIENCE.json read "
+            "fault_injection.all_detected; probe_json "
+            "HCLI_AGENTOS_RECOVERY_GATE.json; import hcli.agentos.recovery; "
+            "probe_json receipts/future/GIT_LOCK_DURABILITY_REPORT.json"
+        ),
+        direct_observation=(
+            f"repro_ok={imp.get('ok')} faults_ok={faults_ok} "
+            f"hcli_recovery={hcli_imp.get('ok')} "
+            f"recovery_gate_found={recov.get('found')} "
+            f"recovery_gate_path={recov.get('path_taken')} "
+            f"git_lock_found={git_lock.get('found')} flags={bar['flags']}"
+        ),
     )
 
 
@@ -2490,6 +2767,13 @@ def _eval_receipts() -> dict[str, Any]:
         ),
         evidence=[{"receipts_future": str(future), "n_json": n}],
         operational=bar,
+        probe_performed=(
+            "Path.is_dir() and glob('*.json') on receipts/future; "
+            "write_receipt seals STATIC_ONLY and raises on hardware fields"
+        ),
+        direct_observation=(
+            f"dir_present={present} n_json={n} path={future} flags={bar['flags']}"
+        ),
     )
 
 

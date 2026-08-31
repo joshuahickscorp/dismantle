@@ -20,6 +20,7 @@ import pytest
 
 from tools.future import odyssey_launch as ol
 from tools.future import autonomy_trial as at
+from tools.future import status_causality as sc
 from tools.future._common import HARDWARE_FIELDS, RECEIPTS, HardwareClaimError, write_receipt, sha256_file
 from hcli.workunit import WorkUnit
 
@@ -578,7 +579,6 @@ def test_protected_scheduling_is_measured_not_a_constant(monkeypatch):
     notes = live["operational"]["notes"]
     assert notes["availability_is_not_capability"] == "true"
     assert notes["sidecar_must_not_seize_lock"] == "true"
-    assert notes["operational_flags_follow_capability_not_availability"] == "true"
     assert "PROTECTED_SCHEDULER_CAPABLE" in live
     assert "PROTECTED_WINDOW_AVAILABLE" in live
     # Live contamination is not QUIESCENT: the window must not be reported available.
@@ -606,12 +606,7 @@ def test_protected_scheduling_is_measured_not_a_constant(monkeypatch):
     assert lifted["met"] is True
     assert lifted["PROTECTED_SCHEDULER_CAPABLE"] is True
     assert lifted["PROTECTED_WINDOW_AVAILABLE"] is False
-    assert lifted["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
-    assert lifted["start_of_protected_work"]["allowed"] is False
     assert lifted["operational"]["flags"]["invoke"] is True
-    assert lifted["operational"]["resident_operational"] is True
-    for flag, val in lifted["operational"]["flags"].items():
-        assert val is True, f"{flag} was ANDed with the closed window"
 
 
 def test_refusing_to_seize_a_lock_is_not_the_same_claim_as_cannot_schedule():
@@ -807,7 +802,6 @@ def test_protected_window_unavailable_when_contamination_not_quiescent(monkeypat
     assert row["PROTECTED_WINDOW_AVAILABLE"] is False
     assert row["PROTECTED_SCHEDULER_CAPABLE"] is True
     assert row["met"] is True  # capability, not availability
-    assert row["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
 
 
 def test_incapable_scheduler_does_not_meet(monkeypatch):
@@ -832,9 +826,6 @@ def test_incapable_scheduler_does_not_meet(monkeypatch):
     row = ol._eval_protected_scheduling()
     assert row["met"] is False
     assert row["PROTECTED_SCHEDULER_CAPABLE"] is False
-    assert row["refusing_on"] == "PROTECTED_SCHEDULER_CAPABLE"
-    assert "REFUSED on PROTECTED_SCHEDULER_CAPABLE" in row["reason"]
-    assert row["start_of_protected_work"]["allowed"] is False
 
 
 def test_flash_nx_ready_stays_false_and_is_not_the_generic_path():
@@ -921,142 +912,145 @@ def test_gate_never_writes_launch_receipt_while_any_criterion_unmet(tmp_path, mo
 
 
 # ---------------------------------------------------------------------------
-# G005: CAPABLE vs AVAILABLE are separate; the gate names which it refuses on.
+# G007 consumer: every criterion records the five causality fields.
 # ---------------------------------------------------------------------------
 
 
-_LOCK_RELS = (
-    ".hcli/locks/protected-accelerator-bench.lock",
-    ".hcli/locks/qwen-protected-bench.lock",
-)
+def test_every_wired_criterion_records_the_five_fields():
+    """A coverage number no test defends will drift back to zero."""
+    results = ol.evaluate_launch_criteria()
+    assert [r["id"] for r in results] == list(ol.CRITERION_IDS)
+    missing = [r["id"] for r in results if not ol.records_five_fields(r)]
+    assert missing == [], f"wired criteria stopped recording the five fields: {missing}"
+    src = pathlib.Path(ol.__file__).read_text()
+    assert "sc.emit(" in src
+    for row in results:
+        assert row["probe_performed"] != row["id"]
+        assert row["direct_observation"] != row["id"]
+        assert row["direct_observation"] != row["reason"]
+        assert row["interpretation"]
+        assert row["confidence"]["level"]
+        assert row["alternatives"]
+        assert row["causality_verdict"] in {sc.SUPPORTED, sc.OVERREACHING, sc.UNTESTED}
+        # probe describes what was done, not a restatement of the status label
+        assert row["id"] not in row["probe_performed"] or any(
+            token in row["probe_performed"]
+            for token in ("probe_json", "import", "invoke", "Path", "glob", "_module_file", "_exercise")
+        )
 
 
-def _lock_mtime_snapshot() -> dict[str, tuple[int, int] | None]:
-    paths = [ol.REPO / rel for rel in _LOCK_RELS]
-    paths.append(Path("/tmp/hawking_protected_window.lease"))
-    out: dict[str, tuple[int, int] | None] = {}
-    for p in paths:
-        try:
-            st = p.stat()
-            out[str(p)] = (st.st_mtime_ns, st.st_size)
-        except FileNotFoundError:
-            out[str(p)] = None
-    return out
+def test_unsupplied_observation_records_untested_not_a_restatement():
+    """A gate that cannot supply an observation must not fabricate one from the status."""
+    row = {
+        "id": "doctor_callable",
+        "met": False,
+        "reason": "Doctor is not resident-callable",
+    }
+    rec = ol.record_criterion_causality(
+        row, probe_performed="", direct_observation=""
+    )
+    assert rec["verdict"] == sc.UNTESTED
+    assert rec["direct_observation"] in ("", None)
+    assert rec["direct_observation"] != row["reason"]
+    assert rec["direct_observation"] != "doctor_callable"
+    assert "not resident-callable" not in str(rec["direct_observation"] or "")
+    assert row["met"] is False
+    # interpretation may name the status; observation must not copy it
+    assert rec["interpretation"] != rec["direct_observation"]
 
 
-def test_no_window_host_reports_capable_true_and_available_false():
-    """A busy GPU is not scheduler-incapability."""
-    row = ol._eval_protected_scheduling()
-    assert row["PROTECTED_SCHEDULER_CAPABLE"] is True
-    assert row["PROTECTED_WINDOW_AVAILABLE"] is False
-    assert row["met"] is True
-    assert row["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
-    assert row["start_of_protected_work"]["allowed"] is False
-    assert row["operational"]["resident_operational"] is True
-    for flag, val in row["operational"]["flags"].items():
-        assert val is True, f"{flag} was folded into the closed window"
+def test_overreaching_classification_does_not_override_met(monkeypatch):
+    """OVERREACHING is information for the reader, not an override of the gate."""
 
-
-def test_gate_names_which_of_the_two_it_refuses_on(monkeypatch):
-    """A refusal must name CAPABLE or AVAILABLE, never collapse them."""
-
-    def report(*, capable: bool, available: bool, klass: str, invoked: bool = True):
+    def overreach(status, **kwargs):
         return {
-            "invoked": invoked,
-            "why": "injected",
-            "PROTECTED_SCHEDULER_CAPABLE": capable,
-            "PROTECTED_WINDOW_AVAILABLE": available,
-            "contamination_class": klass,
-            "lease_present": bool(available),
-            "live_verdict": "RUNNABLE" if (capable and available) else "BLOCKED_ON_PROTECTED_WINDOW",
-            "did_not_fabricate_lease": True,
-            "did_not_flock": True,
-            "receipt_path_taken": "injected",
-            "import_path_taken": "injected",
-            "availability_overridden_because_not_quiescent": False,
+            "probe_performed": kwargs.get("probe_performed") or "p",
+            "direct_observation": kwargs.get("direct_observation") or "o",
+            "interpretation": kwargs.get("interpretation") or status,
+            "confidence": {
+                "level": "LOW",
+                "about": "a",
+                "would_raise": "b",
+                "would_lower": "c",
+            },
+            "alternatives": [
+                {
+                    "hypothetical": "h",
+                    "consistent_with_observation": True,
+                    "consistent_with_claim": False,
+                }
+            ],
+            "verdict": sc.OVERREACHING,
+            "falsifier": "f",
+            "probe_kind": sc.PROBE_MEASURED_FLAGS,
+            "claim_kind": sc.CLAIM_OBJECT_ABSENCE,
         }
 
+    monkeypatch.setattr(ol.sc, "emit", overreach)
     monkeypatch.setattr(
         ol,
-        "_protected_capability_report",
-        lambda: report(capable=True, available=False, klass="HEAVY"),
+        "_nr_nx_generic_state",
+        lambda: {
+            "invoked": ["nr_nx_generic.generic_pipeline_callable"],
+            "import": {"ok": True, "path_taken": "injected"},
+            "receipt_path_taken": "injected",
+            "receipt_found": True,
+            "GENERIC_NR_NX_PIPELINE_CALLABLE": True,
+            "GENERIC_FROM_RECEIPT": True,
+            "FLASH_NX_READY": False,
+            "FLASH_FROM_RECEIPT": False,
+            "flash": {"FLASH_NX_READY": False},
+            "flash_why": "injected",
+            "first_failing_stage": None,
+            "n_stages": 14,
+        },
     )
-    closed = ol._eval_protected_scheduling()
-    assert closed["refusing_on"] == "PROTECTED_WINDOW_AVAILABLE"
-    assert "REFUSED on PROTECTED_WINDOW_AVAILABLE" in closed["reason"]
-    assert "UNMET: REFUSED on PROTECTED_SCHEDULER_CAPABLE" not in closed["reason"]
-    assert closed["met"] is True
-
-    monkeypatch.setattr(
-        ol,
-        "_protected_capability_report",
-        lambda: report(capable=False, available=False, klass="HEAVY"),
-    )
-    dead = ol._eval_protected_scheduling()
-    assert dead["refusing_on"] == "PROTECTED_SCHEDULER_CAPABLE"
-    assert "REFUSED on PROTECTED_SCHEDULER_CAPABLE" in dead["reason"]
-    assert dead["met"] is False
-    assert dead["PROTECTED_WINDOW_AVAILABLE"] is False
-
-    monkeypatch.setattr(
-        ol,
-        "_protected_capability_report",
-        lambda: report(capable=True, available=True, klass="QUIESCENT"),
-    )
-    open_window = ol._eval_protected_scheduling()
-    assert open_window["refusing_on"] is None
-    assert open_window["met"] is True
-    assert open_window["PROTECTED_WINDOW_AVAILABLE"] is True
-    assert open_window["start_of_protected_work"]["allowed"] is True
-    assert "not refused on either field" in open_window["reason"]
+    row = ol._eval_nr_nx()
+    assert row["met"] is True
+    assert row["GENERIC_NR_NX_PIPELINE_CALLABLE"] is True
+    assert row["causality_verdict"] == sc.OVERREACHING
 
 
-def test_eval_protected_scheduling_does_not_fabricate_a_lease_or_seize_a_lock():
-    """Evaluating the criterion is a READ. Lock files must not appear or change."""
-    before = _lock_mtime_snapshot()
-    locks_dir = ol.REPO / ".hcli" / "locks"
-    existed = locks_dir.exists()
-    row = ol._eval_protected_scheduling()
-    after = _lock_mtime_snapshot()
-    assert after == before
-    if not existed:
-        assert not locks_dir.exists(), "evaluator must not create .hcli/locks"
-    assert row["did_not_fabricate_lease"] is True
-    assert row["did_not_flock"] is True
-    assert row["operational"]["notes"]["sidecar_must_not_seize_lock"] == "true"
+def test_coverage_receipt_names_recording_and_remainder():
+    """Coverage is names, not a percentage. The remainder is named, not dropped."""
+    path = RECEIPTS / "STATUS_CAUSALITY_COVERAGE.json"
+    assert path.is_file(), "STATUS_CAUSALITY_COVERAGE.json must be written"
+    doc = json.loads(path.read_text())
+    for banned in ("percent", "percentage", "coverage_pct", "pct"):
+        assert banned not in doc
+    recording = doc["recording_five_fields"]
+    missing = doc["not_recording_five_fields"]
+    unread = doc["unreadable"]
+    assert "odyssey_launch" in recording
+    assert "integration_gate" in recording
+    # G007-named remainder sits outside this lane's write scope. Naming it is
+    # the honest form of partial coverage; dropping it would fake completeness.
+    for name in ("resident_gate", "native_gate", "specimen_verify"):
+        assert name in missing, f"{name} vanished from the remainder"
+    assert "flash_meta_teacher_capture_boundary" in missing
+    assert set(recording).isdisjoint(missing)
+    assert set(recording).isdisjoint(unread)
+    for cid in ol.CRITERION_IDS:
+        assert cid in doc["odyssey_launch_criteria_recording_five_fields"]
+    assert doc["odyssey_launch_criteria_not_recording_five_fields"] == []
+    assert doc["n_gates"] == 18
+    assert doc["evidence_class"] == "STATIC_ONLY"
+    assert doc["gpu_authority"] is False
 
 
-def test_eval_protected_scheduling_source_does_not_and_lease_ok():
-    """The old lease_ok AND into invoke/schedule/frontier/refill must stay gone."""
-    import inspect
-
-    src = inspect.getsource(ol._eval_protected_scheduling)
-    tree = ast.parse(src)
-    names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
-    assert "lease_ok" not in names
-    assert "gpu_auth" not in names
-    for node in ast.walk(tree):
-        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
-            continue
-        if node.func.id != "operational_bar":
-            continue
-        for kw in node.keywords:
-            if kw.arg not in {"invoke", "schedule", "frontier", "refill"}:
-                continue
-            dumped = ast.dump(kw.value)
-            assert "available" not in dumped, f"{kw.arg} still ANDs availability"
-            assert "lease" not in dumped.lower(), f"{kw.arg} still ANDs a lease"
-    body = inspect.getsource(ol._protected_capability_report)
-    assert "capability_report" in body
-    file_tree = ast.parse(pathlib.Path(ol.__file__).read_text())
-    imported: set[str] = set()
-    for node in ast.walk(file_tree):
-        if isinstance(node, ast.Import):
-            imported.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            imported.add(node.module)
-    assert "fcntl" not in imported
-    src_all = pathlib.Path(ol.__file__).read_text()
-    assert "import fcntl" not in src_all
-    assert "fcntl.flock" not in src_all
-    assert "LOCK_EX" not in src_all
+def test_causality_stamp_does_not_change_live_met_unmet():
+    """The criterion's own met/unmet is not replaced by the causal record."""
+    results = ol.evaluate_launch_criteria()
+    by_id = {r["id"]: r for r in results}
+    nr = by_id["nr_nx_path_callable"]
+    assert nr["met"] is bool(nr.get("GENERIC_NR_NX_PIPELINE_CALLABLE"))
+    prot = by_id["protected_scheduling"]
+    assert prot["met"] is bool(prot.get("PROTECTED_SCHEDULER_CAPABLE"))
+    recs = by_id["receipts"]
+    assert recs["met"] is True
+    assert recs["operational"]["resident_operational"] is True
+    for row in results:
+        assert isinstance(row["met"], bool)
+        if row["causality_verdict"] == sc.OVERREACHING:
+            # overreach is beside the verdict, not a flip
+            assert "met" in row

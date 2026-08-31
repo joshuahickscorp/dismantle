@@ -1,4 +1,5 @@
 """The gate must actually refuse, and its refusal must not be bypassable quietly."""
+import pathlib
 import subprocess
 import sys
 from pathlib import Path
@@ -6,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import integration_gate as g
 from _common import REPO
+from tools.future import status_causality as sc
 
 
 def test_it_finds_the_test_module_for_a_source_module():
@@ -74,3 +76,78 @@ def test_cli_check_exits_nonzero_on_red():
     finally:
         red.unlink(missing_ok=True)
         src.unlink(missing_ok=True)
+
+
+def test_check_records_the_five_causality_fields():
+    """A coverage number no test defends will drift back to zero."""
+    r = g.check([])
+    assert g.records_five_fields(r)
+    src = pathlib.Path(g.__file__).read_text()
+    assert "sc.emit(" in src
+    assert r["probe_performed"]
+    assert r["direct_observation"]
+    assert r["direct_observation"] != r["verdict"]
+    assert r["direct_observation"] != r["interpretation"]
+    assert "required_tests" in r["probe_performed"] or "json.loads" in r["probe_performed"]
+    assert r["verdict"] == "GREEN"
+    assert r["green"] is True
+    assert r["causality_verdict"] in {sc.SUPPORTED, sc.OVERREACHING, sc.UNTESTED}
+
+
+def test_unsupplied_observation_records_untested_not_a_restatement():
+    result = {"green": False, "verdict": "RED"}
+    rec = g.record_check_causality(
+        result, probe_performed="", direct_observation=""
+    )
+    assert rec["verdict"] == sc.UNTESTED
+    assert rec["direct_observation"] in ("", None)
+    assert rec["direct_observation"] != "RED"
+    assert "RED" not in str(rec["direct_observation"] or "")
+    assert result["verdict"] == "RED"
+    assert result["green"] is False
+    assert rec["interpretation"] != rec["direct_observation"]
+
+
+def test_overreaching_does_not_override_green_or_red(monkeypatch):
+    def overreach(status, **kwargs):
+        return {
+            "probe_performed": kwargs.get("probe_performed") or "p",
+            "direct_observation": kwargs.get("direct_observation") or "o",
+            "interpretation": kwargs.get("interpretation") or status,
+            "confidence": {
+                "level": "LOW",
+                "about": "a",
+                "would_raise": "b",
+                "would_lower": "c",
+            },
+            "alternatives": [
+                {
+                    "hypothetical": "h",
+                    "consistent_with_observation": True,
+                    "consistent_with_claim": False,
+                }
+            ],
+            "verdict": sc.OVERREACHING,
+            "falsifier": "f",
+            "probe_kind": sc.PROBE_MEASURED_FLAGS,
+            "claim_kind": sc.CLAIM_OBJECT_ABSENCE,
+        }
+
+    monkeypatch.setattr(g.sc, "emit", overreach)
+    green = g.check([])
+    assert green["green"] is True
+    assert green["verdict"] == "GREEN"
+    assert green["causality_verdict"] == sc.OVERREACHING
+
+    red = g.receipts_parse(["receipts/future/INTEGRATION_GATE.json"])
+    # receipts_parse itself is not the door; check() is. A malformed receipt
+    # still has to stay RED after an OVERREACHING stamp.
+    bad = REPO / "receipts" / "future" / "_GATE_PROBE_CAUSALITY_BAD.json"
+    bad.write_text("{not json")
+    try:
+        stamped = g.check(["receipts/future/_GATE_PROBE_CAUSALITY_BAD.json"])
+        assert stamped["green"] is False
+        assert stamped["verdict"] == "RED"
+        assert stamped["causality_verdict"] == sc.OVERREACHING
+    finally:
+        bad.unlink(missing_ok=True)

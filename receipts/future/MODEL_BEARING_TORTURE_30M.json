@@ -1,0 +1,770 @@
+{
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-31T12:21:52Z",
+  "recorded_by": "tools/future/model_bearing_torture.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Static sidecar artifact plus SELF_MEASURED_DIRTY process telemetry (pid, token counts, fusion-env presence). No hardware measurement. Token counts are protocol fields, not throughput. A timeline the Python would have produced without the model is FAIL.",
+ "control": {
+  "control_kind": "per-decision fixed_policy_choose counterfactual plus replay of policy ids",
+  "control_ran": true,
+  "launched_under_model": [],
+  "model_sequence": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "n_points": 43,
+  "policy_sequence": [
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin"
+  ],
+  "sequences_identical": false,
+  "would_have_launched_under_policy": [
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin"
+  ],
+  "would_timeline_look_the_same_without_the_model": false
+ },
+ "degeneracy": {
+  "axes": [
+   {
+    "axis": "rejections",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": true,
+    "largest_repeat_run": 0,
+    "reason": "no rejections; vacuous non-degeneracy (zero of this axis is not the table-replay pathology)",
+    "total": 0,
+    "unique": 0
+   },
+   {
+    "axis": "refills",
+    "consecutive_emissions_identical": true,
+    "degenerate": true,
+    "fail_eligible": true,
+    "largest_repeat_run": 44,
+    "reason": "43 consecutive identical refill set(s); largest_repeat_run=44",
+    "total": 44,
+    "unique": 1
+   },
+   {
+    "axis": "ingestion",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": true,
+    "largest_repeat_run": 0,
+    "reason": "no ingestions; vacuous non-degeneracy (zero of this axis is not a 29-times loop)",
+    "total": 0,
+    "unique": 0
+   },
+   {
+    "axis": "launches",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": true,
+    "largest_repeat_run": 0,
+    "reason": "no launches; vacuous non-degeneracy",
+    "total": 0,
+    "unique": 0
+   },
+   {
+    "axis": "workunit_ids",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": true,
+    "largest_repeat_run": 0,
+    "reason": "no launched WorkUnit ids; vacuous non-degeneracy",
+    "total": 0,
+    "unique": 0
+   },
+   {
+    "axis": "decisions",
+    "consecutive_emissions_identical": false,
+    "degenerate": true,
+    "fail_eligible": true,
+    "largest_repeat_run": 1,
+    "reason": "unique_ratio 0.346 < 0.35 (45/130)",
+    "total": 130,
+    "unique": 45
+   },
+   {
+    "axis": "scars",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": true,
+    "largest_repeat_run": 0,
+    "reason": "no scar-facing events; vacuous non-degeneracy",
+    "total": 0,
+    "unique": 0
+   },
+   {
+    "axis": "kind:gpu_park",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:prune_verification",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:resident_body_ready",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:resident_body_stop",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:resident_cli_start",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:resident_cli_status",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:resident_cli_stop",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:restorable_after",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:restorable_before",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   },
+   {
+    "axis": "kind:sealed_pin",
+    "consecutive_emissions_identical": false,
+    "degenerate": false,
+    "fail_eligible": false,
+    "largest_repeat_run": 1,
+    "reason": "carried by the timeline; reported distinct-vs-repeated; not a named fail axis (mission-state writes and similar healthy repetition live here)",
+    "total": 1,
+    "unique": 1
+   }
+  ],
+  "degenerate_axes": [
+   "refills",
+   "decisions",
+   "identical_model_outputs"
+  ],
+  "elapsed_s": 1837.301,
+  "identical_model_outputs": {
+   "axis": "identical_model_outputs",
+   "degenerate": true,
+   "largest_repeat_run": 1,
+   "reason": "repeated identical model outputs are themselves a degeneracy",
+   "total": 86,
+   "unique": 2,
+   "unique_ratio": 0.023256
+  },
+  "measure": "tools.future.autonomy_degeneracy.measure",
+  "n_events": 140,
+  "reason": "degenerate on refills, decisions",
+  "verdict": "FAIL"
+ },
+ "duration_requested_s": 1800.0,
+ "elapsed_s": 1837.301,
+ "eras": [
+  "I Genesis of the Laboratory",
+  "II Compounding Civilization",
+  "III Autonomous Science Civilization",
+  "IV Synthetic Machine Civilization",
+  "V Released Hawking Civilization"
+ ],
+ "errors": [],
+ "evidence_class": "SELF_MEASURED_DIRTY",
+ "gpu_authority": false,
+ "gpu_park": {
+  "held": true,
+  "paths": [
+   "/tmp/hawking-gpu-lane.lock",
+   "/Users/scammermike/Downloads/hawking/.hcli/locks/protected-accelerator-bench.lock"
+  ],
+  "pid": 88714,
+  "waited_for": [],
+  "waited_s": 0.001,
+  "widens_hcli_authority": false
+ },
+ "hcli_invoked_not_edited": true,
+ "model_behavior_summary": {
+  "generated_tokens": 15265,
+  "gpu_authority": false,
+  "greedy_policy_following": "scripted policy after 6fc77f169 is WU.HAWKING.resident_identity_pin; refuse_if_dead keys the eight closed families. If the model still never launches live work, the previous excuse is gone.",
+  "n_launches": 0,
+  "n_model_calls": 86,
+  "named_landed_scar_ids": false,
+  "prompt_tokens": 44978
+ },
+ "n_cycles": 43,
+ "n_events": 140,
+ "n_model_calls": 86,
+ "odysseys": [
+  "I WHAT IS TRUE?",
+  "II WHAT DID HAWKING ALREADY LEARN?",
+  "III WHERE IS HAWKING WRONG?"
+ ],
+ "participation": {
+  "fraction_model_over_policy": 0.0,
+  "generated_tokens": 15265,
+  "gpu_authority": false,
+  "materially_participated": {
+   "changed_what_ran_next_count": 0,
+   "cognition": "AVAILABLE",
+   "different_hypothesis_count": 0,
+   "divergence_count": 0,
+   "model_proposes_tools_decide": true,
+   "n_decisions": 86,
+   "no_reason_count": 43,
+   "participated": false,
+   "publishable_finding": "model choices never diverged from the fixed policy at this resident; that is a finding, not a decorated timeline",
+   "reasoned_decision_count": 43,
+   "why": "no choose() diverged from the fixed policy; no next hypothesis was meaningfully different; no model decision changed what ran next"
+  },
+  "n_agreed_with_policy": 0,
+  "n_choose": 43,
+  "n_diverged_from_policy": 0,
+  "n_model_calls": 86,
+  "prompt_tokens": 44978,
+  "token_count_authority": "native-resident protocol fields; not a throughput claim",
+  "without_the_model_same_choose_sequence": false
+ },
+ "prune_verification": {
+  "all_eight_refused": true,
+  "commit": "6fc77f169",
+  "families": [
+   {
+    "family": "mlp_function_replacement",
+    "refused": true,
+    "scar_id": "MLP_FUNCTION_REPLACEMENT",
+    "source_path": "receipts/future/MLP_STRUCTURED_OPERATOR.json"
+   },
+   {
+    "family": "MONARCH",
+    "refused": true,
+    "scar_id": "MONARCH",
+    "source_path": "receipts/future/MLP_STRUCTURED_OPERATOR.json"
+   },
+   {
+    "family": "BUTTERFLY",
+    "refused": true,
+    "scar_id": "BUTTERFLY",
+    "source_path": "receipts/future/MLP_STRUCTURED_OPERATOR.json"
+   },
+   {
+    "family": "FACTORIZE_THE_FACTORS",
+    "refused": true,
+    "scar_id": "FACTORIZE_THE_FACTORS",
+    "source_path": "receipts/future/MLP_NONLINEAR_PROGRAM.json"
+   },
+   {
+    "family": "PRODUCT_DICTIONARY",
+    "refused": true,
+    "scar_id": "PRODUCT_DICTIONARY",
+    "source_path": "receipts/future/MLP_NONLINEAR_PROGRAM.json"
+   },
+   {
+    "family": "CONDITIONAL_PROGRAM",
+    "refused": true,
+    "scar_id": "CONDITIONAL_PROGRAM",
+    "source_path": "receipts/future/MLP_NONLINEAR_PROGRAM.json"
+   },
+   {
+    "family": "GENERATED_BLOCK",
+    "refused": true,
+    "scar_id": "GENERATED_BLOCK",
+    "source_path": "receipts/future/MLP_NONLINEAR_PROGRAM.json"
+   },
+   {
+    "family": "NONLINEAR_GENERATOR",
+    "refused": true,
+    "scar_id": "NONLINEAR_GENERATOR",
+    "source_path": "receipts/future/MLP_NONLINEAR_PROGRAM.json"
+   }
+  ],
+  "live_school_not_pruned": true,
+  "ok": true,
+  "previous_cause": "choose() advertised WU.DEAD.mlp_function_replacement as the scripted policy because negative_index.refuse_if_dead does not key MLP_FUNCTION_REPLACEMENT_CLOSED",
+  "scripted_policy_id": "WU.HAWKING.resident_identity_pin",
+  "scripted_policy_skips_dead_mlp": true,
+  "why": "negative_index now parses scars from receipts/future/; MLP_STRUCTURED_OPERATOR declares umbrella MLP_FUNCTION_REPLACEMENT; scripted policy is WU.HAWKING.resident_identity_pin"
+ },
+ "reason": "missing required events: second_hypothesis, wait_reason_receipt_replan, scar_avoidance, hawking_self_workunit; materially_participated is false: no choose() diverged from the fixed policy; no next hypothesis was meaningfully different; no model decision changed what ran next; degeneracy degenerate on refills, decisions; identical model outputs",
+ "reason_rate": {
+  "finding": "a greedy resident at temperature 0 did not emit parseable choice_id JSON on any choose() turn (markdown/prose instead); that is a statement about this body's cognition, not a scheduler complaint",
+  "generation": {
+   "do_sample": false,
+   "enable_thinking": false,
+   "gpu_authority": false,
+   "temperature": 0.0
+  },
+  "max_ask_tokens": 384,
+  "n_choose": 43,
+  "n_choose_no_reason": 43,
+  "n_choose_with_choice_id": 0,
+  "n_choose_with_reason": 0,
+  "n_model_calls": 86,
+  "no_reason_count_all_kinds": 43,
+  "rate": 0.0
+ },
+ "required_events": {
+  "hawking_self_workunit": {
+   "found": false,
+   "mentioned_in_model_output": true,
+   "why": "model named a Hawking-self id but never launched it"
+  },
+  "scar_avoidance": {
+   "found": false,
+   "why": "model output never declined a unit by naming a landed scar"
+  },
+  "second_hypothesis": {
+   "found": false,
+   "n_explain": 0,
+   "n_next_hypothesis": 0,
+   "why": "no trajectory where a failure was explained and hypothesis B meaningfully differed (jaccard/surface/family)"
+  },
+  "wait_reason_receipt_replan": {
+   "found": false,
+   "n_reasons_during": 0,
+   "n_receipts": 0,
+   "n_replans": 0,
+   "n_waits": 0,
+   "why": "no overlapping wait/reason/receipt/replan with a queue that changed"
+  }
+ },
+ "restorable": {
+  "after": {
+   "n_unmet": 0,
+   "restorable": true,
+   "verdict": "RESTORABLE_NOW"
+  },
+  "before": {
+   "restorable": true,
+   "verdict": "RESTORABLE_NOW"
+  },
+  "independently_checkable": [
+   "confirm_identity_document",
+   "confirm_artifact_root",
+   "confirm_specimen_mix",
+   "confirm_tokenizer_digest",
+   "confirm_chat_template_digest",
+   "confirm_runtime_binary_digest",
+   "confirm_resident_binary_present",
+   "confirm_config_digest",
+   "confirm_lifecycle_surfaces"
+  ],
+  "restore_path_n_steps": 12
+ },
+ "run_dir": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/mbt-run-k90r7170",
+ "schema": "hawking.future.model_bearing_torture.v1",
+ "seal_sha256": "19a5451a22babab365e01f44f1eb07157262e8c3e25a95a4fd61b00c1567ea76",
+ "sealed": {
+  "binary_hash": {
+   "disk_sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+   "gpu_authority": false,
+   "live_sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+   "match": true,
+   "running_executable": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+   "why": null
+  },
+  "cli_start": {
+   "ok": true,
+   "state": "STARTING"
+  },
+  "cli_stop": {
+   "ok": true,
+   "state": "STOPPED"
+  },
+  "fusion_live": {
+   "applied": true,
+   "applied_at_spawn": true,
+   "expected": {
+    "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+    "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+    "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+    "HAWKING_QWEN38_FUSE_MLP": "swiglu"
+   },
+   "found": {
+    "HAWKING_QWEN38_FUSE_ADD_RMSNORM": true,
+    "HAWKING_QWEN38_FUSE_DN_INPROJ": true,
+    "HAWKING_QWEN38_FUSE_GQA_QKV": true,
+    "HAWKING_QWEN38_FUSE_MLP": true
+   },
+   "gpu_authority": false,
+   "how": "ps eww -p 88764",
+   "missing": [],
+   "ok": true,
+   "pid": 88764,
+   "ps_text_chars": 4707,
+   "require_fusion_env": true,
+   "running_executable": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+   "spawn_env": {
+    "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+    "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+    "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+    "HAWKING_QWEN38_FUSE_MLP": "swiglu"
+   },
+   "spawn_matches_descriptor": true,
+   "why": null
+  },
+  "identity_live": {
+   "architecture": "unknown",
+   "artifact_inventory": {
+    "artifact_bytes": 10554328856,
+    "artifact_bytes_exact": true,
+    "artifact_bytes_source": "MIX_REPORT.json:payload_bytes",
+    "catalog": "/Users/scammermike/noetic/NOETIC_PARENT_A/catalog.hq38m20",
+    "mix_id": "mix_all_mlp_affine_g64_ls",
+    "n_tensors": 755
+   },
+   "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+   "backend": "hawking_native",
+   "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+   "binary_sha256_16": "2d5fd0f157fb7987",
+   "capabilities": {},
+   "compiler": {
+    "language": "rust",
+    "profile": "release-fast",
+    "source": "workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident"
+   },
+   "current_runtime": {
+    "fallbacks": 0
+   },
+   "executable_profile": "release-fast",
+   "fallbacks": [
+    "transformers tokenizer fallback when unavailable"
+   ],
+   "family": "qwen3.8",
+   "fusion_env": {
+    "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+    "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+    "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+    "HAWKING_QWEN38_FUSE_MLP": "swiglu"
+   },
+   "generation": {
+    "do_sample": false,
+    "enable_thinking": false,
+    "max_new_tokens": 2048,
+    "temperature": 0.0,
+    "top_k": 1,
+    "top_p": 1.0
+   },
+   "hot_bytes": null,
+   "limits": {
+    "context": 8192,
+    "max_new_tokens": 2048
+   },
+   "machine_genome": {},
+   "max_seq_len": 8192,
+   "mode": "resident",
+   "model_id": "qwen3.8-27b-sealed-3.14",
+   "param_class": "?B",
+   "physical_ebpw": 3.1393,
+   "pid": 88764,
+   "profile_schema": "hcli.provider.profile.v1",
+   "prompt_contract": {
+    "fallback_template": "qwen_closed_think",
+    "renderer": "qwen-chat-template-or-closed-think-fallback",
+    "token_count_authority": "native-resident"
+   },
+   "protocol": "hawking.qwen38.resident.v1",
+   "provider": "native",
+   "qualification": "capability 30/43 historical sealed contract",
+   "quantisation": "unknown",
+   "receipts": [
+    "receipts/headless/CAPABILITY_noetic-sealed-3.14.json",
+    "receipts/headless/QWEN_COMPLETION_RECEIPT.json"
+   ],
+   "representation": {
+    "kind": "native-packed",
+    "physical_ebpw": 3.1393,
+    "weights_loaded_once": true
+   },
+   "require_fusion_env": true,
+   "resident_health": {
+    "model_open_count": 1,
+    "pid": 88764,
+    "protocol": "hawking.qwen38.resident.v1",
+    "ready": true,
+    "resident_identity": "sealed-3.14",
+    "restart_count": 0,
+    "weight_upload_count": 1
+   },
+   "resident_identity": "sealed-3.14",
+   "restart_count": 0,
+   "runtime": "hawking-native",
+   "runtime_env": {},
+   "tokenizer": "/Users/scammermike/noetic/NOETIC_PARENT_A/tokenizer.json",
+   "tokenizer_sha256_16": "0997f410c57a1f4e"
+  },
+  "pin": {
+   "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+   "artifact_root_present": true,
+   "binary_present": true,
+   "binary_sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+   "family": "qwen3.8",
+   "fusion_env": {
+    "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
+    "HAWKING_QWEN38_FUSE_DN_INPROJ": "1",
+    "HAWKING_QWEN38_FUSE_GQA_QKV": "1",
+    "HAWKING_QWEN38_FUSE_MLP": "swiglu"
+   },
+   "gpu_authority": false,
+   "mismatches": [],
+   "protocol": "hawking.qwen38.resident.v1",
+   "require_fusion_env": true,
+   "resident_binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+   "resident_gate_also_exists": true,
+   "resident_identity": "sealed-3.14",
+   "resident_py": "/Users/scammermike/Downloads/hawking/hcli/agentos/resident.py",
+   "resident_py_exists": true,
+   "runtime": "hawking-native",
+   "sealed": true,
+   "stale_note": "an older receipt claimed hcli/agentos/resident.py does not exist and resident_gate.py is the live gate; that note is STALE \u2014 hcli/agentos/resident.py is on disk at /Users/scammermike/Downloads/hawking/hcli/agentos/resident.py with a start/status/stop CLI",
+   "stale_note_contradicted": true,
+   "tokenizer": "/Users/scammermike/noetic/NOETIC_PARENT_A/tokenizer.json",
+   "tokenizer_present": true
+  },
+  "resident_py": "/Users/scammermike/Downloads/hawking/hcli/agentos/resident.py",
+  "resident_py_exists": true,
+  "stale_note_contradicted": true
+ },
+ "timeline_receipt": "MODEL_BEARING_TIMELINE.json",
+ "verdict": "FAIL",
+ "version": 1,
+ "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/mbt-resident-ws-aqchfkzz",
+ "would_timeline_look_the_same_without_the_model": {
+  "answer": false,
+  "launched_under_model": [],
+  "participated": false,
+  "verdict_implication": "not automatically FAIL on this axis",
+  "why": "policy would have launched different work than the model did",
+  "would_have_launched_under_policy": [
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin",
+   "WU.HAWKING.resident_identity_pin"
+  ]
+ }
+}

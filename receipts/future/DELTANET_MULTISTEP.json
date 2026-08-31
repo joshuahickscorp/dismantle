@@ -66,7 +66,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T07:51:56Z",
+  "recorded_at": "2026-08-31T13:47:42Z",
   "recorded_by": "tools/future/deltanet_multistep.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -544,7 +544,12 @@
       0.0
      ],
      "host_gap_floor_ms": 0.989,
-     "incremental_byte_rate_gb_s": 360.0
+     "incremental_byte_rate_gb_s": 344.1,
+     "organ_average_gb_s": 360.0,
+     "stream_billing_gb_s": 344.1,
+     "stream_class": "activation",
+     "stream_on_critical_path": true,
+     "stream_rate_source": "ECONOMICS_CALIBRATION.json"
     },
     "bytes_added": {
      "embeddings": 0,
@@ -599,6 +604,7 @@
      "reusable_family": false
     },
     "status": "EXISTING_LEVER",
+    "stream_class": "activation",
     "terms": {
      "byte_added_ms": 0.0,
      "byte_ms_delta": 0.0,
@@ -1182,7 +1188,12 @@
       0.0
      ],
      "host_gap_floor_ms": 0.989,
-     "incremental_byte_rate_gb_s": 360.0
+     "incremental_byte_rate_gb_s": 344.1,
+     "organ_average_gb_s": 360.0,
+     "stream_billing_gb_s": 344.1,
+     "stream_class": "activation",
+     "stream_on_critical_path": true,
+     "stream_rate_source": "ECONOMICS_CALIBRATION.json"
     },
     "bytes_added": {
      "embeddings": 0,
@@ -1212,21 +1223,21 @@
     "net_bytes": -113244288,
     "ok": true,
     "organ": "deltanet",
-    "predicted_ms_delta": -0.3145674666666667,
+    "predicted_ms_delta": -0.3291028421970357,
     "predicted_ms_delta_range": [
-     -0.3145674666666667,
-     -0.2276724728588661
+     -0.3291028421970357,
+     -0.3291028421970357
     ],
-    "predicted_ms_saved": 0.3145674666666667,
-    "predicted_token_ms": 28.407432533333335,
+    "predicted_ms_saved": 0.3291028421970357,
+    "predicted_token_ms": 28.392897157802967,
     "predicted_token_ms_range": [
-     28.407432533333335,
-     28.494327527141134
+     28.392897157802967,
+     28.392897157802967
     ],
-    "predicted_tps": 35.20205491385391,
+    "predicted_tps": 35.220076149403404,
     "predicted_tps_range": [
-     35.094704342381476,
-     35.20205491385391
+     35.220076149403404,
+     35.220076149403404
     ],
     "retime_organ": false,
     "s020_section_20": {
@@ -1234,14 +1245,15 @@
      "bar_ms": 0.28722000000000003,
      "clears_time_bar": true,
      "high_information_falsifier": true,
-     "plausible_ms_saved": 0.3145674666666667,
+     "plausible_ms_saved": 0.3291028421970357,
      "reusable_family": true
     },
     "status": "OPEN",
+    "stream_class": "activation",
     "terms": {
-     "byte_added_ms": 0.10486293333333332,
-     "byte_ms_delta": -0.3145674666666667,
-     "byte_removed_ms": -0.4194304,
+     "byte_added_ms": 0.10970838709677418,
+     "byte_ms_delta": -0.3291028421970357,
+     "byte_removed_ms": -0.4388112292938099,
      "dispatch_ms_delta": 0.0,
      "flop_ms_delta": 0.0
     },
@@ -1836,7 +1848,12 @@
       0.0
      ],
      "host_gap_floor_ms": 0.989,
-     "incremental_byte_rate_gb_s": 360.0
+     "incremental_byte_rate_gb_s": 344.1,
+     "organ_average_gb_s": 360.0,
+     "stream_billing_gb_s": 344.1,
+     "stream_class": "activation",
+     "stream_on_critical_path": true,
+     "stream_rate_source": "ECONOMICS_CALIBRATION.json"
     },
     "bytes_added": {
      "embeddings": 0,
@@ -1866,21 +1883,21 @@
     "net_bytes": -141555840,
     "ok": true,
     "organ": "deltanet",
-    "predicted_ms_delta": -0.39321066666666665,
+    "predicted_ms_delta": -0.41137994768962505,
     "predicted_ms_delta_range": [
-     -0.39321066666666665,
-     -0.28459155609167675
+     -0.41137994768962505,
+     -0.41137994768962505
     ],
-    "predicted_ms_saved": 0.39321066666666665,
-    "predicted_token_ms": 28.328789333333333,
+    "predicted_ms_saved": 0.41137994768962505,
+    "predicted_token_ms": 28.310620052310377,
     "predicted_token_ms_range": [
-     28.328789333333333,
-     28.437408443908325
+     28.310620052310377,
+     28.310620052310377
     ],
-    "predicted_tps": 35.299778901011514,
+    "predicted_tps": 35.322433706936486,
     "predicted_tps_range": [
-     35.16494838031605,
-     35.299778901011514
+     35.322433706936486,
+     35.322433706936486
     ],
     "retime_organ": false,
     "s020_section_20": {
@@ -1888,14 +1905,15 @@
      "bar_ms": 0.28722000000000003,
      "clears_time_bar": true,
      "high_information_falsifier": true,
-     "plausible_ms_saved": 0.39321066666666665,
+     "plausible_ms_saved": 0.41137994768962505,
      "reusable_family": true
     },
     "status": "OPEN",
+    "stream_class": "activation",
     "terms": {
-     "byte_added_ms": 0.02621973333333333,
-     "byte_ms_delta": -0.39321066666666665,
-     "byte_removed_ms": -0.4194304,
+     "byte_added_ms": 0.027431281604184826,
+     "byte_ms_delta": -0.41137994768962505,
+     "byte_removed_ms": -0.4388112292938099,
      "dispatch_ms_delta": 0.0,
      "flop_ms_delta": 0.0
     },
@@ -2053,6 +2071,7 @@
   "generated_transition_coefficients: NOT_LANDED (landed=False)"
  ],
  "gaps_closed": [
+  "the six S020 families are enumerated with judged/blocked status, so an unjudged family cannot read as judged by omission",
   "state, output and logit errors are three series; collapsing them raises",
   "a one-step-only number raises rather than returning a verdict",
   "every named horizon is RUN or SKIPPED; silent omission raises",
@@ -2156,7 +2175,12 @@
      0.0
     ],
     "host_gap_floor_ms": 0.989,
-    "incremental_byte_rate_gb_s": 360.0
+    "incremental_byte_rate_gb_s": 1827.21,
+    "organ_average_gb_s": 360.0,
+    "stream_billing_gb_s": 1827.21,
+    "stream_class": "weight_codes",
+    "stream_on_critical_path": true,
+    "stream_rate_source": "ECONOMICS_CALIBRATION.json"
    },
    "bytes_added": {
     "embeddings": 49152,
@@ -2186,21 +2210,21 @@
    "net_bytes": -2134548400,
    "ok": true,
    "organ": "deltanet",
-   "predicted_ms_delta": -5.790869111111111,
+   "predicted_ms_delta": -1.029768918339983,
    "predicted_ms_delta_range": [
-    -9.41639521575649,
-    -4.15298014314435
+    -1.0536868461645863,
+    -0.6917988413359625
    ],
-   "predicted_ms_saved": 5.790869111111111,
-   "predicted_token_ms": 22.93113088888889,
+   "predicted_ms_saved": 1.029768918339983,
+   "predicted_token_ms": 27.69223108166002,
    "predicted_token_ms_range": [
-    19.305604784243513,
-    24.56901985685565
+    27.668313153835413,
+    28.03020115866404
    ],
-   "predicted_tps": 43.608839217107366,
+   "predicted_tps": 36.111211012617865,
    "predicted_tps_range": [
-    40.701664365376125,
-    51.79842906636944
+    35.67580533366609,
+    36.14242742013273
    ],
    "retime_organ": false,
    "s020_section_20": {
@@ -2208,14 +2232,15 @@
     "bar_ms": 0.28722000000000003,
     "clears_time_bar": true,
     "high_information_falsifier": true,
-    "plausible_ms_saved": 9.41639521575649,
+    "plausible_ms_saved": 1.0536868461645863,
     "reusable_family": true
    },
    "status": "OPEN",
+   "stream_class": "weight_codes",
    "terms": {
-    "byte_added_ms": 0.012634888888888888,
-    "byte_ms_delta": -5.929301111111111,
-    "byte_removed_ms": -5.941936,
+    "byte_added_ms": 0.0024893471467428486,
+    "byte_ms_delta": -1.1682009183399829,
+    "byte_removed_ms": -1.1706902654867255,
     "dispatch_ms_delta": 0.138432,
     "flop_ms_delta": 0.0
    },
@@ -2346,8 +2371,80 @@
   ],
   "kernel": "qwen38_gated_delta_decode_vi_simd"
  },
+ "s020_families": {
+  "blocked": {
+   "conditional_recurrence": {
+    "blocked_by": "NEEDS_A_FITTED_PROGRAM",
+    "unblocks_when": "a fitted router plus per-regime recurrence exists on disk"
+   },
+   "fused_update_and_consume": {
+    "blocked_by": "NOT_A_TRAJECTORY_QUESTION",
+    "unblocks_when": "never through this judge"
+   },
+   "generated_coefficients": {
+    "blocked_by": "NEEDS_A_FITTED_PROGRAM",
+    "unblocks_when": "a fitted T1/T2-class program lands at one of LANDING_RECEIPT_RELS"
+   },
+   "learned_recurrence": {
+    "blocked_by": "NEEDS_A_FITTED_PROGRAM",
+    "unblocks_when": "a fitted recurrence program exists on disk to run through this judge"
+   }
+  },
+  "families": [
+   {
+    "candidate_id": "truncated_state_rank16",
+    "family": "smaller_state",
+    "how": "state, output and logit curves over 7 horizons",
+    "judged": true
+   },
+   {
+    "candidate_id": "lower_rank_transition_rank8",
+    "family": "structured_transitions",
+    "how": "state, output and logit curves over 7 horizons",
+    "judged": true
+   },
+   {
+    "blocked_by": "NEEDS_A_FITTED_PROGRAM",
+    "candidate_id": "generated_transition_coefficients",
+    "family": "generated_coefficients",
+    "how": "a byte claim without a program is not a curve",
+    "judged": false,
+    "unblocks_when": "a fitted T1/T2-class program lands at one of LANDING_RECEIPT_RELS"
+   },
+   {
+    "blocked_by": "NEEDS_A_FITTED_PROGRAM",
+    "candidate_id": null,
+    "family": "learned_recurrence",
+    "how": "no program, no trajectory",
+    "judged": false,
+    "unblocks_when": "a fitted recurrence program exists on disk to run through this judge"
+   },
+   {
+    "blocked_by": "NEEDS_A_FITTED_PROGRAM",
+    "candidate_id": null,
+    "family": "conditional_recurrence",
+    "how": "no program, no trajectory",
+    "judged": false,
+    "unblocks_when": "a fitted router plus per-regime recurrence exists on disk"
+   },
+   {
+    "blocked_by": "NOT_A_TRAJECTORY_QUESTION",
+    "candidate_id": null,
+    "family": "fused_update_and_consume",
+    "how": "execution change, bit-identical recurrence; this judge would return FLAT_ZERO like the identity control and that would not be evidence. Score it on bytes, launches and bit-identity.",
+    "judged": false,
+    "unblocks_when": "never through this judge"
+   }
+  ],
+  "judged": [
+   "smaller_state",
+   "structured_transitions"
+  ],
+  "n_families": 6,
+  "n_judged_on_trajectory": 2
+ },
  "schema": "hawking.future.deltanet_multistep.v1",
- "seal_sha256": "a61a6bc14ebfcb6e11e91afb66b510b9ce2ea9770585637ba8abb3e38fcef6c2",
+ "seal_sha256": "d5b0f32f68669e7cb5e6beedeee77d84c7020dc9ed5a2f1d9e72b436d84aae38",
  "version": 1,
  "what_this_does_not_prove": [
   "capability or generate identity of any candidate",

@@ -69,6 +69,7 @@ def _econ_zero(*, status: str = "EXISTING_LEVER"):
         "extra_flops_per_output_element": 0.0,
         "dispatch_delta": 0.0,
         "consuming_primitive": "LocalStateMachine",
+        "stream_class": "activation",
         "status": status,
         "reusable_family": False,
         "high_information_falsifier": True,
@@ -254,6 +255,7 @@ def test_candidate_without_economics_is_refused():
             bytes_removed=1_000,
             bytes_added=None,
             consuming_primitive="LocalStateMachine",
+            stream_class="activation",
         )
     assert caught.value.cand_id == "ratio_only"
     assert "bytes_added" in caught.value.missing
@@ -431,6 +433,7 @@ def test_economics_score_both_sides_and_atlas_primitive():
         extra_flops_per_output_element=0.0,
         dispatch_delta=float(claim["dispatch_delta"]),
         consuming_primitive=str(claim["consuming_primitive"]),
+        stream_class=str(claim.get("stream_class") or "weight_codes"),
         status=dnm.OPEN,
         reusable_family=True,
         high_information_falsifier=True,
@@ -454,6 +457,7 @@ def test_truncated_state_byte_model_removes_s_and_adds_factors():
         bytes_removed=tr["bytes_removed"],
         bytes_added=tr["bytes_added"],
         consuming_primitive=tr["consuming_primitive"],
+        stream_class=tr["stream_class"],
         reusable_family=True,
         high_information_falsifier=True,
         status=dnm.OPEN,

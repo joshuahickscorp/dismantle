@@ -120,6 +120,68 @@ LANDING_SCRATCH: tuple[Path, ...] = (
     Path("/Users/scammermike/Downloads/hawking/workspace/ops/local/scratch/t1dngen"),
 )
 
+
+# ---------------------------------------------------------------------------
+# THE SIX FAMILIES S020 SEC 16 NAMES, AND WHICH OF THEM THIS AUTHORITY HAS JUDGED.
+#
+# G053 asks what recurrent update the model actually NEEDS, judged on state
+# trajectory and logits rather than on reconstructing the stored matrices. This
+# module is that judge. Two of the six have curves; the rest do not, and the
+# honest report is which, not a paragraph saying "partially".
+#
+# The last row is the one worth reading twice. A fused update+consume changes
+# WHERE arithmetic happens, not WHAT the recurrence computes, so its trajectory
+# is identical by construction - the judge would return FLAT_ZERO exactly like
+# the identity control, and a reader would see a pass. Applying a function judge
+# to an execution change manufactures evidence. It is scored on bytes, launches
+# and bit-identity instead, and this table says so rather than leaving the row
+# blank for someone to fill in with a green curve.
+# ---------------------------------------------------------------------------
+
+NEEDS_A_FITTED_PROGRAM = "NEEDS_A_FITTED_PROGRAM"
+NOT_A_TRAJECTORY_QUESTION = "NOT_A_TRAJECTORY_QUESTION"
+
+S020_FAMILIES: tuple[dict[str, Any], ...] = (
+    {"family": "smaller_state", "candidate_id": TRUNCATED_STATE, "judged": True,
+     "how": "state, output and logit curves over 7 horizons"},
+    {"family": "structured_transitions", "candidate_id": LOWER_RANK_TRANSITION, "judged": True,
+     "how": "state, output and logit curves over 7 horizons"},
+    {"family": "generated_coefficients", "candidate_id": GENERATED_TRANSITION, "judged": False,
+     "blocked_by": NEEDS_A_FITTED_PROGRAM,
+     "unblocks_when": "a fitted T1/T2-class program lands at one of LANDING_RECEIPT_RELS",
+     "how": "a byte claim without a program is not a curve"},
+    {"family": "learned_recurrence", "candidate_id": None, "judged": False,
+     "blocked_by": NEEDS_A_FITTED_PROGRAM,
+     "unblocks_when": "a fitted recurrence program exists on disk to run through this judge",
+     "how": "no program, no trajectory"},
+    {"family": "conditional_recurrence", "candidate_id": None, "judged": False,
+     "blocked_by": NEEDS_A_FITTED_PROGRAM,
+     "unblocks_when": "a fitted router plus per-regime recurrence exists on disk",
+     "how": "no program, no trajectory"},
+    {"family": "fused_update_and_consume", "candidate_id": None, "judged": False,
+     "blocked_by": NOT_A_TRAJECTORY_QUESTION,
+     "unblocks_when": "never through this judge",
+     "how": "execution change, bit-identical recurrence; this judge would return "
+            "FLAT_ZERO like the identity control and that would not be evidence. "
+            "Score it on bytes, launches and bit-identity."},
+)
+
+
+def families_report() -> dict[str, Any]:
+    """Which of the six are judged, which are blocked, and by what."""
+    judged = [f for f in S020_FAMILIES if f["judged"]]
+    return {
+        "n_families": len(S020_FAMILIES),
+        "n_judged_on_trajectory": len(judged),
+        "judged": [f["family"] for f in judged],
+        "blocked": {
+            f["family"]: {"blocked_by": f["blocked_by"], "unblocks_when": f["unblocks_when"]}
+            for f in S020_FAMILIES if not f["judged"]
+        },
+        "families": [dict(f) for f in S020_FAMILIES],
+    }
+
+
 PAYLOAD_CANDIDATES: tuple[Path, ...] = (
     REPO / "workspace" / "ops" / "local" / "scratch" / "mlp_teacher_corpus",
     Path("/Users/scammermike/Downloads/hawking/workspace/ops/local/scratch/mlp_teacher_corpus"),
@@ -1092,6 +1154,7 @@ def score_candidate_economics(
     extra_flops_per_output_element: float = 0.0,
     dispatch_delta: float = 0.0,
     consuming_primitive: str,
+    stream_class: str,
     status: str | None = None,
     reusable_family: bool = False,
     high_information_falsifier: bool = True,
@@ -1121,6 +1184,7 @@ def score_candidate_economics(
         extra_flops_per_output_element=float(extra_flops_per_output_element),
         dispatch_delta=float(dispatch_delta),
         consuming_primitive=consuming_primitive,
+        stream_class=stream_class,
         organ="deltanet",
         reusable_family=bool(reusable_family),
         high_information_falsifier=bool(high_information_falsifier),
@@ -1320,6 +1384,13 @@ def evaluate_candidate(
         ),
         dispatch_delta=float(economics.get("dispatch_delta") or 0.0),
         consuming_primitive=str(economics["consuming_primitive"]),
+        # Each candidate must SAY which stream it takes bytes out of. Defaulting
+        # to the organ average is how the aux-u8 overcredit stayed invisible, and
+        # DeltaNet is where it would hide best: the recurrent state S is resident
+        # activation read and written every token, while the qkvz payload and the
+        # transition matrices are weight codes. Billing state bytes at the weight
+        # rate, or the reverse, is a whole-organ error.
+        stream_class=str(economics["stream_class"]),
         status=economics.get("status"),
         reusable_family=bool(economics.get("reusable_family")),
         high_information_falsifier=bool(
@@ -1399,6 +1470,11 @@ def cheap_control_specs(*, dim: int = PROBE_DIM, seed: int = RNG_SEED) -> list[d
                 "extra_flops_per_output_element": 0.0,
                 "dispatch_delta": 0.0,
                 "consuming_primitive": "LocalStateMachine",
+                # All three take their bytes out of REC_STATE_RESIDENT: the
+                # recurrent state S, read and written every token. That is
+                # resident ACTIVATION, not weight codes, and billing it at the
+                # weight rate would credit a whole-organ error.
+                "stream_class": "activation",
                 "status": "EXISTING_LEVER",
                 "reusable_family": False,
                 "high_information_falsifier": True,
@@ -1417,6 +1493,11 @@ def cheap_control_specs(*, dim: int = PROBE_DIM, seed: int = RNG_SEED) -> list[d
                 "extra_flops_per_output_element": 0.0,
                 "dispatch_delta": 0.0,
                 "consuming_primitive": "LocalStateMachine",
+                # All three take their bytes out of REC_STATE_RESIDENT: the
+                # recurrent state S, read and written every token. That is
+                # resident ACTIVATION, not weight codes, and billing it at the
+                # weight rate would credit a whole-organ error.
+                "stream_class": "activation",
                 "status": OPEN,
                 "reusable_family": True,
                 "high_information_falsifier": True,
@@ -1442,6 +1523,11 @@ def cheap_control_specs(*, dim: int = PROBE_DIM, seed: int = RNG_SEED) -> list[d
                 "extra_flops_per_output_element": 0.0,
                 "dispatch_delta": 0.0,
                 "consuming_primitive": "LocalStateMachine",
+                # All three take their bytes out of REC_STATE_RESIDENT: the
+                # recurrent state S, read and written every token. That is
+                # resident ACTIVATION, not weight codes, and billing it at the
+                # weight rate would credit a whole-organ error.
+                "stream_class": "activation",
                 "status": OPEN,
                 "reusable_family": True,
                 "high_information_falsifier": True,
@@ -1560,6 +1646,8 @@ def snapshot(
         extra_flops_per_output_element=0.0,
         dispatch_delta=float(gen_claim["dispatch_delta"]),
         consuming_primitive=str(gen_claim["consuming_primitive"]),
+        # A generated transition replaces stored transition coefficients: weights.
+        stream_class=str(gen_claim.get("stream_class") or "weight_codes"),
         status=OPEN,
         reusable_family=True,
         high_information_falsifier=True,
@@ -1737,7 +1825,10 @@ def build(
             "series": list(SERIES_KEYS),
             "static_only": "this sidecar. Models propose; protected deterministic evidence decides.",
         },
+        "s020_families": families_report(),
         "gaps_closed": [
+            "the six S020 families are enumerated with judged/blocked status, so "
+            "an unjudged family cannot read as judged by omission",
             "state, output and logit errors are three series; collapsing them raises",
             "a one-step-only number raises rather than returning a verdict",
             "every named horizon is RUN or SKIPPED; silent omission raises",

@@ -705,6 +705,81 @@ kernel void qwen_uniform_q4_group64_matvec_geo_tpr64_tg128(
     }
 }
 
+
+// BITCAST DEQUANT for uniform q4 (G094). Same construction that took 3.854 ms
+// off the MLP token, mapped to a 4-bit code with a fixed -8 zero point.
+//
+// A nibble placed at bits 19-22 of an f32 with exponent field 0x40000000 gives
+// EXACTLY f = 2.0 + q/8 (the nibble is q*2^19/2^23 = q/16 of the significand,
+// doubled by the 2^1 exponent). So q = 8*(f - 2) and the production weight
+//     (q - 8) * scale
+// becomes
+//     (8*scale)*f + (-24*scale)
+// with both constants folded ONCE PER GROUP. This removes the int-to-float
+// convert AND the -8 subtract, and costs one OR.
+//
+// The nibble is masked and then shifted to 19: (packed >> 8i) & 0xf, << 19.
+// The tempting pre-shift trick - (packed << 19) >> 8i - is WRONG here and was
+// measured wrong at rel_fro 0.877: packed is a full 32-bit word of eight
+// nibbles, so shifting it left by 19 discards bits 13 and up. It works for the
+// q2 kernel only because its packed word is 16 bits.
+//
+// NOT bit-identical - the multiply becomes an FMA on refolded constants - so
+// the output is compared, never assumed.
+static inline float q4_unpack8_bitcast(
+    uint packed, float s8, float b24,
+    device const float* x, uint col)
+{
+    float sum = 0.0f;
+    for (uint i = 0u; i < 4u; ++i) {
+        const uint byte = (packed >> (8u * i)) & 0xffu;
+        const float fl = as_type<float>(0x40000000u | ((byte & 0x0fu) << 19u));
+        const float fh = as_type<float>(0x40000000u | ((byte >> 4u) << 19u));
+        sum = fma(fma(s8, fl, b24), x[col + 2u * i], sum);
+        sum = fma(fma(s8, fh, b24), x[col + 2u * i + 1u], sum);
+    }
+    return sum;
+}
+
+kernel void alu_roofline_q4_geo_tpr64_tg128_bitcast(
+    device const uchar* codes       [[buffer(0)]],
+    device const half* scales       [[buffer(1)]],
+    device const float* input       [[buffer(2)]],
+    device float* output            [[buffer(3)]],
+    constant uint& rows             [[buffer(4)]],
+    constant uint& cols             [[buffer(5)]],
+    constant uint& groups_per_row   [[buffer(6)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[4];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows) {
+        const uint rgb0 = row * groups_per_row;
+        for (uint col = lane_in_row * 8u; col < cols; col += 512u) {
+            const uint group = col / QWEN_UNIFORM_Q4_GROUP_SIZE;
+            const uint local = col - group * QWEN_UNIFORM_Q4_GROUP_SIZE;
+            const uint rgb = rgb0 + group;
+            const float scale = float(scales[rgb]);
+            const uint packed = *((device const uint*)(codes + rgb * QWEN_UNIFORM_Q4_CODE_BYTES_PER_GROUP + (local >> 1u)));
+            acc += q4_unpack8_bitcast(
+                packed, scale * 8.0f, scale * -24.0f, input, col);
+        }
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) red[simd_id] = acc;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+}
+
 kernel void alu_roofline_q4_geo_tpr64_tg128_stripped(
     device const uchar* codes       [[buffer(0)]],
     device const half* scales       [[buffer(1)]],

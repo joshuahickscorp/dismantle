@@ -448,6 +448,45 @@ pub const QWEN38_Q4_PAIR_CONCAT_KERNEL: &str =
     "qwen_uniform_q4_group64_matvec_pair_concat_geo_tpr64_tg128";
 pub const QWEN38_Q4_QKV_GEO_KERNEL: &str =
     "qwen_uniform_q4_group64_matvec_qkv_geo_tpr64_tg128";
+
+/// bitcast siblings of the three uniform-q4 matvecs the resident dispatches.
+/// Same binds, same geometry; the nibble is unpacked straight into an f32
+/// mantissa so neither the int-to-float convert nor the -8 zero point runs.
+/// MEASURED BIT-IDENTICAL on a real qkvz projection at 1.1444x
+/// (receipts/future/Q4_BITCAST_AB.json). Default is OFF; opt in with
+/// HAWKING_Q4_UNPACK=bitcast.
+pub const QWEN38_Q4_MATVEC_BITCAST: &str =
+    "qwen_uniform_q4_group64_matvec_geo_tpr64_tg128_bitcast";
+pub const QWEN38_Q4_QKV_GEO_BITCAST: &str =
+    "qwen_uniform_q4_group64_matvec_qkv_geo_tpr64_tg128_bitcast";
+pub const QWEN38_Q4_PAIR_CONCAT_BITCAST: &str =
+    "qwen_uniform_q4_group64_matvec_pair_concat_geo_tpr64_tg128_bitcast";
+
+/// Whether the q4 bitcast unpack is selected. Read once per call rather than
+/// cached, matching how HAWKING_AFFINE2_GEO is read: a lever that cannot be
+/// turned off inside one process is a lever that cannot be A/B'd.
+pub fn qwen38_q4_bitcast_on() -> bool {
+    matches!(
+        std::env::var("HAWKING_Q4_UNPACK").as_deref(),
+        Ok("bitcast") | Ok("mantissa")
+    )
+}
+
+/// Production name, or its bitcast sibling when the lever is on. Any q4 matvec
+/// name that has no bitcast sibling is returned unchanged rather than having
+/// "_bitcast" appended, because naming a kernel that does not exist binds a
+/// pipeline that fails at launch - the defect SplitK4Vec still carries.
+pub fn qwen38_q4_kernel(name: &'static str) -> &'static str {
+    if !qwen38_q4_bitcast_on() {
+        return name;
+    }
+    match name {
+        QWEN38_Q4_MATVEC_KERNEL => QWEN38_Q4_MATVEC_BITCAST,
+        QWEN38_Q4_QKV_GEO_KERNEL => QWEN38_Q4_QKV_GEO_BITCAST,
+        QWEN38_Q4_PAIR_CONCAT_KERNEL => QWEN38_Q4_PAIR_CONCAT_BITCAST,
+        other => other,
+    }
+}
 pub const QWEN38_AFFINE_GATE_UP_KERNEL: &str =
     "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128";
 pub const QWEN38_AFFINE_GATE_UP_SWIGLU_KERNEL: &str =
@@ -1596,7 +1635,7 @@ pub fn qwen38_uniform_q4_geo_tpr64_launch(
         return None;
     }
     let name = match group_size {
-        64 => QWEN38_Q4_MATVEC_KERNEL,
+        64 => qwen38_q4_kernel(QWEN38_Q4_MATVEC_KERNEL),
         128 => QWEN38_Q4_GROUP128_MATVEC_KERNEL,
         _ => return None,
     };
@@ -4106,7 +4145,7 @@ mod device {
             let gpr = (a.cols / UNIFORM_Q4_GROUP_SIZE) as u32;
             let total = a_rows.saturating_add(b_rows);
             let (grid, tg) = Qwen38MatvecKernel::GeoTpr64Tg128.launch(total);
-            tcb.dispatch_threads(QWEN38_Q4_PAIR_CONCAT_KERNEL, grid, tg, |enc| {
+            tcb.dispatch_threads(qwen38_q4_kernel(QWEN38_Q4_PAIR_CONCAT_KERNEL), grid, tg, |enc| {
                 enc.set_buffer(0, Some(&a.codes), 0);
                 enc.set_buffer(1, Some(&a.scales), 0);
                 enc.set_buffer(2, Some(&b.codes), 0);
@@ -4149,7 +4188,7 @@ mod device {
             let gpr = (q.cols / UNIFORM_Q4_GROUP_SIZE) as u32;
             let total = q_rows.saturating_add(k_rows).saturating_add(v_rows);
             let (grid, tg) = Qwen38MatvecKernel::GeoTpr64Tg128.launch(total);
-            tcb.dispatch_threads(QWEN38_Q4_QKV_GEO_KERNEL, grid, tg, |enc| {
+            tcb.dispatch_threads(qwen38_q4_kernel(QWEN38_Q4_QKV_GEO_KERNEL), grid, tg, |enc| {
                 enc.set_buffer(0, Some(&q.codes), 0);
                 enc.set_buffer(1, Some(&q.scales), 0);
                 enc.set_buffer(2, Some(&k.codes), 0);

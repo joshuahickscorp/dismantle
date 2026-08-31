@@ -455,6 +455,7 @@ mod macos {
             "alu_roofline_affine_q2_geo_tpr64_tg128_nounpack",
             "alu_roofline_affine_q2_geo_tpr64_tg128_bitcast",
             "qwen_uniform_q4_group64_matvec_geo_tpr64_tg128",
+            "alu_roofline_q4_geo_tpr64_tg128_bitcast",
             "alu_roofline_q4_geo_tpr64_tg128_stripped",
             "alu_roofline_q4_geo_tpr64_tg128_halfk",
             "alu_roofline_q4_geo_tpr64_tg128_zero",
@@ -1571,6 +1572,17 @@ mod macos {
         );
         let _ = time_q4(args.warmup, ArmKind::Q4Zero, q4_zero);
         let dn_zero_ns = time_q4(args.reps, ArmKind::Q4Zero, q4_zero);
+        // q4 BITCAST: a SEMANTIC candidate. Production's output is captured
+        // first so the comparison is real rather than assumed.
+        let q4_bitcast = pipes
+            .get("alu_roofline_q4_geo_tpr64_tg128_bitcast")
+            .unwrap();
+        let _ = time_q4(args.warmup, ArmKind::Q4Prod, q4_bitcast);
+        let _ = time_q4(1, ArmKind::Q4Prod, q4_prod);
+        let q4_ref = read_f32(&qkvz.output, qkvz.rows as usize);
+        let dn_bitcast_ns = time_q4(args.reps, ArmKind::Q4Prod, q4_bitcast);
+        let mut q4_bitcast_cmp = compare_out(&q4_ref, &read_f32(&qkvz.output, qkvz.rows as usize));
+        q4_bitcast_cmp["tensor"] = json!(qkvz.name.clone());
         let _ = time_q4(
             args.warmup,
             ArmKind::Q4Stripped {
@@ -1720,6 +1732,19 @@ mod macos {
                 "threads_per_threadgroup": TG,
                 "bytes_per_thread_iteration": bytes_per_iter_q4,
                 "inner_loop_trips": trips_dn,
+                "bitcast": arm_json(
+                    "bitcast",
+                    q4_bitcast.name,
+                    qkvz.weight_bytes,
+                    dn_bitcast_ns,
+                    1,
+                    &q4_occ,
+                    json!({
+                        "computes_the_right_answer": true,
+                        "transform": "nibble unpacked into an f32 mantissa (f = 2 + q/8) so neither the int-to-float convert nor the -8 zero point runs; the affine refolds per group as (8*scale)*f + (-24*scale)",
+                        "output_compare": q4_bitcast_cmp,
+                    }),
+                ),
                 "production": arm_json(
                     "production",
                     q4_prod.name,

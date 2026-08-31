@@ -1,0 +1,151 @@
+{
+ "baseline": {
+  "active_gb": 9.878901136,
+  "host_ms": 0.989,
+  "token_ms": 28.722,
+  "tps": 34.82
+ },
+ "claim_boundary": "Arithmetic over recorded components. QUALIFIED means measured on the real resident with parity. PROSPECTIVE means the byte model is measured and capability is NOT \u2014 no generate gate has been run on any auxiliary lever. Overlapping levers are not summed. A composed path is a prediction, not a result, and every one above PATH_01 contains at least one component nobody has implemented.",
+ "components": {
+  "aux_group_size_1024": {
+   "cost": "a refit plus a capability screen",
+   "evidence": "PROSPECTIVE",
+   "gb_saved": 1.0027008,
+   "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+   "why_prospective": "byte model exact (aux(G) = 4*n_params/G + 58176); capability UNMEASURED, no generate gate has been run"
+  },
+  "aux_u8": {
+   "cost": "a refit plus a capability screen",
+   "evidence": "PROSPECTIVE",
+   "gb_saved": 0.53477376,
+   "overlaps": [
+    "aux_group_size_1024"
+   ],
+   "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json",
+   "why_prospective": "same; and it overlaps group_size, they are not additive"
+  },
+  "ba_delta_fusion": {
+   "cost": "set one env flag",
+   "evidence": "QUALIFIED",
+   "ms_saved": 0.1384,
+   "parity": "token-identical across 8 runs, 128 tokens, fallbacks 0",
+   "source": "receipts/future/BA_DELTA_AB.json"
+  },
+  "deltanet_q3": {
+   "evidence": "REFUTED",
+   "gb_saved": 0.50331648,
+   "source": "receipts/future/DELTANET_QKVZ_PRECISION.json",
+   "why": "entropies are 3.465-3.479 of 4 across q/k/v/z and any_supported is false; no sensitivity measurement licenses the reduction"
+  },
+  "mlp_dispatch_size": {
+   "cost": "an executor change",
+   "evidence": "PROSPECTIVE",
+   "ms_saved": 1.258,
+   "parity": "arithmetic is unchanged; a real implementation must prove it",
+   "source": "receipts/future/DISPATCH_SIZE_SWEEP.json",
+   "why_prospective": "the 374.4 GB/s at 337.7 MB/dispatch is measured, but no implementation batches the MLP that way yet"
+  },
+  "mlp_entropy_floor": {
+   "cost": "a codec plus a native consumer",
+   "evidence": "PROSPECTIVE",
+   "gb_saved": 0.277697891,
+   "source": "receipts/future/MLP_CODE_INFORMATION.json",
+   "why_prospective": "the 1.87018-of-2-bits floor is measured; an actual entropy coder that a GPU can consume in-register does not exist and may cost more ALU than it saves bytes"
+  }
+ },
+ "evidence_class": "DIAGNOSTIC_RELATIVE",
+ "gap_to_71": {
+  "best_composed_path": "PATH_04",
+  "best_composed_token_ms": 23.605,
+  "best_composed_tps": 42.36,
+  "still_to_remove_ms": 9.52,
+  "still_to_remove_share_of_gpu": 0.421,
+  "target_token_ms": 14.085,
+  "verdict": "Everything on record \u2014 every qualified win, every prospective byte lever, refuted ones excluded \u2014 reaches 42.36 TPS. Reaching 71 needs another 9.52 ms, which is 42% of the GPU time that would remain. No component on record can supply that. It requires a representation result that does not exist yet.",
+  "what_would_supply_it": "A functional replacement for the MLP or DeltaNet that eliminates information rather than coding it better. Both organs are at their entropy floor, so the only remaining source of that magnitude is weights that need not exist independently."
+ },
+ "gpu_authority": false,
+ "paths": [
+  {
+   "components": [],
+   "label": "measured now",
+   "path": "PATH_00",
+   "skipped": [],
+   "token_ms": 28.722,
+   "tps": 34.82,
+   "weakest_evidence": "MEASURED"
+  },
+  {
+   "components": [
+    "ba_delta_fusion"
+   ],
+   "gb_removed": 0.0,
+   "label": "everything QUALIFIED today",
+   "ms_removed_directly": 0.1384,
+   "path": "PATH_01",
+   "skipped": [],
+   "token_ms": 28.584,
+   "tps": 34.99,
+   "weakest_evidence": "QUALIFIED"
+  },
+  {
+   "components": [
+    "ba_delta_fusion",
+    "mlp_dispatch_size"
+   ],
+   "gb_removed": 0.0,
+   "label": "qualified + the executor lever that survived",
+   "ms_removed_directly": 1.3964,
+   "path": "PATH_02",
+   "skipped": [],
+   "token_ms": 27.326,
+   "tps": 36.6,
+   "weakest_evidence": "PROSPECTIVE"
+  },
+  {
+   "components": [
+    "ba_delta_fusion",
+    "mlp_dispatch_size",
+    "aux_group_size_1024"
+   ],
+   "gb_removed": 1.0027,
+   "label": "that + the best auxiliary lever",
+   "ms_removed_directly": 1.3964,
+   "path": "PATH_03",
+   "skipped": [
+    "aux_u8: overlaps ['aux_group_size_1024'], not additive"
+   ],
+   "token_ms": 24.412,
+   "tps": 40.96,
+   "weakest_evidence": "PROSPECTIVE"
+  },
+  {
+   "components": [
+    "ba_delta_fusion",
+    "mlp_dispatch_size",
+    "aux_group_size_1024",
+    "mlp_entropy_floor"
+   ],
+   "gb_removed": 1.2804,
+   "label": "everything on record, refuted excluded",
+   "ms_removed_directly": 1.3964,
+   "path": "PATH_04",
+   "skipped": [
+    "aux_u8: overlaps ['aux_group_size_1024'], not additive",
+    "deltanet_q3: REFUTED"
+   ],
+   "token_ms": 23.605,
+   "tps": 42.36,
+   "weakest_evidence": "PROSPECTIVE"
+  }
+ ],
+ "recorded_by": "tools/future/path_to_71.py",
+ "schema": "hawking.future.path_to_71.v1",
+ "schools_running": [
+  "mlp functional/programmatic replacement (corpus building)",
+  "capability-sensitive information map",
+  "deltanet state-function replacement",
+  "executable economics cost model"
+ ],
+ "version": 1
+}

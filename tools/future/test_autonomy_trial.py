@@ -558,3 +558,56 @@ def test_launch_candidate_ignores_fifteen_minute_pass():
     cand = at.launch_candidate_from_receipt(doc)
     assert cand["trial"] == "1h"
     assert cand["verdict"] == "FAIL"
+
+
+def _detached_overlap_for_test(events):
+    return at._detached_overlap(events)
+
+
+def test_adjacent_starts_are_not_overlap_when_stamps_say_otherwise():
+    """The old rule passed here. Two jobs, sequential in time, adjacent in log.
+
+    A completes at t=1 and B starts at t=2, but B's detached_started is the
+    second start event seen and A's completion carries no job_id, so the
+    adjacency walk never closed A. Real interval arithmetic refuses it.
+    """
+    events = [
+        {"kind": "detached_started", "t_s": 0,
+         "payload": {"job_id": "A", "pid": 11, "started_at": 100.0}},
+        # A's completion, deliberately missing job_id the way a real one can be.
+        {"kind": "detached_completed", "t_s": 1,
+         "payload": {"pid": 11, "finished_at": 101.0}},
+        {"kind": "detached_started", "t_s": 2,
+         "payload": {"job_id": "B", "pid": 12, "started_at": 102.0}},
+        {"kind": "detached_completed", "t_s": 3,
+         "payload": {"job_id": "B", "pid": 12, "finished_at": 103.0}},
+    ]
+    # A never closes by job_id, so the adjacency reading sees two open jobs.
+    # Stamps say A ended at 101.0 and B began at 102.0: no overlap.
+    ok, jobs, _cited = _detached_overlap_for_test(events)
+    assert not ok, f"sequential jobs reported as overlapping: {jobs}"
+
+
+def test_real_overlap_is_still_met():
+    events = [
+        {"kind": "detached_started", "t_s": 0,
+         "payload": {"job_id": "LONG", "pid": 11, "started_at": 100.0}},
+        {"kind": "detached_started", "t_s": 0,
+         "payload": {"job_id": "SHORT", "pid": 12, "started_at": 100.5}},
+        {"kind": "detached_completed", "t_s": 1,
+         "payload": {"job_id": "SHORT", "pid": 12, "finished_at": 100.9}},
+        {"kind": "detached_completed", "t_s": 8,
+         "payload": {"job_id": "LONG", "pid": 11, "finished_at": 108.0}},
+    ]
+    ok, jobs, _cited = _detached_overlap_for_test(events)
+    assert ok and jobs == ["LONG", "SHORT"], jobs
+
+
+def test_unstamped_timeline_still_falls_back_to_adjacency():
+    """Older timelines carry no started_at. They must not silently start failing."""
+    events = [
+        {"kind": "detached_started", "t_s": 0, "payload": {"job_id": "A", "pid": 11}},
+        {"kind": "detached_started", "t_s": 0, "payload": {"job_id": "B", "pid": 12}},
+    ]
+    ok, jobs, _cited = _detached_overlap_for_test(events)
+    assert ok and jobs == ["A", "B"]

@@ -1052,21 +1052,84 @@ def eval_never_conversational_wait(view: TimelineView) -> dict[str, Any]:
 
 
 def _detached_overlap(events: Sequence[Mapping[str, Any]]) -> tuple[bool, list[str], list[dict[str, Any]]]:
+    """Two detached jobs live at one instant.
+
+    STRICTER than it was. The old rule walked the event sequence and declared
+    overlap as soon as two detached_started had been seen without their
+    completions in between. That is adjacency, not overlap: it passes when the
+    first job already exited and its completion event merely arrives later or
+    carries no job_id. Real interval arithmetic on started_at/finished_at is
+    used whenever those stamps exist, and adjacency survives only as a fallback
+    for timelines that do not carry them.
+
+    A completion is matched by job_id, and by pid when the completion event
+    omits the job_id -- otherwise an unattributable completion leaves its job
+    looking open forever and reinstates exactly the leniency this closes. A job
+    with no completion at all is genuinely still open and its interval runs to
+    the last stamp in the timeline, not to infinity.
+    """
+    starts: dict[str, float] = {}
+    ends: dict[str, float] = {}
+    pid_of: dict[str, Any] = {}
+    last_stamp = 0.0
     open_jobs: dict[str, dict[str, Any]] = {}
-    overlapping_at: list[str] = []
+    adjacency_at: list[str] = []
     cited: list[dict[str, Any]] = []
+    stamped = True
     for event in _seq_events(events):
         kind = str(event.get("kind") or "")
-        jid = str(_payload(event).get("job_id") or event.get("job_id") or "")
+        payload = _payload(event)
+        jid = str(payload.get("job_id") or event.get("job_id") or "")
         if kind == "detached_started" and jid:
+            cited.append(dict(event))
             open_jobs[jid] = dict(event)
+            if len(open_jobs) >= 2 and not adjacency_at:
+                adjacency_at = sorted(open_jobs)
+            if payload.get("pid") is not None:
+                pid_of[jid] = payload.get("pid")
+            stamp = payload.get("started_at")
+            if stamp is None:
+                stamped = False
+            else:
+                starts[jid] = float(stamp)
+                last_stamp = max(last_stamp, float(stamp))
+        elif kind in {"detached_completed", "detached_failed"}:
             cited.append(dict(event))
-            if len(open_jobs) >= 2 and not overlapping_at:
-                overlapping_at = sorted(open_jobs)
-        elif kind in {"detached_completed", "detached_failed"} and jid:
-            open_jobs.pop(jid, None)
-            cited.append(dict(event))
-    return bool(overlapping_at), overlapping_at, cited
+            target = jid
+            if not target:
+                # Unattributable by id: recover it from the pid the start
+                # event recorded. Without this an orphan completion leaves its
+                # job open forever and any later start reads as an overlap.
+                pid = payload.get("pid")
+                if pid is not None:
+                    for cand, cand_pid in pid_of.items():
+                        if cand_pid == pid:
+                            target = cand
+                            break
+            if target:
+                open_jobs.pop(target, None)
+                stamp = payload.get("finished_at")
+                if stamp is not None:
+                    ends[target] = float(stamp)
+                    last_stamp = max(last_stamp, float(stamp))
+
+    if stamped and len(starts) >= 2:
+        ids = sorted(starts)
+        for i, a in enumerate(ids):
+            for b in ids[i + 1:]:
+                ea = ends.get(a)
+                eb = ends.get(b)
+                # No completion at all means the job outlived the timeline; its
+                # interval runs to the last stamp seen, never to infinity.
+                open_end = max(last_stamp, starts[a], starts[b])
+                end_a = open_end if ea is None else ea
+                end_b = open_end if eb is None else eb
+                if min(end_a, end_b) - max(starts[a], starts[b]) > 0:
+                    return True, sorted((a, b)), cited
+        return False, [], cited
+
+    # No usable stamps: fall back to the old adjacency reading.
+    return bool(adjacency_at), adjacency_at, cited
 
 
 def eval_overlap_detached_work(view: TimelineView) -> dict[str, Any]:

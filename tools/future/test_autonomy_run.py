@@ -413,10 +413,18 @@ def _overlap_from_timestamps(events):
         jid = payload.get("job_id")
         if not jid:
             continue
+        # started_at / finished_at are epoch seconds; t_s is trial-relative.
+        # Falling back from one to the other compares 1788141337.2 against 35.0
+        # and reports a real overlap as negative. Only epoch stamps are used;
+        # a job with no finish stamp is treated as still open.
         if event.get("kind") == "detached_started":
-            starts[jid] = float(payload.get("started_at") or event.get("t_s") or 0)
+            stamp = payload.get("started_at")
+            if stamp is not None:
+                starts[jid] = float(stamp)
         elif event.get("kind") in {"detached_completed", "detached_failed"}:
-            ends[jid] = float(payload.get("finished_at") or event.get("t_s") or 0)
+            stamp = payload.get("finished_at")
+            if stamp is not None:
+                ends[jid] = float(stamp)
     jobs = list(starts)
     for i, a in enumerate(jobs):
         for b in jobs[i + 1 :]:

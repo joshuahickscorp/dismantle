@@ -503,6 +503,12 @@ def reorder_queue_from_evidence(
     return before, after
 
 
+# How many jobs kickoff may put in flight while hunting for a confirmed overlap.
+# Higher than 2 because a job can exit before the next one starts, and the honest
+# response is to launch another rather than to call two adjacent starts an overlap.
+MAX_KICKOFF_DETACHED = 4
+
+
 def _detach_priority(job: dict[str, Any]) -> int | None:
     """Lower is sooner. None means this job is never detached.
 
@@ -912,6 +918,26 @@ def run(trial: str = "15m", timeline: Path | None = None,
                                f"({species.lower().replace('_', ' ')}) and routing its receipt",
             })
 
+    # Short trials need ONE detached unit that is reliably several seconds, or
+    # overlap becomes a coin flip. specimen_verify was carrying that role and it
+    # cannot: its duration depends on whether the specimen is already verified,
+    # so a warm cache makes the "long" job exit in 0.2s and the second job then
+    # starts into an empty box. This is real deterministic verification of the
+    # byte census (~2.2s), not a sleep dressed as work.
+    if trial in {"15m", "30m"}:
+        queue.append({
+            "shell": [_sys.executable, "-m", "pytest",
+                      "tools/future/test_mlp_byte_census.py", "-q",
+                      "-p", "no:cacheprovider"],
+            "frontier_id": "FT.VERIFICATION.repro",
+            "description": "verify the MLP byte census reconciles, as a bounded "
+                           "multi-second detached job the scheduler can work "
+                           "around",
+            "receipt": "pytest",
+            "launch": "detached",
+            "long_subprocess": True,
+        })
+
     # Endurance-only: the suite and the attacker are minutes of real work.
     # Putting them on the 15m/30m seed would fill the queue and starve refill,
     # and short duration_s tests would hang inside pytest.
@@ -1146,6 +1172,31 @@ def run(trial: str = "15m", timeline: Path | None = None,
                 time.sleep(0.05)
         return {"handle": handle}
 
+    overlap_confirmed: list[list[str]] = []
+
+    def _live_job_ids() -> list[str]:
+        """Job ids the supervisor currently reports as not terminal.
+
+        Overlap is two live pids at one instant. Two adjacent detached_started
+        events are not evidence of that: the first job may already have exited.
+        """
+        if sched is None or not open_handles:
+            return []
+        try:
+            snaps = sched.poll(list(open_handles.values()))
+        except Exception:
+            return []
+        live = []
+        for snap in snaps:
+            if snap.get("terminal"):
+                continue
+            if str(snap.get("state") or "") in {"missing", "failed"}:
+                continue
+            jid = str(snap.get("job_id") or "")
+            if jid:
+                live.append(jid)
+        return live
+
     def _kickoff_overlap(doc_now: dict[str, Any]) -> dict[str, Any]:
         """Start composer long/detached units, and a second live job, NOW.
 
@@ -1163,7 +1214,7 @@ def run(trial: str = "15m", timeline: Path | None = None,
             # result can actually reorder remaining work.
             if job.get("replacement_for") or job.get("replan_effect"):
                 continue
-            if started_n >= 2 and _detach_priority(job) != 0:
+            if started_n >= MAX_KICKOFF_DETACHED and _detach_priority(job) != 0:
                 break
             unit_id = (
                 str(job.get("composed_unit_id") or "")
@@ -1223,6 +1274,28 @@ def run(trial: str = "15m", timeline: Path | None = None,
             open_handles[jid] = handle
             job_by_jid[jid] = job
             started_n += 1
+            live = _live_job_ids()
+            if len(live) >= 2:
+                # Overlap ACHIEVED, and confirmed against the supervisor rather
+                # than inferred from two adjacent detached_started events.
+                doc_now = _emit(doc_now, "detached_overlap_confirmed", {
+                    "job_ids": sorted(live),
+                    "n_live": len(live),
+                    "how": "no_wait_scheduler.poll reports >=2 jobs not terminal "
+                           "at the same instant",
+                }, t_s=t())
+                overlap_confirmed.append(sorted(live))
+                break
+        if not overlap_confirmed:
+            # Say so. Two adjacent starts where the first already exited is NOT
+            # overlap, and claiming it would be exactly the fabrication this
+            # condition exists to catch.
+            doc_now = _emit(doc_now, "detached_overlap_not_achieved", {
+                "started": started_n,
+                "why": "every launched job reached terminal before the next "
+                       "one started; no two were live at the same instant",
+                "not_a_pass": True,
+            }, t_s=t())
         return doc_now
 
     try:
@@ -1455,6 +1528,13 @@ def run(trial: str = "15m", timeline: Path | None = None,
                     "job_id": jid,
                     "reason": "trial_window_elapsed",
                     "pid": handle.get("pid"),
+                    # A job cut off at the window boundary still has a real end
+                    # time. Omitting it left consumers to fall back on t_s, which
+                    # is trial-relative seconds while started_at is epoch --
+                    # mixing the two produced a nonsense interval.
+                    "finished_at": time.time(),
+                    "finished_at_is": "wall clock at window cutoff, same epoch "
+                                      "basis as started_at",
                 }, t_s=t())
                 open_handles.pop(jid, None)
             try:

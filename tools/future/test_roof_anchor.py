@@ -190,9 +190,13 @@ def test_audit_covers_the_minimum_four():
     assert census["rests_on_roof_id"] == "g072_family_scoring_595p9"
     assert census["roof_named_in_record"] is False
     assert census["defect"] == "unstated_roof"
-    budget = by_id["causal_budget_roof_on_todays_bytes_66p54"]
+    budget = by_id["causal_budget_roof_on_todays_bytes"]
     assert budget["rests_on_roof_id"] == "q4_single_gemv_addr_13p6gb_max"
-    assert budget["quoted_value"] == 66.54
+    # NOT the digits. quoted_value is now checked against the receipt on
+    # construction, so asserting it here pinned a moment and broke when the
+    # budget was corrected. What must hold is that this rung rests on the
+    # addr-probe roof and is known to steer priorities.
+    assert budget["quote_checked"] is True
     assert budget["steers_priorities"] is True
     assert budget["caveat"] == "no_input_vector_load"
     path = by_id["path_to_71_campaign_target"]
@@ -202,7 +206,7 @@ def test_audit_covers_the_minimum_four():
 
 
 def test_causal_budget_47p97_names_497p4():
-    row = ra.audit_by_id()["causal_budget_demonstrated_47p97"]
+    row = ra.audit_by_id()["causal_budget_demonstrated_regime"]
     assert row["rests_on_roof_id"] == "lm_head_production_497p4"
     assert row["roof_named_in_record"] is True
     assert row["defect"] is None
@@ -258,7 +262,7 @@ def test_build_emits_sealed_receipt():
     assert "atlas_the_ceiling" in doc["unstated_roofs_on_record"]
     assert "census_anchor_595p9" in doc["unstated_roofs_on_record"]
     assert "path_to_71_campaign_target" in doc["unstated_roofs_on_record"]
-    assert "causal_budget_roof_on_todays_bytes_66p54" in doc["no_input_vector_load_flags"]
+    assert "causal_budget_roof_on_todays_bytes" in doc["no_input_vector_load_flags"]
     assert doc["recompute"]["atlas_matches_recompute"] is True
     assert doc["source_verification"]["ok"] is True
     assert not doc["source_verification"]["mismatches"]

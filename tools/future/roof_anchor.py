@@ -25,6 +25,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.
 
 import argparse
 import json
+import re
 from typing import Any, Mapping
 
 from tools.future._common import git, load_json, write_receipt, REPO
@@ -824,7 +825,59 @@ RECOMMENDED_ANCHOR: dict[str, Any] = {
 
 # ---------------------------------------------------------------------------
 # Ceiling audit. Which roof each on-record ceiling rests on, including silence.
+#
+# Row ids DO NOT encode their value. They used to - causal_budget_demonstrated_47p97,
+# _66p54 - and three tests keyed on those strings, so correcting the number broke
+# tests that had nothing to do with the correction. An id that carries a
+# measurement is a calendar entry: it is wrong the moment the measurement improves.
+# The number lives in quoted_value, which is now CHECKED against the receipt.
 # ---------------------------------------------------------------------------
+
+
+class QuoteDrift(RuntimeError):
+    """A ceiling-audit row quotes a number its own receipt no longer carries."""
+
+
+_UNRESOLVABLE = object()
+
+
+def _resolve_field(receipt_rel: str, field: str) -> Any:
+    """Read the quoted field out of the receipt it names.
+
+    The audit used to STORE quoted_value and never compare it. That is the exact
+    failure this module exists to catch, one level up: a number recorded as a
+    claim rather than checked as a fact. The budget's demonstrated rung moved
+    47.97 -> 47.25 and this audit went on quoting 47.97 with every test green.
+
+    Grammar in use: dotted keys, name[key=value] to select one row of a list,
+    name[] for the whole list. Anything else resolves to _UNRESOLVABLE and is
+    RECORDED as unresolvable rather than silently passing.
+    """
+    rp = REPO / receipt_rel
+    if not rp.exists():
+        return _UNRESOLVABLE
+    cur: Any = json.loads(rp.read_text())
+    for seg in re.findall(r"[^.\[\]]+(?:\[[^\]]*\])?", field):
+        m = re.fullmatch(r"([^\[]+)(?:\[([^\]]*)\])?", seg)
+        if m is None:
+            return _UNRESOLVABLE
+        name, sel = m.group(1).strip(), m.group(2)
+        if not isinstance(cur, Mapping) or name not in cur:
+            return _UNRESOLVABLE
+        cur = cur[name]
+        if sel is None:
+            continue
+        if sel == "":
+            continue
+        if "=" not in sel or not isinstance(cur, list):
+            return _UNRESOLVABLE
+        key, want = sel.split("=", 1)
+        hits = [r for r in cur if isinstance(r, Mapping) and str(r.get(key.strip())) == want.strip()]
+        if len(hits) != 1:
+            return _UNRESOLVABLE
+        cur = hits[0]
+    return cur
+
 
 def _audit_row(
     *,
@@ -850,8 +903,38 @@ def _audit_row(
         "reading": reading,
         "steers_priorities": steers_priorities,
     }
+    got = _resolve_field(receipt, field)
+    if got is _UNRESOLVABLE:
+        row["resolved"] = None
+        row["quote_checked"] = False
+        row["why_not_checked"] = "field is not a resolvable path in this receipt"
+    else:
+        row["resolved"] = got if isinstance(got, (int, float, str, bool)) or got is None else "<structure>"
+        row["quote_checked"] = True
+        if isinstance(quoted_value, (int, float)) and isinstance(got, (int, float)) and not isinstance(got, bool):
+            if abs(float(got) - float(quoted_value)) > 1e-6 * max(abs(float(quoted_value)), 1.0):
+                raise QuoteDrift(
+                    f"{id}: {receipt}:{field} is {got!r} but the audit quotes "
+                    f"{quoted_value!r}. An audit that records a number instead of "
+                    "checking it is the defect this module exists to find."
+                )
     if extra:
         row.update(extra)
+    origin = row.get("inherited_from")
+    if origin and row.get("quote_checked") and isinstance(quoted_value, (int, float)):
+        # A quote can match its OWN receipt and still be stale, because the receipt
+        # it was copied from has moved. That is the hops problem this module is
+        # named for, and it is live right now: the budget's roof-on-today's-bytes
+        # rung moved 66.54 -> 65.15 when the unattributed 0.321 ms entered the
+        # reconstruction, and two downstream receipts still carry 66.54. Recorded,
+        # not raised - a stale inheritance is a finding about the corpus, not a bug
+        # in this row, and raising would make the detector unable to report it.
+        at_origin = _resolve_field(str(origin), "ladder[rung=every organ at the clean GEMV roof 703.5 GB/s].tps")
+        if isinstance(at_origin, (int, float)) and not isinstance(at_origin, bool):
+            row["origin_value"] = at_origin
+            row["inherited_quote_is_stale"] = (
+                abs(float(at_origin) - float(quoted_value)) > 1e-6 * max(abs(float(quoted_value)), 1.0)
+            )
     return row
 
 
@@ -893,25 +976,28 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         extra={"hops_from_origin": 3, "kind_of_ceiling": "machine_anchor_not_a_tps_figure"},
     ),
     _audit_row(
-        id="causal_budget_demonstrated_47p97",
+        id="causal_budget_demonstrated_regime",
         receipt=BUDGET_REL,
         field="ladder[rung=every organ at the LM head's demonstrated 497.4 GB/s].tps",
-        quoted_value=47.97,
+        quoted_value=47.25,
         rests_on_roof_id="lm_head_production_497p4",
         roof_named_in_record=True,
         defect=None,
         reading=(
             "Named. Demonstrated regime: every organ at the LM head's 497.4 GB/s "
             "plus the 0.989 ms host gap. ARM A stripped MLP independently lands "
-            "on the same 497.4. This rung names its roof."
+            "on the same 497.4. This rung names its roof. Was 47.97 until the "
+            "budget's reconstruction was corrected to include the 0.321 ms of GPU "
+            "time that belongs to no organ; summing only the named organs reported "
+            "a 28.722 ms token against a measured 29.0434."
         ),
         extra={"formula": "organ bytes / 497.4 GB/s + 0.989 ms host gap"},
     ),
     _audit_row(
-        id="causal_budget_roof_on_todays_bytes_66p54",
+        id="causal_budget_roof_on_todays_bytes",
         receipt=BUDGET_REL,
         field="ladder[rung=every organ at the clean GEMV roof 703.5 GB/s].tps",
-        quoted_value=66.54,
+        quoted_value=65.15,
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=True,
         defect="wrong_roof_shape",
@@ -920,7 +1006,8 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
             "The rung NAMES 703.5 ('clean GEMV roof') so this is not an unstated "
             "roof. It is the wrong shape: 703.5 is the addr_probe that never "
             "loads the activation. the_two_numbers_that_matter.roof_on_todays_bytes_tps "
-            "= 66.54 has been steering priorities. Flag: NO INPUT-VECTOR LOAD. "
+            "= 65.15 (66.54 before the unattributed 0.321 ms entered the "
+            "reconstruction) has been steering priorities. Flag: NO INPUT-VECTOR LOAD. "
             "A 66.54 TPS ceiling is a ceiling for a kernel that does not exist "
             "in production. Recomputed against the recommended 497.4 with the "
             "same host-gap formula this receipt uses, the demonstrated rung is "
@@ -982,10 +1069,10 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         extra={"kind_of_ceiling": "component_composition"},
     ),
     _audit_row(
-        id="capability_map_quotes_66p54",
+        id="capability_map_inherits_roof_on_todays_bytes",
         receipt=CAP_MAP_REL,
         field="answers.roof_movement_on_the_71tps_ladder.quoted_roof_on_todays_bytes",
-        quoted_value=66.54,
+        quoted_value=66.54,  # STILL 66.54 in that receipt, and that is the finding
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=True,
         defect="wrong_roof_shape",
@@ -998,10 +1085,10 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
         extra={"caveat": "no_input_vector_load", "inherited_from": BUDGET_REL},
     ),
     _audit_row(
-        id="improvement_metabolism_quotes_66p54",
+        id="improvement_metabolism_inherits_roof_on_todays_bytes",
         receipt=METABOLISM_REL,
         field="cited.causal_budget.roof_on_todays_bytes_cited_tps",
-        quoted_value=66.54,
+        quoted_value=66.54,  # STILL 66.54 in that receipt, and that is the finding
         rests_on_roof_id="q4_single_gemv_addr_13p6gb_max",
         roof_named_in_record=False,
         defect="unstated_roof",
@@ -1032,7 +1119,7 @@ CEILING_AUDIT: tuple[dict[str, Any], ...] = (
 MINIMUM_AUDIT_IDS = (
     "atlas_the_ceiling",
     "census_anchor_595p9",
-    "causal_budget_roof_on_todays_bytes_66p54",
+    "causal_budget_roof_on_todays_bytes",
     "path_to_71_campaign_target",
 )
 

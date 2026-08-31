@@ -83,3 +83,64 @@ def test_one_novel_frontier_among_many_still_refuses():
     asked.append({"frontier_id": "F.11", "returned": "novel"})
     with pytest.raises(EmitRefused, match="refill returned novel work"):
         emit_idle_justified(_doc(), asked=asked, waiting_on=[{"job_id": "j1"}], t_s=88)
+
+
+# ---------------------------------------------------------------------------
+# NOVEL is not the same question as RUNNABLE.
+#
+# The 30m frozen trial surveyed all 32 frontiers, got n_novel 0, and this
+# function accepted the wait - so the trial's own verify() scored
+# no_idle_while_work_exists as PASS. no_wait_orchestration.classify read the SAME
+# timeline as FAIL with 17 forcing intervals, the first a 1s inline wait on
+# WU.AUTONOMY.negative_index.45 while ngram_school and status_causality were
+# RUNNABLE. ngram_school was IN that survey. Refill said "nothing novel"; the
+# frontier still held work that could run.
+# ---------------------------------------------------------------------------
+
+
+def test_a_dry_refill_does_not_license_sleeping_through_runnable_work():
+    """The exact 30m disagreement, as a test."""
+    with pytest.raises(EmitRefused, match="RUNNABLE"):
+        emit_idle_justified(
+            _doc(),
+            asked=[{"frontier_id": "FT.MODEL_REPRESENTATION.ngram-school"}],
+            waiting_on=[{"job_id": "WU.AUTONOMY.negative_index.45"}],
+            t_s=490,
+            runnable_ids=["ngram_school", "status_causality"],
+        )
+
+
+def test_the_refusal_names_what_was_runnable():
+    """A refusal that does not say WHAT could have run is not actionable."""
+    with pytest.raises(EmitRefused, match="ngram_school"):
+        emit_idle_justified(
+            _doc(),
+            asked=[{"frontier_id": "F.A"}],
+            waiting_on=[{"job_id": "j1"}],
+            t_s=490,
+            runnable_ids=["ngram_school"],
+        )
+
+
+def test_nothing_runnable_is_still_a_legitimate_wait():
+    """The stricter question must not make every wait illegal."""
+    doc = emit_idle_justified(
+        _doc(),
+        asked=[{"frontier_id": "F.A"}],
+        waiting_on=[{"job_id": "j1", "pid": 7}],
+        t_s=490,
+        runnable_ids=[],
+    )
+    payload = doc["events"][-1].get("payload") or doc["events"][-1]
+    assert payload["n_runnable"] == 0
+    assert payload["runnable_checked"] is True
+
+
+def test_an_unchecked_runnable_set_is_recorded_as_unchecked():
+    """Callers that cannot supply the set must not look like callers that
+    supplied an empty one - silence and zero are different claims."""
+    doc = emit_idle_justified(
+        _doc(), asked=[{"frontier_id": "F.A"}], waiting_on=[{"job_id": "j1"}], t_s=490
+    )
+    payload = doc["events"][-1].get("payload") or doc["events"][-1]
+    assert payload["runnable_checked"] is False

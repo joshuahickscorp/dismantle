@@ -450,6 +450,7 @@ def emit_idle_justified(
     waiting_on: list[Any],
     t_s: int,
     extra: dict[str, Any] | None = None,
+    runnable_ids: list[Any] | None = None,
 ) -> dict[str, Any]:
     """Record a legitimate wait. Missing the survey, or waiting while novel work
     exists, is refused — those are the idle this campaign fails.
@@ -479,6 +480,30 @@ def emit_idle_justified(
         raise EmitRefused(
             "idle_justified refused: refill returned novel work; take it, do not wait"
         )
+    # NOVEL IS NOT THE SAME QUESTION AS RUNNABLE, and conflating them is how a
+    # justified wait hides real work.
+    #
+    # The 30m frozen trial surveyed all 32 frontiers and got n_novel 0, so this
+    # function accepted the wait and the trial's own verify() scored
+    # no_idle_while_work_exists as PASS. no_wait_orchestration.classify read the
+    # same timeline as FAIL_NO_WAIT_ORCHESTRATION with 17 forcing intervals - the
+    # first a 1s inline wait on WU.AUTONOMY.negative_index.45 while ngram_school
+    # and status_causality were RUNNABLE. ngram_school was IN the survey. Refill
+    # answered "nothing novel"; the frontier still held work that could run.
+    #
+    # f2nowait named the same mechanism on the 1h trial: refill returning nothing
+    # asks whether there is NOVEL work, not whether there is ANY, and
+    # frontiers.next_work plus the live frontier disagrees. Two instruments
+    # disagreeing about one timeline is the campaign's own scar about a judge
+    # that cannot see an idle interval, so the stricter question wins here.
+    runnable = [] if runnable_ids is None else [str(x) for x in runnable_ids if str(x)]
+    if runnable:
+        raise EmitRefused(
+            "idle_justified refused: work is RUNNABLE while this wait was taken "
+            f"({len(runnable)}: {', '.join(runnable[:6])}"
+            f"{'...' if len(runnable) > 6 else ''}); a dry refill means no NOVEL "
+            "work, never that the frontier is empty"
+        )
     payload: dict[str, Any] = {
         "why": (
             "queue empty and refill returned no novel work; waiting on open handles"
@@ -490,6 +515,8 @@ def emit_idle_justified(
         ],
         "n_asked": len(asked),
         "n_novel": n_novel,
+        "n_runnable": 0,
+        "runnable_checked": runnable_ids is not None,
     }
     if extra:
         payload.update(extra)

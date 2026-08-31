@@ -21,27 +21,36 @@ from tools.future.repro_science import FailClosed
 from hcli.workunit import WorkUnit
 
 
-def _load_sealed_30m_timeline() -> dict:
-    """The archived 30m torture transcript (477s idle). Prefer git HEAD.
+CONTROL_REL = "receipts/future/controls/AUTONOMY_TIMELINE_30m_ARCHIVED_477s.json"
 
-    The live frozen 30m run overwrites the on-disk file. The negative control
-    is the archived idle, not whatever the latest run wrote.
+
+def _load_sealed_30m_timeline() -> dict:
+    """The archived 30m transcript with the 477s idle, from an IMMUTABLE path.
+
+    G037 requires the negative control to be "the archived 30m timeline itself".
+    This used to prefer HEAD:receipts/future/AUTONOMY_TIMELINE_30m.json, with a
+    docstring that correctly warned "the live frozen 30m run overwrites the
+    on-disk file". The mitigation was right in intent and defeated by its own
+    lane landing: once the frozen run committed, HEAD held the NEW timeline
+    (490s idle at t 102->592) and the control was gone. The test then failed for
+    the only bad reason a control can - it had been replaced by the thing it was
+    meant to judge.
+
+    A control a run can overwrite is not a control. The archived transcript now
+    lives at a path nothing writes, recovered from 547951182, and git history is
+    the fallback rather than the source.
     """
-    rels = (
-        "receipts/future/AUTONOMY_TIMELINE_30M.json",
-        "receipts/future/AUTONOMY_TIMELINE_30m.json",
-    )
-    for rel in rels:
-        blob = git("show", f"HEAD:{rel}")
-        if blob:
-            return json.loads(blob)
-    for rel in rels:
-        path = REPO / rel
-        if path.is_file():
-            return json.loads(path.read_text())
+    path = REPO / CONTROL_REL
+    if path.is_file():
+        return json.loads(path.read_text())
+    # Fallback: the commit that landed the archived run, by name. Never HEAD -
+    # HEAD moves, and that is exactly how this control was lost.
+    blob = git("show", "547951182:receipts/future/AUTONOMY_TIMELINE_30m.json")
+    if blob:
+        return json.loads(blob)
     raise AssertionError(
-        "sealed 30m timeline is absent from disk and git; "
-        "needed receipts/future/AUTONOMY_TIMELINE_30m.json"
+        f"the archived 30m control is missing at {CONTROL_REL} and is not "
+        "recoverable from 547951182; the negative control G037 names is gone"
     )
 
 
@@ -61,7 +70,14 @@ def test_sealed_30m_timeline_fails_no_idle_while_work_exists():
         if dt > max_gap:
             max_gap = dt
             gap_at = (int(prev.get("t_s") or 0), int(nxt.get("t_s") or 0), prev.get("kind"), nxt.get("kind"))
-    assert max_gap == 477, f"archived idle is {max_gap}s, not the 477s this campaign named; at {gap_at}"
+    # 477 is pinned because the control is IMMUTABLE - a fixture, not a moving
+    # measurement. If this number changes, the control file was replaced, which
+    # is the failure this loader now prevents.
+    assert max_gap == 477, (
+        f"archived idle is {max_gap}s, not the 477s this campaign named; at "
+        f"{gap_at}. If this fires, the control at {CONTROL_REL} was overwritten "
+        f"by a live run - restore it from 547951182."
+    )
 
     view = at.TimelineView(doc, "30m")
     idle = at.eval_no_idle_while_work_exists(view)

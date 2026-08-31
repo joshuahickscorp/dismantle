@@ -370,4 +370,5 @@ def test_coverage_receipt_names_specimen_verify_as_recording():
     doc = json.loads(path.read_text())
     assert "specimen_verify" in doc["recording_five_fields"]
     assert doc["n_gates"] == 18
-    assert "resident_gate" in doc["not_recording_five_fields"]
+    assert "resident_gate" in doc["recording_five_fields"]
+    assert "flash_meta_teacher_capture_boundary" in doc["not_recording_five_fields"]

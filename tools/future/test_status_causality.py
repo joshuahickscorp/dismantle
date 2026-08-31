@@ -577,26 +577,34 @@ def test_coverage_reports_gates_by_name_not_a_percentage():
     assert set(recording).isdisjoint(missing)
     assert set(recording).isdisjoint(unread)
     assert set(missing).isdisjoint(unread)
-    # The invariant is that the remainder is NAMED and that the partition
-    # boundary is respected - not that any particular gate is still missing.
-    # This used to require every G007-named gate to be in `missing`, which made
-    # the test fail as each one was legitimately WIRED. The gates this writer
-    # cannot reach are the ones that must stay named: hcli/agentos/* and crates/*
-    # are CODEX_OWNED.
-    unreachable = {
-        "resident_gate", "native_gate", "native_mission_gate", "autonomy_gate",
-        "modellake_gate", "vmcp_gate", "recovery_gate", "research_gate",
-        "flash_meta_teacher_capture_boundary",
+    # S015 dissolved the Codex write partition. The eight hcli/agentos gates
+    # are wired and must stay named on the recording side. The remainder that
+    # must stay named is the Rust capture boundary, not a withdrawn ownership
+    # glob.
+    wired_hcli = {
+        "resident_gate",
+        "native_gate",
+        "native_mission_gate",
+        "autonomy_gate",
+        "modellake_gate",
+        "vmcp_gate",
+        "recovery_gate",
+        "research_gate",
     }
-    for required in unreachable:
-        assert required in missing, (
-            f"{required} vanished from not_recording_five_fields={missing}; "
-            "a Codex-owned gate cannot be wired from this partition, so it must "
-            "stay named rather than dropped"
+    for required in wired_hcli:
+        assert required in recording, (
+            f"{required} not in recording_five_fields={recording}; "
+            "S015 withdrew the partition that previously left these named gaps"
         )
+        assert required not in missing
+    assert "flash_meta_teacher_capture_boundary" in missing, (
+        f"flash_meta_teacher_capture_boundary vanished from "
+        f"not_recording_five_fields={missing}; it is a Rust emit point and "
+        "must stay named rather than dropped or Python-shimmed"
+    )
     for wired in sc.G007_NAMED_GATES:
         assert wired in recording or wired in missing or wired in unread, wired
-    assert "native_gate" in missing
+    assert "native_gate" in recording
     # odyssey_launch, integration_gate and specimen_verify were all wired, so
     # each moved from `missing` to `recording`. The invariant is that every
     # launch criterion is accounted for on exactly one side, never that they are
@@ -627,9 +635,9 @@ def test_build_receipt_names_odyssey_iii_call_and_coverage_lists():
     )
     assert isinstance(doc["gates_recording_five_fields"], list)
     assert isinstance(doc["gates_not_recording_five_fields"], list)
-    # The Codex-owned remainder must stay named; a wired gate legitimately leaves
-    # the missing list, so pinning odyssey_launch there tested the calendar.
-    assert "resident_gate" in doc["gates_not_recording_five_fields"]
+    # Wired gates leave the missing list. The Rust capture boundary stays named.
+    assert "resident_gate" in doc["gates_recording_five_fields"]
+    assert "flash_meta_teacher_capture_boundary" in doc["gates_not_recording_five_fields"]
     assert set(doc["gates_recording_five_fields"]).isdisjoint(
         doc["gates_not_recording_five_fields"]
     )

@@ -1213,17 +1213,16 @@ def test_coverage_receipt_names_recording_and_remainder():
     unread = doc["unreadable"]
     assert "odyssey_launch" in recording
     assert "integration_gate" in recording
-    # G007-named remainder sits outside this lane's write scope. Naming it is
-    # the honest form of partial coverage; dropping it would fake completeness.
-    # The remainder that must stay named is the one this writer CANNOT reach:
-    # hcli/agentos/* and crates/* are CODEX_OWNED. specimen_verify used to be
-    # pinned here too and was legitimately WIRED, so pinning it made the test
-    # fail because coverage improved.
+    # S015 dissolved the partition. The eight hcli/agentos gates are wired.
+    # The remainder that must stay named is the Rust capture boundary.
     for name in ("resident_gate", "native_gate", "native_mission_gate",
                  "autonomy_gate", "modellake_gate", "vmcp_gate",
-                 "recovery_gate", "research_gate",
-                 "flash_meta_teacher_capture_boundary"):
-        assert name in missing, f"{name} vanished from the remainder"
+                 "recovery_gate", "research_gate"):
+        assert name in recording, f"{name} vanished from recording"
+        assert name not in missing
+    assert "flash_meta_teacher_capture_boundary" in missing, (
+        "flash_meta_teacher_capture_boundary vanished from the remainder"
+    )
     assert set(recording).isdisjoint(missing)
     assert set(recording).isdisjoint(unread)
     for cid in ol.CRITERION_IDS:

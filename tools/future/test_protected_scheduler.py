@@ -759,23 +759,14 @@ def test_coverage_receipt_names_protected_scheduler_as_recording():
         "recovery_gate",
         "research_gate",
     ):
-        assert name in doc["not_recording_five_fields"], f"{name} vanished from the Codex remainder"
+        assert name in doc["recording_five_fields"], f"{name} vanished from recording"
+        assert name not in doc["not_recording_five_fields"]
     remainder = {row["name"]: row for row in doc["remainder"]}
-    for name in (
-        "resident_gate",
-        "native_gate",
-        "native_mission_gate",
-        "autonomy_gate",
-        "modellake_gate",
-        "vmcp_gate",
-        "recovery_gate",
-        "research_gate",
-    ):
-        why = remainder[name]["why_not_wired"].lower()
-        assert "partition" in why or "write scope" in why or "codex" in why
+    assert "flash_meta_teacher_capture_boundary" in remainder
     flash_meta = remainder["flash_meta_teacher_capture_boundary"]
     why_fm = flash_meta["why_not_wired"].lower()
-    assert "invent" not in why_fm or "no module" in why_fm or "codex" in why_fm or "crates" in why_fm or "receipt-only" in why_fm
+    assert "rust" in why_fm
+    assert "python shim" in why_fm
     assert doc["evidence_class"] == "STATIC_ONLY"
     assert doc["gpu_authority"] is False
     for banned in ("percent", "percentage", "coverage_pct", "pct"):

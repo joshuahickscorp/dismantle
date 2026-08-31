@@ -3,12 +3,12 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T09:48:18Z",
-  "recorded_by": "tools/future/protected_scheduler.py",
+  "recorded_at": "2026-08-31T11:18:44Z",
+  "recorded_by": "tools/future/status_causality.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
- "claim_boundary": "Static sidecar artifact. No hardware measurement. This receipt names which gates record the five causality fields. It does not assert that a SUPPORTED or OVERREACHING verdict is the true world state, and it does not claim full G007 coverage while Codex-owned gates remain unwired.",
+ "claim_boundary": "Static sidecar artifact. No hardware measurement. This receipt names which gates record the five causality fields. It does not assert that a SUPPORTED or OVERREACHING verdict is the true world state. S015 dissolved the Codex write partition; a remaining gap is named for a reason that is not that partition.",
  "does_not_assert_world_state": true,
  "emit_entry_point": "tools.future.status_causality.emit()",
  "evidence_class": "STATIC_ONLY",
@@ -19,6 +19,13 @@
   "confidence",
   "alternatives"
  ],
+ "flash_meta_teacher_capture_boundary": {
+  "emit_fn": "write_blocked_capture_boundary",
+  "emit_point": "crates/hawking-core/examples/flash_meta_teacher_trace.rs",
+  "language": "Rust",
+  "why_not_a_python_shim": "Rust emit point, not Python and not the dissolved S015 partition. crates/hawking-core/examples/flash_meta_teacher_trace.rs (present in receipts/future/patches/dirty-crate-work.patch; not a tracked HEAD file) writes FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json from write_blocked_capture_boundary(). That function stamps status BLOCKED_NO_METAL_GPU on ANY dense_source_bf16_prefix_initialization error and claims 'this host has no Metal-capable GPU'. Wiring would mean recording probe_performed, direct_observation, interpretation, confidence, and alternatives in that Rust function at the moment it writes the receipt \u2014 a Python shim would not be the emit point. The language/runtime boundary is the named remainder.",
+  "wired": false
+ },
  "g007_named": [
   "odyssey_launch",
   "integration_gate",
@@ -82,10 +89,10 @@
    "why": "GREEN vs RED is the door that refuses a canonical commit"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_resident_gate",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/resident_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/resident_gate.py",
    "name": "resident_gate",
    "named_statuses": [
@@ -93,19 +100,19 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_AGENTOS_RESIDENT_GATE.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "named in G007 (resident gates under hcli/agentos)",
    "source_state": "readable",
    "unreadable": false,
    "why": "PASSED/FAILED live residency proof; campaign next-step depends on it"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_native_gate",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/native_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/native_gate.py",
    "name": "native_gate",
    "named_statuses": [
@@ -113,19 +120,19 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_AGENTOS_NATIVE_GATE.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "named in G007 (native gates under hcli/agentos)",
    "source_state": "readable",
    "unreadable": false,
    "why": "PASSED/FAILED native reproduction ladder"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_native_mission_gate",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/native_mission_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/native_mission_gate.py",
    "name": "native_mission_gate",
    "named_statuses": [
@@ -133,19 +140,19 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_NATIVE_MISSION_GATE.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "hcli/agentos run_*_gate; native family",
    "source_state": "readable",
    "unreadable": false,
    "why": "one live native mission PASS/FAIL; qualification next-step"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_autonomy_gate",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/autonomy_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/autonomy_gate.py",
    "name": "autonomy_gate",
    "named_statuses": [
@@ -153,19 +160,19 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_AGENTOS_AUTONOMY_GATE.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "hcli/agentos *gate*.py; campaign next-step",
    "source_state": "readable",
    "unreadable": false,
    "why": "odyssey_launch reads all_requested_stages_passed from this receipt"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_modellake_census",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/modellake_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/modellake_gate.py",
    "name": "modellake_gate",
    "named_statuses": [
@@ -173,19 +180,19 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "hcli/agentos *gate*.py; campaign next-step",
    "source_state": "readable",
    "unreadable": false,
    "why": "census PASS/FAIL; launch/curriculum identity depends on the lake"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_vmcp_gate",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/vmcp_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/vmcp_gate.py",
    "name": "vmcp_gate",
    "named_statuses": [
@@ -193,19 +200,19 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_AGENTOS_VMCP_GATE.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "hcli/agentos *gate*.py; campaign next-step",
    "source_state": "readable",
    "unreadable": false,
    "why": "HCLI\u2194VMCP evidence-boundary PASS/FAIL"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_recovery_gate",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/recovery.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/recovery.py",
    "name": "recovery_gate",
    "named_statuses": [
@@ -213,19 +220,19 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_AGENTOS_RECOVERY_GATE.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "hcli/agentos run_*_gate; campaign next-step",
    "source_state": "readable",
    "unreadable": false,
    "why": "crash-recovery PASS/FAIL; autonomy next-step depends on it"
   },
   {
-   "calls_emit": false,
+   "calls_emit": true,
    "emit_fn": "run_research_gate",
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: hcli/agentos/research.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*, intersects_codex=True), not an oversight; a named remainder, not a narrowed inventory",
-   "in_this_lane_write_scope": false,
+   "gap": null,
+   "in_this_lane_write_scope": true,
    "module": "hcli/agentos/research.py",
    "name": "research_gate",
    "named_statuses": [
@@ -233,9 +240,9 @@
     "FAILED"
    ],
    "receipt": "receipts/headless/HCLI_AGENTOS_RESEARCH_GATE.json",
-   "receipt_has_five_fields": false,
+   "receipt_has_five_fields": true,
    "receipt_state": "readable",
-   "records_five_fields": false,
+   "records_five_fields": true,
    "selection": "hcli/agentos run_*_gate; campaign next-step",
    "source_state": "readable",
    "unreadable": false,
@@ -245,7 +252,7 @@
    "calls_emit": true,
    "emit_fn": "verify_specimen",
    "gap": null,
-   "in_this_lane_write_scope": true,
+   "in_this_lane_write_scope": false,
    "module": "tools/future/specimen_verify.py",
    "name": "specimen_verify",
    "named_statuses": [
@@ -268,7 +275,7 @@
    "calls_emit": true,
    "emit_fn": "verdict",
    "gap": null,
-   "in_this_lane_write_scope": true,
+   "in_this_lane_write_scope": false,
    "module": "tools/future/metal_reachability.py",
    "name": "metal_reachability",
    "named_statuses": [
@@ -290,7 +297,7 @@
    "calls_emit": true,
    "emit_fn": "build",
    "gap": null,
-   "in_this_lane_write_scope": true,
+   "in_this_lane_write_scope": false,
    "module": "tools/future/flash_nx_audit.py",
    "name": "flash_nx_audit",
    "named_statuses": [
@@ -309,7 +316,7 @@
    "calls_emit": true,
    "emit_fn": "build",
    "gap": null,
-   "in_this_lane_write_scope": true,
+   "in_this_lane_write_scope": false,
    "module": "tools/future/odyssey2_law_store.py",
    "name": "odyssey2_law_store",
    "named_statuses": [
@@ -329,7 +336,7 @@
    "calls_emit": true,
    "emit_fn": "build",
    "gap": null,
-   "in_this_lane_write_scope": true,
+   "in_this_lane_write_scope": false,
    "module": "tools/future/contamination.py",
    "name": "contamination",
    "named_statuses": [
@@ -349,7 +356,7 @@
    "calls_emit": true,
    "emit_fn": "run_static_preflight",
    "gap": null,
-   "in_this_lane_write_scope": true,
+   "in_this_lane_write_scope": false,
    "module": "tools/future/qualification_pipeline.py",
    "name": "qualification_pipeline",
    "named_statuses": [
@@ -370,7 +377,7 @@
    "calls_emit": true,
    "emit_fn": "decide",
    "gap": null,
-   "in_this_lane_write_scope": true,
+   "in_this_lane_write_scope": false,
    "module": "tools/future/protected_scheduler.py",
    "name": "protected_scheduler",
    "named_statuses": [
@@ -390,7 +397,7 @@
   {
    "calls_emit": false,
    "emit_fn": null,
-   "gap": "emits a campaign-consequential status without probe_performed, direct_observation, interpretation, confidence, and alternatives on the stamped row; does not call status_causality.emit/stamp at emit time; remainder: flash_meta_teacher_capture_boundary is a receipt-only capture boundary (receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json); no tools/future module exists. The writer is crates/hawking-core/examples/flash_meta_teacher_trace.rs, which is CODEX_OWNED under crates/*. Inventing a Python emit point would violate the write partition; a named remainder, not a narrowed inventory",
+   "gap": "Rust emit point, not Python and not the dissolved S015 partition. crates/hawking-core/examples/flash_meta_teacher_trace.rs (present in receipts/future/patches/dirty-crate-work.patch; not a tracked HEAD file) writes FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json from write_blocked_capture_boundary(). That function stamps status BLOCKED_NO_METAL_GPU on ANY dense_source_bf16_prefix_initialization error and claims 'this host has no Metal-capable GPU'. Wiring would mean recording probe_performed, direct_observation, interpretation, confidence, and alternatives in that Rust function at the moment it writes the receipt \u2014 a Python shim would not be the emit point. The language/runtime boundary is the named remainder.",
    "in_this_lane_write_scope": false,
    "module": null,
    "name": "flash_meta_teacher_capture_boundary",
@@ -401,6 +408,8 @@
    "receipt_has_five_fields": false,
    "receipt_state": "readable",
    "records_five_fields": false,
+   "rust_emit_fn": "write_blocked_capture_boundary",
+   "rust_emit_point": "crates/hawking-core/examples/flash_meta_teacher_trace.rs",
    "selection": "scan already reaches FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY",
    "source_state": "no_module",
    "unreadable": false,
@@ -410,18 +419,10 @@
  "gpu_authority": false,
  "law": "A STATUS MAY ASSERT ONLY WHAT ITS ACTUAL PROBE ESTABLISHES. STATUS LABELS ARE HYPOTHESES UNTIL THEIR CAUSAL CLAIM IS VERIFIED.",
  "n_gates": 18,
- "n_not_recording": 9,
- "n_recording": 9,
+ "n_not_recording": 1,
+ "n_recording": 17,
  "n_unreadable": 0,
  "not_recording_five_fields": [
-  "resident_gate",
-  "native_gate",
-  "native_mission_gate",
-  "autonomy_gate",
-  "modellake_gate",
-  "vmcp_gate",
-  "recovery_gate",
-  "research_gate",
   "flash_meta_teacher_capture_boundary"
  ],
  "obligation": "G007",
@@ -439,7 +440,7 @@
    "causality_verdict": "SUPPORTED",
    "gap": null,
    "gate": "odyssey_launch",
-   "met": false,
+   "met": true,
    "name": "specimen_curriculum_ready",
    "present_on_receipt": true,
    "records_five_fields": true
@@ -466,7 +467,7 @@
    "causality_verdict": "SUPPORTED",
    "gap": null,
    "gate": "odyssey_launch",
-   "met": false,
+   "met": true,
    "name": "gravity_callable",
    "present_on_receipt": true,
    "records_five_fields": true
@@ -475,7 +476,7 @@
    "causality_verdict": "SUPPORTED",
    "gap": null,
    "gate": "odyssey_launch",
-   "met": false,
+   "met": true,
    "name": "nr_nx_path_callable",
    "present_on_receipt": true,
    "records_five_fields": true
@@ -594,6 +595,14 @@
  "recording_five_fields": [
   "odyssey_launch",
   "integration_gate",
+  "resident_gate",
+  "native_gate",
+  "native_mission_gate",
+  "autonomy_gate",
+  "modellake_gate",
+  "vmcp_gate",
+  "recovery_gate",
+  "research_gate",
   "specimen_verify",
   "metal_reachability",
   "flash_nx_audit",
@@ -604,73 +613,30 @@
  ],
  "remainder": [
   {
-   "module": "hcli/agentos/resident_gate.py",
-   "name": "resident_gate",
-   "why_not_wired": "hcli/agentos/resident_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": "hcli/agentos/native_gate.py",
-   "name": "native_gate",
-   "why_not_wired": "hcli/agentos/native_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": "hcli/agentos/native_mission_gate.py",
-   "name": "native_mission_gate",
-   "why_not_wired": "hcli/agentos/native_mission_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": "hcli/agentos/autonomy_gate.py",
-   "name": "autonomy_gate",
-   "why_not_wired": "hcli/agentos/autonomy_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": "hcli/agentos/modellake_gate.py",
-   "name": "modellake_gate",
-   "why_not_wired": "hcli/agentos/modellake_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": "hcli/agentos/vmcp_gate.py",
-   "name": "vmcp_gate",
-   "why_not_wired": "hcli/agentos/vmcp_gate.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": "hcli/agentos/recovery.py",
-   "name": "recovery_gate",
-   "why_not_wired": "hcli/agentos/recovery.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": "hcli/agentos/research.py",
-   "name": "research_gate",
-   "why_not_wired": "hcli/agentos/research.py is outside this lane's write scope ['tools/future/specimen_verify.py', 'tools/future/test_specimen_verify.py', 'tools/future/metal_reachability.py', 'tools/future/test_metal_reachability.py', 'tools/future/flash_nx_audit.py', 'tools/future/test_flash_nx_audit.py', 'tools/future/odyssey2_law_store.py', 'tools/future/test_odyssey2_law_store.py', 'tools/future/contamination.py', 'tools/future/test_contamination.py', 'tools/future/qualification_pipeline.py', 'tools/future/test_qualification_pipeline.py', 'tools/future/protected_scheduler.py', 'tools/future/test_protected_scheduler.py', 'receipts/future/STATUS_CAUSALITY_COVERAGE.json']; CODEX_OWNED write partition (hcli/*), not an oversight. A named remainder, not a narrowed inventory"
-  },
-  {
-   "module": null,
+   "module": "crates/hawking-core/examples/flash_meta_teacher_trace.rs",
    "name": "flash_meta_teacher_capture_boundary",
-   "why_not_wired": "flash_meta_teacher_capture_boundary is a receipt-only capture boundary (receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json); no tools/future module exists. Writer is crates/hawking-core/examples/flash_meta_teacher_trace.rs (CODEX_OWNED crates/* write partition). Named remainder, not a narrowed inventory"
+   "why_not_wired": "Rust emit point, not Python and not the dissolved S015 partition. crates/hawking-core/examples/flash_meta_teacher_trace.rs (present in receipts/future/patches/dirty-crate-work.patch; not a tracked HEAD file) writes FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json from write_blocked_capture_boundary(). That function stamps status BLOCKED_NO_METAL_GPU on ANY dense_source_bf16_prefix_initialization error and claims 'this host has no Metal-capable GPU'. Wiring would mean recording probe_performed, direct_observation, interpretation, confidence, and alternatives in that Rust function at the moment it writes the receipt \u2014 a Python shim would not be the emit point. The language/runtime boundary is the named remainder."
   }
  ],
+ "s015": "AMENDMENT S015 (2026-08-30): Codex is stood down. The sidecar write partition is dissolved: crates/, hcli/, tools/ and receipts/ are writable, and 'is this Codex's surface?' no longer gates work. mutation_surface.CODEX_OWNED remains as history and does not gate this lane. What S015 does not change: no fake completion, no hardware measurement without hardware, no self-certification, evidence still decides promotion, and every gate must still measure what it claims.",
  "schema": "hawking.future.status_causality_coverage.v1",
- "seal_sha256": "34b6319f459b32deb3304a0a3cb4a7fec9678ce02027cb1b1fe010e159cdad12",
+ "seal_sha256": "25fd22b023771a080ca1f73376c0a282f2a1f5c0a3d245f499feaa8c15b7c6ce",
  "selection_rule": "A module is a consequential gate when its emitted status changes what the campaign does next: whether Odyssey may launch, whether a commit may land, whether a resident/native/autonomy/modellake/vmcp/recovery/research qualification is PASSED, whether a specimen is WHOLE_TREE_VERIFIED, whether a protected window is RUNNABLE, or whether a scanned status was treated as a blocker. Included: (1) every path named in the G007 obligation (odyssey_launch criteria, integration_gate, resident and native gates under hcli/agentos, specimen verification); (2) every hcli/agentos module whose filename matches *gate*.py or that defines run_*_gate (autonomy, modellake, vmcp, native_mission, recovery, research); (3) every receipt already reached by status_causality.scan via KNOWN_RECEIPT_PATHS, except AUTONOMY_SCARS which is an adjudication schema not a gate; (4) qualification_pipeline and protected_scheduler, whose RUNNABLE/REFUSED/BLOCKED verdicts decide whether physical work proceeds. Excluded, and not as a trick to inflate coverage: Metal kernel names containing 'gate', crate tests named *_gate.rs, lab/operators hardware TPS gates, example benches \u2014 those do not decide campaign next-step. This tuple is the list. The rule above is how it was chosen.",
  "sibling_coverage_available": false,
  "unreadable": [],
  "version": 1,
  "write_scope": [
-  "tools/future/specimen_verify.py",
-  "tools/future/test_specimen_verify.py",
-  "tools/future/metal_reachability.py",
-  "tools/future/test_metal_reachability.py",
-  "tools/future/flash_nx_audit.py",
-  "tools/future/test_flash_nx_audit.py",
-  "tools/future/odyssey2_law_store.py",
-  "tools/future/test_odyssey2_law_store.py",
-  "tools/future/contamination.py",
-  "tools/future/test_contamination.py",
-  "tools/future/qualification_pipeline.py",
-  "tools/future/test_qualification_pipeline.py",
-  "tools/future/protected_scheduler.py",
-  "tools/future/test_protected_scheduler.py",
+  "hcli/agentos/resident_gate.py",
+  "hcli/agentos/native_gate.py",
+  "hcli/agentos/native_mission_gate.py",
+  "hcli/agentos/autonomy_gate.py",
+  "hcli/agentos/modellake_gate.py",
+  "hcli/agentos/vmcp_gate.py",
+  "hcli/agentos/recovery.py",
+  "hcli/agentos/research.py",
+  "tools/future/status_causality.py",
+  "tools/future/test_status_causality_gates.py",
   "receipts/future/STATUS_CAUSALITY_COVERAGE.json"
  ],
- "write_scope_note": "This lane wired the seven tools/future emit points that sit inside the sidecar write partition (specimen_verify, metal_reachability, flash_nx_audit, odyssey2_law_store, contamination, qualification_pipeline, protected_scheduler). odyssey_launch and integration_gate were already wired by a prior lane. flash_meta_teacher_capture_boundary has no tools/future module; its writer is CODEX_OWNED crates/hawking-core. The eight hcli/agentos gates remain because CODEX_OWNED includes hcli/* \u2014 that is the write partition, not an oversight. Coverage is not reported as complete by dropping them from the inventory."
+ "write_scope_note": "S015 dissolved the Codex write partition. This lane wired the eight hcli/agentos emit points (resident, native, native_mission, autonomy, modellake, vmcp, recovery, research). odyssey_launch, integration_gate, specimen_verify, metal_reachability, flash_nx_audit, odyssey2_law_store, contamination, qualification_pipeline and protected_scheduler were wired by prior lanes; their receipts are regenerated so the scanner and the coverage doc agree. flash_meta_teacher_capture_boundary stays named: its writer is Rust, and a Python shim would not be the emit point."
 }

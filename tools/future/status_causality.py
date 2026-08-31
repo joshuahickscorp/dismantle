@@ -472,8 +472,49 @@ CONSEQUENTIAL_GATES: tuple[dict[str, Any], ...] = (
         "why": "stamped BLOCKED_NO_METAL_GPU and the campaign treated that as a host fact",
         "selection": "scan already reaches FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY",
         "named_statuses": ["BLOCKED_NO_METAL_GPU"],
+        "rust_emit_point": "crates/hawking-core/examples/flash_meta_teacher_trace.rs",
+        "rust_emit_fn": "write_blocked_capture_boundary",
     },
 )
+
+# S015 (2026-08-30) dissolved the Codex sidecar write partition: crates/, hcli/,
+# tools/ and receipts/ are writable. mutation_surface.CODEX_OWNED is history,
+# not a gate. This lane's write set is the eight hcli/agentos emit points plus
+# the coverage consumer. flash_meta_teacher_capture_boundary remains unwired
+# because its emit point is Rust, not because of the withdrawn partition.
+THIS_LANE_WRITE_SCOPE: tuple[str, ...] = (
+    "hcli/agentos/resident_gate.py",
+    "hcli/agentos/native_gate.py",
+    "hcli/agentos/native_mission_gate.py",
+    "hcli/agentos/autonomy_gate.py",
+    "hcli/agentos/modellake_gate.py",
+    "hcli/agentos/vmcp_gate.py",
+    "hcli/agentos/recovery.py",
+    "hcli/agentos/research.py",
+    "tools/future/status_causality.py",
+    "tools/future/test_status_causality_gates.py",
+    "receipts/future/STATUS_CAUSALITY_COVERAGE.json",
+)
+
+FLASH_META_RUST_EMIT_POINT = (
+    "crates/hawking-core/examples/flash_meta_teacher_trace.rs"
+)
+FLASH_META_WIRING_NOTE = (
+    "Rust emit point, not Python and not the dissolved S015 partition. "
+    "crates/hawking-core/examples/flash_meta_teacher_trace.rs "
+    "(present in receipts/future/patches/dirty-crate-work.patch; not a tracked "
+    "HEAD file) writes FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json from "
+    "write_blocked_capture_boundary(). That function stamps status "
+    "BLOCKED_NO_METAL_GPU on ANY dense_source_bf16_prefix_initialization error "
+    "and claims 'this host has no Metal-capable GPU'. Wiring would mean "
+    "recording probe_performed, direct_observation, interpretation, confidence, "
+    "and alternatives in that Rust function at the moment it writes the "
+    "receipt — a Python shim would not be the emit point. The language/runtime "
+    "boundary is the named remainder."
+)
+
+COVERAGE_RECEIPT = "STATUS_CAUSALITY_COVERAGE.json"
+COVERAGE_SCHEMA = "hawking.future.status_causality_coverage.v1"
 
 G007_NAMED_GATES: tuple[str, ...] = (
     "odyssey_launch",
@@ -515,6 +556,16 @@ ODYSSEY_III_CALL = {
         "contract is the inheritance. III calls emit() with the arguments above."
     ),
 }
+
+S015_PARTITION_NOTE = (
+    "AMENDMENT S015 (2026-08-30): Codex is stood down. The sidecar write "
+    "partition is dissolved: crates/, hcli/, tools/ and receipts/ are writable, "
+    "and 'is this Codex's surface?' no longer gates work. mutation_surface."
+    "CODEX_OWNED remains as history and does not gate this lane. What S015 "
+    "does not change: no fake completion, no hardware measurement without "
+    "hardware, no self-certification, evidence still decides promotion, and "
+    "every gate must still measure what it claims."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1448,6 +1499,8 @@ def _gate_coverage_row(spec: Mapping[str, Any]) -> dict[str, Any]:
     gap = None
     if unreadable:
         gap = "source and receipt unreadable in this checkout; not scored as a silent miss"
+    elif name == "flash_meta_teacher_capture_boundary" and not records:
+        gap = FLASH_META_WIRING_NOTE
     elif not records:
         gap = (
             "emits a campaign-consequential status without probe_performed, "
@@ -1456,6 +1509,7 @@ def _gate_coverage_row(spec: Mapping[str, Any]) -> dict[str, Any]:
         )
         if not calls_emit:
             gap += "; does not call status_causality.emit/stamp at emit time"
+    in_scope = bool(module) and str(module) in THIS_LANE_WRITE_SCOPE
     row = {
         "name": name,
         "module": module,
@@ -1470,8 +1524,12 @@ def _gate_coverage_row(spec: Mapping[str, Any]) -> dict[str, Any]:
         "receipt_has_five_fields": receipt_has_five,
         "records_five_fields": records,
         "unreadable": unreadable,
+        "in_this_lane_write_scope": in_scope,
         "gap": gap,
     }
+    if spec.get("rust_emit_point"):
+        row["rust_emit_point"] = spec.get("rust_emit_point")
+        row["rust_emit_fn"] = spec.get("rust_emit_fn")
     return row
 
 
@@ -1529,7 +1587,112 @@ def coverage() -> dict[str, Any]:
         "n_recording": len(recording),
         "n_not_recording": len(missing),
         "n_unreadable": len(unread),
+        "remainder": [
+            {
+                "name": r["name"],
+                "module": r.get("module") or r.get("rust_emit_point"),
+                "why_not_wired": r.get("gap") or FLASH_META_WIRING_NOTE,
+            }
+            for r in rows
+            if not r["records_five_fields"] and not r["unreadable"]
+        ],
+        "write_scope": list(THIS_LANE_WRITE_SCOPE),
+        "write_scope_note": (
+            "S015 dissolved the Codex write partition. This lane wired the eight "
+            "hcli/agentos emit points (resident, native, native_mission, autonomy, "
+            "modellake, vmcp, recovery, research). odyssey_launch, integration_gate, "
+            "specimen_verify, metal_reachability, flash_nx_audit, odyssey2_law_store, "
+            "contamination, qualification_pipeline and protected_scheduler were "
+            "wired by prior lanes; their receipts are regenerated so the scanner "
+            "and the coverage doc agree. flash_meta_teacher_capture_boundary stays "
+            "named: its writer is Rust, and a Python shim would not be the emit point."
+        ),
+        "s015": S015_PARTITION_NOTE,
     }
+
+
+def build_coverage() -> Path:
+    """Write STATUS_CAUSALITY_COVERAGE.json from a live scan of sources and receipts."""
+    cov = coverage()
+    criterion_rows = []
+    for row in cov.get("odyssey_launch_criteria") or []:
+        criterion_rows.append(
+            {
+                "causality_verdict": None,
+                "gap": row.get("gap"),
+                "gate": row.get("gate"),
+                "met": None,
+                "name": row.get("name"),
+                "present_on_receipt": row.get("present_on_receipt"),
+                "records_five_fields": row.get("records_five_fields"),
+            }
+        )
+    launch = _load_receipt("receipts/future/ODYSSEY_LAUNCH_GATE.json")
+    if isinstance(launch, Mapping) and isinstance(launch.get("criteria"), list):
+        by_id = {
+            str(c.get("id")): c
+            for c in launch["criteria"]
+            if isinstance(c, Mapping)
+        }
+        for item in criterion_rows:
+            crit = by_id.get(str(item["name"]))
+            if crit is not None:
+                item["met"] = crit.get("met")
+                item["causality_verdict"] = crit.get("causality_verdict")
+    doc = {
+        "schema": COVERAGE_SCHEMA,
+        "version": 1,
+        "purpose": (
+            "G007 consumer coverage: which consequential gates record "
+            "probe_performed, direct_observation, interpretation, confidence, "
+            "and alternatives at emit time. Names, not a percentage."
+        ),
+        "obligation": "G007",
+        "evidence_class": "STATIC_ONLY",
+        "gpu_authority": False,
+        "does_not_assert_world_state": True,
+        "emit_entry_point": "tools.future.status_causality.emit()",
+        "five_recorded_fields": list(FIVE_RECORDED_FIELDS),
+        "law": LAW,
+        "selection_rule": cov["selection_rule"],
+        "g007_named": cov["g007_named"],
+        "gates": cov["gates"],
+        "recording_five_fields": cov["recording_five_fields"],
+        "not_recording_five_fields": cov["not_recording_five_fields"],
+        "unreadable": cov["unreadable"],
+        "remainder": cov["remainder"],
+        "n_gates": cov["n_gates"],
+        "n_recording": cov["n_recording"],
+        "n_not_recording": cov["n_not_recording"],
+        "n_unreadable": cov["n_unreadable"],
+        "odyssey_launch_criteria": criterion_rows,
+        "odyssey_launch_criteria_recording_five_fields": cov[
+            "odyssey_launch_criteria_recording_five_fields"
+        ],
+        "odyssey_launch_criteria_not_recording_five_fields": cov[
+            "odyssey_launch_criteria_not_recording_five_fields"
+        ],
+        "write_scope": cov["write_scope"],
+        "write_scope_note": cov["write_scope_note"],
+        "s015": S015_PARTITION_NOTE,
+        "sibling_coverage_available": False,
+        "flash_meta_teacher_capture_boundary": {
+            "wired": "flash_meta_teacher_capture_boundary"
+            not in cov["not_recording_five_fields"],
+            "language": "Rust",
+            "emit_point": FLASH_META_RUST_EMIT_POINT,
+            "emit_fn": "write_blocked_capture_boundary",
+            "why_not_a_python_shim": FLASH_META_WIRING_NOTE,
+        },
+        "claim_boundary": (
+            "Static sidecar artifact. No hardware measurement. This receipt names "
+            "which gates record the five causality fields. It does not assert that "
+            "a SUPPORTED or OVERREACHING verdict is the true world state. S015 "
+            "dissolved the Codex write partition; a remaining gap is named for a "
+            "reason that is not that partition."
+        ),
+    }
+    return write_receipt(COVERAGE_RECEIPT, doc, "tools/future/status_causality.py")
 
 
 def improvement_trial_alu_bound_control() -> dict[str, Any]:
@@ -2493,7 +2656,9 @@ def build() -> Path:
         doc["negative_findings"].append(
             "a status with no recorded probe was not UNTESTED; the detector is accusing in the dark"
         )
-    return write_receipt(RECEIPT, doc, "tools/future/status_causality.py")
+    written = write_receipt(RECEIPT, doc, "tools/future/status_causality.py")
+    build_coverage()
+    return written
 
 
 def main() -> int:
@@ -2550,6 +2715,8 @@ def main() -> int:
     out = build()
     print(out)
     doc = json.loads(out.read_text())
+    cov_path = RECEIPTS / COVERAGE_RECEIPT
+    cov_doc = json.loads(cov_path.read_text()) if cov_path.is_file() else {}
     print(
         json.dumps(
             {
@@ -2562,6 +2729,12 @@ def main() -> int:
                 },
                 "gates_recording_five_fields": doc["gates_recording_five_fields"],
                 "gates_not_recording_five_fields": doc["gates_not_recording_five_fields"],
+                "coverage_receipt": {
+                    "recording_five_fields": cov_doc.get("recording_five_fields"),
+                    "not_recording_five_fields": cov_doc.get("not_recording_five_fields"),
+                    "n_recording": cov_doc.get("n_recording"),
+                    "n_gates": cov_doc.get("n_gates"),
+                },
             },
             indent=1,
         )

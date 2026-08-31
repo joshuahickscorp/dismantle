@@ -1359,6 +1359,59 @@ def run(trial: str = "15m", timeline: Path | None = None,
                 live.append(jid)
         return live
 
+
+    def _top_up_detached(doc_now: dict[str, Any], queue_now: Sequence[dict[str, Any]],
+                         want_live: int = 2) -> dict[str, Any]:
+        """Start detachable work so a blocking invoke overlaps instead of idling.
+
+        Refuses to pretend: if nothing is detachable, or the pool is already at
+        want_live, this emits nothing at all. An empty result is a fact about the
+        queue, not a failure to try.
+        """
+        if sched is None:
+            return doc_now
+        try:
+            live = _live_job_ids()
+        except Exception:
+            return doc_now
+        if len(live) >= want_live:
+            return doc_now
+        for cand in rank_detachable(queue_now):
+            if cand.get("already_detached"):
+                continue
+            cid = f"WU.AUTONOMY.overlap.{id(cand) % 100000}"
+            cunit = at.cpu_workunit(
+                cid,
+                frontier_id=str(cand.get("frontier_id") or "FT.HCLI_SELF.emit-workunits"),
+                description=str(cand.get("description") or cid),
+                verifier="future.no_wait_scheduler.ingest_ready",
+            )
+            ok, _why = at.is_valid_workunit(cunit)
+            if not ok:
+                continue
+            outcome = _launch_detached_job(cand, cid)
+            cand["already_detached"] = True
+            if not outcome or not outcome.get("handle"):
+                continue
+            handle = outcome["handle"]
+            doc_now = _emit(doc_now, "workunit_launched", {
+                "unit": cunit,
+                "capability": cand.get("capability"),
+                "launch": "detached",
+                "why": "started so the next blocking invoke overlaps rather than idles",
+            }, t_s=t())
+            try:
+                doc_now = emit_detached_started(doc_now, handle, t_s=t(),
+                                                extra={"unit_id": cid})
+            except EmitRefused:
+                continue
+            open_handles[str(handle["job_id"])] = handle
+            job_by_jid[str(handle["job_id"])] = cand
+            if len(_live_job_ids()) >= want_live:
+                break
+        return doc_now
+
+
     def _kickoff_overlap(doc_now: dict[str, Any]) -> dict[str, Any]:
         """Start composer long/detached units, and a second live job, NOW.
 
@@ -1683,6 +1736,24 @@ def run(trial: str = "15m", timeline: Path | None = None,
 
             doc = _emit(doc, "workunit_launched", {"unit": unit, "capability": cap}, t_s=t())
             launched.append(unit_id)
+
+            # OVERLAP BEFORE BLOCKING. _invoke_bounded runs the capability
+            # SYNCHRONOUSLY, so between this workunit_launched and its
+            # result_ingested the loop does nothing else. That is exactly what
+            # no_wait_orchestration counts as a forcing interval, and the 30m run
+            # had twelve of them - 1 s, 3 s, 11 s - each naming the safe work that
+            # was runnable while the loop sat there.
+            #
+            # G037's repair one guarded the wrong door: emit_idle_justified
+            # refuses an IDLE EVENT taken while work is runnable, and a blocking
+            # subprocess wait never passes through that function. The guard was
+            # watching a door the driver does not use.
+            #
+            # So genuinely overlap it: top the detached pool up from the queue
+            # before blocking. This is not classifier-appeasement - the work
+            # really does run during the wait, on the same scheduler the kickoff
+            # uses, and if nothing is detachable nothing is emitted.
+            doc = _top_up_detached(doc, queue)
 
             try:
                 unit_budget = min(UNIT_BUDGET_S,

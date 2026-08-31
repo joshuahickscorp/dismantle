@@ -1880,6 +1880,46 @@ def run_torture(
             policy["chose"] = policy_row
             policy["local_scar_refusals"] = policy_dead
 
+            # A DEAD UNIT IS A FIXTURE TO REFUSE ONCE, NOT INVENTORY TO RE-SERVE.
+            # live_catalog deliberately seeds closed scars so the refusal is
+            # exercised and the scar id is NAMED - that is a required event, and
+            # hiding the ids would make them unreachable. But the only path that
+            # RETIRED a dead unit was the model picking it, and choose() no longer
+            # offers dead units at all (correctly: never advertise what the tools
+            # will refuse). So the fixtures became permanent furniture.
+            # The measured cost, from the 1816 s run: four units launched in the
+            # first 322 s, then nothing for 1494 s. 61 refills served 5 distinct
+            # sets, one of them 54 times, and its visible members are four
+            # WU.DEAD.* rows. A queue that cannot drain is not a frontier, it is a
+            # wall, and every choose() after that asked one settled question.
+            # Refuse each scar once, name it, then retire its units.
+            for entry in policy_dead:
+                scar = entry["scar"] or {}
+                scar_id = str(scar.get("scar_id") or scar.get("id") or "")
+                if not scar_id or scar_id in killed_scars:
+                    continue
+                killed_scars.add(scar_id)
+                tape.emit(
+                    "negative_science_refusal",
+                    {
+                        "scar_id": scar_id,
+                        "hypothesis_family": scar.get("hypothesis_family"),
+                        "idea": entry["id"],
+                        "reason": scar.get("reason"),
+                        "refused_by": "scripted policy; the model was never offered it",
+                    },
+                )
+                tape.emit(
+                    "BRANCH_KILLED",
+                    {"family": scar.get("hypothesis_family"), "warrant": "scar", "scar_id": scar_id},
+                )
+            if policy_dead:
+                retired = {e["id"] for e in policy_dead}
+                remaining = [r for r in remaining if r["id"] not in retired]
+                queued = [q for q in queued if q not in retired]
+                tape.emit("dead_units_retired", {"unit_ids": sorted(retired)})
+                live_rows = [r for r in remaining if r["id"] in queued] or list(remaining)
+
             try:
                 reading = mb.interpret(live_rows, provider=provider)
             except Exception as exc:

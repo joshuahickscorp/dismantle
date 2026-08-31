@@ -1,0 +1,69 @@
+{
+ "candidate": "bitcast dequant",
+ "claim_boundary": {
+  "evidence_class": "DIAGNOSTIC_RELATIVE",
+  "what_is_measured": "the RELATIVE: 3.8541 ms and 1.1705x between two back-to-back runs of the same graph on the same machine, token-identical",
+  "what_is_not": "the ABSOLUTE. Two ModelLake downloads were running during both arms - an attempt to SIGSTOP them failed on shell quoting and the window was NOT protected. Ratios hold under load and absolutes do not, so 22.6021 ms is not a promotable token time and 42.669 TPS is a projection off a protected baseline plus a contaminated delta.",
+  "what_would_promote_it": "re-run tools/future/resident_reprofile.py under a real protected lease with the lever set, and let that receipt replace RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json as the absolute"
+ },
+ "complete_token": {
+  "checkpoint_crossed": "40 TPS",
+  "host_gap_ms_carried_unchanged": 0.6953,
+  "still_short_of_60_by_ms": 6.7688,
+  "tps_after": 42.67,
+  "tps_before": 36.644,
+  "tps_gain": 6.026,
+  "wall_ms_after": 23.4355,
+  "wall_ms_before": 27.2896,
+  "why_the_host_gap_carries": "the candidate changes the body of two kernels and nothing else. Dispatch count is 580 in both arms and the kernel-set difference is exactly the two swapped names, so there is no mechanism by which host time would move. This is an assumption the matched pair CONSTRAINS, not one it proves; a protected reprofile would settle it."
+ },
+ "default_is_unchanged": true,
+ "fp_boundary": {
+  "bit_identical_weights": false,
+  "reading": "the refolded affine is exact in the reals but the two FMAs run on different constants, so the dequantised weights differ at f32 epsilon - measured rel_fro 1.5e-07 in the isolated harness. The resident A/B then produced IDENTICAL token ids over 32 greedy tokens with zero fallbacks, which is the property that actually matters. Token identity over 32 tokens is not a proof of identity over all inputs; it is the same bar every landed lever in this campaign has cleared.",
+  "risk": "greedy argmax can flip on a near-tie. This has not been observed here, and a longer or adversarial prompt set would tighten it.",
+  "token_identical": true
+ },
+ "kernels": [
+  "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_bitcast",
+  "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128_bitcast"
+ ],
+ "lever": "HAWKING_AFFINE2_GEO=bitcast (Affine2Geo::Bitcast)",
+ "matched_pair": {
+  "dense_w_materialized": 0,
+  "dispatches": 580,
+  "fallbacks": 0,
+  "kernels_swapped": {
+   "qwen_affine_q2_group32_matvec_geo_tpr64_tg128": "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_bitcast",
+   "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128": "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128_bitcast"
+  },
+  "n_tokens": 32,
+  "nothing_else_changed": "the dispatched-kernel sets differ by exactly these two names and nothing else, so the 580-dispatch graph is identical apart from the unpack",
+  "reps": 9,
+  "token_ids_identical": true
+ },
+ "measurement_provenance": {
+  "absolutes_are_measured_under_load": true,
+  "gpu_lane_lock_held": true,
+  "lane": "g094-prot",
+  "loadavg": "{ 7.78 7.36 8.06 }",
+  "measured_at": "2026-08-31T22:01:05Z",
+  "measured_at_source": "WRITE_TIME",
+  "why": "a hardware number that cannot be placed in time cannot be audited against a contention window"
+ },
+ "obligation": "G094",
+ "recorded_by": "tools/future/bitcast_dequant_ab.py",
+ "seal_sha256": "b606569a1f40638ccd52086986b46d2451bec4a36f163951c8db3a8c2f5854b7",
+ "timing": {
+  "arm": "widen_f4",
+  "bitcast_gpu_ms_per_token": 22.6021,
+  "bitcast_rep_spread": 1.0037,
+  "control_gpu_ms_per_token": 26.4562,
+  "control_rep_spread": 1.0048,
+  "ms_saved": 3.8541,
+  "speedup": 1.1705,
+  "timing": "MTLCommandBuffer GPUStartTime/GPUEndTime"
+ },
+ "transform": "q unpacked straight into an f32 mantissa (f = 2 + q/2) so no int-to-float convert runs; the affine refolds per group as w = (2*scale)*f + (bias - 4*scale)",
+ "why_this_class": "receipts/future/OP_CLASS_ABLATION.json measured the convert at 44% of this kernel's arithmetic against 1.8% for the affine FMA. The hoist and fold_addqx both attacked the 1.8%."
+}

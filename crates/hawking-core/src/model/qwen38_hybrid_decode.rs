@@ -506,6 +506,17 @@ pub const QWEN38_AFFINE_GATE_UP_FOLD_ADDQX: &str =
     "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128_fold_addqx";
 pub const QWEN38_AFFINE_GATE_UP_SWIGLU_FOLD_ADDQX: &str =
     "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128_fold_addqx";
+/// bitcast sibling of production geo_tpr64. Same occupancy and binds; the
+/// 2-bit code is unpacked straight into an f32 mantissa so no int-to-float
+/// convert runs, and the affine is refolded per group. The op-class ablation
+/// put that convert at 44% of this kernel's arithmetic
+/// (receipts/future/OP_CLASS_ABLATION.json). Default production stays Tpr64;
+/// opt-in via HAWKING_AFFINE2_GEO=bitcast. Reversible: unset the lever.
+pub const QWEN38_AFFINE_Q2_BITCAST: &str =
+    "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_bitcast";
+pub const QWEN38_AFFINE_GATE_UP_SWIGLU_BITCAST: &str =
+    "qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128_bitcast";
+
 pub const QWEN38_AFFINE_GATE_UP_BIASPREP: &str =
     "qwen_affine_q2_group64_matvec_gate_up_biasprep_tpr64_tg128";
 pub const QWEN38_AFFINE_GATE_UP_SWIGLU_BIASPREP: &str =
@@ -541,6 +552,8 @@ pub enum Affine2Geo {
     /// fold_addqx unpack on the production tpr64 map. Same occupancy.
     /// Default stays Tpr64. Empirically bit-identical on sealed-3.14 MLP.
     FoldAddqx,
+    /// bitcast unpack on the production tpr64 map. Same occupancy.
+    Bitcast,
     /// N030: deferred group-64 bias via RMSNorm-produced x-sums. Same tpr64
     /// occupancy. Gate_up_swiglu only; single GEMVs stay tpr64.
     BiasPrep,
@@ -565,6 +578,7 @@ impl Affine2Geo {
             "splitk4_vec" | "splitk_vec" | "splitk4_vector" => Self::SplitK4Vec,
             "accfuse" | "acc_fuse" => Self::AccFuse,
             "fold_addqx" | "addqx" => Self::FoldAddqx,
+            "bitcast" | "mantissa" => Self::Bitcast,
             "biasprep" | "xsum" | "bias_prep" => Self::BiasPrep,
             "biasprep_drop" | "dropbias" | "drop_bias" => Self::BiasPrepDrop,
             _ => Self::Tpr64,
@@ -597,6 +611,7 @@ impl Affine2Geo {
             Self::SplitK4Vec => "splitk4_vec",
             Self::AccFuse => "accfuse",
             Self::FoldAddqx => "fold_addqx",
+            Self::Bitcast => "bitcast",
             Self::BiasPrep => "biasprep",
             Self::BiasPrepDrop => "biasprep_drop",
         }
@@ -1370,6 +1385,11 @@ fn qwen38_affine_q2_launch_with_recon_fuse(
             let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
             Some((QWEN38_AFFINE_Q2_FOLD_ADDQX, (grid, 1, 1), (tg, 1, 1)))
         }
+        Affine2Geo::Bitcast => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            Some((QWEN38_AFFINE_Q2_BITCAST, (grid, 1, 1), (tg, 1, 1)))
+        }
         Affine2Geo::BiasPrep | Affine2Geo::BiasPrepDrop => {
             // mlp_down and other single GEMVs stay on tpr64. BiasPrep is
             // a fused gate_up_swiglu organ cut (N031 owns down).
@@ -1472,6 +1492,19 @@ fn qwen38_affine_gate_up_launch(
                 QWEN38_AFFINE_GATE_UP_SWIGLU_FOLD_ADDQX
             } else {
                 QWEN38_AFFINE_GATE_UP_FOLD_ADDQX
+            };
+            (name, (grid, 1, 1), (tg, 1, 1))
+        }
+        Affine2Geo::Bitcast => {
+            let tg = 128u32;
+            let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
+            // Only the swiglu-fused form is written, because that is the one the
+            // resident dispatches. The unfused form falls back to production
+            // rather than naming a kernel that does not exist.
+            let name = if with_swiglu {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_BITCAST
+            } else {
+                QWEN38_AFFINE_GATE_UP_SWIGLU_KERNEL
             };
             (name, (grid, 1, 1), (tg, 1, 1))
         }
@@ -8739,6 +8772,43 @@ mod mixed_catalog_contract_tests {
             qwen38_affine_gate_up_launch(Affine2Geo::FoldAddqx, false, 17408).0,
             QWEN38_AFFINE_GATE_UP_FOLD_ADDQX
         );
+        // bitcast: the convert-free unpack. Selected only when asked for, and
+        // the unfused gate_up form falls back to production because that kernel
+        // was deliberately not written - the resident never dispatches it.
+        assert_eq!(
+            Affine2Geo::from_value("bitcast"),
+            Affine2Geo::Bitcast
+        );
+        assert_eq!(Affine2Geo::Bitcast.as_str(), "bitcast");
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::Bitcast, 64, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_BITCAST)
+        );
+        assert_eq!(
+            qwen38_affine_q2_launch(Affine2Geo::Bitcast, 32, 17408, 5120).map(|l| l.0),
+            Some(QWEN38_AFFINE_Q2_BITCAST)
+        );
+        assert_eq!(
+            qwen38_affine_gate_up_launch(Affine2Geo::Bitcast, true, 17408).0,
+            QWEN38_AFFINE_GATE_UP_SWIGLU_BITCAST
+        );
+        assert_eq!(
+            qwen38_affine_gate_up_launch(Affine2Geo::Bitcast, false, 17408).0,
+            QWEN38_AFFINE_GATE_UP_SWIGLU_KERNEL,
+            "the unfused bitcast kernel does not exist; naming it would bind a \
+             pipeline that fails to compile at launch"
+        );
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_affine_q2_group32_matvec_geo_tpr64_tg128_bitcast("
+        ));
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_geo_tpr64_tg128_bitcast("
+        ));
+        // The refold is only correct if the mantissa step is 0.5 per code.
+        // A 0.25 step compiles, runs 1.2x, and returns garbage.
+        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+            .contains("w = (2*scale)*f + (bias - 4*scale)"));
+
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
             "kernel void qwen_affine_q2_group32_matvec_geo_tpr64_tg128_fold_addqx("
         ));

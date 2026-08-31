@@ -949,7 +949,8 @@ def test_callable_on_kernel_planner_ready_when_library_exists():
     ok, _why = nng.kernel_library_is_readable()
     if ok:
         assert preview["KernelPlanner"]["ready"] is True
-        assert judged["first_failing_stage"] == "DeviceCompiler"
+        assert preview["DeviceCompiler"]["ready"] is True
+        assert judged["first_failing_stage"] == "NoeticExecutable"
     else:
         assert preview["KernelPlanner"]["ready"] is False
         assert judged["first_failing_stage"] == "KernelPlanner"
@@ -969,14 +970,133 @@ def test_receipt_kernel_planner_passed_and_is_not_first_fail():
         assert ev.get("n_native_unmeasured") == len(ev.get("plan") or [])
         assert doc["kernel_planner_route"] == nng.KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE
         assert doc["first_failing_stage"]["stage"] != "KernelPlanner"
-        assert doc["first_failing_stage"]["stage"] == "DeviceCompiler"
-        dc = next(s for s in doc["stages"] if s["stage"] == "DeviceCompiler")
-        assert dc["status"] == nng.BLOCKED
-        assert dc["error"] == "no_entry_point"
-        assert (dc.get("evidence") or {}).get("kernel_plan_received") is True
+        dc_row = next(s for s in doc["stages"] if s["stage"] == "DeviceCompiler")
+        assert dc_row["invoked"] is True
+        assert dc_row["status"] != "SKIPPED"
+        assert (dc_row.get("evidence") or {}).get("kernel_plan_received") is True
+        assert (dc_row.get("evidence") or {}).get("entry_point") == (
+            "tools.future.device_compiler.lower_plan"
+        )
+        blocker = (dc_row.get("evidence") or {}).get("qwen3_dense_gguf_blocker") or {}
+        if doc["adaptation"].get("model_type") == "qwen3" or doc["adaptation"].get("family") == "dense_swiglu_transformer":
+            assert blocker.get("id") == "QWEN3_DENSE_GGUF_MATCH_ARM_ABSENT"
+            assert blocker.get("did_not_map_dense_onto_moe_arm") is True
+            assert blocker.get("includes_qwen3_dense") is False
+        for slot in (dc_row.get("evidence") or {}).get("plan") or []:
+            if slot.get("status") == nng.COMPILED:
+                identity = slot.get("compiled_identity") or {}
+                assert identity.get("kind") == "METAL_PIPELINE"
+                assert identity.get("shader_hash")
+                assert identity.get("entry_point")
+                assert identity.get("shader_hash") != identity.get("source_sha256")
+            else:
+                assert slot.get("status") == nng.NATIVE_UNMEASURED
+                assert slot.get("compiled_identity") is None
+        if dc_row["status"] == nng.PASSED:
+            assert dc_row["error"] is None
+            assert (dc_row.get("evidence") or {}).get("n_compiled", 0) > 0
+            assert doc["first_failing_stage"]["stage"] != "DeviceCompiler"
+            assert doc["first_failing_stage"]["stage"] == "NoeticExecutable"
+            nx_stage = next(s for s in doc["stages"] if s["stage"] == "NoeticExecutable")
+            assert nx_stage["status"] == nng.BLOCKED
+            assert nx_stage["error"] == "no_generic_packer"
+            assert (nx_stage.get("evidence") or {}).get("nx_fragment_received") is True
+        else:
+            assert dc_row["status"] in {nng.FAILED, nng.REFUSED, nng.BLOCKED}
+            assert doc["first_failing_stage"]["stage"] == "DeviceCompiler"
+            assert (dc_row.get("evidence") or {}).get("n_compiled", 0) == 0
     else:
         assert kp["status"] in {nng.FAILED, nng.REFUSED, nng.BLOCKED}
         assert kp["status"] != "SKIPPED"
+
+
+def test_device_compiler_refuses_placeholder_on_the_generic_path():
+    """NEGATIVE CONTROL: a placeholder identity cannot become a COMPILED organ."""
+    from tools.future import device_compiler as dcomp
+
+    plan = {
+        "route": nng.KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE,
+        "plan": [
+            {
+                "organ": "mlp_down",
+                "status": nng.NATIVE_UNMEASURED,
+                "occupying": {"kind": nng.NATIVE_UNMEASURED, "compiled_kernel": None},
+                "specimen_shape": {"rows": 64, "cols": 128, "extents": [64, 128]},
+                "why": nng.NAME_IS_NOT_A_COMPILED_KERNEL,
+            }
+        ],
+        "n_compiled": 0,
+        "n_native_unmeasured": 1,
+    }
+    native = {
+        "path": nng.NATIVE_LOADER,
+        "architectures": ["qwen2", "qwen3moe"],
+        "includes_qwen2": True,
+        "includes_qwen3moe": True,
+        "includes_qwen3_dense": False,
+        "includes_falcon_h1": False,
+    }
+
+    class _Lie:
+        def compile_jobs(self, jobs):
+            from pathlib import Path
+
+            results = []
+            for job in jobs:
+                Path(job.archive_path).write_text(job.source)
+                results.append(
+                    {
+                        "id": job.organ,
+                        "ok": True,
+                        "entry_point": job.entry_point,
+                        "function_found": True,
+                        "pipeline_created": True,
+                        "pipeline_object": dcomp.PIPELINE_OBJECT,
+                        "archive_sha256": job.source_sha256,
+                        "archive_bytes": len(job.source),
+                        "archive_path": job.archive_path,
+                        "source_sha256": job.source_sha256,
+                    }
+                )
+            return {"ok": True, "results": results, "backend": "lying"}
+
+    lowering = dcomp.lower_plan(
+        plan,
+        family="dense_swiglu_transformer",
+        config={"hidden_size": 64, "intermediate_size": 128, "model_type": "qwen3"},
+        native_architectures=native["architectures"],
+        model_type="qwen3",
+        backend=_Lie(),
+    )
+    assert lowering["n_compiled"] == 0
+    assert lowering["plan"][0]["status"] == nng.NATIVE_UNMEASURED
+    row = nng.stage_device_compiler(
+        native,
+        family="dense_swiglu_transformer",
+        kernel_plan=plan,
+        config={"hidden_size": 64, "intermediate_size": 128, "model_type": "qwen3"},
+        specimen_id="synth",
+        model_type="qwen3",
+    )
+    assert row["invoked"] is True
+    assert row["status"] != nng.PASSED or (row.get("evidence") or {}).get("n_compiled", 0) > 0
+    # Live Metal may pass this tiny plan; a pass must still carry genuine identity.
+    if row["status"] == nng.PASSED:
+        for slot in (row.get("evidence") or {}).get("plan") or []:
+            if slot.get("status") == nng.COMPILED:
+                ident = slot.get("compiled_identity") or {}
+                assert ident.get("shader_hash") != ident.get("source_sha256")
+                assert ident.get("kind") == "METAL_PIPELINE"
+    else:
+        assert row["status"] in {nng.FAILED, nng.REFUSED, nng.BLOCKED}
+        assert row["status"] != "SKIPPED"
+
+
+def test_device_compiler_module_is_the_authority():
+    src = Path(nng.__file__).read_text()
+    assert "from tools.future import device_compiler as dcomp" in src
+    assert "MTLCreateSystemDefaultDevice" not in src
+    assert nng.dcomp.lower_plan is not None
 
 
 def test_no_pytest_skip_in_this_file():

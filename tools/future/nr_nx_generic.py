@@ -46,6 +46,7 @@ def _extend_sys_path_for_sparse_checkout() -> list[str]:
 
 _SPARSE_PATHS = _extend_sys_path_for_sparse_checkout()
 
+from tools.future import device_compiler as dcomp
 from tools.future import nr_nx_path as nnp
 from tools.future import specimen_verify as sv
 from tools.future import workunit_species as wus
@@ -1015,9 +1016,8 @@ def callable_on(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     )
     add(
         "DeviceCompiler",
-        False,
-        "no DeviceCompiler callable; native GGUF match arms "
-        f"{native.get('architectures')!r} do not make a safetensors packer",
+        True,
+        None,
     )
     add(
         "NoeticExecutable",
@@ -2504,56 +2504,164 @@ def stage_device_compiler(
     *,
     family: Any = None,
     kernel_plan: Mapping[str, Any] | None = None,
+    config: Mapping[str, Any] | None = None,
+    specimen_id: str | None = None,
+    model_type: Any = None,
 ) -> dict[str, Any]:
+    """Lower the KernelPlanner plan. Placeholders are refused, not recorded compiled."""
     blocked = dict((nc.BLOCKED.get("DeviceCompiler") or {}) if nc is not None else {})
     plan = kernel_plan if isinstance(kernel_plan, Mapping) else {}
+    native_arms = list(native.get("architectures") or [])
+    qwen3_dense = _native_includes_qwen3_dense(native)
+    if not plan.get("plan"):
+        return _stage(
+            "DeviceCompiler",
+            REFUSED,
+            why=(
+                "no KernelPlanner plan was handed; a compiled identity is not invented. "
+                f"Native GGUF match arms are {native_arms!r}; qwen3 dense is "
+                f"{'present' if qwen3_dense else 'absent'} (qwen3moe is a different "
+                "family; dense was not mapped onto the moe arm)."
+            ),
+            invoked=True,
+            error="no_plan",
+            evidence={
+                "entry_point": "tools.future.device_compiler.lower_plan",
+                "kernel_plan_received": bool(plan),
+                "adapted_family": family,
+                "noetic_compiler_blocked_why": blocked.get("why"),
+                "copied_as_this_specimen": False,
+                "native": {
+                    "path": native.get("path"),
+                    "architectures": native_arms,
+                    "includes_qwen2": native.get("includes_qwen2"),
+                    "includes_qwen3moe": native.get("includes_qwen3moe"),
+                    "includes_qwen3_dense": qwen3_dense,
+                    "includes_falcon_h1": native.get("includes_falcon_h1"),
+                },
+            },
+        )
+    lowering = dcomp.lower_plan(
+        plan,
+        specimen_id=specimen_id,
+        family=family,
+        config=config,
+        native_architectures=native_arms,
+        model_type=model_type,
+    )
+    n_compiled = int(lowering.get("n_compiled") or 0)
+    n_unmeasured = int(lowering.get("n_native_unmeasured") or 0)
+    n_placeholder = int(lowering.get("n_placeholder_refused") or 0)
+    blocker = lowering.get("qwen3_dense_gguf_blocker") or {}
+    nx_fragment = lowering.get("nx_fragment")
+    compiled, planned = dcomp.split_compiled_and_planned(
+        nx_fragment if isinstance(nx_fragment, Mapping) else None
+    )
+    # Defence: never pass a slot whose identity is a placeholder.
+    for slot in lowering.get("plan") or []:
+        if not isinstance(slot, Mapping):
+            continue
+        if slot.get("status") == COMPILED and dcomp.is_placeholder_compiled_identity(
+            slot.get("compiled_identity"),
+            source_sha256=(
+                (slot.get("compiled_identity") or {}).get("source_sha256")
+                if isinstance(slot.get("compiled_identity"), Mapping)
+                else None
+            ),
+            entry_point=(
+                (slot.get("compiled_identity") or {}).get("entry_point")
+                if isinstance(slot.get("compiled_identity"), Mapping)
+                else None
+            ),
+        ):
+            return _stage(
+                "DeviceCompiler",
+                FAILED,
+                why=(
+                    f"{dcomp.PLACEHOLDER_REFUSED} for organ={slot.get('organ')!r}; "
+                    "a placeholder claiming compiled identity is not a pass"
+                ),
+                invoked=True,
+                error="placeholder_compiled_identity",
+                evidence={
+                    "entry_point": "tools.future.device_compiler.lower_plan",
+                    "lowering": lowering,
+                    "placeholder_organ": slot.get("organ"),
+                },
+            )
+    evidence = {
+        "entry_point": "tools.future.device_compiler.lower_plan",
+        "noetic_compiler_blocked_why": blocked.get("why"),
+        "copied_as_this_specimen": False,
+        "adapted_family": family,
+        "kernel_plan_received": True,
+        "kernel_plan_route": plan.get("route"),
+        "kernel_plan_n_organs": len(plan.get("plan") or []),
+        "kernel_plan_n_compiled": plan.get("n_compiled"),
+        "kernel_plan_n_native_unmeasured": plan.get("n_native_unmeasured"),
+        "n_compiled": n_compiled,
+        "n_native_unmeasured": n_unmeasured,
+        "n_placeholder_refused": n_placeholder,
+        "plan": lowering.get("plan"),
+        "nx_fragment": nx_fragment,
+        "nx_compiled_organs": [k.get("organ") for k in compiled],
+        "nx_planned_organs": [k.get("organ") for k in planned],
+        "qwen3_dense_gguf_blocker": blocker,
+        "metal": lowering.get("metal"),
+        "created_command_queue": False,
+        "dispatched": False,
+        "native": {
+            "path": native.get("path"),
+            "architectures": native_arms,
+            "includes_qwen2": native.get("includes_qwen2"),
+            "includes_qwen3moe": native.get("includes_qwen3moe"),
+            "includes_qwen3_dense": qwen3_dense,
+            "includes_falcon_h1": native.get("includes_falcon_h1"),
+        },
+        "claim_boundary": lowering.get("claim_boundary"),
+    }
+    if n_compiled <= 0:
+        return _stage(
+            "DeviceCompiler",
+            FAILED,
+            why=(
+                "DeviceCompiler callable ran (tools.future.device_compiler.lower_plan) "
+                f"and lowered 0/{len(plan.get('plan') or [])} organ(s) to an "
+                f"{dcomp.PIPELINE_OBJECT}. {n_unmeasured} remain {NATIVE_UNMEASURED}; "
+                f"placeholder_refused={n_placeholder}. "
+                f"{lowering.get('why')}. Native GGUF match arms are {native_arms!r}; "
+                f"qwen3 dense is {'present' if qwen3_dense else 'absent'} "
+                f"(qwen3moe is a different family; dense was not mapped onto the moe arm). "
+                f"adapted family={family!r}."
+            ),
+            invoked=True,
+            error=str(lowering.get("error") or "zero_organs_compiled"),
+            evidence=evidence,
+        )
     return _stage(
         "DeviceCompiler",
-        BLOCKED,
+        PASSED,
         why=(
-            "no DeviceCompiler callable exists in tools/odyssey or hcli. "
-            "noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for "
-            "the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native "
-            "GGUF match arms are "
-            f"{native.get('architectures')!r}; qwen3 dense is "
-            f"{'present' if _native_includes_qwen3_dense(native) else 'absent'} "
-            f"(qwen3moe is a different family). adapted family={family!r}. "
-            f"KernelPlanner handed a {plan.get('route') or 'no'} plan covering "
-            f"{len(plan.get('plan') or [])} organ(s) "
-            f"(compiled={plan.get('n_compiled')}, "
-            f"native_unmeasured={plan.get('n_native_unmeasured')}); "
-            "there is still no compiler that can lower that plan"
+            "DeviceCompiler lowered "
+            f"{n_compiled}/{len(plan.get('plan') or [])} organ(s) to "
+            f"{dcomp.PIPELINE_OBJECT} with shader_hash (MTLBinaryArchive) and "
+            f"entry_point. {n_unmeasured} remain {NATIVE_UNMEASURED}. "
+            f"placeholder_refused={n_placeholder}. "
+            f"qwen3 dense GGUF match arm is {'present' if qwen3_dense else 'absent'} "
+            f"(qwen3moe is a different family; dense was not mapped onto the moe arm). "
+            f"adapted family={family!r}. The NX fragment carries compiled vs planned "
+            "so a later stage can tell them apart. This is not a packed NX."
         ),
         invoked=True,
-        error="no_entry_point",
-        evidence={
-            "noetic_compiler_blocked_why": blocked.get("why"),
-            "noetic_compiler_missing_capability": blocked.get("missing_capability"),
-            "copied_as_this_specimen": False,
-            "adapted_family": family,
-            "kernel_plan_received": bool(plan),
-            "kernel_plan_route": plan.get("route"),
-            "kernel_plan_n_organs": len(plan.get("plan") or []),
-            "kernel_plan_n_compiled": plan.get("n_compiled"),
-            "kernel_plan_n_native_unmeasured": plan.get("n_native_unmeasured"),
-            "native": {
-                "path": native.get("path"),
-                "architectures": native.get("architectures"),
-                "includes_qwen2": native.get("includes_qwen2"),
-                "includes_qwen3moe": native.get("includes_qwen3moe"),
-                "includes_qwen3_dense": _native_includes_qwen3_dense(native),
-                "includes_falcon_h1": native.get("includes_falcon_h1"),
-            },
-            "entry_points_searched": [
-                "tools/odyssey/noetic_compiler.py (BLOCKED map, not a compiler)",
-                NATIVE_LOADER,
-                "hcli/agentos/flash_executable.py (Flash scaffold, Codex-owned)",
-            ],
-        },
+        evidence=evidence,
     )
 
 
-def stage_noetic_executable(choice: Mapping[str, Any]) -> dict[str, Any]:
+def stage_noetic_executable(
+    choice: Mapping[str, Any],
+    *,
+    nx_fragment: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     on_disk = (REPO / HEADLESS_FIRST_NX).is_file()
     blob = git("show", f"HEAD:{HEADLESS_FIRST_NX}") if not on_disk else (REPO / HEADLESS_FIRST_NX).read_text()
     parent_line = None
@@ -2561,13 +2669,21 @@ def stage_noetic_executable(choice: Mapping[str, Any]) -> dict[str, Any]:
         if "qwen3.8-27b" in line.lower() or "QWEN38_PARENT" in line or "PARENT_BF16" in line:
             parent_line = line.strip()
             break
+    compiled, planned = dcomp.split_compiled_and_planned(
+        nx_fragment if isinstance(nx_fragment, Mapping) else None
+    )
+    n_compiled = len(compiled)
+    n_planned = len(planned)
     return _stage(
         "NoeticExecutable",
         BLOCKED,
         why=(
             "the only packed-NX producer in git is tools/headless/first_noetic_executable.py, "
             "which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen "
-            f"({choice.get('id')}). No generic DeviceCompiler→NX entry exists. "
+            f"({choice.get('id')}). DeviceCompiler handed an NX fragment with "
+            f"{n_compiled} compiled organ(s) and {n_planned} still "
+            f"{NATIVE_UNMEASURED}; there is still no generic packer that can emit a "
+            "source-independent packed NX from that fragment. "
             "No packed NX was minted here: a renamed source pointer is not an NX"
         ),
         invoked=True,
@@ -2581,6 +2697,11 @@ def stage_noetic_executable(choice: Mapping[str, Any]) -> dict[str, Any]:
             "did_not_execute_first_noetic_executable": True,
             "did_not_mint_nx": True,
             "did_not_load_27b": True,
+            "nx_fragment_received": isinstance(nx_fragment, Mapping),
+            "nx_compiled_organs": [k.get("organ") for k in compiled],
+            "nx_planned_organs": [k.get("organ") for k in planned],
+            "n_compiled_on_fragment": n_compiled,
+            "n_planned_on_fragment": n_planned,
         },
     )
 
@@ -2721,8 +2842,8 @@ def emit_sleeping_lower(
         },
         {
             "id": "device_compiler_entry_point_exists",
-            "holds": False,
-            "evidence": "no DeviceCompiler callable; noetic_compiler.BLOCKED is a note, not a driver",
+            "holds": True,
+            "evidence": "tools.future.device_compiler.lower_plan is the DeviceCompiler callable",
         },
         {
             "id": "generic_packer_accepts_this_specimen",
@@ -2855,14 +2976,19 @@ def run(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
         config=cfg,
     )
     stages.append(kp)
-    stages.append(
-        stage_device_compiler(
-            native,
-            family=adaptation.get("family"),
-            kernel_plan=kp.get("evidence") if isinstance(kp.get("evidence"), Mapping) else None,
-        )
+    dc_row = stage_device_compiler(
+        native,
+        family=adaptation.get("family"),
+        kernel_plan=kp.get("evidence") if isinstance(kp.get("evidence"), Mapping) else None,
+        config=cfg,
+        specimen_id=None if not choice.get("id") else str(choice.get("id")),
+        model_type=model_type or adaptation.get("model_type"),
     )
-    stages.append(stage_noetic_executable(choice))
+    stages.append(dc_row)
+    nx_fragment = None
+    if isinstance(dc_row.get("evidence"), Mapping):
+        nx_fragment = dc_row["evidence"].get("nx_fragment")
+    stages.append(stage_noetic_executable(choice, nx_fragment=nx_fragment if isinstance(nx_fragment, Mapping) else None))
 
     packed_nx = None
     packed_path = None
@@ -2942,10 +3068,12 @@ def assemble() -> dict[str, Any]:
         "GENERIC_NR_NX_PIPELINE_CALLABLE from this module. FLASH_NX_READY is a "
         "separate field. PLAN-THEN-COMPILE closed the KernelPlanner stall by "
         "emitting a NATIVE_UNMEASURED plan for an unseen body without treating a "
-        "shared organ name as a compiled kernel. It did not pack an NX. The "
-        "generic path is still not callable because DeviceCompiler has no entry "
-        "point, so the launch criterion stays unmet for that remaining reason, "
-        "not the original name-is-not-a-kernel stall"
+        "shared organ name as a compiled kernel. DeviceCompiler now lowers that "
+        "plan via tools.future.device_compiler.lower_plan (MTLComputePipelineState "
+        "+ MTLBinaryArchive shader_hash + entry_point, placeholders refused). "
+        "It did not pack an NX. The generic path is still not callable until a "
+        "generic packer emits a source-independent NX, so the launch criterion "
+        "stays unmet for that remaining reason, not the DeviceCompiler-missing stall"
     )
 
     doc: dict[str, Any] = {
@@ -2998,13 +3126,14 @@ def assemble() -> dict[str, Any]:
             "RepresentationPlanner": "tools.headless.representation_library.seed (rehearse not called)",
             "PhysicalGraphCompiler": "parameterized gate_up_swiglu + compiler main() still hardcoded",
             "KernelPlanner": "tools.future.nr_nx_generic.plan_kernels_for_specimen (PLAN-THEN-COMPILE; name is not a compiled kernel)",
-            "DeviceCompiler": "NO CALLABLE; tools/odyssey/noetic_compiler.py BLOCKED map",
+            "DeviceCompiler": "tools.future.device_compiler.lower_plan (MTLComputePipelineState + MTLBinaryArchive shader_hash + entry_point; placeholder refused)",
             "NoeticExecutable": "tools/headless/first_noetic_executable.py (Qwen38 27B only)",
             "native_loader": NATIVE_LOADER,
             "nx_verifier": "tools.future.flash_nx_audit.py:check_nx",
         },
         "recovered_implementation": [
-            "tools/future/nr_nx_generic.py — EXTENDED: probe_specimen/adapt/callable_on/run plus PLAN-THEN-COMPILE KernelPlanner; previous stage driver kept and parameterized",
+            "tools/future/nr_nx_generic.py — EXTENDED: probe_specimen/adapt/callable_on/run plus PLAN-THEN-COMPILE KernelPlanner and DeviceCompiler wired to tools.future.device_compiler.lower_plan",
+            "tools/future/device_compiler.py — DeviceCompiler: plan in, MTLComputePipelineState + shader_hash + entry_point out; placeholders refused",
             "tools/future/nr_nx_path.py — seven-requirement map, SLEEPING units, physical_ebpw refusal; EXTENDED, not forked",
             "tools/future/flash_nx_audit.py — check_nx, evidence_path, METADATA_ONLY, synthetic_promotable_nx",
             "tools/future/flash_nr_complete.py — composition NR is not serialized_nr_information",
@@ -3014,7 +3143,7 @@ def assemble() -> dict[str, Any]:
             "tools/odyssey/physical_graph_compiler.py — organ_graph + silu invoked; main() still MoE-hardcoded",
             "tools/odyssey/doctor_tournament.py — algorithm reused on adapted names; probes() not called",
             "tools/headless/representation_library.py — seed() invoked on this specimen's organs",
-            "tools/odyssey/noetic_compiler.py — BLOCKED map cited as a note, not as a drive of this specimen",
+            "tools/odyssey/noetic_compiler.py — BLOCKED map cited as a note, not as a drive of this specimen; DeviceCompiler is tools.future.device_compiler",
             "crates/hawking-core/src/model/mod.rs — shipping GGUF match arms",
             "tools/future/odyssey_launch.py _eval_nr_nx — reads GENERIC_NR_NX_PIPELINE_CALLABLE, not rewritten",
             "tools/future/workunit_species.py emit_hcli_workunit — SLEEPING unit, never pending",
@@ -3027,15 +3156,16 @@ def assemble() -> dict[str, Any]:
             "PhysicalGraphCompiler SwiGLU collapse runs on dense single-shard names; compiler main() remains hardcoded and is recorded as such",
             "RepresentationPlanner seeds from representation_library on local organs; rehearse() is not called (it would fetch)",
             "KernelPlanner emits a NATIVE_UNMEASURED plan for an unseen body (PLAN-THEN-COMPILE); a shared organ name is still not a compiled kernel",
+            "DeviceCompiler lowers that plan through tools.future.device_compiler.lower_plan; a placeholder claiming compiled identity is refused",
             "GENERIC_NR_NX_PIPELINE_CALLABLE stays False: no packed NX was produced",
         ],
         "negative_findings": [
-            "GENERIC_NR_NX_PIPELINE_CALLABLE is False: DeviceCompiler has no callable and no packed NX exists",
+            "GENERIC_NR_NX_PIPELINE_CALLABLE is False: no packed NX exists",
             "FLASH_NX_READY is False; FLASH_COMPLETE_V0.nx remains a metadata seal of a different model",
             "doctor_tournament.probes() is still hardcoded to Qwen3.8-27B PARENT; it was not called",
             "physical_graph_compiler.main() still requires model.safetensors.index.json, an X_layer capture, and MoE expert tensors",
             "KERNEL_LIBRARY.json has no specimen field and 0 present compiled_identity values; role-name overlap is still not a compiled kernel for this body, now recorded as NATIVE_UNMEASURED rather than stalling the planner",
-            "native engine match arms include qwen2 and qwen3moe, not dense qwen3, not falcon_h1",
+            "native engine match arms include qwen2 and qwen3moe, not dense qwen3, not falcon_h1; QWEN3_DENSE_GGUF_MATCH_ARM_ABSENT is a named blocker, dense was not mapped onto qwen3moe",
             "no generic NX packer; first_noetic_executable is a 27B mix",
             "no physical EBPW was written",
         ],
@@ -3044,14 +3174,14 @@ def assemble() -> dict[str, Any]:
             "that editing tools/odyssey/physical_graph_compiler.py to accept dense names would be accepted by Codex",
             "that adding a qwen3 GGUF match arm would load this safetensors specimen",
             "protected complete-token performance or physical EBPW",
-            "that Odyssey I can launch; nr_nx_path_callable stays unmet until DeviceCompiler exists and a real NX is packed",
+            "that Odyssey I can launch; nr_nx_path_callable stays unmet until a real NX is packed",
         ],
         "next_workunits": [
             {
-                "id": "WU.CPU.nr-nx-generic.device-compiler-entry",
+                "id": "WU.CPU.nr-nx-generic.generic-nx-packer",
                 "schedule": "CPU_NEXT",
-                "owner": "Codex (native reader + DeviceCompiler are Codex-owned)",
-                "wake": "a DeviceCompiler callable that accepts the adapted family, then a generic NX packer",
+                "owner": "Codex (native reader + generic NX packer are Codex-owned)",
+                "wake": "a generic NX packer that accepts the DeviceCompiler NX fragment and the adapted family, without treating qwen3 dense as qwen3moe",
             },
             {
                 "id": sleeping["id"],

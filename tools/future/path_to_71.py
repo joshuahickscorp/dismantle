@@ -65,7 +65,26 @@ COMPONENTS: dict[str, dict[str, Any]] = {
         "source": "receipts/future/AUX_CAPABILITY_SCREEN.json",
     },
     "aux_u8": {
-        "gb_saved": 0.534773760, "evidence": "FITTED_HELDOUT",
+        "gb_saved": 0.0, "evidence": "REFUTED",
+        "why": "it passed its capability screen and then FAILED as an executable. "
+               "The native consumer was built and measured: layer 3, "
+               "GPUStartTime/GPUEndTime, incumbent 334.5682 GB/s in 249.75 us "
+               "against native 269.7453 GB/s in 278.791 us - 29.04 us SLOWER for "
+               "8,355,840 FEWER bytes. Decoding a u8 log-scale needs an exp plus "
+               "ten int_to_float per group: 2.5 decode-FMA/weight-byte at 4 B/iter "
+               "against the incumbent's 1.3333 at 6 B/iter. Billed bytes only it is "
+               "+1.5541 ms; billed with aux-decode FLOPs it is -0.3885 ms. A "
+               "bytes-only model is not safe on an organ MLP_ISSUE_RATE_LADDER "
+               "showed is arithmetic-sensitive. REOPEN_IF a decode exists that adds "
+               "no per-group transcendental math - a 256-entry LUT is the obvious "
+               "one and is untried.",
+        "source": "receipts/future/AUX_U8_NATIVE.json",
+    },
+    "_aux_u8_superseded": {
+        "gb_saved": 0.0, "evidence": "REFUTED",
+        "why": "placeholder retained so the id count is stable",
+        "source": "receipts/future/AUX_U8_NATIVE.json",
+        "_orig": "FITTED_HELDOUT",
         "why": "a real u8 encode of the incumbent f16 aux (log scale + linear "
                "bias, 2-bit codes kept), screened in weight, organ AND logit "
                "space. argmax agreement 1.00 AND KL 0.003 - actual parity, which "
@@ -76,7 +95,22 @@ COMPONENTS: dict[str, dict[str, Any]] = {
         "cost": "a native consumer, then a dirty A/B",
     },
     "deltanet_widen_f4": {
-        "ms_saved": 0.702, "evidence": "DIRTY_DIAGNOSTIC",
+        "ms_saved": 1.0245, "evidence": "QUALIFIED",
+        "parity": "token-id IDENTICAL across 14 runs, 32 tokens, fallbacks 0",
+        "why": "MEASURED complete-token A/B under gpu_lane_lock with "
+               "MTLCommandBuffer GPUStartTime/GPUEndTime: incumbent 27.4065 ms "
+               "against widen_f4 26.3821 ms. Production launches "
+               "qwen38_gated_delta_decode_vi_simd_ba_f4 rather than unfused "
+               "vi-SIMD plus ba_to_decay. It BEAT its own diagnostic - the "
+               "isolated fair cut was 0.7046 ms and the extra 0.32 ms is the "
+               "48-launch fold that only appears in the real graph.",
+        "source": "receipts/future/DELTANET_WIDEN_AB.json",
+        "cost": "landed",
+    },
+    "_deltanet_widen_f4_old": {
+        "ms_saved": 0.0, "evidence": "REFUTED",
+        "why": "superseded by the measured A/B on the same id",
+        "source": "receipts/future/DELTANET_WIDEN_AB.json",
         "why": "gated-delta layout, measured back-to-back in one process: fused-ba "
                "1.581 ms against widen_f4 0.879 ms on the same work. Production "
                "still launches unfused vi-SIMD, so a 628-graph A/B is required "
@@ -123,6 +157,18 @@ COMPONENTS: dict[str, dict[str, Any]] = {
                "MEASURED_NEGATIVE, economics IMMATERIAL.",
         "source": "receipts/future/DELTANET_GENERATED_TRANSITION.json",
     },
+    "mlp_decode_fold_addqx": {
+        "ms_saved": 1.745, "evidence": "DIRTY_DIAGNOSTIC",
+        "why": "BIT-IDENTICAL on the probed layer. 370.9 GB/s against production "
+               "329.2, 1.127x, by folding the affine into integer adds for q.x and "
+               "applying s and b once per group: decode FMA/byte 1.3333 -> 0.3333. "
+               "Projection over a single-layer probe, not a resident measurement: "
+               "MLP 15.541 -> 13.796 ms. It closes only 24.8% of the 329.2->497.4 "
+               "gap, because an EIGHTFOLD cut in total FMA/byte bought 12.7% while "
+               "ARM A bought 50.9% - FMA count is not the ceiling.",
+        "source": "receipts/future/MLP_DECODE_CHEAPEN.json",
+        "cost": "a kernel change plus a complete-token A/B",
+    },
     "deltanet_q3": {
         "gb_saved": 0.503316480, "evidence": "REFUTED",
         "why": "entropies are 3.465-3.479 of 4 across q/k/v/z and any_supported "
@@ -143,6 +189,41 @@ SCHOOLS_RUNNING = (
     "deltanet multi-step authority (the instrument, after the one-step candidate died)",
     "sparse residual concentration curve",
 )
+
+
+# Evidence tiers, weakest first. A composed path is only as strong as its weakest
+# component, and this used to be computed by checking for the literal string
+# "PROSPECTIVE" - so ANY other non-qualified tier (DIRTY_DIAGNOSTIC,
+# FITTED_HELDOUT, NATIVE_UNMEASURED, MEASURED) silently reported as QUALIFIED.
+# That is an over-claim mechanism sitting in the campaign's headline artifact, so
+# an unknown tier now raises instead of defaulting to the strongest one.
+EVIDENCE_ORDER: tuple[str, ...] = (
+    "REFUTED",
+    "PROSPECTIVE_ECONOMIC",
+    "PROSPECTIVE",
+    "FUNCTIONAL_ORACLE",
+    "FITTED_HELDOUT",
+    "NATIVE_UNMEASURED",
+    "DIRTY_DIAGNOSTIC",
+    "MEASURED",
+    "QUALIFIED",
+)
+
+
+class UnknownEvidenceTier(ValueError):
+    """A tier nobody ranked must not be silently treated as the strongest."""
+
+
+def _weakest(tiers: list[str]) -> str:
+    if not tiers:
+        return "QUALIFIED"
+    for t in tiers:
+        if t not in EVIDENCE_ORDER:
+            raise UnknownEvidenceTier(
+                f"{t!r} is not in EVIDENCE_ORDER; rank it rather than letting a "
+                f"composed path inherit QUALIFIED from an unranked component"
+            )
+    return min(tiers, key=EVIDENCE_ORDER.index)
 
 
 def _apply(ms: float, gb_removed: float, comp_ms: float) -> float:
@@ -170,10 +251,7 @@ def compose(ids: list[str]) -> dict[str, Any]:
         gb += c.get("gb_saved", 0.0)
         ms += c.get("ms_saved", 0.0)
     total = _apply(TOKEN_MS, gb, ms)
-    worst = "QUALIFIED"
-    for cid in used:
-        if COMPONENTS[cid]["evidence"] == "PROSPECTIVE":
-            worst = "PROSPECTIVE"
+    worst = _weakest([COMPONENTS[cid]["evidence"] for cid in used])
     return {
         "components": used,
         "skipped": skipped,
@@ -191,13 +269,16 @@ def paths() -> list[dict[str, Any]]:
            "weakest_evidence": "MEASURED", "components": [], "skipped": []}
     rows = [now]
     for pid, label, ids in (
-        ("PATH_01", "everything QUALIFIED today", ["ba_delta_fusion"]),
-        ("PATH_02", "qualified + the executor lever that survived",
-         ["ba_delta_fusion", "mlp_dispatch_size"]),
-        ("PATH_03", "that + the best auxiliary lever",
-         ["ba_delta_fusion", "mlp_dispatch_size", "aux_group_size_1024", "aux_u8"]),
+        ("PATH_01", "everything QUALIFIED today",
+         ["ba_delta_fusion", "deltanet_widen_f4"]),
+        ("PATH_02", "qualified + the bit-identical decode fold",
+         ["ba_delta_fusion", "deltanet_widen_f4", "mlp_decode_fold_addqx"]),
+        ("PATH_03", "that + the executor lever that survived",
+         ["ba_delta_fusion", "deltanet_widen_f4", "mlp_decode_fold_addqx",
+          "mlp_dispatch_size"]),
         ("PATH_04", "everything on record, refuted excluded",
-         ["ba_delta_fusion", "mlp_dispatch_size", "aux_group_size_1024", "aux_u8",
+         ["ba_delta_fusion", "deltanet_widen_f4", "mlp_decode_fold_addqx",
+          "mlp_dispatch_size", "aux_group_size_1024", "aux_u8",
           "mlp_entropy_floor", "deltanet_q3"]),
     ):
         r = compose(list(ids))

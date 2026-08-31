@@ -1,0 +1,3959 @@
+{
+ "autonomy_1h_guards": {
+  "decisions_after_two_minutes": {
+   "elapsed_s": 129.33521175384521,
+   "first_decision_t_s": 0.1232290267944336,
+   "last_decision_t_s": 129.32797598838806,
+   "n_decisions": 155,
+   "n_decisions_after_120": 11,
+   "passed": true,
+   "reason": "11 decision(s) after t_s 120; last_decision_t_s=129.328"
+  },
+  "passed": true,
+  "refill_novelty": {
+   "identical_consecutive_refills": 0,
+   "later_refills_had_novel_ids": true,
+   "n_refills": 49,
+   "n_unique_ids": 50,
+   "novel_ids_per_refill": [
+    [
+     "WU.DETACHED_TRIAL.ind.0000",
+     "WU.DETACHED_TRIAL.ind.0001"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0003"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0004"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0005"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0006"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0007"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0008"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0009"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0010"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0011"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0012"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0014"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0015"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0016"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0017"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0018"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0019"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0020"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0021"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0022"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0023"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0024"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0025"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0026"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0027"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0028"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0029"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0030"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0031"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0032"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0033"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0034"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0035"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0036"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0037"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0038"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0039"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0040"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0041"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0042"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0043"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0044"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0045"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0046"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0047"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0048"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0049"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0050"
+    ],
+    [
+     "WU.DETACHED_TRIAL.ind.0051"
+    ]
+   ],
+   "passed": true,
+   "reason": "each refill after the first introduced ids not seen before"
+  },
+  "rejection_table": {
+   "n_concurrency_refusals": 2,
+   "n_idea_rejected": 0,
+   "passed": true,
+   "reason": "no idea_rejected table; concurrency refusals are per-id and not a t_s 7-16 replay",
+   "refusal_ids_unique": true,
+   "refusals_only_in_t7_16": false
+  },
+  "specimen_verification_ingests": 0,
+  "specimen_verification_not_looped": true
+ },
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-31T08:59:24Z",
+  "recorded_by": "tools/future/detached_trial.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "branch": "odyssey-i",
+ "child": {
+  "argv0": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+  "argv_script": "/Users/scammermike/Downloads/hawking/tools/future/detached_trial.py",
+  "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/child/child.json",
+  "identity_status_at_launch": "match",
+  "job_id": "WU-DETACHED_TRIAL-child-42d58753",
+  "launch_return_s": 0.06490004097577184,
+  "pid": 94588,
+  "receipt_present": true,
+  "returncode": 0,
+  "start_new_session": true,
+  "start_token": "1788166635.262977",
+  "supervisor_pid": 94587,
+  "terminal": "completed-with-receipt",
+  "unit_id": "WU.DETACHED_TRIAL.child"
+ },
+ "claim_boundary": "Static sidecar artifact. No hardware measurement. Neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. A trial timeline is process identity, disk landing, and wall seconds; it is not a bench.",
+ "concurrency": {
+  "bound": 2,
+  "held": true,
+  "n_exceed_attempts": 2,
+  "on_exceed": "refuse launch; persist CONCURRENCY_BOUND_REFUSED; spawn nothing",
+  "refusals": [
+   {
+    "bound": 2,
+    "in_flight": 2,
+    "live_before": 2,
+    "pid": null,
+    "spawned": false,
+    "t_s": 0.2599759101867676,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0002"
+   },
+   {
+    "bound": 2,
+    "in_flight": 2,
+    "live_before": 2,
+    "pid": null,
+    "spawned": false,
+    "t_s": 30.005444049835205,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0013"
+   }
+  ]
+ },
+ "consumes_detached_py": true,
+ "decision_t_s": [
+  0.1232290267944336,
+  0.18870306015014648,
+  0.2591829299926758,
+  0.25919198989868164,
+  0.2599780559539795,
+  5.271978139877319,
+  5.343070030212402,
+  5.343080043792725,
+  5.365297079086304,
+  5.436609983444214,
+  5.4366209506988525,
+  10.441730976104736,
+  10.521451950073242,
+  10.52146291732788,
+  10.552162885665894,
+  10.627079010009766,
+  10.627089977264404,
+  15.607670068740845,
+  15.685765027999878,
+  15.685773849487305,
+  15.722311019897461,
+  15.79115605354309,
+  15.791166067123413,
+  20.761131048202515,
+  20.835278034210205,
+  20.83528780937195,
+  20.86597990989685,
+  20.93941903114319,
+  20.939430952072144,
+  25.898160934448242,
+  25.969274044036865,
+  25.969282865524292,
+  26.027949810028076,
+  26.09666109085083,
+  26.096671104431152,
+  30.00544500350952,
+  31.05590581893921,
+  31.136656045913696,
+  31.136667013168335,
+  31.173237085342407,
+  31.253922939300537,
+  31.25393295288086,
+  36.22209596633911,
+  36.293575048446655,
+  36.29358506202698,
+  36.32074189186096,
+  36.39935898780823,
+  36.39937114715576,
+  41.385079860687256,
+  41.46487307548523,
+  41.46488690376282,
+  41.49181509017944,
+  41.556143045425415,
+  41.55615592002869,
+  46.56701612472534,
+  46.63776397705078,
+  46.63777494430542,
+  46.6588020324707,
+  46.731204986572266,
+  46.731215953826904,
+  51.70582890510559,
+  51.770468950271606,
+  51.77048087120056,
+  51.846006870269775,
+  51.91768193244934,
+  51.91769504547119,
+  56.86441087722778,
+  56.939574003219604,
+  56.93958592414856,
+  57.02037477493286,
+  57.0949809551239,
+  57.09499192237854,
+  62.01746106147766,
+  62.087169885635376,
+  62.08718180656433,
+  62.24420785903931,
+  62.31355595588684,
+  62.31357502937317,
+  67.16388010978699,
+  67.23515200614929,
+  67.23516511917114,
+  67.40242385864258,
+  67.4724109172821,
+  67.47242403030396,
+  72.30540299415588,
+  72.381343126297,
+  72.38135409355164,
+  72.56540608406067,
+  72.64538598060608,
+  72.64539813995361,
+  77.4604811668396,
+  77.52831602096558,
+  77.52833294868469,
+  77.79117608070374,
+  77.86715507507324,
+  77.86716818809509,
+  82.69311285018921,
+  82.76723790168762,
+  82.76724910736084,
+  82.92982196807861,
+  83.00497698783875,
+  83.0049889087677,
+  87.88882493972778,
+  87.95524907112122,
+  87.95526599884033,
+  88.08622694015503,
+  88.16656708717346,
+  88.16657710075378,
+  93.05116891860962,
+  93.11682796478271,
+  93.11683893203735,
+  93.2645971775055,
+  93.33564615249634,
+  93.3356580734253,
+  98.21598505973816,
+  98.28945994377136,
+  98.28947114944458,
+  98.42575907707214,
+  98.49379801750183,
+  98.49380993843079,
+  103.3522310256958,
+  103.42798590660095,
+  103.42799711227417,
+  103.58227205276489,
+  103.65024709701538,
+  103.65025806427002,
+  108.53823494911194,
+  108.61222696304321,
+  108.61223697662354,
+  108.71874284744263,
+  108.78637099266052,
+  108.78637981414795,
+  113.68747401237488,
+  113.76412510871887,
+  113.76413607597351,
+  113.86541819572449,
+  113.93351197242737,
+  113.93352198600769,
+  118.86316084861755,
+  118.92965793609619,
+  118.9296669960022,
+  119.01321697235107,
+  119.08853101730347,
+  119.08854484558105,
+  124.04865002632141,
+  124.11978101730347,
+  124.1197898387909,
+  124.1768810749054,
+  124.24358701705933,
+  124.24359893798828,
+  128.22780799865723,
+  128.22894406318665,
+  128.2289559841156,
+  129.20913004875183,
+  129.32797598838806
+ ],
+ "does_not_call_subprocess_run_for_work": true,
+ "does_not_call_wait_terminal_on_child": true,
+ "does_not_fork_detached_py": true,
+ "elapsed_s": 129.33521175384521,
+ "eras": [
+  "I Genesis of the Laboratory",
+  "II Compounding Civilization",
+  "III Autonomous Science Civilization",
+  "IV Synthetic Machine Civilization",
+  "V Released Hawking Civilization"
+ ],
+ "evidence_class": "STATIC_ONLY",
+ "fixture": false,
+ "gaps_closed": [
+  "a real detached child (pid + start_token + expected receipt) runs while the supervisor keeps launching independent WorkUnits",
+  "idle runnable seconds are measured on the wall clock, not asserted by intent",
+  "receipt wakeup is a kqueue vnode event that then harvests and dispatches; the main loop does not wait_terminal the child",
+  "SAFE_IN_FLIGHT_BOUND is enforced; a launch above the bound is refused and does not spawn",
+  "the three AUTONOMY_TIMELINE_1h guards are evaluated on this run's timeline and can FAIL it"
+ ],
+ "gpu_authority": false,
+ "head": "2d93a4bf8cbe65bd370f12293a7ca0ffe50f36c9",
+ "idle_is_autonomy_defect": false,
+ "idle_runnable_seconds": 0.0,
+ "independent": {
+  "completed": [
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0000-98c85b02",
+    "pid": 94592,
+    "receipt_present": true,
+    "t_s": 5.2719597816467285,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0000"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0001-d8db6e70",
+    "pid": 94602,
+    "receipt_present": true,
+    "t_s": 5.365278005599976,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0001"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0003-f8c5765d",
+    "pid": 94634,
+    "receipt_present": true,
+    "t_s": 10.441710948944092,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0003"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0004-2a4d3d25",
+    "pid": 94636,
+    "receipt_present": true,
+    "t_s": 10.55214810371399,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0004"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0005-5f910a2d",
+    "pid": 94667,
+    "receipt_present": true,
+    "t_s": 15.607655048370361,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0005"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0006-01df59fc",
+    "pid": 94669,
+    "receipt_present": true,
+    "t_s": 15.722280979156494,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0006"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0007-b2c11cca",
+    "pid": 94708,
+    "receipt_present": true,
+    "t_s": 20.76109504699707,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0007"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0008-8e264236",
+    "pid": 94712,
+    "receipt_present": true,
+    "t_s": 20.865960121154785,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0008"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0009-fc7c3cc2",
+    "pid": 94735,
+    "receipt_present": true,
+    "t_s": 25.898142099380493,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0009"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0010-9b06e3be",
+    "pid": 94738,
+    "receipt_present": true,
+    "t_s": 26.02792501449585,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0010"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0011-5808a6c3",
+    "pid": 94763,
+    "receipt_present": true,
+    "t_s": 31.05587387084961,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0011"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0012-23dc1ac3",
+    "pid": 94766,
+    "receipt_present": true,
+    "t_s": 31.1732120513916,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0012"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0014-49bed0ae",
+    "pid": 94815,
+    "receipt_present": true,
+    "t_s": 36.222068071365356,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0014"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0015-d489afea",
+    "pid": 94820,
+    "receipt_present": true,
+    "t_s": 36.320716857910156,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0015"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0016-fba4313d",
+    "pid": 94855,
+    "receipt_present": true,
+    "t_s": 41.385064125061035,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0016"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0017-607d143d",
+    "pid": 94858,
+    "receipt_present": true,
+    "t_s": 41.491801023483276,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0017"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0018-1dc6abca",
+    "pid": 94889,
+    "receipt_present": true,
+    "t_s": 46.566993951797485,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0018"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0019-ac696138",
+    "pid": 94893,
+    "receipt_present": true,
+    "t_s": 46.658782958984375,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0019"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0020-2b6b9308",
+    "pid": 94935,
+    "receipt_present": true,
+    "t_s": 51.705801010131836,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0020"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0021-5553dd1b",
+    "pid": 94937,
+    "receipt_present": true,
+    "t_s": 51.845988035202026,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0021"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0022-cfdb4af3",
+    "pid": 94976,
+    "receipt_present": true,
+    "t_s": 56.86438798904419,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0022"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0023-200bff91",
+    "pid": 94978,
+    "receipt_present": true,
+    "t_s": 57.0203537940979,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0023"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0024-7676b1f6",
+    "pid": 95016,
+    "receipt_present": true,
+    "t_s": 62.01743793487549,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0024"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0025-2ec04d2c",
+    "pid": 95020,
+    "receipt_present": true,
+    "t_s": 62.24419283866882,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0025"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0026-b6bb699f",
+    "pid": 95063,
+    "receipt_present": true,
+    "t_s": 67.16385912895203,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0026"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0027-1e5bb04f",
+    "pid": 95065,
+    "receipt_present": true,
+    "t_s": 67.40239906311035,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0027"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0028-92ed3b37",
+    "pid": 95100,
+    "receipt_present": true,
+    "t_s": 72.30538702011108,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0028"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0029-54f5c46c",
+    "pid": 95105,
+    "receipt_present": true,
+    "t_s": 72.56537508964539,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0029"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0030-ab14d047",
+    "pid": 95151,
+    "receipt_present": true,
+    "t_s": 77.4604561328888,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0030"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0031-c5602329",
+    "pid": 95159,
+    "receipt_present": true,
+    "t_s": 77.79115891456604,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0031"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0032-5be7fe79",
+    "pid": 95187,
+    "receipt_present": true,
+    "t_s": 82.69308710098267,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0032"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0033-d0cadec0",
+    "pid": 95190,
+    "receipt_present": true,
+    "t_s": 82.92979502677917,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0033"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0034-bcc22a58",
+    "pid": 95225,
+    "receipt_present": true,
+    "t_s": 87.88880395889282,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0034"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0035-e0c7bea0",
+    "pid": 95234,
+    "receipt_present": true,
+    "t_s": 88.0861988067627,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0035"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0036-f76e4f9e",
+    "pid": 95257,
+    "receipt_present": true,
+    "t_s": 93.05113101005554,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0036"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0037-db9c654d",
+    "pid": 95262,
+    "receipt_present": true,
+    "t_s": 93.26457619667053,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0037"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0038-d5679ed6",
+    "pid": 95308,
+    "receipt_present": true,
+    "t_s": 98.21596717834473,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0038"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0039-21d6d085",
+    "pid": 95311,
+    "receipt_present": true,
+    "t_s": 98.42573285102844,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0039"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0040-5308053c",
+    "pid": 95336,
+    "receipt_present": true,
+    "t_s": 103.35221481323242,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0040"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0041-fe06e52c",
+    "pid": 95339,
+    "receipt_present": true,
+    "t_s": 103.58225178718567,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0041"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0042-76a21218",
+    "pid": 95370,
+    "receipt_present": true,
+    "t_s": 108.5382149219513,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0042"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0043-4ef4a7a5",
+    "pid": 95373,
+    "receipt_present": true,
+    "t_s": 108.71870803833008,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0043"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0044-4b744a22",
+    "pid": 95395,
+    "receipt_present": true,
+    "t_s": 113.68745613098145,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0044"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0045-8d401eb1",
+    "pid": 95398,
+    "receipt_present": true,
+    "t_s": 113.86540293693542,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0045"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0046-943d888f",
+    "pid": 95426,
+    "receipt_present": true,
+    "t_s": 118.86313891410828,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0046"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0047-b97a6bc8",
+    "pid": 95428,
+    "receipt_present": true,
+    "t_s": 119.01318597793579,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0047"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0048-1afe2624",
+    "pid": 95456,
+    "receipt_present": true,
+    "t_s": 124.04861092567444,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0048"
+   },
+   {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0049-fcdd09a9",
+    "pid": 95459,
+    "receipt_present": true,
+    "t_s": 124.17686009407043,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0049"
+   },
+   {
+    "child_still_running": false,
+    "job_id": "WU-DETACHED_TRIAL-ind-0050-41286599",
+    "pid": 95483,
+    "receipt_present": true,
+    "t_s": 129.20910811424255,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0050"
+   },
+   {
+    "child_still_running": false,
+    "job_id": "WU-DETACHED_TRIAL-ind-0051-0accac50",
+    "pid": 95487,
+    "receipt_present": true,
+    "t_s": 129.32795190811157,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0051"
+   }
+  ],
+  "completed_during_wait_unit_ids": [
+   "WU.DETACHED_TRIAL.ind.0000",
+   "WU.DETACHED_TRIAL.ind.0001",
+   "WU.DETACHED_TRIAL.ind.0003",
+   "WU.DETACHED_TRIAL.ind.0004",
+   "WU.DETACHED_TRIAL.ind.0005",
+   "WU.DETACHED_TRIAL.ind.0006",
+   "WU.DETACHED_TRIAL.ind.0007",
+   "WU.DETACHED_TRIAL.ind.0008",
+   "WU.DETACHED_TRIAL.ind.0009",
+   "WU.DETACHED_TRIAL.ind.0010",
+   "WU.DETACHED_TRIAL.ind.0011",
+   "WU.DETACHED_TRIAL.ind.0012",
+   "WU.DETACHED_TRIAL.ind.0014",
+   "WU.DETACHED_TRIAL.ind.0015",
+   "WU.DETACHED_TRIAL.ind.0016",
+   "WU.DETACHED_TRIAL.ind.0017",
+   "WU.DETACHED_TRIAL.ind.0018",
+   "WU.DETACHED_TRIAL.ind.0019",
+   "WU.DETACHED_TRIAL.ind.0020",
+   "WU.DETACHED_TRIAL.ind.0021",
+   "WU.DETACHED_TRIAL.ind.0022",
+   "WU.DETACHED_TRIAL.ind.0023",
+   "WU.DETACHED_TRIAL.ind.0024",
+   "WU.DETACHED_TRIAL.ind.0025",
+   "WU.DETACHED_TRIAL.ind.0026",
+   "WU.DETACHED_TRIAL.ind.0027",
+   "WU.DETACHED_TRIAL.ind.0028",
+   "WU.DETACHED_TRIAL.ind.0029",
+   "WU.DETACHED_TRIAL.ind.0030",
+   "WU.DETACHED_TRIAL.ind.0031",
+   "WU.DETACHED_TRIAL.ind.0032",
+   "WU.DETACHED_TRIAL.ind.0033",
+   "WU.DETACHED_TRIAL.ind.0034",
+   "WU.DETACHED_TRIAL.ind.0035",
+   "WU.DETACHED_TRIAL.ind.0036",
+   "WU.DETACHED_TRIAL.ind.0037",
+   "WU.DETACHED_TRIAL.ind.0038",
+   "WU.DETACHED_TRIAL.ind.0039",
+   "WU.DETACHED_TRIAL.ind.0040",
+   "WU.DETACHED_TRIAL.ind.0041",
+   "WU.DETACHED_TRIAL.ind.0042",
+   "WU.DETACHED_TRIAL.ind.0043",
+   "WU.DETACHED_TRIAL.ind.0044",
+   "WU.DETACHED_TRIAL.ind.0045",
+   "WU.DETACHED_TRIAL.ind.0046",
+   "WU.DETACHED_TRIAL.ind.0047",
+   "WU.DETACHED_TRIAL.ind.0048",
+   "WU.DETACHED_TRIAL.ind.0049"
+  ],
+  "n_completed": 50,
+  "n_completed_during_wait": 48,
+  "n_started": 50,
+  "started": [
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0000-98c85b02",
+    "pid": 94592,
+    "start_token": "1788166635.330866",
+    "t_s": 0.18869996070861816,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0000"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0001-d8db6e70",
+    "pid": 94602,
+    "start_token": "1788166635.397497",
+    "t_s": 0.25917983055114746,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0001"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0003-f8c5765d",
+    "pid": 94634,
+    "start_token": "1788166640.481326",
+    "t_s": 5.343066930770874,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0003"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0004-2a4d3d25",
+    "pid": 94636,
+    "start_token": "1788166640.576185",
+    "t_s": 5.436605930328369,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0004"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0005-5f910a2d",
+    "pid": 94667,
+    "start_token": "1788166645.653200",
+    "t_s": 10.52145004272461,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0005"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0006-01df59fc",
+    "pid": 94669,
+    "start_token": "1788166645.763130",
+    "t_s": 10.627075910568237,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0006"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0007-b2c11cca",
+    "pid": 94708,
+    "start_token": "1788166650.818809",
+    "t_s": 15.68576192855835,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0007"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0008-8e264236",
+    "pid": 94712,
+    "start_token": "1788166650.930340",
+    "t_s": 15.791153907775879,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0008"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0009-fc7c3cc2",
+    "pid": 94735,
+    "start_token": "1788166655.964926",
+    "t_s": 20.835275173187256,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0009"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0010-9b06e3be",
+    "pid": 94738,
+    "start_token": "1788166656.074249",
+    "t_s": 20.93941593170166,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0010"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0011-5808a6c3",
+    "pid": 94763,
+    "start_token": "1788166661.108854",
+    "t_s": 25.969270944595337,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0011"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0012-23dc1ac3",
+    "pid": 94766,
+    "start_token": "1788166661.237013",
+    "t_s": 26.0966579914093,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0012"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0014-49bed0ae",
+    "pid": 94815,
+    "start_token": "1788166666.268128",
+    "t_s": 31.136652946472168,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0014"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0015-d489afea",
+    "pid": 94820,
+    "start_token": "1788166666.384436",
+    "t_s": 31.253920078277588,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0015"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0016-fba4313d",
+    "pid": 94855,
+    "start_token": "1788166671.433098",
+    "t_s": 36.29357194900513,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0016"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0017-607d143d",
+    "pid": 94858,
+    "start_token": "1788166671.530853",
+    "t_s": 36.3993558883667,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0017"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0018-1dc6abca",
+    "pid": 94889,
+    "start_token": "1788166676.598299",
+    "t_s": 41.4648699760437,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0018"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0019-ac696138",
+    "pid": 94893,
+    "start_token": "1788166676.696534",
+    "t_s": 41.55613994598389,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0019"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0020-2b6b9308",
+    "pid": 94935,
+    "start_token": "1788166681.776408",
+    "t_s": 46.63776183128357,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0020"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0021-5553dd1b",
+    "pid": 94937,
+    "start_token": "1788166681.869789",
+    "t_s": 46.731202840805054,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0021"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0022-cfdb4af3",
+    "pid": 94976,
+    "start_token": "1788166686.912812",
+    "t_s": 51.770466804504395,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0022"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0023-200bff91",
+    "pid": 94978,
+    "start_token": "1788166687.055502",
+    "t_s": 51.91767692565918,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0023"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0024-7676b1f6",
+    "pid": 95016,
+    "start_token": "1788166692.074171",
+    "t_s": 56.93956995010376,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0024"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0025-2ec04d2c",
+    "pid": 95020,
+    "start_token": "1788166692.231910",
+    "t_s": 57.09497785568237,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0025"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0026-b6bb699f",
+    "pid": 95063,
+    "start_token": "1788166697.227289",
+    "t_s": 62.08716797828674,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0026"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0027-1e5bb04f",
+    "pid": 95065,
+    "start_token": "1788166697.451834",
+    "t_s": 62.31355404853821,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0027"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0028-92ed3b37",
+    "pid": 95100,
+    "start_token": "1788166702.372679",
+    "t_s": 67.23514199256897,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0028"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0029-54f5c46c",
+    "pid": 95105,
+    "start_token": "1788166702.610347",
+    "t_s": 67.47240686416626,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0029"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0030-ab14d047",
+    "pid": 95151,
+    "start_token": "1788166707.513501",
+    "t_s": 72.38134002685547,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0030"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0031-c5602329",
+    "pid": 95159,
+    "start_token": "1788166707.774894",
+    "t_s": 72.64538311958313,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0031"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0032-5be7fe79",
+    "pid": 95187,
+    "start_token": "1788166712.669144",
+    "t_s": 77.52831292152405,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0032"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0033-d0cadec0",
+    "pid": 95190,
+    "start_token": "1788166712.999857",
+    "t_s": 77.86715197563171,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0033"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0034-bcc22a58",
+    "pid": 95225,
+    "start_token": "1788166717.903401",
+    "t_s": 82.7672348022461,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0034"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0035-e0c7bea0",
+    "pid": 95234,
+    "start_token": "1788166718.138793",
+    "t_s": 83.0049729347229,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0035"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0036-f76e4f9e",
+    "pid": 95257,
+    "start_token": "1788166723.095892",
+    "t_s": 87.95524597167969,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0036"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0037-db9c654d",
+    "pid": 95262,
+    "start_token": "1788166723.295505",
+    "t_s": 88.16656398773193,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0037"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0038-d5679ed6",
+    "pid": 95308,
+    "start_token": "1788166728.258645",
+    "t_s": 93.11682486534119,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0038"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0039-21d6d085",
+    "pid": 95311,
+    "start_token": "1788166728.476099",
+    "t_s": 93.33564305305481,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0039"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0040-5308053c",
+    "pid": 95336,
+    "start_token": "1788166733.425604",
+    "t_s": 98.2894549369812,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0040"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0041-fe06e52c",
+    "pid": 95339,
+    "start_token": "1788166733.631528",
+    "t_s": 98.49379396438599,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0041"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0042-76a21218",
+    "pid": 95370,
+    "start_token": "1788166738.561204",
+    "t_s": 103.427983045578,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0042"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0043-4ef4a7a5",
+    "pid": 95373,
+    "start_token": "1788166738.792066",
+    "t_s": 103.65024399757385,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0043"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0044-4b744a22",
+    "pid": 95395,
+    "start_token": "1788166743.747710",
+    "t_s": 108.61222505569458,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0044"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0045-8d401eb1",
+    "pid": 95398,
+    "start_token": "1788166743.925863",
+    "t_s": 108.78636908531189,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0045"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0046-943d888f",
+    "pid": 95426,
+    "start_token": "1788166748.899407",
+    "t_s": 113.76412200927734,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0046"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0047-b97a6bc8",
+    "pid": 95428,
+    "start_token": "1788166749.071247",
+    "t_s": 113.93351006507874,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0047"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0048-1afe2624",
+    "pid": 95456,
+    "start_token": "1788166754.072019",
+    "t_s": 118.92965483665466,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0048"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0049-fcdd09a9",
+    "pid": 95459,
+    "start_token": "1788166754.222108",
+    "t_s": 119.08852791786194,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0049"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0050-41286599",
+    "pid": 95483,
+    "start_token": "1788166759.255599",
+    "t_s": 124.11977791786194,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0050"
+   },
+   {
+    "job_id": "WU-DETACHED_TRIAL-ind-0051-0accac50",
+    "pid": 95487,
+    "start_token": "1788166759.385571",
+    "t_s": 124.2435851097107,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0051"
+   }
+  ]
+ },
+ "kqueue_armed_before_launch": true,
+ "max_idle_gap_s": 0.0,
+ "module_sha256": "ae6b82ceb25cf38dcd999c01dae502e975054a60342671a65b6604d2b1e44c87",
+ "negative_control": {
+  "control": "open_handle_wait",
+  "must_fail": true,
+  "receipt": "receipts/future/IMPROVEMENT_TRIAL.json",
+  "repro_s": 477,
+  "this_lane": "the positive: independent WorkUnits complete while the detached child is still running"
+ },
+ "negative_findings": [
+  "autonomy_run.py still calls subprocess.run; this lane is not allowed to edit it",
+  "kqueue is a macOS/BSD primitive; this host is macOS and the trial FAILs if kqueue cannot arm",
+  "this process has no GPU lease; GPU work remains SLEEPING via detached.py's refuse_reason",
+  "a 1h-scale idle tail cannot be reproduced in a 128s trial; the guards test the decision-cutoff and refill/rejection shapes, not a 47-minute wait"
+ ],
+ "odysseys": [
+  "I WHAT IS TRUE?",
+  "II WHAT DID HAWKING ALREADY LEARN?",
+  "III WHERE IS HAWKING WRONG?"
+ ],
+ "proofs": {
+  "autonomy_1h_guards": {
+   "decisions_after_two_minutes": {
+    "elapsed_s": 129.33521175384521,
+    "first_decision_t_s": 0.1232290267944336,
+    "last_decision_t_s": 129.32797598838806,
+    "n_decisions": 155,
+    "n_decisions_after_120": 11,
+    "passed": true,
+    "reason": "11 decision(s) after t_s 120; last_decision_t_s=129.328"
+   },
+   "passed": true,
+   "refill_novelty": {
+    "identical_consecutive_refills": 0,
+    "later_refills_had_novel_ids": true,
+    "n_refills": 49,
+    "n_unique_ids": 50,
+    "novel_ids_per_refill": [
+     [
+      "WU.DETACHED_TRIAL.ind.0000",
+      "WU.DETACHED_TRIAL.ind.0001"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0003"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0004"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0005"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0006"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0007"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0008"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0009"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0010"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0011"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0012"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0014"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0015"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0016"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0017"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0018"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0019"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0020"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0021"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0022"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0023"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0024"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0025"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0026"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0027"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0028"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0029"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0030"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0031"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0032"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0033"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0034"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0035"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0036"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0037"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0038"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0039"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0040"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0041"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0042"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0043"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0044"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0045"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0046"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0047"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0048"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0049"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0050"
+     ],
+     [
+      "WU.DETACHED_TRIAL.ind.0051"
+     ]
+    ],
+    "passed": true,
+    "reason": "each refill after the first introduced ids not seen before"
+   },
+   "rejection_table": {
+    "n_concurrency_refusals": 2,
+    "n_idea_rejected": 0,
+    "passed": true,
+    "reason": "no idea_rejected table; concurrency refusals are per-id and not a t_s 7-16 replay",
+    "refusal_ids_unique": true,
+    "refusals_only_in_t7_16": false
+   },
+   "specimen_verification_ingests": 0,
+   "specimen_verification_not_looped": true
+  },
+  "concurrency_bound": {
+   "bound": 2,
+   "n_refusals": 2,
+   "passed": true
+  },
+  "idle_runnable_seconds": {
+   "passed": true,
+   "threshold_s": 10.0,
+   "value": 0.0
+  },
+  "independent_progress_during_wait": {
+   "n_completed_during_wait": 48,
+   "n_started": 50,
+   "passed": true
+  },
+  "real_child": {
+   "identity_status": "match",
+   "launch_return_s": 0.06490004097577184,
+   "passed": true,
+   "pid": 94588,
+   "start_token": "1788166635.262977"
+  },
+  "receipt_wakeup": {
+   "kqueue_latency_s": 0.0007779598236083984,
+   "mechanism": "kqueue EVFILT_VNODE",
+   "passed": true,
+   "supervisor_reaction_latency_s": 0.030285120010375977
+  }
+ },
+ "proofs_all_passed": true,
+ "purpose": "Waiting on a subprocess no longer idles the resident. Detached launch, receipt wakeup, and independent-WorkUnit progress during a wait are demonstrated on a real trial timeline.",
+ "recovered_implementation": [
+  "tools/future/detached.py DetachedSupervisor.launch/inspect/cancel \u2014 spawn, pid+start_token identity, expected receipt; this trial does not reimplement them",
+  "tools/future/wakeup.py Watcher.register_expectation/harvest/dispatch \u2014 receipt appearance is the completion event; poll/wait aliases stay refused",
+  "tools/future/no_wait_scheduler.py \u2014 the overlapping-interval idea this trial measures on a longer real child",
+  "tools/future/improvement_trial.py open_handle_wait \u2014 the 477s negative control that must FAIL; this lane is the positive",
+  "receipts/future/AUTONOMY_TIMELINE_1h.json \u2014 the scar: 222 rejections in t_s 7-16, four identical refills, all decisions before t_s 120, then 47 minutes of one I/O loop",
+  "hcli/agentos/background.py start_new_session \u2014 the session path detached.py already recovered",
+  "select.kqueue EVFILT_VNODE \u2014 macOS filesystem wakeup; not a poll of the receipt path"
+ ],
+ "refills": {
+  "all_ids": [
+   "WU.DETACHED_TRIAL.ind.0000",
+   "WU.DETACHED_TRIAL.ind.0001",
+   "WU.DETACHED_TRIAL.ind.0003",
+   "WU.DETACHED_TRIAL.ind.0004",
+   "WU.DETACHED_TRIAL.ind.0005",
+   "WU.DETACHED_TRIAL.ind.0006",
+   "WU.DETACHED_TRIAL.ind.0007",
+   "WU.DETACHED_TRIAL.ind.0008",
+   "WU.DETACHED_TRIAL.ind.0009",
+   "WU.DETACHED_TRIAL.ind.0010",
+   "WU.DETACHED_TRIAL.ind.0011",
+   "WU.DETACHED_TRIAL.ind.0012",
+   "WU.DETACHED_TRIAL.ind.0014",
+   "WU.DETACHED_TRIAL.ind.0015",
+   "WU.DETACHED_TRIAL.ind.0016",
+   "WU.DETACHED_TRIAL.ind.0017",
+   "WU.DETACHED_TRIAL.ind.0018",
+   "WU.DETACHED_TRIAL.ind.0019",
+   "WU.DETACHED_TRIAL.ind.0020",
+   "WU.DETACHED_TRIAL.ind.0021",
+   "WU.DETACHED_TRIAL.ind.0022",
+   "WU.DETACHED_TRIAL.ind.0023",
+   "WU.DETACHED_TRIAL.ind.0024",
+   "WU.DETACHED_TRIAL.ind.0025",
+   "WU.DETACHED_TRIAL.ind.0026",
+   "WU.DETACHED_TRIAL.ind.0027",
+   "WU.DETACHED_TRIAL.ind.0028",
+   "WU.DETACHED_TRIAL.ind.0029",
+   "WU.DETACHED_TRIAL.ind.0030",
+   "WU.DETACHED_TRIAL.ind.0031",
+   "WU.DETACHED_TRIAL.ind.0032",
+   "WU.DETACHED_TRIAL.ind.0033",
+   "WU.DETACHED_TRIAL.ind.0034",
+   "WU.DETACHED_TRIAL.ind.0035",
+   "WU.DETACHED_TRIAL.ind.0036",
+   "WU.DETACHED_TRIAL.ind.0037",
+   "WU.DETACHED_TRIAL.ind.0038",
+   "WU.DETACHED_TRIAL.ind.0039",
+   "WU.DETACHED_TRIAL.ind.0040",
+   "WU.DETACHED_TRIAL.ind.0041",
+   "WU.DETACHED_TRIAL.ind.0042",
+   "WU.DETACHED_TRIAL.ind.0043",
+   "WU.DETACHED_TRIAL.ind.0044",
+   "WU.DETACHED_TRIAL.ind.0045",
+   "WU.DETACHED_TRIAL.ind.0046",
+   "WU.DETACHED_TRIAL.ind.0047",
+   "WU.DETACHED_TRIAL.ind.0048",
+   "WU.DETACHED_TRIAL.ind.0049",
+   "WU.DETACHED_TRIAL.ind.0050",
+   "WU.DETACHED_TRIAL.ind.0051"
+  ],
+  "n": 49,
+  "sets": [
+   [
+    "WU.DETACHED_TRIAL.ind.0000",
+    "WU.DETACHED_TRIAL.ind.0001"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0003"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0004"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0005"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0006"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0007"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0008"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0009"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0010"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0011"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0012"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0014"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0015"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0016"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0017"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0018"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0019"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0020"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0021"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0022"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0023"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0024"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0025"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0026"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0027"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0028"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0029"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0030"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0031"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0032"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0033"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0034"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0035"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0036"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0037"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0038"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0039"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0040"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0041"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0042"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0043"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0044"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0045"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0046"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0047"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0048"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0049"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0050"
+   ],
+   [
+    "WU.DETACHED_TRIAL.ind.0051"
+   ]
+  ]
+ },
+ "resident_callable": {
+  "callable": true,
+  "entry_point": "python3 tools/future/detached_trial.py --selftest | --build | --record",
+  "fail_closed": [
+   "unsafe argv raises via detached.UnsafeCommandError; nothing is spawned",
+   "independent launch above SAFE_IN_FLIGHT_BOUND is refused and does not spawn",
+   "a missing kqueue wakeup FAILs the trial rather than treating inspect as completion",
+   "the three AUTONOMY_TIMELINE_1h guards FAIL the trial if any fires",
+   "idle runnable seconds above the defect threshold FAIL the trial"
+  ],
+  "python_api": "tools.future.detached_trial.run_real_trial(workspace, ...)",
+  "receipt": "receipts/future/DETACHED_WORK_TRIAL.json",
+  "receipt_schema": "hawking.future.detached_trial.v1",
+  "workunit": {
+   "assigned_backend": null,
+   "assigned_runtime": null,
+   "attempts": 0,
+   "backend_task_id": null,
+   "claim_boundary": "Static sidecar artifact. No hardware measurement. Neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. A trial timeline is process identity, disk landing, and wall seconds; it is not a bench.",
+   "classification": "STATIC_ONLY",
+   "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/Users/scammermike/Downloads/hawking/tools/future/detached_trial.py",
+    "--record"
+   ],
+   "content_hash": "bc40dd9ccffbd50ee8b06cff7e6ddcfea12072d659db1d17e31428611c9ce656",
+   "dependencies": [],
+   "description": "Launch a real detached OS process, keep independent WorkUnits moving for the whole wait, wake on the child's receipt via kqueue, and report idle runnable seconds plus the three AUTONOMY_TIMELINE_1h guards.",
+   "effect_class": "READ_ONLY",
+   "failure_context": null,
+   "finished_at": null,
+   "gpu_authority": false,
+   "id": "future.detached_trial.real-timeline",
+   "may_modify_verifier": false,
+   "may_promote": false,
+   "output_receipt_path": "/Users/scammermike/Downloads/hawking/receipts/future/DETACHED_WORK_TRIAL.json",
+   "preferred_backend": null,
+   "provider": "future.detached_trial",
+   "ready_at": null,
+   "repair_depth": 0,
+   "repair_exhausted": false,
+   "repair_reason": null,
+   "repair_root": null,
+   "repairs": null,
+   "requires_quiescence": false,
+   "resource_class": "LIGHT_CONTROL",
+   "role": "science",
+   "running_at": null,
+   "species": "independent_reproduction",
+   "status": "pending",
+   "timeout_s": 248.0,
+   "verification": null,
+   "verifier": "future.detached_trial.real_timeline",
+   "workspace": "repo-root"
+  },
+  "workunit_id": "future.detached_trial.real-timeline"
+ },
+ "safe_in_flight_bound": 2,
+ "scar": {
+  "decisions_before_t_s": 120,
+  "identical_refills": 4,
+  "idle_tail_s": 2864,
+  "receipt": "receipts/future/AUTONOMY_TIMELINE_1h.json",
+  "rejections_in_t7_16": 222,
+  "specimen_verification_ingests": 29
+ },
+ "schema": "hawking.future.detached_trial.v1",
+ "seal_sha256": "e2d10f73cc722f8fb82a83563c951242c07fd78884dc2d5c0cd9e86c50613588",
+ "source_guards": {
+  "module_imports_detached": true,
+  "module_imports_wakeup": true,
+  "run_real_trial_calls_popen": false,
+  "run_real_trial_calls_subprocess_run": false,
+  "run_real_trial_calls_wait_terminal": false
+ },
+ "synthetic": false,
+ "t0_unix": 1788166635.152431,
+ "timeline": [
+  {
+   "kind": "CHILD_LAUNCHED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/child/child.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-child-42d58753",
+    "launch_return_s": 0.06490004097577184,
+    "pid": 94588,
+    "start_new_session": true,
+    "start_token": "1788166635.262977",
+    "supervisor_pid": 94587,
+    "terminal_at_return": null,
+    "unit_id": "WU.DETACHED_TRIAL.child",
+    "work_alive": true
+   },
+   "seq": 0,
+   "t_s": 0.1232290267944336,
+   "t_unix": 1788166635.27566
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0000.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0000-98c85b02",
+    "pid": 94592,
+    "start_token": "1788166635.330866",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0000"
+   },
+   "seq": 1,
+   "t_s": 0.18870306015014648,
+   "t_unix": 1788166635.341135
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0001.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0001-d8db6e70",
+    "pid": 94602,
+    "start_token": "1788166635.397497",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0001"
+   },
+   "seq": 2,
+   "t_s": 0.2591829299926758,
+   "t_unix": 1788166635.411614
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0000",
+     "WU.DETACHED_TRIAL.ind.0001"
+    ]
+   },
+   "seq": 3,
+   "t_s": 0.25919198989868164,
+   "t_unix": 1788166635.411623
+  },
+  {
+   "kind": "CONCURRENCY_BOUND_REFUSED",
+   "payload": {
+    "bound": 2,
+    "in_flight": 2,
+    "live_before": 2,
+    "pid": null,
+    "spawned": false,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0002"
+   },
+   "seq": 4,
+   "t_s": 0.2599780559539795,
+   "t_unix": 1788166635.412409
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0000-98c85b02",
+    "pid": 94592,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0000"
+   },
+   "seq": 5,
+   "t_s": 5.271978139877319,
+   "t_unix": 1788166640.4244092
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0003.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0003-f8c5765d",
+    "pid": 94634,
+    "start_token": "1788166640.481326",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0003"
+   },
+   "seq": 6,
+   "t_s": 5.343070030212402,
+   "t_unix": 1788166640.495501
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0003"
+    ]
+   },
+   "seq": 7,
+   "t_s": 5.343080043792725,
+   "t_unix": 1788166640.495511
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0001-d8db6e70",
+    "pid": 94602,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0001"
+   },
+   "seq": 8,
+   "t_s": 5.365297079086304,
+   "t_unix": 1788166640.517728
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0004.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0004-2a4d3d25",
+    "pid": 94636,
+    "start_token": "1788166640.576185",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0004"
+   },
+   "seq": 9,
+   "t_s": 5.436609983444214,
+   "t_unix": 1788166640.589041
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0004"
+    ]
+   },
+   "seq": 10,
+   "t_s": 5.4366209506988525,
+   "t_unix": 1788166640.589052
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0003-f8c5765d",
+    "pid": 94634,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0003"
+   },
+   "seq": 11,
+   "t_s": 10.441730976104736,
+   "t_unix": 1788166645.594162
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0005.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0005-5f910a2d",
+    "pid": 94667,
+    "start_token": "1788166645.653200",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0005"
+   },
+   "seq": 12,
+   "t_s": 10.521451950073242,
+   "t_unix": 1788166645.673883
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0005"
+    ]
+   },
+   "seq": 13,
+   "t_s": 10.52146291732788,
+   "t_unix": 1788166645.673894
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0004-2a4d3d25",
+    "pid": 94636,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0004"
+   },
+   "seq": 14,
+   "t_s": 10.552162885665894,
+   "t_unix": 1788166645.704594
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0006.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0006-01df59fc",
+    "pid": 94669,
+    "start_token": "1788166645.763130",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0006"
+   },
+   "seq": 15,
+   "t_s": 10.627079010009766,
+   "t_unix": 1788166645.77951
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0006"
+    ]
+   },
+   "seq": 16,
+   "t_s": 10.627089977264404,
+   "t_unix": 1788166645.779521
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0005-5f910a2d",
+    "pid": 94667,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0005"
+   },
+   "seq": 17,
+   "t_s": 15.607670068740845,
+   "t_unix": 1788166650.760101
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0007.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0007-b2c11cca",
+    "pid": 94708,
+    "start_token": "1788166650.818809",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0007"
+   },
+   "seq": 18,
+   "t_s": 15.685765027999878,
+   "t_unix": 1788166650.838196
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0007"
+    ]
+   },
+   "seq": 19,
+   "t_s": 15.685773849487305,
+   "t_unix": 1788166650.8382049
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0006-01df59fc",
+    "pid": 94669,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0006"
+   },
+   "seq": 20,
+   "t_s": 15.722311019897461,
+   "t_unix": 1788166650.874742
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0008.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0008-8e264236",
+    "pid": 94712,
+    "start_token": "1788166650.930340",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0008"
+   },
+   "seq": 21,
+   "t_s": 15.79115605354309,
+   "t_unix": 1788166650.943588
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0008"
+    ]
+   },
+   "seq": 22,
+   "t_s": 15.791166067123413,
+   "t_unix": 1788166650.943597
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0007-b2c11cca",
+    "pid": 94708,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0007"
+   },
+   "seq": 23,
+   "t_s": 20.761131048202515,
+   "t_unix": 1788166655.913562
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0009.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0009-fc7c3cc2",
+    "pid": 94735,
+    "start_token": "1788166655.964926",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0009"
+   },
+   "seq": 24,
+   "t_s": 20.835278034210205,
+   "t_unix": 1788166655.987709
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0009"
+    ]
+   },
+   "seq": 25,
+   "t_s": 20.83528780937195,
+   "t_unix": 1788166655.9877188
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0008-8e264236",
+    "pid": 94712,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0008"
+   },
+   "seq": 26,
+   "t_s": 20.86597990989685,
+   "t_unix": 1788166656.018411
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0010.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0010-9b06e3be",
+    "pid": 94738,
+    "start_token": "1788166656.074249",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0010"
+   },
+   "seq": 27,
+   "t_s": 20.93941903114319,
+   "t_unix": 1788166656.09185
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0010"
+    ]
+   },
+   "seq": 28,
+   "t_s": 20.939430952072144,
+   "t_unix": 1788166656.091862
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0009-fc7c3cc2",
+    "pid": 94735,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0009"
+   },
+   "seq": 29,
+   "t_s": 25.898160934448242,
+   "t_unix": 1788166661.050592
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0011.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0011-5808a6c3",
+    "pid": 94763,
+    "start_token": "1788166661.108854",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0011"
+   },
+   "seq": 30,
+   "t_s": 25.969274044036865,
+   "t_unix": 1788166661.121705
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0011"
+    ]
+   },
+   "seq": 31,
+   "t_s": 25.969282865524292,
+   "t_unix": 1788166661.1217139
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0010-9b06e3be",
+    "pid": 94738,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0010"
+   },
+   "seq": 32,
+   "t_s": 26.027949810028076,
+   "t_unix": 1788166661.1803808
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0012.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0012-23dc1ac3",
+    "pid": 94766,
+    "start_token": "1788166661.237013",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0012"
+   },
+   "seq": 33,
+   "t_s": 26.09666109085083,
+   "t_unix": 1788166661.249092
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0012"
+    ]
+   },
+   "seq": 34,
+   "t_s": 26.096671104431152,
+   "t_unix": 1788166661.249102
+  },
+  {
+   "kind": "CONCURRENCY_BOUND_REFUSED",
+   "payload": {
+    "bound": 2,
+    "in_flight": 2,
+    "live_before": 2,
+    "pid": null,
+    "spawned": false,
+    "unit_id": "WU.DETACHED_TRIAL.ind.0013"
+   },
+   "seq": 35,
+   "t_s": 30.00544500350952,
+   "t_unix": 1788166665.157876
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0011-5808a6c3",
+    "pid": 94763,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0011"
+   },
+   "seq": 36,
+   "t_s": 31.05590581893921,
+   "t_unix": 1788166666.2083368
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0014.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0014-49bed0ae",
+    "pid": 94815,
+    "start_token": "1788166666.268128",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0014"
+   },
+   "seq": 37,
+   "t_s": 31.136656045913696,
+   "t_unix": 1788166666.289087
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0014"
+    ]
+   },
+   "seq": 38,
+   "t_s": 31.136667013168335,
+   "t_unix": 1788166666.289098
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0012-23dc1ac3",
+    "pid": 94766,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0012"
+   },
+   "seq": 39,
+   "t_s": 31.173237085342407,
+   "t_unix": 1788166666.325668
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0015.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0015-d489afea",
+    "pid": 94820,
+    "start_token": "1788166666.384436",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0015"
+   },
+   "seq": 40,
+   "t_s": 31.253922939300537,
+   "t_unix": 1788166666.406354
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0015"
+    ]
+   },
+   "seq": 41,
+   "t_s": 31.25393295288086,
+   "t_unix": 1788166666.406364
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0014-49bed0ae",
+    "pid": 94815,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0014"
+   },
+   "seq": 42,
+   "t_s": 36.22209596633911,
+   "t_unix": 1788166671.374527
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0016.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0016-fba4313d",
+    "pid": 94855,
+    "start_token": "1788166671.433098",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0016"
+   },
+   "seq": 43,
+   "t_s": 36.293575048446655,
+   "t_unix": 1788166671.446006
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0016"
+    ]
+   },
+   "seq": 44,
+   "t_s": 36.29358506202698,
+   "t_unix": 1788166671.446016
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0015-d489afea",
+    "pid": 94820,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0015"
+   },
+   "seq": 45,
+   "t_s": 36.32074189186096,
+   "t_unix": 1788166671.473173
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0017.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0017-607d143d",
+    "pid": 94858,
+    "start_token": "1788166671.530853",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0017"
+   },
+   "seq": 46,
+   "t_s": 36.39935898780823,
+   "t_unix": 1788166671.55179
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0017"
+    ]
+   },
+   "seq": 47,
+   "t_s": 36.39937114715576,
+   "t_unix": 1788166671.5518022
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0016-fba4313d",
+    "pid": 94855,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0016"
+   },
+   "seq": 48,
+   "t_s": 41.385079860687256,
+   "t_unix": 1788166676.5375109
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0018.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0018-1dc6abca",
+    "pid": 94889,
+    "start_token": "1788166676.598299",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0018"
+   },
+   "seq": 49,
+   "t_s": 41.46487307548523,
+   "t_unix": 1788166676.617304
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0018"
+    ]
+   },
+   "seq": 50,
+   "t_s": 41.46488690376282,
+   "t_unix": 1788166676.617318
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0017-607d143d",
+    "pid": 94858,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0017"
+   },
+   "seq": 51,
+   "t_s": 41.49181509017944,
+   "t_unix": 1788166676.644246
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0019.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0019-ac696138",
+    "pid": 94893,
+    "start_token": "1788166676.696534",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0019"
+   },
+   "seq": 52,
+   "t_s": 41.556143045425415,
+   "t_unix": 1788166676.708574
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0019"
+    ]
+   },
+   "seq": 53,
+   "t_s": 41.55615592002869,
+   "t_unix": 1788166676.708587
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0018-1dc6abca",
+    "pid": 94889,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0018"
+   },
+   "seq": 54,
+   "t_s": 46.56701612472534,
+   "t_unix": 1788166681.7194471
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0020.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0020-2b6b9308",
+    "pid": 94935,
+    "start_token": "1788166681.776408",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0020"
+   },
+   "seq": 55,
+   "t_s": 46.63776397705078,
+   "t_unix": 1788166681.790195
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0020"
+    ]
+   },
+   "seq": 56,
+   "t_s": 46.63777494430542,
+   "t_unix": 1788166681.790206
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0019-ac696138",
+    "pid": 94893,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0019"
+   },
+   "seq": 57,
+   "t_s": 46.6588020324707,
+   "t_unix": 1788166681.811233
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0021.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0021-5553dd1b",
+    "pid": 94937,
+    "start_token": "1788166681.869789",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0021"
+   },
+   "seq": 58,
+   "t_s": 46.731204986572266,
+   "t_unix": 1788166681.883636
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0021"
+    ]
+   },
+   "seq": 59,
+   "t_s": 46.731215953826904,
+   "t_unix": 1788166681.883647
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0020-2b6b9308",
+    "pid": 94935,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0020"
+   },
+   "seq": 60,
+   "t_s": 51.70582890510559,
+   "t_unix": 1788166686.85826
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0022.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0022-cfdb4af3",
+    "pid": 94976,
+    "start_token": "1788166686.912812",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0022"
+   },
+   "seq": 61,
+   "t_s": 51.770468950271606,
+   "t_unix": 1788166686.9229
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0022"
+    ]
+   },
+   "seq": 62,
+   "t_s": 51.77048087120056,
+   "t_unix": 1788166686.922912
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0021-5553dd1b",
+    "pid": 94937,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0021"
+   },
+   "seq": 63,
+   "t_s": 51.846006870269775,
+   "t_unix": 1788166686.998438
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0023.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0023-200bff91",
+    "pid": 94978,
+    "start_token": "1788166687.055502",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0023"
+   },
+   "seq": 64,
+   "t_s": 51.91768193244934,
+   "t_unix": 1788166687.070113
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0023"
+    ]
+   },
+   "seq": 65,
+   "t_s": 51.91769504547119,
+   "t_unix": 1788166687.070126
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0022-cfdb4af3",
+    "pid": 94976,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0022"
+   },
+   "seq": 66,
+   "t_s": 56.86441087722778,
+   "t_unix": 1788166692.016842
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0024.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0024-7676b1f6",
+    "pid": 95016,
+    "start_token": "1788166692.074171",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0024"
+   },
+   "seq": 67,
+   "t_s": 56.939574003219604,
+   "t_unix": 1788166692.092005
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0024"
+    ]
+   },
+   "seq": 68,
+   "t_s": 56.93958592414856,
+   "t_unix": 1788166692.092017
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0023-200bff91",
+    "pid": 94978,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0023"
+   },
+   "seq": 69,
+   "t_s": 57.02037477493286,
+   "t_unix": 1788166692.1728058
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0025.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0025-2ec04d2c",
+    "pid": 95020,
+    "start_token": "1788166692.231910",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0025"
+   },
+   "seq": 70,
+   "t_s": 57.0949809551239,
+   "t_unix": 1788166692.247413
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0025"
+    ]
+   },
+   "seq": 71,
+   "t_s": 57.09499192237854,
+   "t_unix": 1788166692.247423
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0024-7676b1f6",
+    "pid": 95016,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0024"
+   },
+   "seq": 72,
+   "t_s": 62.01746106147766,
+   "t_unix": 1788166697.169892
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0026.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0026-b6bb699f",
+    "pid": 95063,
+    "start_token": "1788166697.227289",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0026"
+   },
+   "seq": 73,
+   "t_s": 62.087169885635376,
+   "t_unix": 1788166697.239601
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0026"
+    ]
+   },
+   "seq": 74,
+   "t_s": 62.08718180656433,
+   "t_unix": 1788166697.2396128
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0025-2ec04d2c",
+    "pid": 95020,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0025"
+   },
+   "seq": 75,
+   "t_s": 62.24420785903931,
+   "t_unix": 1788166697.3966389
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0027.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0027-1e5bb04f",
+    "pid": 95065,
+    "start_token": "1788166697.451834",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0027"
+   },
+   "seq": 76,
+   "t_s": 62.31355595588684,
+   "t_unix": 1788166697.465987
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0027"
+    ]
+   },
+   "seq": 77,
+   "t_s": 62.31357502937317,
+   "t_unix": 1788166697.466006
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0026-b6bb699f",
+    "pid": 95063,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0026"
+   },
+   "seq": 78,
+   "t_s": 67.16388010978699,
+   "t_unix": 1788166702.3163111
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0028.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0028-92ed3b37",
+    "pid": 95100,
+    "start_token": "1788166702.372679",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0028"
+   },
+   "seq": 79,
+   "t_s": 67.23515200614929,
+   "t_unix": 1788166702.387583
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0028"
+    ]
+   },
+   "seq": 80,
+   "t_s": 67.23516511917114,
+   "t_unix": 1788166702.3875961
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0027-1e5bb04f",
+    "pid": 95065,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0027"
+   },
+   "seq": 81,
+   "t_s": 67.40242385864258,
+   "t_unix": 1788166702.5548549
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0029.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0029-54f5c46c",
+    "pid": 95105,
+    "start_token": "1788166702.610347",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0029"
+   },
+   "seq": 82,
+   "t_s": 67.4724109172821,
+   "t_unix": 1788166702.624842
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0029"
+    ]
+   },
+   "seq": 83,
+   "t_s": 67.47242403030396,
+   "t_unix": 1788166702.624855
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0028-92ed3b37",
+    "pid": 95100,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0028"
+   },
+   "seq": 84,
+   "t_s": 72.30540299415588,
+   "t_unix": 1788166707.457834
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0030.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0030-ab14d047",
+    "pid": 95151,
+    "start_token": "1788166707.513501",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0030"
+   },
+   "seq": 85,
+   "t_s": 72.381343126297,
+   "t_unix": 1788166707.5337741
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0030"
+    ]
+   },
+   "seq": 86,
+   "t_s": 72.38135409355164,
+   "t_unix": 1788166707.533785
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0029-54f5c46c",
+    "pid": 95105,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0029"
+   },
+   "seq": 87,
+   "t_s": 72.56540608406067,
+   "t_unix": 1788166707.717837
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0031.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0031-c5602329",
+    "pid": 95159,
+    "start_token": "1788166707.774894",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0031"
+   },
+   "seq": 88,
+   "t_s": 72.64538598060608,
+   "t_unix": 1788166707.797817
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0031"
+    ]
+   },
+   "seq": 89,
+   "t_s": 72.64539813995361,
+   "t_unix": 1788166707.7978292
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0030-ab14d047",
+    "pid": 95151,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0030"
+   },
+   "seq": 90,
+   "t_s": 77.4604811668396,
+   "t_unix": 1788166712.6129122
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0032.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0032-5be7fe79",
+    "pid": 95187,
+    "start_token": "1788166712.669144",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0032"
+   },
+   "seq": 91,
+   "t_s": 77.52831602096558,
+   "t_unix": 1788166712.680747
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0032"
+    ]
+   },
+   "seq": 92,
+   "t_s": 77.52833294868469,
+   "t_unix": 1788166712.680764
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0031-c5602329",
+    "pid": 95159,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0031"
+   },
+   "seq": 93,
+   "t_s": 77.79117608070374,
+   "t_unix": 1788166712.943607
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0033.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0033-d0cadec0",
+    "pid": 95190,
+    "start_token": "1788166712.999857",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0033"
+   },
+   "seq": 94,
+   "t_s": 77.86715507507324,
+   "t_unix": 1788166713.019586
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0033"
+    ]
+   },
+   "seq": 95,
+   "t_s": 77.86716818809509,
+   "t_unix": 1788166713.0195992
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0032-5be7fe79",
+    "pid": 95187,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0032"
+   },
+   "seq": 96,
+   "t_s": 82.69311285018921,
+   "t_unix": 1788166717.8455439
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0034.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0034-bcc22a58",
+    "pid": 95225,
+    "start_token": "1788166717.903401",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0034"
+   },
+   "seq": 97,
+   "t_s": 82.76723790168762,
+   "t_unix": 1788166717.919669
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0034"
+    ]
+   },
+   "seq": 98,
+   "t_s": 82.76724910736084,
+   "t_unix": 1788166717.91968
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0033-d0cadec0",
+    "pid": 95190,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0033"
+   },
+   "seq": 99,
+   "t_s": 82.92982196807861,
+   "t_unix": 1788166718.082253
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0035.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0035-e0c7bea0",
+    "pid": 95234,
+    "start_token": "1788166718.138793",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0035"
+   },
+   "seq": 100,
+   "t_s": 83.00497698783875,
+   "t_unix": 1788166718.157408
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0035"
+    ]
+   },
+   "seq": 101,
+   "t_s": 83.0049889087677,
+   "t_unix": 1788166718.15742
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0034-bcc22a58",
+    "pid": 95225,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0034"
+   },
+   "seq": 102,
+   "t_s": 87.88882493972778,
+   "t_unix": 1788166723.041257
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0036.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0036-f76e4f9e",
+    "pid": 95257,
+    "start_token": "1788166723.095892",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0036"
+   },
+   "seq": 103,
+   "t_s": 87.95524907112122,
+   "t_unix": 1788166723.107681
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0036"
+    ]
+   },
+   "seq": 104,
+   "t_s": 87.95526599884033,
+   "t_unix": 1788166723.107697
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0035-e0c7bea0",
+    "pid": 95234,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0035"
+   },
+   "seq": 105,
+   "t_s": 88.08622694015503,
+   "t_unix": 1788166723.238658
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0037.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0037-db9c654d",
+    "pid": 95262,
+    "start_token": "1788166723.295505",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0037"
+   },
+   "seq": 106,
+   "t_s": 88.16656708717346,
+   "t_unix": 1788166723.318998
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0037"
+    ]
+   },
+   "seq": 107,
+   "t_s": 88.16657710075378,
+   "t_unix": 1788166723.319008
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0036-f76e4f9e",
+    "pid": 95257,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0036"
+   },
+   "seq": 108,
+   "t_s": 93.05116891860962,
+   "t_unix": 1788166728.2036
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0038.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0038-d5679ed6",
+    "pid": 95308,
+    "start_token": "1788166728.258645",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0038"
+   },
+   "seq": 109,
+   "t_s": 93.11682796478271,
+   "t_unix": 1788166728.269259
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0038"
+    ]
+   },
+   "seq": 110,
+   "t_s": 93.11683893203735,
+   "t_unix": 1788166728.26927
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0037-db9c654d",
+    "pid": 95262,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0037"
+   },
+   "seq": 111,
+   "t_s": 93.2645971775055,
+   "t_unix": 1788166728.4170282
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0039.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0039-21d6d085",
+    "pid": 95311,
+    "start_token": "1788166728.476099",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0039"
+   },
+   "seq": 112,
+   "t_s": 93.33564615249634,
+   "t_unix": 1788166728.4880772
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0039"
+    ]
+   },
+   "seq": 113,
+   "t_s": 93.3356580734253,
+   "t_unix": 1788166728.488089
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0038-d5679ed6",
+    "pid": 95308,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0038"
+   },
+   "seq": 114,
+   "t_s": 98.21598505973816,
+   "t_unix": 1788166733.368416
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0040.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0040-5308053c",
+    "pid": 95336,
+    "start_token": "1788166733.425604",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0040"
+   },
+   "seq": 115,
+   "t_s": 98.28945994377136,
+   "t_unix": 1788166733.441891
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0040"
+    ]
+   },
+   "seq": 116,
+   "t_s": 98.28947114944458,
+   "t_unix": 1788166733.4419022
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0039-21d6d085",
+    "pid": 95311,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0039"
+   },
+   "seq": 117,
+   "t_s": 98.42575907707214,
+   "t_unix": 1788166733.578191
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0041.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0041-fe06e52c",
+    "pid": 95339,
+    "start_token": "1788166733.631528",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0041"
+   },
+   "seq": 118,
+   "t_s": 98.49379801750183,
+   "t_unix": 1788166733.646229
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0041"
+    ]
+   },
+   "seq": 119,
+   "t_s": 98.49380993843079,
+   "t_unix": 1788166733.646241
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0040-5308053c",
+    "pid": 95336,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0040"
+   },
+   "seq": 120,
+   "t_s": 103.3522310256958,
+   "t_unix": 1788166738.504662
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0042.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0042-76a21218",
+    "pid": 95370,
+    "start_token": "1788166738.561204",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0042"
+   },
+   "seq": 121,
+   "t_s": 103.42798590660095,
+   "t_unix": 1788166738.580417
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0042"
+    ]
+   },
+   "seq": 122,
+   "t_s": 103.42799711227417,
+   "t_unix": 1788166738.5804281
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0041-fe06e52c",
+    "pid": 95339,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0041"
+   },
+   "seq": 123,
+   "t_s": 103.58227205276489,
+   "t_unix": 1788166738.734703
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0043.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0043-4ef4a7a5",
+    "pid": 95373,
+    "start_token": "1788166738.792066",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0043"
+   },
+   "seq": 124,
+   "t_s": 103.65024709701538,
+   "t_unix": 1788166738.802678
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0043"
+    ]
+   },
+   "seq": 125,
+   "t_s": 103.65025806427002,
+   "t_unix": 1788166738.80269
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0042-76a21218",
+    "pid": 95370,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0042"
+   },
+   "seq": 126,
+   "t_s": 108.53823494911194,
+   "t_unix": 1788166743.690666
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0044.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0044-4b744a22",
+    "pid": 95395,
+    "start_token": "1788166743.747710",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0044"
+   },
+   "seq": 127,
+   "t_s": 108.61222696304321,
+   "t_unix": 1788166743.764658
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0044"
+    ]
+   },
+   "seq": 128,
+   "t_s": 108.61223697662354,
+   "t_unix": 1788166743.764668
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0043-4ef4a7a5",
+    "pid": 95373,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0043"
+   },
+   "seq": 129,
+   "t_s": 108.71874284744263,
+   "t_unix": 1788166743.8711739
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0045.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0045-8d401eb1",
+    "pid": 95398,
+    "start_token": "1788166743.925863",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0045"
+   },
+   "seq": 130,
+   "t_s": 108.78637099266052,
+   "t_unix": 1788166743.938802
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0045"
+    ]
+   },
+   "seq": 131,
+   "t_s": 108.78637981414795,
+   "t_unix": 1788166743.9388108
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0044-4b744a22",
+    "pid": 95395,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0044"
+   },
+   "seq": 132,
+   "t_s": 113.68747401237488,
+   "t_unix": 1788166748.839905
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0046.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0046-943d888f",
+    "pid": 95426,
+    "start_token": "1788166748.899407",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0046"
+   },
+   "seq": 133,
+   "t_s": 113.76412510871887,
+   "t_unix": 1788166748.9165561
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0046"
+    ]
+   },
+   "seq": 134,
+   "t_s": 113.76413607597351,
+   "t_unix": 1788166748.916567
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0045-8d401eb1",
+    "pid": 95398,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0045"
+   },
+   "seq": 135,
+   "t_s": 113.86541819572449,
+   "t_unix": 1788166749.0178492
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0047.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0047-b97a6bc8",
+    "pid": 95428,
+    "start_token": "1788166749.071247",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0047"
+   },
+   "seq": 136,
+   "t_s": 113.93351197242737,
+   "t_unix": 1788166749.0859442
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0047"
+    ]
+   },
+   "seq": 137,
+   "t_s": 113.93352198600769,
+   "t_unix": 1788166749.085953
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0046-943d888f",
+    "pid": 95426,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0046"
+   },
+   "seq": 138,
+   "t_s": 118.86316084861755,
+   "t_unix": 1788166754.015593
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0048.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0048-1afe2624",
+    "pid": 95456,
+    "start_token": "1788166754.072019",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0048"
+   },
+   "seq": 139,
+   "t_s": 118.92965793609619,
+   "t_unix": 1788166754.082089
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0048"
+    ]
+   },
+   "seq": 140,
+   "t_s": 118.9296669960022,
+   "t_unix": 1788166754.082098
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0047-b97a6bc8",
+    "pid": 95428,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0047"
+   },
+   "seq": 141,
+   "t_s": 119.01321697235107,
+   "t_unix": 1788166754.165648
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0049.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0049-fcdd09a9",
+    "pid": 95459,
+    "start_token": "1788166754.222108",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0049"
+   },
+   "seq": 142,
+   "t_s": 119.08853101730347,
+   "t_unix": 1788166754.240962
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0049"
+    ]
+   },
+   "seq": 143,
+   "t_s": 119.08854484558105,
+   "t_unix": 1788166754.2409759
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0048-1afe2624",
+    "pid": 95456,
+    "terminal": "completed-with-receipt",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0048"
+   },
+   "seq": 144,
+   "t_s": 124.04865002632141,
+   "t_unix": 1788166759.201081
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0050.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0050-41286599",
+    "pid": 95483,
+    "start_token": "1788166759.255599",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0050"
+   },
+   "seq": 145,
+   "t_s": 124.11978101730347,
+   "t_unix": 1788166759.272212
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0050"
+    ]
+   },
+   "seq": 146,
+   "t_s": 124.1197898387909,
+   "t_unix": 1788166759.2722208
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": true,
+    "job_id": "WU-DETACHED_TRIAL-ind-0049-fcdd09a9",
+    "pid": 95459,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0049"
+   },
+   "seq": 147,
+   "t_s": 124.1768810749054,
+   "t_unix": 1788166759.329312
+  },
+  {
+   "kind": "INDEPENDENT_STARTED",
+   "payload": {
+    "expected_receipt_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/ind/WU.DETACHED_TRIAL.ind.0051.json",
+    "identity_status": "match",
+    "job_id": "WU-DETACHED_TRIAL-ind-0051-0accac50",
+    "pid": 95487,
+    "start_token": "1788166759.385571",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0051"
+   },
+   "seq": 148,
+   "t_s": 124.24358701705933,
+   "t_unix": 1788166759.396018
+  },
+  {
+   "kind": "WORK_REFILLED",
+   "payload": {
+    "novel_vs_prior": true,
+    "queue_depth": 2,
+    "unit_ids": [
+     "WU.DETACHED_TRIAL.ind.0051"
+    ]
+   },
+   "seq": 149,
+   "t_s": 124.24359893798828,
+   "t_unix": 1788166759.39603
+  },
+  {
+   "kind": "CHILD_TERMINAL",
+   "payload": {
+    "job_id": "WU-DETACHED_TRIAL-child-42d58753",
+    "pid": 94588,
+    "returncode": null,
+    "source": "inspect_not_wakeup",
+    "terminal": "unknown"
+   },
+   "seq": 150,
+   "t_s": 128.22780799865723,
+   "t_unix": 1788166763.380239
+  },
+  {
+   "kind": "RECEIPT_WAKEUP",
+   "payload": {
+    "consumers_hit": {
+     "frontier": [
+      "COMPLETED"
+     ],
+     "graph": [
+      "COMPLETED"
+     ],
+     "verifier": [
+      "COMPLETED"
+     ]
+    },
+    "dispatch_at": 1788166763.381366,
+    "event_states": [
+     "COMPLETED"
+    ],
+    "harvest_at": 1788166763.380379,
+    "kqueue_event": {
+     "armed_at": 1788166635.152621,
+     "fflags": 2,
+     "filter": "EVFILT_VNODE",
+     "kind": "kqueue_vnode",
+     "n_kevents": 2,
+     "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/child/child.json",
+     "t_unix": 1788166763.3518589
+    },
+    "kqueue_latency_s": 0.0007779598236083984,
+    "kqueue_t_unix": 1788166763.3518589,
+    "mechanism": "kqueue EVFILT_VNODE",
+    "n_harvest_events": 1,
+    "poll": false,
+    "receipt_mtime": 1788166763.3513443,
+    "receipt_written_at": 1788166763.351081,
+    "supervisor_reaction_latency_s": 0.030285120010375977,
+    "wait_terminal": false
+   },
+   "seq": 151,
+   "t_s": 128.22894406318665,
+   "t_unix": 1788166763.381375
+  },
+  {
+   "kind": "NEXT_DECISION",
+   "payload": {
+    "action": "ingest_detached_result_and_continue_independent_work",
+    "child_job_id": "WU-DETACHED_TRIAL-child-42d58753",
+    "n_independent_live": 2,
+    "wakeup_mechanism": "kqueue EVFILT_VNODE"
+   },
+   "seq": 152,
+   "t_s": 128.2289559841156,
+   "t_unix": 1788166763.381387
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": false,
+    "job_id": "WU-DETACHED_TRIAL-ind-0050-41286599",
+    "pid": 95483,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0050"
+   },
+   "seq": 153,
+   "t_s": 129.20913004875183,
+   "t_unix": 1788166764.361561
+  },
+  {
+   "kind": "INDEPENDENT_COMPLETED",
+   "payload": {
+    "child_still_running": false,
+    "job_id": "WU-DETACHED_TRIAL-ind-0051-0accac50",
+    "pid": 95487,
+    "terminal": "unknown",
+    "unit_id": "WU.DETACHED_TRIAL.ind.0051"
+   },
+   "seq": 154,
+   "t_s": 129.32797598838806,
+   "t_unix": 1788166764.480407
+  }
+ ],
+ "unmet": [],
+ "verdict": "PASS",
+ "version": 1,
+ "wakeup": {
+  "consumers_hit": {
+   "frontier": [
+    "COMPLETED"
+   ],
+   "graph": [
+    "COMPLETED"
+   ],
+   "verifier": [
+    "COMPLETED"
+   ]
+  },
+  "dispatch": [
+   {
+    "consumer_errors": [],
+    "consumers_invoked": [
+     "verifier",
+     "graph",
+     "frontier"
+    ],
+    "consumers_missing": [],
+    "duplicate": false,
+    "event_id": "b50d8a67e1b9d9bf803e4f1eeefa871d0bd7ef209b49bf1e179650dc64f98831",
+    "refused_unblocked": [],
+    "state": "COMPLETED",
+    "unblocked": [
+     "WU.DETACHED_TRIAL.next"
+    ],
+    "unit_id": "WU.DETACHED_TRIAL.child"
+   }
+  ],
+  "dispatch_at": 1788166763.381366,
+  "harvest_at": 1788166763.380379,
+  "kqueue_event": {
+   "armed_at": 1788166635.152621,
+   "fflags": 2,
+   "filter": "EVFILT_VNODE",
+   "kind": "kqueue_vnode",
+   "n_kevents": 2,
+   "path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/hawking-detached-trial-92uc5lvp/results/child/child.json",
+   "t_unix": 1788166763.3518589
+  },
+  "kqueue_latency_s": 0.0007779598236083984,
+  "kqueue_t_unix": 1788166763.3518589,
+  "mechanism": "kqueue EVFILT_VNODE",
+  "n_harvest_events": 1,
+  "poll": false,
+  "receipt_mtime": 1788166763.3513443,
+  "receipt_written_at": 1788166763.351081,
+  "supervisor_reaction_latency_s": 0.030285120010375977,
+  "wait_terminal": false
+ }
+}

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T08:51:01Z",
+  "recorded_at": "2026-08-31T08:55:57Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -867,10 +867,10 @@
      "GENERIC_FROM_RECEIPT": false,
      "GENERIC_NR_NX_PIPELINE_CALLABLE": false,
      "first_failing_stage": {
-      "error": "no_entry_point",
-      "stage": "DeviceCompiler",
+      "error": "no_generic_packer",
+      "stage": "NoeticExecutable",
       "status": "BLOCKED",
-      "why": "no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan"
+      "why": "the only packed-NX producer in git is tools/headless/first_noetic_executable.py, which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen (Qwen--Qwen3-0.6B@c1899de289a0). DeviceCompiler handed an NX fragment with 6 compiled organ(s) and 0 still NATIVE_UNMEASURED; there is still no generic packer that can emit a source-independent packed NX from that fragment. No packed NX was minted here: a renamed source pointer is not an NX"
      },
      "flash_why": "FLASH_COMPLETE_V0.nx status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION'; check_nx.promotable=False",
      "import_ok": true,
@@ -905,7 +905,7 @@
     },
     "resident_operational": false
    },
-   "reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage=\"DeviceCompiler: no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan\". invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path."
+   "reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage='NoeticExecutable: the only packed-NX producer in git is tools/headless/first_noetic_executable.py, which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen (Qwen--Qwen3-0.6B@c1899de289a0). DeviceCompiler handed an NX fragment with 6 compiled organ(s) and 0 still NATIVE_UNMEASURED; there is still no generic packer that can emit a source-independent packed NX from that fragment. No packed NX was minted here: a renamed source pointer is not an NX'. invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path."
   },
   {
    "evidence": [
@@ -1268,7 +1268,7 @@
   {
    "evidence": [
     {
-     "n_json": 179,
+     "n_json": 181,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
@@ -1291,7 +1291,7 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=179 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=181 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2043,7 +2043,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "71e1869098a2258fe459b39d160c3add6f9cfeb5",
+ "head": "2d93a4bf8cbe65bd370f12293a7ca0ffe50f36c9",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -3707,7 +3707,7 @@
     "after_met": false,
     "before_met": false,
     "id": "nr_nx_path_callable",
-    "live_reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage=\"DeviceCompiler: no DeviceCompiler callable exists in tools/odyssey or hcli. noetic_compiler.BLOCKED['DeviceCompiler'] is a hardcoded note for the Qwen3-30B-A3B pipeline, not a drive of this specimen. Native GGUF match arms are ['llama', 'llama', 'llama2', 'llama3', 'llama3.1', 'llama3.2', 'mistral', 'deepseek2', 'deepseek-v2', 'deepseek2-lite', 'qwen2', 'qwen2.5', 'qwen', 'qwen2moe', 'qwen3moe', 'qwen-moe', 'rwkv7', 'rwkv-7']; qwen3 dense is absent (qwen3moe is a different family). adapted family='dense_swiglu_transformer'. KernelPlanner handed a PLAN-THEN-COMPILE plan covering 6 organ(s) (compiled=0, native_unmeasured=6); there is still no compiler that can lower that plan\". invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path.",
+    "live_reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage='NoeticExecutable: the only packed-NX producer in git is tools/headless/first_noetic_executable.py, which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen (Qwen--Qwen3-0.6B@c1899de289a0). DeviceCompiler handed an NX fragment with 6 compiled organ(s) and 0 still NATIVE_UNMEASURED; there is still no generic packer that can emit a source-independent packed NX from that fragment. No packed NX was minted here: a renamed source pointer is not an NX'. invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path.",
     "why": "now reads nr_nx_generic GENERIC_NR_NX_PIPELINE_CALLABLE; used to key on FLASH_NX_COMPLETENESS_AUDIT / Flash NX metadata"
    },
    {
@@ -3772,7 +3772,7 @@
   ]
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "c941cfd2497aa6ae6096575960238dbc74faede971c62b573d23318362bd62da",
+ "seal_sha256": "083813ed1712a7a1305a2ff017985a76cc0a97764ef3f063510c5814dc3e44ef",
  "sleeping_workunits": [
   {
    "assigned_backend": null,

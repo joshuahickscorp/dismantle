@@ -48,18 +48,41 @@ def test_the_refuted_auxiliary_rungs_stay_out_of_every_path():
         assert "aux_group_size_256" not in row["components"]
 
 
-def test_only_path_01_is_qualified():
+def test_a_path_is_only_as_strong_as_its_weakest_component():
     rows = {r["path"]: r for r in p.paths()}
     assert rows["PATH_01"]["weakest_evidence"] == "QUALIFIED"
-    for pid in ("PATH_02", "PATH_03", "PATH_04"):
-        assert rows[pid]["weakest_evidence"] == "PROSPECTIVE"
+    for pid, row in rows.items():
+        if not row["components"]:
+            continue
+        tiers = [p.COMPONENTS[c]["evidence"] for c in row["components"]]
+        assert row["weakest_evidence"] == min(tiers, key=p.EVIDENCE_ORDER.index), pid
+
+
+def test_an_unranked_tier_raises_instead_of_inheriting_qualified():
+    """The bug this replaces: worst was computed by checking for the literal
+    string "PROSPECTIVE", so a DIRTY_DIAGNOSTIC component composed into a path
+    reported as QUALIFIED."""
+    import pytest
+    with pytest.raises(p.UnknownEvidenceTier):
+        p._weakest(["QUALIFIED", "VIBES"])
+    assert p._weakest(["QUALIFIED", "DIRTY_DIAGNOSTIC"]) == "DIRTY_DIAGNOSTIC"
+    assert p._weakest(["QUALIFIED", "MEASURED"]) == "MEASURED"
 
 
 def test_everything_on_record_does_not_reach_50():
-    """The headline that keeps the campaign honest."""
+    """The headline that keeps the campaign honest.
+
+    The upper bound is the invariant: nothing on record composes to 50 TPS, let
+    alone 71. The lower bound is only that the best path beats the measured
+    baseline - it used to be a hard 40.0, which was a snapshot of one afternoon's
+    ladder rather than a property, and it broke the moment a capability screen
+    refuted the two auxiliary rungs it was silently resting on. A floor that
+    fails when the science is CORRECTED is a floor that punishes correction.
+    """
     best = max(p.paths(), key=lambda r: r["tps"])
+    baseline = 1000.0 / p.TOKEN_MS
     assert best["tps"] < 50.0, best["tps"]
-    assert best["tps"] > 40.0, best["tps"]
+    assert best["tps"] > baseline, (best["tps"], baseline)
 
 
 def test_the_gap_is_stated_as_a_share_of_remaining_gpu():

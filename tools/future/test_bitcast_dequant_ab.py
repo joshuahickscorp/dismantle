@@ -97,8 +97,8 @@ def test_the_complete_token_crosses_forty_and_says_what_remains():
 def test_the_window_is_declared_contaminated_and_the_absolute_is_not_claimed():
     b = ab.claim_boundary()
     assert b["evidence_class"] == "DIAGNOSTIC_RELATIVE"
-    assert "NOT protected" in b["what_is_not"]
-    assert "not a promotable token time" in b["what_is_not"]
+    assert "had a protected window" in b["what_is_not"]
+    assert "no single absolute here is promotable" in b["what_is_not"]
     assert "resident_reprofile.py" in b["what_would_promote_it"]
 
 
@@ -114,3 +114,37 @@ def test_the_default_is_unchanged():
     """A lever that changes production by existing is not a lever."""
     assert ab.build()["default_is_unchanged"] is True
     assert "HAWKING_AFFINE2_GEO=bitcast" in ab.build()["lever"]
+
+
+def test_two_independent_windows_agree_on_the_ratio():
+    r = ab.independent_runs()
+    assert len(r["runs"]) == 2
+    assert r["gpu_speedup_spread"] < 0.01, \
+        "the ratio must be stable across contention windows or it is not a ratio"
+    lo, hi = r["bitcast_wall_tps_range"]
+    assert lo > 40.0, "both windows cross the 40 TPS checkpoint"
+    assert "measured here rather than assumed" in r["reading"]
+
+
+def test_a_token_divergence_in_the_second_run_also_refuses(monkeypatch):
+    d = json.loads((ab.REPO / ab.CTRL2_REL).read_text())
+    d["decode"][ab.LIVE_ARM]["new_token_ids"] = [9, 9]
+    real = ab._raw
+    monkeypatch.setattr(ab, "_raw",
+                        lambda rel: d if rel == ab.CTRL2_REL else real(rel))
+    with pytest.raises(ab.AbRefused, match="run_2: the arms produced different"):
+        ab.independent_runs()
+
+
+def test_the_isolated_projection_understated_the_graph_and_says_so():
+    p = ab.projection_vs_graph()
+    assert p["graph_over_prediction"] > 1.0
+    assert p["measured_ms_saved_in_the_graph"] > p["predicted_ms_saved"]
+    assert "LOWER bound" in p["reading"]
+    assert "Two observations are not a law" in p["do_not_invert_this"]
+
+
+def test_the_absolute_is_reported_as_a_range_not_a_number():
+    b = ab.claim_boundary()
+    assert "RESPAWNED them" in b["what_is_not"]
+    assert "a range, not a number" in b["what_is_not"]

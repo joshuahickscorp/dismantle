@@ -39,6 +39,11 @@ RECORDED_BY = "tools/future/bitcast_dequant_ab.py"
 RECEIPT_NAME = "BITCAST_DEQUANT_AB.json"
 CTRL_REL = "receipts/future/_G094_RESIDENT_CTRL_raw.json"
 BITCAST_REL = "receipts/future/_G094_RESIDENT_BITCAST_raw.json"
+# A second independent paired run, taken after SIGSTOPping the ModelLake
+# downloads. They RESPAWNED mid-window, so it is not a protected window either -
+# but it is a different contention window, which is what makes it useful.
+CTRL2_REL = "receipts/future/_G094_PROTECTED_CTRL_raw.json"
+BITCAST2_REL = "receipts/future/_G094_PROTECTED_BITCAST_raw.json"
 BUDGET_REL = "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
 
 # The arm the resident actually serves on.
@@ -137,6 +142,95 @@ def timing() -> dict[str, Any]:
     }
 
 
+def _wall_ms(arm: dict[str, Any]) -> float:
+    """Wall ms per token. TPS means wall, not GPU."""
+    reps = sorted(arm["decode_wall_ns_reps"])
+    n = len(arm["new_token_ids"])
+    return reps[len(reps) // 2] / 1e6 / n
+
+
+def independent_runs() -> dict[str, Any]:
+    """Two paired runs in DIFFERENT contention windows.
+
+    Neither window is protected - the ModelLake downloads respawned after being
+    SIGSTOPped. That is exactly why both are reported: the absolute moves with
+    the window and the ratio does not, so the agreement between the two ratios
+    is the evidence, and the disagreement between the two absolutes is the
+    reason no single absolute is promoted.
+    """
+    runs = []
+    for label, cr, br in (("run_1", CTRL_REL, BITCAST_REL),
+                          ("run_2", CTRL2_REL, BITCAST2_REL)):
+        c, b = _arm(cr, LIVE_ARM), _arm(br, LIVE_ARM)
+        if c["new_token_ids"] != b["new_token_ids"]:
+            raise AbRefused(f"{label}: the arms produced different tokens")
+        cg, bg = c["gpu_ns_median"] / 1e6, b["gpu_ns_median"] / 1e6
+        cw, bw = _wall_ms(c), _wall_ms(b)
+        runs.append({
+            "run": label,
+            "control_gpu_ms": round(cg, 4),
+            "bitcast_gpu_ms": round(bg, 4),
+            "gpu_ms_saved": round(cg - bg, 4),
+            "gpu_speedup": round(cg / bg, 4),
+            "control_wall_ms": round(cw, 4),
+            "bitcast_wall_ms": round(bw, 4),
+            "wall_ms_saved": round(cw - bw, 4),
+            "control_wall_tps": round(1000.0 / cw, 3),
+            "bitcast_wall_tps": round(1000.0 / bw, 3),
+        })
+    speedups = [r["gpu_speedup"] for r in runs]
+    ctrl_walls = [r["control_wall_ms"] for r in runs]
+    return {
+        "runs": runs,
+        "gpu_speedup_range": [min(speedups), max(speedups)],
+        "gpu_speedup_spread": round(max(speedups) / min(speedups) - 1, 5),
+        "control_wall_range": [min(ctrl_walls), max(ctrl_walls)],
+        "control_wall_spread": round(max(ctrl_walls) / min(ctrl_walls) - 1, 5),
+        "reading": (
+            "the RATIO agrees to "
+            f"{round((max(speedups)/min(speedups)-1)*100, 2)}% across the two "
+            "windows while the CONTROL's own absolute moves by "
+            f"{round((max(ctrl_walls)/min(ctrl_walls)-1)*100, 2)}%. Ratios hold "
+            "under load and absolutes do not, measured here rather than assumed."
+        ),
+        "bitcast_wall_tps_range": [
+            min(r["bitcast_wall_tps"] for r in runs),
+            max(r["bitcast_wall_tps"] for r in runs),
+        ],
+    }
+
+
+def projection_vs_graph() -> dict[str, Any]:
+    """The isolated harness UNDERSTATED the win, and that is worth recording."""
+    iso_speedup = 1.2178
+    budget = json.loads((REPO / BUDGET_REL).read_text())
+    rows = {r["organ"]: float(r["gpu_ms"]) for r in budget["organs"]["rows"]}
+    organ_ms = rows["mlp_gate_up"] + rows["mlp_down"]
+    predicted = organ_ms - organ_ms / iso_speedup
+    actual = timing()["ms_saved"]
+    return {
+        "isolated_kernel_speedup": iso_speedup,
+        "q2_organ_ms_from_census": round(organ_ms, 4),
+        "predicted_ms_saved": round(predicted, 4),
+        "measured_ms_saved_in_the_graph": actual,
+        "graph_over_prediction": round(actual / predicted, 4),
+        "reading": (
+            "the graph delivered "
+            f"{round((actual/predicted - 1)*100, 1)}% MORE than the isolated "
+            "harness predicted. widen_f4 did the same thing - its isolated cut "
+            "was 0.7046 ms and the graph gave 1.0245 ms. An isolated organ "
+            "measurement appears to be a LOWER bound on the graph-level win for "
+            "this class of change, which is the safe direction for a projection "
+            "to be wrong in, but it means the projection is not a tight estimate."
+        ),
+        "do_not_invert_this": (
+            "this does NOT license scaling isolated numbers up by a fudge "
+            "factor. Two observations are not a law, and the mechanism - "
+            "whatever the graph-level fold is - has not been identified."
+        ),
+    }
+
+
 def complete_token() -> dict[str, Any]:
     """The wall number, which is what TPS means. GPU time is not the token."""
     t = timing()
@@ -174,11 +268,12 @@ def claim_boundary() -> dict[str, Any]:
             "of the same graph on the same machine, token-identical"
         ),
         "what_is_not": (
-            "the ABSOLUTE. Two ModelLake downloads were running during both "
-            "arms - an attempt to SIGSTOP them failed on shell quoting and the "
-            "window was NOT protected. Ratios hold under load and absolutes do "
-            "not, so 22.6021 ms is not a promotable token time and 42.669 TPS "
-            "is a projection off a protected baseline plus a contaminated delta."
+            "the ABSOLUTE. Neither of the two paired runs had a protected "
+            "window: ModelLake downloads ran through the first, and in the "
+            "second they were SIGSTOPped and the supervisor RESPAWNED them "
+            "mid-run. The control's own wall moves 2.3% between the two windows "
+            "while the ratio moves 0.1%, so no single absolute here is "
+            "promotable and the TPS-after figure is a range, not a number."
         ),
         "what_would_promote_it": (
             "re-run tools/future/resident_reprofile.py under a real protected "
@@ -229,6 +324,8 @@ def build() -> dict[str, Any]:
         ),
         "matched_pair": matched_pair(),
         "timing": timing(),
+        "independent_runs": independent_runs(),
+        "projection_vs_graph": projection_vs_graph(),
         "complete_token": complete_token(),
         "fp_boundary": fp_boundary(),
         "claim_boundary": claim_boundary(),

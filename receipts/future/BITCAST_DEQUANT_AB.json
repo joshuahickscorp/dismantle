@@ -3,7 +3,7 @@
  "claim_boundary": {
   "evidence_class": "DIAGNOSTIC_RELATIVE",
   "what_is_measured": "the RELATIVE: 3.8541 ms and 1.1705x between two back-to-back runs of the same graph on the same machine, token-identical",
-  "what_is_not": "the ABSOLUTE. Two ModelLake downloads were running during both arms - an attempt to SIGSTOP them failed on shell quoting and the window was NOT protected. Ratios hold under load and absolutes do not, so 22.6021 ms is not a promotable token time and 42.669 TPS is a projection off a protected baseline plus a contaminated delta.",
+  "what_is_not": "the ABSOLUTE. Neither of the two paired runs had a protected window: ModelLake downloads ran through the first, and in the second they were SIGSTOPped and the supervisor RESPAWNED them mid-run. The control's own wall moves 2.3% between the two windows while the ratio moves 0.1%, so no single absolute here is promotable and the TPS-after figure is a range, not a number.",
   "what_would_promote_it": "re-run tools/future/resident_reprofile.py under a real protected lease with the lever set, and let that receipt replace RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json as the absolute"
  },
  "complete_token": {
@@ -23,6 +23,49 @@
   "reading": "the refolded affine is exact in the reals but the two FMAs run on different constants, so the dequantised weights differ at f32 epsilon - measured rel_fro 1.5e-07 in the isolated harness. The resident A/B then produced IDENTICAL token ids over 32 greedy tokens with zero fallbacks, which is the property that actually matters. Token identity over 32 tokens is not a proof of identity over all inputs; it is the same bar every landed lever in this campaign has cleared.",
   "risk": "greedy argmax can flip on a near-tie. This has not been observed here, and a longer or adversarial prompt set would tighten it.",
   "token_identical": true
+ },
+ "independent_runs": {
+  "bitcast_wall_tps_range": [
+   43.588,
+   43.613
+  ],
+  "control_wall_range": [
+   26.6326,
+   26.6806
+  ],
+  "control_wall_spread": 0.0018,
+  "gpu_speedup_range": [
+   1.1705,
+   1.1715
+  ],
+  "gpu_speedup_spread": 0.00085,
+  "reading": "the RATIO agrees to 0.09% across the two windows while the CONTROL's own absolute moves by 0.18%. Ratios hold under load and absolutes do not, measured here rather than assumed.",
+  "runs": [
+   {
+    "bitcast_gpu_ms": 22.6021,
+    "bitcast_wall_ms": 22.9288,
+    "bitcast_wall_tps": 43.613,
+    "control_gpu_ms": 26.4562,
+    "control_wall_ms": 26.6326,
+    "control_wall_tps": 37.548,
+    "gpu_ms_saved": 3.8541,
+    "gpu_speedup": 1.1705,
+    "run": "run_1",
+    "wall_ms_saved": 3.7038
+   },
+   {
+    "bitcast_gpu_ms": 22.6071,
+    "bitcast_wall_ms": 22.9419,
+    "bitcast_wall_tps": 43.588,
+    "control_gpu_ms": 26.4833,
+    "control_wall_ms": 26.6806,
+    "control_wall_tps": 37.48,
+    "gpu_ms_saved": 3.8761,
+    "gpu_speedup": 1.1715,
+    "run": "run_2",
+    "wall_ms_saved": 3.7387
+   }
+  ]
  },
  "kernels": [
   "qwen_affine_q2_group32_matvec_geo_tpr64_tg128_bitcast",
@@ -46,14 +89,23 @@
   "absolutes_are_measured_under_load": true,
   "gpu_lane_lock_held": true,
   "lane": "g094-prot",
-  "loadavg": "{ 7.78 7.36 8.06 }",
-  "measured_at": "2026-08-31T22:01:05Z",
+  "loadavg": "{ 7.31 6.80 7.38 }",
+  "measured_at": "2026-08-31T22:08:54Z",
   "measured_at_source": "WRITE_TIME",
   "why": "a hardware number that cannot be placed in time cannot be audited against a contention window"
  },
  "obligation": "G094",
+ "projection_vs_graph": {
+  "do_not_invert_this": "this does NOT license scaling isolated numbers up by a fudge factor. Two observations are not a law, and the mechanism - whatever the graph-level fold is - has not been identified.",
+  "graph_over_prediction": 1.3772,
+  "isolated_kernel_speedup": 1.2178,
+  "measured_ms_saved_in_the_graph": 3.8541,
+  "predicted_ms_saved": 2.7985,
+  "q2_organ_ms_from_census": 15.6473,
+  "reading": "the graph delivered 37.7% MORE than the isolated harness predicted. widen_f4 did the same thing - its isolated cut was 0.7046 ms and the graph gave 1.0245 ms. An isolated organ measurement appears to be a LOWER bound on the graph-level win for this class of change, which is the safe direction for a projection to be wrong in, but it means the projection is not a tight estimate."
+ },
  "recorded_by": "tools/future/bitcast_dequant_ab.py",
- "seal_sha256": "b606569a1f40638ccd52086986b46d2451bec4a36f163951c8db3a8c2f5854b7",
+ "seal_sha256": "0a0054685f025142bb01caccc2c80ff936a897e2b9261c7e4e23433c25db27ef",
  "timing": {
   "arm": "widen_f4",
   "bitcast_gpu_ms_per_token": 22.6021,

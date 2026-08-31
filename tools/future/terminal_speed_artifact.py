@@ -73,8 +73,12 @@ PREREQUISITES: tuple[dict[str, Any], ...] = (
     },
     {
         "id": "G044_granularity_falsifier",
-        "receipt": "receipts/future/MLP_GRANULARITY_FALSIFIER.json",
-        "field": ["fused_region_gb_s"],
+        # The receipt is MLP_REGION_FALSIFIER, not MLP_GRANULARITY_FALSIFIER. A
+        # prerequisite pointing at a filename that will never exist is a permanent
+        # false blocker - it would have held the terminal artifact shut forever on
+        # a measurement that had already landed.
+        "receipt": "receipts/future/MLP_REGION_FALSIFIER.json",
+        "field": ["contiguous", "effective_gb_s"],
         "why": (
             "One representative MLP layer, contiguous, few fused regions, "
             "identical arithmetic, bit-identical output. Rising toward the LM "

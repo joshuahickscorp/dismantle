@@ -1,0 +1,131 @@
+{
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-08-31T18:55:07Z",
+  "recorded_by": "tools/future/multistream_capacity_tree.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Static sidecar artifact. No hardware measurement. Every class carries a discriminator written BEFORE any of them run, and the one KILLED class names the landed receipt that killed it. Maximum payoffs are None because none has been bounded yet, and a null is honest where a number would be invented.",
+ "classes": [
+  {
+   "cheapest_discriminator": "build the single-token dependency DAG and count edges that are NOT true data dependencies; any artificial barrier is schedulable slack",
+   "claim": "the executor orders independent work serially, so one stream under-fills the machine that two streams fill",
+   "id": "H_artificial_executor_serialization",
+   "killed_by": "receipts/future/SINGLE_TOKEN_PARALLEL_SLACK.json: 11 edges, 11 true dependencies, 0 artificial barriers, 0 unknown, theoretically_overlapable_ns = 0. gate/up/swiglu, q/k/v, residual/rmsnorm and ba_to_decay are ALREADY fused, so the reorderable slack was taken, not left.",
+   "kills_if": "every edge in the token is a true data dependency and the independent operations are already fused",
+   "max_payoff_ms": null,
+   "reopens_if": "a representation change creates new independence, or a region is found that the DAG did not model",
+   "status": "KILLED"
+  },
+  {
+   "cheapest_discriminator": "sweep threadgroup size and grid on ONE production matvec at fixed bytes and fixed arithmetic; if effective GB/s rises with occupancy alone the class is live",
+   "claim": "the decode kernels launch too little parallel work to keep the memory system busy; a second stream supplies the missing waves",
+   "id": "B_occupancy_too_few_active_threads",
+   "killed_by": null,
+   "kills_if": "GB/s is flat across a real occupancy sweep at identical bytes",
+   "max_payoff_ms": null,
+   "reopens_if": "a kernel is changed in a way that alters its register or threadgroup footprint",
+   "status": "OPEN"
+  },
+  {
+   "cheapest_discriminator": "unroll the per-thread load stride on one matvec so each thread issues N independent loads before consuming any; bytes and arithmetic identical, output bit-identical",
+   "claim": "each thread has too few independent loads in flight, so latency is exposed rather than hidden; independent streams interleave",
+   "id": "E_memory_level_parallelism",
+   "killed_by": null,
+   "kills_if": "deeper per-thread load pipelining does not move GB/s",
+   "max_payoff_ms": null,
+   "reopens_if": "the representation changes the access pattern",
+   "status": "OPEN"
+  },
+  {
+   "cheapest_discriminator": "the matched ARM A pair already built: bytes identical, arithmetic stripped. If stripping arithmetic moves the time, the chain is arithmetic-bound",
+   "claim": "the decode inner loop is a serial FMA/decode chain, so ALU latency rather than memory is the stall",
+   "id": "D_instruction_dependency_chain",
+   "killed_by": null,
+   "kills_if": "ARM A (arithmetic stripped, bytes identical) does not move meaningfully faster than production",
+   "max_payoff_ms": null,
+   "reopens_if": "a representation with a longer decode chain is proposed",
+   "status": "OPEN"
+  },
+  {
+   "cheapest_discriminator": "read the compiled pipeline's register footprint and max threads per threadgroup from the Metal reflection, then compare against the occupancy sweep in class B",
+   "claim": "register pressure caps resident waves per core below what the memory system needs",
+   "id": "C_register_limited_occupancy",
+   "killed_by": null,
+   "kills_if": "the achieved threadgroup size is already at the device maximum and occupancy is not the binding term",
+   "max_payoff_ms": null,
+   "reopens_if": "a kernel rewrite changes the register footprint",
+   "status": "OPEN"
+  },
+  {
+   "cheapest_discriminator": "vary only the per-launch working-set size at constant bytes and constant arithmetic and look for a knee",
+   "claim": "one stream's working set thrashes a level that two interleaved streams happen to use better",
+   "id": "F_cache_behaviour",
+   "killed_by": null,
+   "kills_if": "no knee appears across a working-set sweep spanning the plausible cache sizes",
+   "max_payoff_ms": null,
+   "reopens_if": "a layout change alters locality",
+   "status": "OPEN"
+  },
+  {
+   "cheapest_discriminator": "the same token issued across two command queues versus one, identical kernels and identical order, token output bit-identical",
+   "claim": "one command queue or one encoder serialises submission in a way two processes escape",
+   "id": "G_command_scheduling_topology",
+   "killed_by": null,
+   "kills_if": "multiple queues do not change GPU time for identical work",
+   "max_payoff_ms": null,
+   "reopens_if": "the driver or OS scheduler changes",
+   "status": "OPEN"
+  },
+  {
+   "cheapest_discriminator": "run the SAME kernel at batch>1 on synthetic input and compare GB/s per byte moved against the batch-1 rate",
+   "claim": "the decode shapes (batch 1, one row block) leave the kernel's own tiling underfilled regardless of occupancy",
+   "id": "I_kernel_shape_underfill",
+   "killed_by": null,
+   "kills_if": "per-byte rate is flat from batch 1 upward",
+   "max_payoff_ms": null,
+   "reopens_if": "a batched or speculative decode path is adopted",
+   "status": "OPEN"
+  },
+  {
+   "cheapest_discriminator": "this class exists to be SPLIT, not tested: it is the parent of B, C, D, E and F and must be replaced by one of them before any payoff is claimed",
+   "claim": "something is exposing latency that a second stream hides, without yet saying which latency",
+   "id": "A_latency_hiding_generic",
+   "killed_by": null,
+   "kills_if": "one of its children is confirmed, which makes the parent redundant rather than false",
+   "max_payoff_ms": null,
+   "reopens_if": "every child is killed and the effect survives",
+   "status": "OPEN"
+  }
+ ],
+ "evidence_class": "STATIC_ONLY",
+ "gpu_authority": false,
+ "schema": "hawking.future.multistream_capacity_tree.v1",
+ "seal_sha256": "7ba59f8d78a5a98a19a3c5e9762dbb8be72095a2a3123f5a8af9ed0054c21e8c",
+ "summary": {
+  "do_not_call_it_serial_dependency": "concurrency helping is the OBSERVATION, not the cause. Class H - the one that would have made 'serial dependency' literally true at the dispatch grain - is the one class already dead. What remains is inside the kernels, and naming it before measuring would be the error this tree exists to prevent.",
+  "killed": [
+   "H_artificial_executor_serialization"
+  ],
+  "n_classes": 9,
+  "n_killed": 1,
+  "n_open": 8,
+  "next_cheapest": [
+   "B_occupancy_too_few_active_threads",
+   "E_memory_level_parallelism",
+   "D_instruction_dependency_chain"
+  ],
+  "the_effect_being_explained": {
+   "gb_s_by_level": {
+    "1": 361.9,
+    "2": 454.8,
+    "3": 453.2
+   },
+   "verdict": "CONCURRENCY_HELPS"
+  }
+ },
+ "version": 1
+}

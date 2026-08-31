@@ -1,9 +1,8 @@
 """Pins for tools/future/executable_economics.py.
 
-A ratio without bytes_added is not a candidate. A 100% MLP-byte removal
-that also adds 100 extra FLOPs per output element is scored on both
-terms, not on bytes alone. The S020 §20 bar is 1% of complete token
-time, or a reusable family, or a high-information falsifier.
+A ratio without bytes_added is not a candidate. A candidate without a
+declared stream class is not a candidate. Unique aux bytes are not billed
+at the organ average.
 """
 from __future__ import annotations
 
@@ -30,17 +29,38 @@ def test_bytes_removed_without_bytes_added_is_refused():
         ee.score(bytes_removed=0)
 
 
+def test_undeclared_stream_class_is_refused():
+    """Defaulting to the organ average is how the aux-u8 overcredit hid."""
+    with pytest.raises(ee.IncompleteEconomics, match="stream_class"):
+        ee.score(bytes_removed=1_000_000, bytes_added=0, organ="mlp")
+    with pytest.raises(ee.IncompleteEconomics, match="organ average"):
+        ee.score(
+            bytes_removed=534_773_760,
+            bytes_added=0,
+            organ="mlp",
+            consuming_primitive="FusedDecodeCompute",
+        )
+    with pytest.raises(ee.EconomicsRefuse, match="unknown stream_class"):
+        ee.score(
+            bytes_removed=1_000,
+            bytes_added=0,
+            stream_class="organ_average",
+        )
+
+
 def test_explicit_zero_bytes_added_is_a_complete_claim():
     row = ee.score(
         bytes_removed=1_000_000,
         bytes_added=0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     assert row["ok"] is True
     assert row["bytes_added_supplied"] is True
     assert row["bytes_added"]["total"] == 0
     assert row["bytes_removed"] == 1_000_000
+    assert row["stream_class"] == ee.STREAM_CLASS_WEIGHT_CODES
     assert row["terms"]["byte_ms_delta"] < 0.0
 
 
@@ -54,6 +74,9 @@ def test_mlp_full_removal_with_extra_flops_scores_both_terms():
         extra_flops_per_output_element=0.0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
+        stream_gb_s=ee.MLP_GB_S,
+        stream_on_critical_path=True,
     )
     both = ee.score(
         bytes_removed=ee.MLP_ACTIVE_BYTES,
@@ -61,6 +84,9 @@ def test_mlp_full_removal_with_extra_flops_scores_both_terms():
         extra_flops_per_output_element=100.0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
+        stream_gb_s=ee.MLP_GB_S,
+        stream_on_critical_path=True,
     )
     assert bytes_only["terms"]["byte_ms_delta"] < 0.0
     assert bytes_only["terms"]["flop_ms_delta"] == 0.0
@@ -70,27 +96,56 @@ def test_mlp_full_removal_with_extra_flops_scores_both_terms():
     )
     assert both["n_output_elements"] == ee.ORGAN_OUTPUT_ELEMENTS["mlp"]
     assert both["n_output_elements"] == 2_555_904
-    # Extra FLOPs eat into the byte save; they are not dropped.
     assert both["predicted_ms_delta"] > bytes_only["predicted_ms_delta"]
     assert both["predicted_token_ms"] > bytes_only["predicted_token_ms"]
     assert both["predicted_ms_delta"] != both["terms"]["byte_ms_delta"]
     assert both["predicted_ms_delta"] == pytest.approx(
         both["terms"]["byte_ms_delta"] + both["terms"]["flop_ms_delta"]
     )
-    # The byte term is the whole MLP organ at its own measured rate.
     assert bytes_only["terms"]["byte_ms_delta"] == pytest.approx(
         -ee.bytes_to_ms(ee.MLP_ACTIVE_BYTES, ee.MLP_GB_S)
     )
     assert bytes_only["terms"]["byte_ms_delta"] == pytest.approx(-ee.MLP_MS, abs=1e-3)
 
 
+def test_broadcast_aux_bytes_are_not_billed_at_the_organ_average():
+    aux = ee.score(
+        bytes_removed=534_773_760,
+        bytes_added=0,
+        organ="mlp",
+        consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_BROADCAST_AUX,
+        candidate_id="quantize_aux_u8",
+        reusable_family=True,
+    )
+    codes = ee.score(
+        bytes_removed=534_773_760,
+        bytes_added=0,
+        organ="mlp",
+        consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
+    )
+    # Aux unique bytes are cache-served. Paired 50% drop was inside noise.
+    assert aux["terms"]["byte_ms_delta"] == pytest.approx(0.0, abs=1e-9)
+    assert aux["predicted_ms_saved"] == pytest.approx(0.0, abs=1e-9)
+    assert aux["assumptions"]["stream_on_critical_path"] is False
+    # The same unique-byte count as codes is still a real save.
+    assert codes["predicted_ms_saved"] > 0.0
+    assert codes["assumptions"]["stream_on_critical_path"] is True
+    # Old organ-average would have billed ~1.55 ms for this aux removal.
+    organ_avg = 534_773_760 / ee.MLP_GB_S * 1e-6
+    assert organ_avg == pytest.approx(1.5541, abs=1e-3)
+    assert aux["predicted_ms_saved"] < 0.1 * organ_avg
+
+
 def test_bytes_added_five_fields_reduce_the_save():
-    removed = 534_773_760  # quantize_aux_u8
+    removed = 534_773_760  # quantize_aux_u8, but billed as codes here
     no_add = ee.score(
         bytes_removed=removed,
         bytes_added=0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     with_add = ee.score(
         bytes_removed=removed,
@@ -103,6 +158,7 @@ def test_bytes_added_five_fields_reduce_the_save():
         },
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     assert with_add["bytes_added"]["total"] == 20_000_000
     assert with_add["net_bytes"] == removed * -1 + 20_000_000
@@ -113,33 +169,35 @@ def test_bytes_added_five_fields_reduce_the_save():
 
 
 def test_one_percent_bar_and_family_override():
-    bar_bytes = int(ee.S020_SECTION_20_BAR_MS / 1000.0 * ee.MLP_GB_S * 1e9)
-    # Comfortably under the bar.
+    # Under the bar even as codes (binding stream, calibrated rate).
     small = ee.score(
-        bytes_removed=bar_bytes // 4,
+        bytes_removed=1_000_000,
         bytes_added=0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
         candidate_id="tiny_header_pack",
     )
     assert small["s020_section_20"]["clears_time_bar"] is False
     assert small["verdict"] == "IMMATERIAL"
 
     over = ee.score(
-        bytes_removed=int(bar_bytes * 1.5),
+        bytes_removed=ee.MLP_CODE_BYTES,
         bytes_added=0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     assert over["s020_section_20"]["clears_time_bar"] is True
     assert over["verdict"] == "MATERIAL"
     assert "clears_s020_section_20_time_bar" in over["verdict_reasons"]
 
     family = ee.score(
-        bytes_removed=bar_bytes // 4,
+        bytes_removed=1_000_000,
         bytes_added=0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
         reusable_family=True,
         candidate_id="a_family",
     )
@@ -152,6 +210,7 @@ def test_one_percent_bar_and_family_override():
         bytes_added=0,
         high_information_falsifier=True,
         candidate_id="a_falsifier",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     assert falsifier["verdict"] == "MATERIAL"
     assert "high_information_falsifier" in falsifier["verdict_reasons"]
@@ -163,6 +222,7 @@ def test_dead_status_is_immaterial_even_if_the_byte_save_was_large():
         bytes_added=0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
         reusable_family=True,
         status="MEASURED_NEGATIVE",
     )
@@ -177,6 +237,7 @@ def test_new_representation_bandwidth_is_an_assumption_with_a_range():
         bytes_added=0,
         organ="mlp",
         consuming_primitive="TiledProjection",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     assume = row["assumptions"]
     assert assume["bandwidth_regime"] == "unknown_new_representation"
@@ -185,11 +246,10 @@ def test_new_representation_bandwidth_is_an_assumption_with_a_range():
     assert lo < hi
     assert lo == pytest.approx(ee.AFFINE_Q2_GB_S_AT_5MB)
     assert hi == pytest.approx(ee.LM_HEAD_GB_S)
-    # The clean roof is excluded from the packed-representation range.
     assert hi < ee.CLEAN_GEMV_GB_S
     dlo, dhi = row["predicted_ms_delta_range"]
-    assert dlo < dhi
-    assert row["predicted_tps_range"][0] < row["predicted_tps_range"][1]
+    assert dlo <= dhi
+    assert row["predicted_tps_range"][0] <= row["predicted_tps_range"][1]
     assert "ASSUMPTION" in assume["bandwidth_note"]
 
 
@@ -199,6 +259,7 @@ def test_affine_q2_is_not_dressed_as_497():
         bytes_added=0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     assume = row["assumptions"]
     assert assume["bandwidth_regime"] == "affine_q2_family"
@@ -216,6 +277,7 @@ def test_dispatch_class_is_class_dependent():
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
         dispatch_class="mlp_gqa_norm_fusion",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     dn = ee.score(
         bytes_removed=0,
@@ -224,6 +286,7 @@ def test_dispatch_class_is_class_dependent():
         organ="deltanet",
         consuming_primitive="FusedDecodeCompute",
         dispatch_class="deltanet_ba",
+        stream_class=ee.STREAM_CLASS_ACTIVATION,
     )
     assert mlp["terms"]["dispatch_ms_delta"] == pytest.approx(-48 * 6.25 / 1000.0)
     assert dn["terms"]["dispatch_ms_delta"] == pytest.approx(-48 * 2.884 / 1000.0)
@@ -236,6 +299,7 @@ def test_unknown_primitive_is_still_scored_with_a_range():
         bytes_added={"metadata": 100},
         organ="mlp",
         consuming_primitive="NotAnAtlasPrimitive",
+        stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
     )
     assert row["ok"] is True
     assert row["assumptions"]["bandwidth_is_assumption"] is True
@@ -248,6 +312,7 @@ def test_bytes_removed_past_the_organ_is_refused():
             bytes_removed=ee.MLP_ACTIVE_BYTES + 1,
             bytes_added=0,
             organ="mlp",
+            stream_class=ee.STREAM_CLASS_WEIGHT_CODES,
         )
 
 
@@ -275,11 +340,35 @@ def test_recorded_catalog_covers_aux_code_deltanet_and_dispatch_size():
     assert "fused_update_consume" in ids
 
     by_id = {r["id"]: r for r in ranked}
+    assert by_id["quantize_aux_u8"]["stream_class"] == ee.STREAM_CLASS_BROADCAST_AUX
     assert by_id["quantize_aux_u8"]["verdict"] == "MATERIAL"
-    assert by_id["group_size_1024"]["verdict"] == "MATERIAL"
+    assert by_id["quantize_aux_u8"]["predicted_ms_saved"] == pytest.approx(0.0, abs=1e-6)
+    assert by_id["quantize_aux_u8"]["delta_from_legacy_ms_saved"] == pytest.approx(
+        -1.5541, abs=1e-3
+    )
+    assert "reusable_representation_family" in by_id["quantize_aux_u8"]["verdict_reasons"]
+    assert by_id["quantize_aux_u8"]["s020_section_20"]["clears_time_bar"] is False
+
+    assert by_id["group_size_1024"]["live"] is False
+    assert by_id["group_size_1024"]["verdict"] == "IMMATERIAL"
+    assert by_id["group_size_1024"]["status"] == "GRANULARITY_REFUTED"
+    assert by_id["group_size_1024"]["stream_class"] == ee.STREAM_CLASS_BROADCAST_AUX
+    assert by_id["group_size_1024"]["predicted_ms_saved"] == pytest.approx(0.0, abs=1e-6)
+    assert by_id["group_size_256"]["live"] is False
+    assert by_id["group_size_256"]["status"] == "GRANULARITY_REFUTED"
+
     assert by_id["entropy_coded_code_stream"]["verdict"] == "MATERIAL"
+    assert by_id["entropy_coded_code_stream"]["stream_class"] == ee.STREAM_CLASS_WEIGHT_CODES
+    assert by_id["entropy_coded_code_stream"]["predicted_ms_saved"] > 0.0
+    # Binding-stream re-price, not a wipe.
+    assert by_id["entropy_coded_code_stream"]["predicted_ms_saved"] == pytest.approx(
+        0.1520, abs=5e-3
+    )
+    assert by_id["entropy_coded_code_stream"]["legacy_organ_average_ms_saved"] == pytest.approx(
+        0.8070, abs=1e-3
+    )
+
     assert by_id["pack_headers"]["verdict"] == "IMMATERIAL"
-    assert by_id["pack_headers"]["predicted_ms_saved"] < ee.S020_SECTION_20_BAR_MS
     assert by_id["surviving_dispatch_size_amortize_sub20mb"]["verdict"] == "MATERIAL"
     assert "reusable_representation_family" in by_id[
         "surviving_dispatch_size_amortize_sub20mb"
@@ -289,11 +378,9 @@ def test_recorded_catalog_covers_aux_code_deltanet_and_dispatch_size():
     assert by_id["dispatch_size_concat_to_lm_head_mb"]["live"] is False
     assert by_id["dispatch_size_concat_to_lm_head_mb"]["verdict"] == "IMMATERIAL"
 
-    # Rank is by predicted save, largest first.
     saves = [r["predicted_ms_saved"] for r in ranked]
     assert saves == sorted(saves, reverse=True)
 
-    # fused_update_consume is the BA-delta class, not the 6.25 us class.
     fused = by_id["fused_update_consume"]
     assert fused["dispatch_delta"] == -48
     assert fused["assumptions"]["dispatch_class"] == "deltanet_ba"
@@ -302,14 +389,28 @@ def test_recorded_catalog_covers_aux_code_deltanet_and_dispatch_size():
     )
 
 
-def test_group_size_1024_matches_causal_budget_arithmetic():
+def test_group_size_1024_is_repriced_and_capability_dead():
     by_id = {r["id"]: r for r in ee.rank_recorded()}
     row = by_id["group_size_1024"]
-    # 1.002700800 GB at the MLP's own 344.1 GB/s.
-    expected = 1_002_700_800 / 344.1 * 1e-6
-    assert row["predicted_ms_saved"] == pytest.approx(expected, rel=1e-4)
     assert row["bytes_removed"] == 1_002_700_800
     assert row["bytes_added_total"] == 0
+    assert row["stream_class"] == ee.STREAM_CLASS_BROADCAST_AUX
+    assert row["predicted_ms_saved"] == pytest.approx(0.0, abs=1e-6)
+    assert row["legacy_organ_average_ms_saved"] == pytest.approx(2.9140, abs=1e-3)
+    assert row["delta_from_legacy_ms_saved"] == pytest.approx(-2.9140, abs=1e-3)
+    assert row["live"] is False
+
+
+def test_every_ranked_row_reports_its_delta_from_the_old_model():
+    for row in ee.rank_recorded():
+        assert "legacy_organ_average_ms_saved" in row
+        assert "delta_from_legacy_ms_saved" in row
+        assert "stream_class" in row
+        assert row["stream_class"] in ee.STREAM_CLASS_NAMES
+        assert row["delta_from_legacy_ms_saved"] == pytest.approx(
+            row["predicted_ms_saved"] - row["legacy_organ_average_ms_saved"],
+            abs=1e-3,
+        )
 
 
 def test_rejected_dense_remat_is_scored_on_added_bytes_not_removal_alone():
@@ -335,37 +436,103 @@ def test_atlas_primitives_are_the_vocabulary():
         assert name in ATLAS_PRIMITIVES
 
 
+def test_aux_u8_lut_is_predicted_not_a_win():
+    lut = ee.score(
+        bytes_removed=534_773_760,
+        bytes_added={"metadata": 393_216},
+        extra_flops_per_output_element=0.0,
+        organ="mlp",
+        consuming_primitive="FusedDecodeCompute",
+        stream_class=ee.STREAM_CLASS_BROADCAST_AUX,
+        reusable_family=True,
+    )
+    assert lut["predicted_ms_delta"] == pytest.approx(0.0, abs=1e-9)
+    assert lut["predicted_ms_saved"] == pytest.approx(0.0, abs=1e-9)
+    assert lut["predicted_ms_delta"] >= 0.0  # not a win
+    assert lut["s020_section_20"]["clears_time_bar"] is False
+
+
+def test_three_real_abs_are_retrodicted():
+    doc = ee.build()
+    by = {r["id"]: r for r in doc["retrodictions"]}
+    widen = by["DELTANET_WIDEN_AB"]
+    assert widen["measured_ms_delta"] == pytest.approx(-1.0245, abs=1e-4)
+    assert widen["predicted_ms_delta"] == pytest.approx(-0.1384, abs=1e-3)
+    assert widen["predicted_is_win"] is True
+    assert widen["measured_is_win"] is True
+
+    cheapen = by["MLP_DECODE_CHEAPEN"]
+    assert cheapen["bytes_removed"] == 0
+    assert cheapen["predicted_ms_delta"] == pytest.approx(0.0, abs=1e-9)
+    assert cheapen["measured_ms_delta"] == pytest.approx(-1.745, abs=1e-3)
+    assert cheapen["measured_gb_s"]["production"] == pytest.approx(329.2)
+    assert cheapen["measured_gb_s"]["fold_addqx"] == pytest.approx(370.9)
+
+    lut = by["AUX_U8_LUT"]
+    assert lut["stream_class"] == ee.STREAM_CLASS_BROADCAST_AUX
+    assert lut["predicted_is_win"] is False
+    assert lut["measured_is_win"] is False
+    assert lut["must_predict_not_a_win"] is True
+    assert lut["legacy_predicted_is_win"] is True
+    assert lut["legacy_organ_average_ms_saved"] == pytest.approx(1.553, abs=1e-2)
+    assert lut["measured_ms_delta"] > 0.0  # slower
+
+
 def test_build_emits_sealed_static_only_receipt():
     path = ee.record()
     assert path.parent == RECEIPTS
     assert path.name == "EXECUTABLE_ECONOMICS.json"
     doc = json.loads(path.read_text())
     assert doc["schema"] == ee.SCHEMA
-    assert doc["version"] == 1
+    assert doc["version"] == 2
     assert doc["evidence_class"] == "STATIC_ONLY"
     assert doc["gpu_authority"] is False
     assert doc["bench"]["measurement_state"] == "STATIC_ONLY"
     assert doc["bench"]["gpu_authority"] is False
     assert doc["seal_sha256"]
     assert doc["guards"]["bytes_removed_without_bytes_added_refused"] is True
+    assert doc["guards"]["stream_class_undeclared_refused"] is True
     assert doc["guards"]["mlp_full_removal_scores_both_terms"] is True
     assert doc["guards"]["mlp_full_removal_flop_ms_at_100"] > 0.0
+    assert doc["guards"]["aux_u8_lut_predicted_not_a_win"] is True
     assert doc["n_candidates"] == len(doc["candidates_ranked"])
     assert doc["n_live_material"] >= 8
     assert "quantize_aux_u8" in doc["live_material_ranked"]
-    assert "group_size_1024" in doc["live_material_ranked"]
+    assert "group_size_1024" not in doc["live_material_ranked"]
+    assert "entropy_coded_code_stream" in doc["live_material_ranked"]
     _assert_no_hardware_claims(doc)
     for key in HARDWARE_FIELDS:
-        # Nested keys of these names would have already raised. Pin the
-        # predicted_* spellings so a closer cannot rename them back.
         assert key not in doc
-    # Affine-Q2 saturation is in the cited constants; 497 is not a default.
     cited = doc["measured_constants_cited"]
     assert cited["affine_q2_saturated_gb_s"] == pytest.approx(376.7)
     assert cited["lm_head_gb_s"] == pytest.approx(497.4)
     assert cited["gpu_reduction_for_71_at_current_executor"] == pytest.approx(
         0.528, abs=0.005
     )
+    cal = doc["calibration"]
+    assert cal["stream_classes"]["broadcast_aux"]["on_critical_path"] is False
+    assert cal["stream_classes"]["weight_codes"]["on_critical_path"] is True
+    assert cal["loadavg"]
+
+
+def test_calibration_receipt_is_a_real_gpu_run():
+    path = RECEIPTS / ee.CALIBRATION_RECEIPT
+    doc = json.loads(path.read_text())
+    assert doc["schema"] == ee.CALIBRATION_SCHEMA
+    assert doc["evidence_class"] == "SELF_MEASURED_DIRTY"
+    assert doc["took_gpu_lease"] is True
+    assert doc["metal_device"]
+    assert "M3" in str(doc["metal_device"]) or "Apple" in str(doc["metal_device"])
+    assert doc["loadavg"]
+    assert doc["layer"] == 3
+    classes = doc["stream_classes"]
+    assert classes["broadcast_aux"]["on_critical_path"] is False
+    assert classes["broadcast_aux"]["within_noise_at_50pct"] is True
+    assert classes["weight_codes"]["on_critical_path"] is True
+    assert classes["weight_codes"]["paired_dt_ns_at_50pct"] < 0
+    assert classes["activation"]["probe_on_critical_path"] is True
+    # Absolute GPU ns is under load; the verdict is the paired dt.
+    assert doc["concurrent_load"]["loadavg"] == doc["loadavg"]
 
 
 def test_every_ranked_row_carries_a_bandwidth_range():

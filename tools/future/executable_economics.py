@@ -5,10 +5,18 @@ A compression ratio without an execution story is not a candidate. This
 module is the cost model that says, in advance, whether a proposed
 representation can mathematically matter on the measured token.
 
+A unique byte is not a unit of time. The organ-average GB/s billed every
+removed byte at 344.1 regardless of stream; AUX_U8_LUT then removed 0.535 GB
+of broadcast aux, was billed +1.553 ms, and was slower on the wall clock.
+This model prices a candidate at the calibrated marginal rate of the
+stream class it declares. A candidate that does not declare a stream
+class is REFUSED — defaulting to the organ average is how the error
+stayed invisible.
+
 Input: bytes removed, bytes added (generator, embeddings, residuals,
 metadata, state), extra FLOPs per output element, dispatch delta, the
-consuming primitive, and which bandwidth regime that primitive
-plausibly runs in.
+consuming primitive, the STREAM CLASS, and which bandwidth regime that
+primitive plausibly runs in.
 
 Output: predicted ms/token delta, predicted TPS, and MATERIAL or
 IMMATERIAL against the S020 §20 bar — substantial work is deserved if
@@ -16,14 +24,13 @@ the candidate plausibly removes >= 1% of complete token time, or
 creates a reusable representation family, or provides a high-information
 falsifier.
 
-A new representation may run in a different bandwidth regime than
-affine-Q2. That is carried as a stated ASSUMPTION with a range, not a
-point estimate dressed as a prediction.
-
+    python3 tools/future/executable_economics.py --calibrate-from receipts/future/_ECONOMICS_CALIBRATION_raw.json
     python3 tools/future/executable_economics.py --record
     python3 -m pytest tools/future/test_executable_economics.py -q
 
-evidence_class STATIC_ONLY. No GPU. No bench lock. Does not touch crates/.
+Scoring is STATIC_ONLY arithmetic over cited organ times and a measured
+per-stream calibration (ECONOMICS_CALIBRATION.json). The calibration is
+SELF_MEASURED_DIRTY. Scoring does not touch crates/.
 """
 from __future__ import annotations
 
@@ -36,19 +43,25 @@ _sys.path.insert(
 )
 
 import argparse
+import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from tools.future import causal_budget_71 as cb
-from tools.future._common import REPO, load_json, write_receipt
+from tools.future._common import RECEIPTS, REPO, load_json, write_receipt
 from tools.future.physical_primitives import ATLAS_PRIMITIVES
 
 
 RECEIPT = "EXECUTABLE_ECONOMICS.json"
-SCHEMA = "hawking.future.executable_economics.v1"
-VERSION = 1
+CALIBRATION_RECEIPT = "ECONOMICS_CALIBRATION.json"
+CALIBRATION_RAW = "_ECONOMICS_CALIBRATION_raw.json"
+SCHEMA = "hawking.future.executable_economics.v2"
+CALIBRATION_SCHEMA = "hawking.future.economics_calibration.v1"
+VERSION = 2
+CALIBRATION_VERSION = 1
 RECORDED_BY = "tools/future/executable_economics.py"
 EVIDENCE_CLASS = "STATIC_ONLY"
+CALIBRATION_EVIDENCE_CLASS = "SELF_MEASURED_DIRTY"
 
 AUX_REL = "receipts/future/MLP_AUXILIARY_INFORMATION.json"
 CODE_REL = "receipts/future/MLP_CODE_INFORMATION.json"
@@ -177,8 +190,86 @@ DEAD_STATUSES = frozenset(
         "BOUNDED_TOO_SMALL",
         "ALREADY_FUSED",
         "CLOSED",
+        "REFUTED",
     }
 )
+
+# Stream classes a candidate must declare. Defaulting to the organ average
+# is how AUX_U8_LUT billed +1.553 ms for bytes that were never binding.
+STREAM_CLASS_WEIGHT_CODES = "weight_codes"
+STREAM_CLASS_BROADCAST_AUX = "broadcast_aux"
+STREAM_CLASS_ACTIVATION = "activation"
+STREAM_CLASS_NAMES = frozenset(
+    {
+        STREAM_CLASS_WEIGHT_CODES,
+        STREAM_CLASS_BROADCAST_AUX,
+        STREAM_CLASS_ACTIVATION,
+    }
+)
+
+# Capability screen (AUX_CAPABILITY_SCREEN) already refuted these on
+# held-out fit. Re-price their byte claims so the record is consistent.
+GRANULARITY_REFUTED_IDS = frozenset({"group_size_256", "group_size_1024"})
+
+# Every recorded candidate must appear here. Missing → refuse, not default.
+STREAM_CLASS_BY_ID: dict[str, str] = {
+    # MLP auxiliary (broadcast per-group scale/bias).
+    "quantize_aux_u8": STREAM_CLASS_BROADCAST_AUX,
+    "shared_scale_basis": STREAM_CLASS_BROADCAST_AUX,
+    "per_tensor_curve_plus_residual": STREAM_CLASS_BROADCAST_AUX,
+    "predict_scale_from_code_stats": STREAM_CLASS_BROADCAST_AUX,
+    "low_rank_scale_matrix": STREAM_CLASS_BROADCAST_AUX,
+    "parametric_scale_program": STREAM_CLASS_BROADCAST_AUX,
+    "larger_group_size": STREAM_CLASS_BROADCAST_AUX,
+    "group_size_256": STREAM_CLASS_BROADCAST_AUX,
+    "group_size_512": STREAM_CLASS_BROADCAST_AUX,
+    "group_size_1024": STREAM_CLASS_BROADCAST_AUX,
+    "tie_bias_to_minus_half_codes": STREAM_CLASS_BROADCAST_AUX,
+    "drop_bias": STREAM_CLASS_BROADCAST_AUX,
+    "collapse_to_global_scale": STREAM_CLASS_BROADCAST_AUX,
+    "cross_layer_scale_delta": STREAM_CLASS_BROADCAST_AUX,
+    "pack_headers": STREAM_CLASS_BROADCAST_AUX,
+    # MLP codes (per-thread unique, the binding stream).
+    "lower_bit_native": STREAM_CLASS_WEIGHT_CODES,
+    "heterogeneous_bit_allocation": STREAM_CLASS_WEIGHT_CODES,
+    "generated_tensors": STREAM_CLASS_WEIGHT_CODES,
+    "generated_programs": STREAM_CLASS_WEIGHT_CODES,
+    "shared_code_bases": STREAM_CLASS_WEIGHT_CODES,
+    "factorized_programs": STREAM_CLASS_WEIGHT_CODES,
+    "dictionary_of_code_blocks": STREAM_CLASS_WEIGHT_CODES,
+    "product_codebooks": STREAM_CLASS_WEIGHT_CODES,
+    "lowrank_plus_sparse_residual": STREAM_CLASS_WEIGHT_CODES,
+    "block_generators": STREAM_CLASS_WEIGHT_CODES,
+    "cross_layer_code_prediction": STREAM_CLASS_WEIGHT_CODES,
+    "capability_sensitive_literal_islands": STREAM_CLASS_WEIGHT_CODES,
+    "function_replacement": STREAM_CLASS_WEIGHT_CODES,
+    "entropy_coded_code_stream": STREAM_CLASS_WEIGHT_CODES,
+    # Activation-side / tiled transforms of x.
+    "shared_input_transforms": STREAM_CLASS_ACTIVATION,
+    "latent_routed_accumulation": STREAM_CLASS_ACTIVATION,
+    # DeltaNet weight codes.
+    "heterogeneous_qkvz_bits": STREAM_CLASS_WEIGHT_CODES,
+    "lower_bit_uniform_qkvz": STREAM_CLASS_WEIGHT_CODES,
+    "lower_bit_out_proj": STREAM_CLASS_WEIGHT_CODES,
+    "gravity_family_on_dn_weights": STREAM_CLASS_WEIGHT_CODES,
+    "larger_q4_group": STREAM_CLASS_WEIGHT_CODES,
+    "generated_coefficients": STREAM_CLASS_WEIGHT_CODES,
+    "factorized_qkvz": STREAM_CLASS_WEIGHT_CODES,
+    "conv1d_lower_bit": STREAM_CLASS_WEIGHT_CODES,
+    # DeltaNet state / activation.
+    "shared_transforms_across_layers": STREAM_CLASS_ACTIVATION,
+    "lower_bit_recurrent_state": STREAM_CLASS_ACTIVATION,
+    "structured_transition_state": STREAM_CLASS_ACTIVATION,
+    "recurrent_state_replacement": STREAM_CLASS_ACTIVATION,
+    "share_or_merge_state_across_depth": STREAM_CLASS_ACTIVATION,
+    "direct_state_machine": STREAM_CLASS_ACTIVATION,
+    "fused_update_consume": STREAM_CLASS_ACTIVATION,
+    # Dispatch-size levers act on the code-bearing GEMV launch.
+    "surviving_dispatch_size_amortize_sub20mb": STREAM_CLASS_WEIGHT_CODES,
+    "dispatch_size_concat_to_lm_head_mb": STREAM_CLASS_WEIGHT_CODES,
+}
+
+_CALIBRATION: dict[str, Any] | None = None
 
 # Packing / codec / operator families that would transfer, not one-off hacks.
 REUSABLE_FAMILY_IDS = frozenset(
@@ -231,15 +322,17 @@ GROUP_SIZE_EXTRA: tuple[tuple[int, int], ...] = (
 )
 
 CLAIM_BOUNDARY = (
-    "Static sidecar artifact. No hardware measurement and no generate gate. "
-    "Predicted ms/token and predicted TPS are arithmetic over cited organ "
-    "times, cited byte shares, cited dispatch-class costs and a stated "
-    "bandwidth-regime ASSUMPTION with a range. They are not a protected "
-    "measurement and not a promise that a fit will hold capability. A new "
-    "representation is not assumed to run at the affine-Q2 saturation "
-    "(~377 GB/s), the LM-head demonstrated 497.4 GB/s, or the clean GEMV "
-    "roof 703.5 GB/s: those are regimes, and the regime is an input. "
-    "evidence_class is STATIC_ONLY. gpu_authority is false."
+    "Static sidecar artifact. Predicted ms/token and predicted TPS are "
+    "arithmetic over cited organ times, cited byte shares, cited "
+    "dispatch-class costs, a declared stream class, and the measured "
+    "per-stream marginal rate in ECONOMICS_CALIBRATION.json. They are not "
+    "a protected measurement and not a promise that a fit will hold "
+    "capability. Unique bytes of broadcast_aux are not billed at the organ "
+    "average: that was the AUX_U8_LUT overcredit. A new representation is "
+    "not assumed to run at the affine-Q2 saturation (~377 GB/s), the "
+    "LM-head demonstrated 497.4 GB/s, or the clean GEMV roof 703.5 GB/s. "
+    "evidence_class is STATIC_ONLY. gpu_authority is false. The calibration "
+    "receipt is SELF_MEASURED_DIRTY with loadavg recorded."
 )
 
 _UNSET: Any = object()
@@ -404,6 +497,282 @@ def _r(value: float, n: int = 6) -> float:
     return 0.0 if out == 0.0 else out
 
 
+def _index_rungs(rows: Iterable[Mapping[str, Any]]) -> dict[str, Mapping[str, Any]]:
+    out: dict[str, Mapping[str, Any]] = {}
+    for row in rows:
+        ident = str(row.get("id") or "")
+        if ident:
+            out[ident] = row
+    return out
+
+
+def _paired_noise_ns(rung: Mapping[str, Any]) -> float:
+    mad = float(rung.get("paired_dt_ns_mad") or 0.0)
+    return max(2.0 * mad, 2000.0)
+
+
+def _fit_stream_class(
+    *,
+    name: str,
+    rungs: Mapping[str, Mapping[str, Any]],
+    keep_ids: dict[int, str],
+    catalog_billing: str,
+    organ_gb_s: float,
+) -> dict[str, Any]:
+    """Marginal unique-byte cost of one stream from paired keep-fraction rungs.
+
+    Primary point is the 50% drop (operating-point derivative). A |dt|
+    inside 2*MAD of the paired deltas (floor 2 us) is treated as 0: the
+    stream is not on the critical path and must not be billed at the
+    organ average.
+    """
+    samples = []
+    for keep, ident in sorted(keep_ids.items(), reverse=True):
+        row = rungs.get(ident)
+        if not isinstance(row, Mapping):
+            raise EconomicsRefuse(f"calibration missing rung {ident}")
+        dt = int(row.get("dt_ns_vs_baseline") or 0)
+        dropped = int(row.get("unique_bytes_dropped") or 0)
+        mad = int(row.get("paired_dt_ns_mad") or 0)
+        samples.append(
+            {
+                "id": ident,
+                "keep_pct": keep,
+                "drop_pct": 100 - keep,
+                "unique_bytes_dropped": dropped,
+                "paired_dt_ns": dt,
+                "paired_dt_ns_mad": mad,
+                "gpu_ns_median": int(row.get("gpu_ns_median") or 0),
+            }
+        )
+    primary = rungs.get(keep_ids[50])
+    if not isinstance(primary, Mapping):
+        raise EconomicsRefuse(f"calibration missing 50% rung for {name}")
+    dt = int(primary.get("dt_ns_vs_baseline") or 0)
+    dropped = int(primary.get("unique_bytes_dropped") or 0)
+    noise = _paired_noise_ns(primary)
+    within_noise = abs(dt) <= noise
+    faster = dt < -noise
+    on_critical = bool(faster)
+
+    ms_per_gb = 0.0
+    billing_gb_s: float | None = None
+    if on_critical and dropped > 0 and dt < 0:
+        gb = dropped / 1e9
+        ms_per_gb = (-dt / 1e6) / gb
+        billing_gb_s = dropped / (-dt / 1e9) / 1e9
+
+    # Activation unique-x rate (~2 GB/s) does not transfer to 100 MB+
+    # state tensors. The probe's finding for this class is "not free";
+    # catalog-scale activation/state candidates bill at the organ rate.
+    catalog_gb_s: float | None
+    catalog_ms_per_gb: float
+    if catalog_billing == "organ_average":
+        catalog_gb_s = float(organ_gb_s)
+        catalog_ms_per_gb = 1000.0 / catalog_gb_s if catalog_gb_s else 0.0
+        catalog_on_critical = True
+    elif catalog_billing == "measured_or_zero":
+        catalog_gb_s = billing_gb_s
+        catalog_ms_per_gb = ms_per_gb
+        catalog_on_critical = on_critical
+    else:
+        raise EconomicsRefuse(f"unknown catalog_billing {catalog_billing}")
+
+    lo_gb = hi_gb = catalog_gb_s
+    if on_critical and billing_gb_s is not None and catalog_billing == "measured_or_zero":
+        rates = []
+        for s in samples:
+            sdt = int(s["paired_dt_ns"])
+            sdrop = int(s["unique_bytes_dropped"])
+            if sdt < -_paired_noise_ns({"paired_dt_ns_mad": s["paired_dt_ns_mad"]}) and sdrop > 0:
+                rates.append(sdrop / (-sdt / 1e9) / 1e9)
+        if rates:
+            lo_gb = min(rates)
+            hi_gb = max(rates)
+
+    return {
+        "name": name,
+        "on_critical_path": catalog_on_critical if catalog_billing == "organ_average" else on_critical,
+        "probe_on_critical_path": on_critical,
+        "within_noise_at_50pct": within_noise,
+        "primary_rung": keep_ids[50],
+        "unique_bytes_dropped_at_50pct": dropped,
+        "paired_dt_ns_at_50pct": dt,
+        "paired_noise_floor_ns": noise,
+        "ms_per_gb_saved_measured": _r(ms_per_gb, 6),
+        "billing_gb_s_measured": None if billing_gb_s is None else _r(billing_gb_s, 2),
+        "catalog_billing": catalog_billing,
+        "billing_gb_s": None if catalog_gb_s is None else _r(catalog_gb_s, 2),
+        "ms_per_gb_saved": _r(catalog_ms_per_gb, 6),
+        "billing_gb_s_lo": None if lo_gb is None else _r(lo_gb, 2),
+        "billing_gb_s_hi": None if hi_gb is None else _r(hi_gb, 2),
+        "samples": samples,
+    }
+
+
+def calibrate_from_raw(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Turn a paired stream_criticality_probe JSON into a sealed calibration."""
+    rungs = _index_rungs(raw.get("rungs") or [])
+    for need in (
+        "codes_keep_50",
+        "codes_keep_0",
+        "aux_keep_50",
+        "aux_keep_0",
+        "x_keep_50",
+        "x_keep_0",
+        "zero_load",
+        "baseline",
+    ):
+        if need not in rungs:
+            raise EconomicsRefuse(f"calibration raw is missing rung {need}")
+
+    codes = _fit_stream_class(
+        name=STREAM_CLASS_WEIGHT_CODES,
+        rungs=rungs,
+        keep_ids={75: "codes_keep_75", 50: "codes_keep_50", 25: "codes_keep_25", 0: "codes_keep_0"},
+        catalog_billing="measured_or_zero",
+        organ_gb_s=MLP_GB_S,
+    )
+    aux = _fit_stream_class(
+        name=STREAM_CLASS_BROADCAST_AUX,
+        rungs=rungs,
+        keep_ids={75: "aux_keep_75", 50: "aux_keep_50", 25: "aux_keep_25", 0: "aux_keep_0"},
+        catalog_billing="measured_or_zero",
+        organ_gb_s=MLP_GB_S,
+    )
+    x = _fit_stream_class(
+        name=STREAM_CLASS_ACTIVATION,
+        rungs=rungs,
+        keep_ids={75: "x_keep_75", 50: "x_keep_50", 25: "x_keep_25", 0: "x_keep_0"},
+        catalog_billing="organ_average",
+        organ_gb_s=MLP_GB_S,
+    )
+
+    load = raw.get("concurrent_load") or {}
+    loadavg = load.get("loadavg")
+    census = raw.get("census") or {}
+    codes_ok = bool(codes["on_critical_path"])
+    aux_free = not bool(aux["on_critical_path"])
+    finding = (
+        f"Paired A/B on Apple M3 Ultra layer {raw.get('layer')}, loadavg {loadavg}. "
+        f"weight_codes 50% drop {codes['paired_dt_ns_at_50pct']} ns for "
+        f"{codes['unique_bytes_dropped_at_50pct']} unique bytes "
+        f"({'ON' if codes_ok else 'NOT ON'} the critical path, "
+        f"{codes['ms_per_gb_saved']} ms/GB, billing "
+        f"{codes['billing_gb_s']} GB/s unique). "
+        f"broadcast_aux 50% drop {aux['paired_dt_ns_at_50pct']} ns for "
+        f"{aux['unique_bytes_dropped_at_50pct']} unique bytes "
+        f"(within_noise={aux['within_noise_at_50pct']}; "
+        f"{'NOT billed' if aux_free else 'billed'} at the organ average). "
+        f"activation 50% drop {x['paired_dt_ns_at_50pct']} ns for "
+        f"{x['unique_bytes_dropped_at_50pct']} unique x bytes "
+        f"(probe_on_critical_path={x['probe_on_critical_path']}; catalog "
+        f"state/activation bills at the organ average {MLP_GB_S} GB/s because "
+        f"the unique-x rate does not transfer to 100 MB+ tensors). "
+        "A candidate that does not declare a stream class is refused."
+    )
+    return {
+        "schema": CALIBRATION_SCHEMA,
+        "version": CALIBRATION_VERSION,
+        "recorded_by": RECORDED_BY,
+        "evidence_class": CALIBRATION_EVIDENCE_CLASS,
+        "gpu_authority": False,
+        "took_gpu_lease": True,
+        "source": (
+            "crates/hawking-core/examples/stream_criticality_probe.rs; "
+            "paired MTLCommandBuffer GPUStartTime/GPUEndTime; one MLP layer "
+            "of sealed-3.14, arithmetic stripped, trip count held"
+        ),
+        "claim_boundary": (
+            "SELF_MEASURED_DIRTY. Absolute GPU ns is measured-under-load. "
+            "The calibration is the paired dt (treat - baseline) of dropping "
+            "a keep-fraction of ONE stream, unique catalog bytes of that "
+            "stream times (1-keep) in the numerator. Order of the pair "
+            "alternates. A |dt| inside 2*MAD (floor 2 us) is 0. Does not "
+            "change the production decode path. Token-ms numbers in the "
+            "economics receipt are arithmetic over this calibration and "
+            "cited organ times."
+        ),
+        "finding": finding,
+        "metal_device": raw.get("metal_device"),
+        "layer": raw.get("layer"),
+        "warmup": raw.get("warmup"),
+        "reps": raw.get("reps"),
+        "git_head": raw.get("git_head", ""),
+        "artifact_root": raw.get("artifact_root", ""),
+        "timing": raw.get("timing"),
+        "geometry": raw.get("geometry"),
+        "organ": raw.get("organ", "mlp"),
+        "loadavg": loadavg,
+        "concurrent_load": load,
+        "concurrent_load_start": raw.get("concurrent_load_start"),
+        "census": census,
+        "baseline_gpu_ns_median": raw.get("baseline_gpu_ns_median"),
+        "baseline_gpu_ns_mad": raw.get("baseline_gpu_ns_mad"),
+        "organ_average_gb_s_mlp": MLP_GB_S,
+        "organ_average_ms_per_gb_mlp": _r(1000.0 / MLP_GB_S, 6),
+        "stream_classes": {
+            STREAM_CLASS_WEIGHT_CODES: codes,
+            STREAM_CLASS_BROADCAST_AUX: aux,
+            STREAM_CLASS_ACTIVATION: x,
+        },
+        "primary_marginal_is_50pct_drop": True,
+        "rungs": list(raw.get("rungs") or []),
+        "projections": raw.get("projections") or [],
+        "pre_registered_interpretation": raw.get("pre_registered_interpretation"),
+        "loads_survived": {
+            "codes_50pct_faster_than_noise": codes_ok,
+            "aux_50pct_within_noise": aux_free,
+            "zero_load_dt_ns": (rungs["zero_load"].get("dt_ns_vs_baseline") if "zero_load" in rungs else None),
+            "proof": (
+                "paired codes_keep_50 is faster than 2*MAD and aux_keep_50 is not; "
+                "the organ average is the code-bound rate, not a byte-class rate"
+            ),
+        },
+    }
+
+
+def record_calibration(raw: Mapping[str, Any]) -> Path:
+    doc = calibrate_from_raw(raw)
+    out = RECEIPTS / CALIBRATION_RECEIPT
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
+    global _CALIBRATION
+    _CALIBRATION = doc
+    return out
+
+
+def load_calibration(*, path: Path | None = None, force: bool = False) -> dict[str, Any]:
+    global _CALIBRATION
+    if _CALIBRATION is not None and not force:
+        return _CALIBRATION
+    p = path or (RECEIPTS / CALIBRATION_RECEIPT)
+    if not p.is_file():
+        raise EconomicsRefuse(
+            f"stream-class calibration missing: {p}. Run the Metal probe and "
+            f"`python3 tools/future/executable_economics.py --calibrate-from "
+            f"receipts/future/{CALIBRATION_RAW}`"
+        )
+    doc = load_json(p)
+    if not isinstance(doc, dict):
+        raise EconomicsRefuse(f"{p} is not an object")
+    classes = doc.get("stream_classes")
+    if not isinstance(classes, dict) or not STREAM_CLASS_NAMES.issubset(classes):
+        raise EconomicsRefuse(
+            f"{p} does not define stream_classes {sorted(STREAM_CLASS_NAMES)}"
+        )
+    _CALIBRATION = doc
+    return doc
+
+
+def stream_spec(stream_class: str) -> dict[str, Any]:
+    cal = load_calibration()
+    spec = (cal.get("stream_classes") or {}).get(stream_class)
+    if not isinstance(spec, dict):
+        raise EconomicsRefuse(f"calibration has no stream class {stream_class!r}")
+    return spec
+
+
 def bytes_to_ms(n_bytes: float, gb_s: float) -> float:
     """Milliseconds to move n_bytes at gb_s GB/s."""
     if gb_s <= 0.0:
@@ -531,6 +900,9 @@ def score(
     organ: str = "mlp",
     n_output_elements: int | None = None,
     dispatch_class: str | None = None,
+    stream_class: str | None = None,
+    stream_gb_s: float | None = None,
+    stream_on_critical_path: bool | None = None,
     retime_organ: bool = False,
     reusable_family: bool = False,
     high_information_falsifier: bool = False,
@@ -541,6 +913,9 @@ def score(
 
     Refuses if bytes_removed is supplied without bytes_added: a ratio
     without executable economics is not a candidate.
+
+    Refuses if stream_class is not declared: defaulting unique bytes to
+    the organ average is how the aux-u8 overcredit stayed invisible.
     """
     if bytes_removed is not _UNSET and bytes_added is _UNSET:
         raise IncompleteEconomics(
@@ -551,6 +926,16 @@ def score(
         raise IncompleteEconomics(
             "bytes_removed without bytes_added: a ratio without executable "
             "economics is not a candidate"
+        )
+    if stream_class is None:
+        raise IncompleteEconomics(
+            "stream_class must be declared (weight_codes, broadcast_aux, "
+            "activation); defaulting to the organ average is how the "
+            "byte-overcredit stays invisible"
+        )
+    if stream_class not in STREAM_CLASS_NAMES:
+        raise EconomicsRefuse(
+            f"unknown stream_class {stream_class!r}. known: {sorted(STREAM_CLASS_NAMES)}"
         )
 
     if bytes_removed is _UNSET or bytes_removed is None:
@@ -594,11 +979,33 @@ def score(
     if gb_s_lo > gb_s_hi:
         gb_s_lo, gb_s_hi = gb_s_hi, gb_s_lo
 
-    # For same-family packing changes, remaining bytes keep the organ's
-    # measured rate (causal_budget_71). For a claimed regime shift of the
-    # whole organ, retime remaining bytes at the assumed rate.
+    # Stream-class rate, not the organ average. The organ average is how
+    # unique aux bytes were billed as if they were on the critical path.
     organ_gb_s = ORGAN_GB_S[organ]
     organ_ms = ORGAN_MS[organ]
+    spec: dict[str, Any] | None = None
+    if stream_gb_s is not None:
+        if stream_gb_s <= 0.0:
+            raise EconomicsRefuse(f"stream_gb_s must be positive, got {stream_gb_s}")
+        on_critical = True if stream_on_critical_path is None else bool(stream_on_critical_path)
+        stream_rate = float(stream_gb_s)
+        stream_rate_lo = stream_rate
+        stream_rate_hi = stream_rate
+        stream_rate_source = "caller_override"
+    else:
+        spec = stream_spec(stream_class)
+        on_critical = (
+            bool(spec.get("on_critical_path"))
+            if stream_on_critical_path is None
+            else bool(stream_on_critical_path)
+        )
+        raw_rate = spec.get("billing_gb_s")
+        stream_rate = float(raw_rate) if raw_rate else None
+        lo_raw = spec.get("billing_gb_s_lo")
+        hi_raw = spec.get("billing_gb_s_hi")
+        stream_rate_lo = float(lo_raw) if lo_raw else stream_rate
+        stream_rate_hi = float(hi_raw) if hi_raw else stream_rate
+        stream_rate_source = "ECONOMICS_CALIBRATION.json"
 
     def _byte_delta_at(gb_s: float) -> float:
         if retime_organ:
@@ -608,19 +1015,38 @@ def score(
             return bytes_to_ms(new_bytes, gb_s) - organ_ms
         return bytes_to_ms(net_bytes, gb_s)
 
-    # Incremental packing uses the organ's own measured rate as nominal,
-    # even when the named regime's nominal differs slightly.
-    rate_for_terms = gb_s_nom if retime_organ else organ_gb_s
     if retime_organ:
+        rate_for_terms = gb_s_nom
         byte_nom = _byte_delta_at(gb_s_nom)
         byte_at_lo = _byte_delta_at(gb_s_lo)
         byte_at_hi = _byte_delta_at(gb_s_hi)
+        byte_removed_ms = -bytes_to_ms(removed, rate_for_terms)
+        byte_added_ms = bytes_to_ms(added_total, rate_for_terms)
+    elif not on_critical or stream_rate is None:
+        rate_for_terms = 0.0
+        byte_nom = 0.0
+        byte_at_lo = 0.0
+        byte_at_hi = 0.0
+        byte_removed_ms = 0.0
+        byte_added_ms = 0.0
     else:
-        byte_nom = _byte_delta_at(organ_gb_s)
-        byte_at_lo = _byte_delta_at(gb_s_lo)
-        byte_at_hi = _byte_delta_at(gb_s_hi)
-    byte_removed_ms = -bytes_to_ms(removed, rate_for_terms)
-    byte_added_ms = bytes_to_ms(added_total, rate_for_terms)
+        rate_for_terms = stream_rate
+        byte_nom = _byte_delta_at(stream_rate)
+        lo = stream_rate_lo if stream_rate_lo else stream_rate
+        hi = stream_rate_hi if stream_rate_hi else stream_rate
+        if lo > hi:
+            lo, hi = hi, lo
+        byte_at_lo = _byte_delta_at(lo)
+        byte_at_hi = _byte_delta_at(hi)
+        byte_removed_ms = -bytes_to_ms(removed, rate_for_terms)
+        byte_added_ms = bytes_to_ms(added_total, rate_for_terms)
+        # A stream-class rate must not invent more organ time than the organ
+        # has. Slack covers the rounded organ_ms vs bytes/rate arithmetic.
+        cap = organ_ms * 1.05
+        if byte_nom < -cap:
+            byte_nom = -organ_ms
+        if byte_nom > cap:
+            byte_nom = organ_ms
 
     if extra_flops_per_output_element < 0:
         raise EconomicsRefuse(
@@ -749,6 +1175,7 @@ def score(
         "id": candidate_id,
         "organ": organ,
         "consuming_primitive": consuming_primitive,
+        "stream_class": stream_class,
         "status": status,
         "live": live,
         "verdict": verdict,
@@ -781,7 +1208,14 @@ def score(
             "bandwidth_gb_s_range": [gb_s_lo, gb_s_hi],
             "bandwidth_is_assumption": bandwidth_is_assumption,
             "bandwidth_note": regime["assumption"],
-            "incremental_byte_rate_gb_s": organ_gb_s if not retime_organ else gb_s_nom,
+            "stream_class": stream_class,
+            "stream_on_critical_path": on_critical,
+            "stream_billing_gb_s": rate_for_terms,
+            "stream_rate_source": stream_rate_source,
+            "incremental_byte_rate_gb_s": (
+                rate_for_terms if (retime_organ or on_critical) else 0.0
+            ),
+            "organ_average_gb_s": organ_gb_s,
             "flop_model": (
                 "extra FLOPs scored as extra_flops * n_output_elements / "
                 "EFFECTIVE_FLOP_S, the MLP GEMV-dressed rate "
@@ -826,6 +1260,9 @@ def score_proposal(row: Mapping[str, Any]) -> dict[str, Any]:
         "organ",
         "n_output_elements",
         "dispatch_class",
+        "stream_class",
+        "stream_gb_s",
+        "stream_on_critical_path",
         "retime_organ",
         "reusable_family",
         "high_information_falsifier",
@@ -834,6 +1271,15 @@ def score_proposal(row: Mapping[str, Any]) -> dict[str, Any]:
         if key in row and row[key] is not _UNSET:
             kwargs[key] = row[key]
     kwargs["candidate_id"] = row.get("id")
+    if "stream_class" not in kwargs or kwargs["stream_class"] is None:
+        cid = row.get("id")
+        if cid in STREAM_CLASS_BY_ID:
+            kwargs["stream_class"] = STREAM_CLASS_BY_ID[cid]
+        else:
+            raise IncompleteEconomics(
+                f"candidate {cid!r} does not declare a stream_class; "
+                "defaulting to the organ average is refused"
+            )
     return score(**kwargs)
 
 
@@ -861,6 +1307,13 @@ def _proposal_from_receipt_row(
 ) -> dict[str, Any]:
     cid = str(row["id"])
     status = str(row.get("status") or "OPEN")
+    if cid in GRANULARITY_REFUTED_IDS:
+        status = "GRANULARITY_REFUTED"
+    if cid not in STREAM_CLASS_BY_ID:
+        raise EconomicsRefuse(
+            f"recorded candidate {cid} has no stream_class; refusing to default"
+        )
+    stream_class = STREAM_CLASS_BY_ID[cid]
     prim = row.get("physical_primitive")
     if prim is not None:
         prim = str(prim)
@@ -899,6 +1352,7 @@ def _proposal_from_receipt_row(
         "bytes_removed": removed,
         "bytes_added": added,
         "byte_model_incomplete": incomplete,
+        "stream_class": stream_class,
         "extra_flops_per_output_element": extra_flops,
         "dispatch_delta": dispatch_delta,
         "dispatch_class": dclass,
@@ -936,17 +1390,20 @@ def recorded_proposals() -> list[dict[str, Any]]:
             )
         )
     for g, eliminated in GROUP_SIZE_EXTRA:
+        gid = f"group_size_{g}"
+        gstatus = "GRANULARITY_REFUTED" if gid in GRANULARITY_REFUTED_IDS else "OPEN"
         _add(
             {
-                "id": f"group_size_{g}",
-                "name": f"MLP affine-Q2 group size {g} (byte curve exact; capability UNMEASURED)",
+                "id": gid,
+                "name": f"MLP affine-Q2 group size {g} (byte curve exact; capability {'REFUTED' if gstatus != 'OPEN' else 'UNMEASURED'})",
                 "source": AUX_REL,
-                "status": "OPEN",
+                "status": gstatus,
                 "organ": "mlp",
                 "consuming_primitive": "FusedDecodeCompute",
                 "bytes_removed": eliminated,
                 "bytes_added": 0,
                 "byte_model_incomplete": False,
+                "stream_class": STREAM_CLASS_BROADCAST_AUX,
                 "extra_flops_per_output_element": 0.0,
                 "dispatch_delta": 0.0,
                 "dispatch_class": "mlp_gqa_norm_fusion",
@@ -954,7 +1411,7 @@ def recorded_proposals() -> list[dict[str, Any]]:
                 "retime_organ": False,
                 "reusable_family": True,
                 "high_information_falsifier": False,
-                "capability": "UNMEASURED",
+                "capability": "FAILED_HELDOUT" if gstatus != "OPEN" else "UNMEASURED",
                 "dense_rematerialization": "DIRECT_CONSUME",
             }
         )
@@ -1003,6 +1460,7 @@ def recorded_proposals() -> list[dict[str, Any]]:
             "bytes_removed": 0,
             "bytes_added": 0,
             "byte_model_incomplete": False,
+            "stream_class": STREAM_CLASS_WEIGHT_CODES,
             "extra_flops_per_output_element": 0.0,
             "dispatch_delta": 0.0,
             "dispatch_class": "mlp_gqa_norm_fusion",
@@ -1036,6 +1494,7 @@ def recorded_proposals() -> list[dict[str, Any]]:
             "bytes_removed": 0,
             "bytes_added": 0,
             "byte_model_incomplete": False,
+            "stream_class": STREAM_CLASS_WEIGHT_CODES,
             "extra_flops_per_output_element": 0.0,
             "dispatch_delta": 0.0,
             "dispatch_class": "mlp_gqa_norm_fusion",
@@ -1067,6 +1526,7 @@ def _compact(score_row: dict[str, Any], proposal: Mapping[str, Any]) -> dict[str
         "live": score_row["live"],
         "organ": score_row["organ"],
         "consuming_primitive": score_row["consuming_primitive"],
+        "stream_class": score_row["stream_class"],
         "bytes_removed": score_row["bytes_removed"],
         "bytes_added_total": int(score_row["bytes_added"].get("total", 0)),
         "bytes_added": {
@@ -1111,6 +1571,10 @@ def _compact(score_row: dict[str, Any], proposal: Mapping[str, Any]) -> dict[str
             "dispatch_class": assumptions["dispatch_class"],
             "dispatch_us_nominal": _r(assumptions["dispatch_us_nominal"], 3),
             "dispatch_note": assumptions["dispatch_note"],
+            "stream_class": assumptions.get("stream_class"),
+            "stream_on_critical_path": assumptions.get("stream_on_critical_path"),
+            "stream_billing_gb_s": _r(float(assumptions.get("stream_billing_gb_s") or 0.0), 2),
+            "organ_average_gb_s": _r(float(assumptions.get("organ_average_gb_s") or 0.0), 2),
         },
         "s020_section_20": {
             "bar_ms": _r(s20["bar_ms"], 4),
@@ -1124,20 +1588,227 @@ def _compact(score_row: dict[str, Any], proposal: Mapping[str, Any]) -> dict[str
     }
 
 
+def _legacy_organ_average(p: Mapping[str, Any]) -> dict[str, Any]:
+    """The old model: unique bytes at the organ average, stream ignored."""
+    organ = str(p.get("organ") or "mlp")
+    return score_proposal(
+        {
+            **dict(p),
+            "stream_class": p.get("stream_class") or STREAM_CLASS_WEIGHT_CODES,
+            "stream_gb_s": ORGAN_GB_S[organ],
+            "stream_on_critical_path": True,
+        }
+    )
+
+
 def rank_recorded() -> list[dict[str, Any]]:
     proposals = recorded_proposals()
-    scored: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    scored: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any]]] = []
     for p in proposals:
         s = score_proposal(p)
-        scored.append((p, s))
+        legacy = _legacy_organ_average(p)
+        scored.append((p, s, legacy))
     # Economic curve: largest predicted save first. Stable by id.
     scored.sort(key=lambda pair: (-pair[1]["predicted_ms_saved"], pair[0]["id"]))
     out = []
-    for rank, (p, s) in enumerate(scored, start=1):
+    for rank, (p, s, legacy) in enumerate(scored, start=1):
         row = _compact(s, p)
         row["rank"] = rank
+        row["legacy_organ_average_ms_saved"] = _r(legacy["predicted_ms_saved"], 4)
+        row["delta_from_legacy_ms_saved"] = _r(
+            s["predicted_ms_saved"] - legacy["predicted_ms_saved"], 4
+        )
         out.append(row)
     return out
+
+
+def retrodictions(by_id: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Predicted vs measured for the three real A/Bs that already exist."""
+    # AUX_U8_LUT: 0.535 GB broadcast aux, extra FLOPs 0, LUT tables 393216 B.
+    # Token projection from the layer A/B: +0.504 ms (SLOWER).
+    lut = score(
+        bytes_removed=534_773_760,
+        bytes_added={"metadata": 393_216},
+        extra_flops_per_output_element=0.0,
+        organ="mlp",
+        consuming_primitive="FusedDecodeCompute",
+        stream_class=STREAM_CLASS_BROADCAST_AUX,
+        candidate_id="quantize_aux_u8_lut",
+        reusable_family=True,
+    )
+    lut_legacy = score(
+        bytes_removed=534_773_760,
+        bytes_added={"metadata": 393_216},
+        extra_flops_per_output_element=0.0,
+        organ="mlp",
+        consuming_primitive="FusedDecodeCompute",
+        stream_class=STREAM_CLASS_BROADCAST_AUX,
+        stream_gb_s=MLP_GB_S,
+        stream_on_critical_path=True,
+        candidate_id="quantize_aux_u8_lut_legacy",
+    )
+    lut_measured_ms_delta = 0.504064  # slower; AUX_U8_LUT token projection
+    lut_predicted_is_win = lut["predicted_ms_delta"] < 0.0
+
+    # DELTANET_WIDEN_AB: layout/dispatch, not a byte lever. dispatch_delta=-48.
+    widen = score(
+        bytes_removed=0,
+        bytes_added=0,
+        dispatch_delta=-48.0,
+        organ="deltanet",
+        consuming_primitive="LocalStateMachine",
+        dispatch_class="deltanet_ba",
+        stream_class=STREAM_CLASS_ACTIVATION,
+        candidate_id="deltanet_widen_ab",
+    )
+    widen_measured_ms_delta = -1.0245
+
+    # MLP_DECODE_CHEAPEN fold_addqx: bit-identical, 329.2 -> 370.9 GB/s, 0 bytes.
+    cheapen = score(
+        bytes_removed=0,
+        bytes_added=0,
+        extra_flops_per_output_element=0.0,
+        organ="mlp",
+        consuming_primitive="FusedDecodeCompute",
+        stream_class=STREAM_CLASS_WEIGHT_CODES,
+        candidate_id="mlp_decode_cheapen_fold_addqx",
+    )
+    cheapen_measured_ms_delta = -1.745  # projection from MLP_DECODE_CHEAPEN
+
+    def _row(
+        ident: str,
+        predicted: Mapping[str, Any],
+        measured_ms_delta: float,
+        *,
+        how: str,
+        note: str,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        pred = float(predicted["predicted_ms_delta"])
+        out = {
+            "id": ident,
+            "how_scored": how,
+            "stream_class": predicted["stream_class"],
+            "bytes_removed": predicted["bytes_removed"],
+            "predicted_ms_delta": _r(pred, 4),
+            "predicted_ms_saved": _r(predicted["predicted_ms_saved"], 4),
+            "measured_ms_delta": _r(measured_ms_delta, 4),
+            "residual_ms": _r(pred - measured_ms_delta, 4),
+            "predicted_is_win": pred < 0.0,
+            "measured_is_win": measured_ms_delta < 0.0,
+            "note": note,
+        }
+        if extra:
+            out.update(extra)
+        return out
+
+    return [
+        _row(
+            "DELTANET_WIDEN_AB",
+            widen,
+            widen_measured_ms_delta,
+            how="dispatch_delta=-48 at deltanet_ba 2.884 us; bytes_removed=0",
+            note=(
+                "The win is a kernel/layout change (widen_f4) plus a 48-launch "
+                "fold, not a unique-byte removal. Sign agrees (a win); the "
+                "byte model does not claim the 1.0245 ms."
+            ),
+            extra={"source": "receipts/future/DELTANET_WIDEN_AB.json"},
+        ),
+        _row(
+            "MLP_DECODE_CHEAPEN",
+            cheapen,
+            cheapen_measured_ms_delta,
+            how="bytes_removed=0, extra_flops=0, stream_class=weight_codes",
+            note=(
+                "fold_addqx is a decode-arithmetic cheapening (329.2 -> 370.9 "
+                "GB/s, bit-identical). The byte model predicting 0 is correct "
+                "for THIS defect: no unique bytes moved."
+            ),
+            extra={
+                "source": "receipts/future/MLP_DECODE_CHEAPEN.json",
+                "measured_gb_s": {"production": 329.2, "fold_addqx": 370.9},
+            },
+        ),
+        _row(
+            "AUX_U8_LUT",
+            lut,
+            lut_measured_ms_delta,
+            how=(
+                "bytes_removed=534773760 broadcast_aux, bytes_added.metadata="
+                "393216, extra_flops=0"
+            ),
+            note=(
+                "The case that matters. Old organ-average billed "
+                f"{lut_legacy['predicted_ms_saved']:.4f} ms saved. Stream-class "
+                f"bills {lut['predicted_ms_saved']:.4f} ms. Measured is slower "
+                "(+0.504 ms token projection). Predicted is not a win."
+            ),
+            extra={
+                "source": "receipts/future/AUX_U8_LUT.json",
+                "legacy_organ_average_ms_saved": _r(lut_legacy["predicted_ms_saved"], 4),
+                "legacy_predicted_is_win": lut_legacy["predicted_ms_delta"] < 0.0,
+                "predicted_is_win": lut_predicted_is_win,
+                "must_predict_not_a_win": True,
+            },
+        ),
+        {
+            "id": "quantize_aux_u8_catalog",
+            "how_scored": "recorded catalog candidate, stream_class=broadcast_aux",
+            "stream_class": STREAM_CLASS_BROADCAST_AUX,
+            "delta_from_legacy_ms_saved": by_id.get("quantize_aux_u8", {}).get(
+                "delta_from_legacy_ms_saved"
+            ),
+            "predicted_ms_saved": by_id.get("quantize_aux_u8", {}).get("predicted_ms_saved"),
+            "legacy_organ_average_ms_saved": by_id.get("quantize_aux_u8", {}).get(
+                "legacy_organ_average_ms_saved"
+            ),
+            "note": "live catalog row, same stream as AUX_U8_LUT",
+        },
+        {
+            "id": "entropy_coded_code_stream",
+            "how_scored": "recorded catalog candidate, stream_class=weight_codes (mlp_entropy_floor)",
+            "stream_class": STREAM_CLASS_WEIGHT_CODES,
+            "delta_from_legacy_ms_saved": by_id.get("entropy_coded_code_stream", {}).get(
+                "delta_from_legacy_ms_saved"
+            ),
+            "predicted_ms_saved": by_id.get("entropy_coded_code_stream", {}).get(
+                "predicted_ms_saved"
+            ),
+            "legacy_organ_average_ms_saved": by_id.get("entropy_coded_code_stream", {}).get(
+                "legacy_organ_average_ms_saved"
+            ),
+            "note": "0.278 GB of binding code bytes; should remain a real save",
+        },
+        {
+            "id": "group_size_1024",
+            "how_scored": "recorded catalog candidate, stream_class=broadcast_aux, status GRANULARITY_REFUTED",
+            "stream_class": STREAM_CLASS_BROADCAST_AUX,
+            "delta_from_legacy_ms_saved": by_id.get("group_size_1024", {}).get(
+                "delta_from_legacy_ms_saved"
+            ),
+            "predicted_ms_saved": by_id.get("group_size_1024", {}).get("predicted_ms_saved"),
+            "legacy_organ_average_ms_saved": by_id.get("group_size_1024", {}).get(
+                "legacy_organ_average_ms_saved"
+            ),
+            "live": by_id.get("group_size_1024", {}).get("live"),
+            "note": "capability already REFUTED; byte claim re-priced for a consistent record",
+        },
+        {
+            "id": "group_size_256",
+            "how_scored": "recorded catalog candidate, stream_class=broadcast_aux, status GRANULARITY_REFUTED",
+            "stream_class": STREAM_CLASS_BROADCAST_AUX,
+            "delta_from_legacy_ms_saved": by_id.get("group_size_256", {}).get(
+                "delta_from_legacy_ms_saved"
+            ),
+            "predicted_ms_saved": by_id.get("group_size_256", {}).get("predicted_ms_saved"),
+            "legacy_organ_average_ms_saved": by_id.get("group_size_256", {}).get(
+                "legacy_organ_average_ms_saved"
+            ),
+            "live": by_id.get("group_size_256", {}).get("live"),
+            "note": "capability already REFUTED; byte claim re-priced for a consistent record",
+        },
+    ]
 
 
 def build() -> dict[str, Any]:
@@ -1157,12 +1828,21 @@ def build() -> dict[str, Any]:
     except IncompleteEconomics:
         refused = True
 
+    stream_refused = False
+    try:
+        score(bytes_removed=1_000_000, bytes_added=0, organ="mlp")
+    except IncompleteEconomics as exc:
+        stream_refused = "stream_class" in str(exc)
+
     both_terms = score(
         bytes_removed=MLP_ACTIVE_BYTES,
         bytes_added=0,
         extra_flops_per_output_element=100.0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=STREAM_CLASS_WEIGHT_CODES,
+        stream_gb_s=MLP_GB_S,
+        stream_on_critical_path=True,
     )
     bytes_only = score(
         bytes_removed=MLP_ACTIVE_BYTES,
@@ -1170,7 +1850,13 @@ def build() -> dict[str, Any]:
         extra_flops_per_output_element=0.0,
         organ="mlp",
         consuming_primitive="FusedDecodeCompute",
+        stream_class=STREAM_CLASS_WEIGHT_CODES,
+        stream_gb_s=MLP_GB_S,
+        stream_on_critical_path=True,
     )
+
+    cal = load_calibration()
+    retro = retrodictions(by_id)
 
     return {
         "schema": SCHEMA,
@@ -1225,15 +1911,23 @@ def build() -> dict[str, Any]:
         "model": {
             "formula": (
                 "predicted_token_ms = cited_token_ms "
-                "+ ms(net_bytes, rate) "
+                "+ ms(net_bytes, stream_class_rate) "
                 "+ extra_flops * n_output_elements / EFFECTIVE_FLOP_S * 1000 "
                 "+ dispatch_delta * class_us / 1000; "
                 "net_bytes = bytes_added.total - bytes_removed; "
-                "rate is the organ's measured GB/s for incremental packing, "
-                "or the named regime if retime_organ; "
+                "stream_class_rate is the calibrated unique-byte marginal of "
+                "the declared stream (0 if that stream is not on the critical "
+                "path); retime_organ still uses the named regime; "
                 "the regime is an ASSUMPTION with a range"
             ),
-            "refuses": "bytes_removed without bytes_added",
+            "refuses": [
+                "bytes_removed without bytes_added",
+                "stream_class undeclared (no default to the organ average)",
+                "unknown stream_class",
+            ],
+            "stream_classes": cal.get("stream_classes"),
+            "calibration_receipt": f"receipts/future/{CALIBRATION_RECEIPT}",
+            "primary_marginal_is_50pct_drop": True,
             "bandwidth_regimes": {
                 name: {
                     "gb_s_lo": spec["gb_s_lo"],
@@ -1250,6 +1944,7 @@ def build() -> dict[str, Any]:
         },
         "guards": {
             "bytes_removed_without_bytes_added_refused": refused,
+            "stream_class_undeclared_refused": stream_refused,
             "mlp_full_removal_byte_ms": _r(bytes_only["terms"]["byte_ms_delta"], 4),
             "mlp_full_removal_flop_ms_at_100": _r(both_terms["terms"]["flop_ms_delta"], 4),
             "mlp_full_removal_scores_both_terms": (
@@ -1262,7 +1957,30 @@ def build() -> dict[str, Any]:
                 < 1e-9
                 and both_terms["predicted_ms_delta"] > bytes_only["predicted_ms_delta"]
             ),
+            "aux_u8_lut_predicted_not_a_win": (
+                not next(r for r in retro if r["id"] == "AUX_U8_LUT")["predicted_is_win"]
+            ),
         },
+        "calibration": {
+            "schema": cal.get("schema"),
+            "metal_device": cal.get("metal_device"),
+            "loadavg": cal.get("loadavg"),
+            "layer": cal.get("layer"),
+            "finding": cal.get("finding"),
+            "stream_classes": {
+                name: {
+                    "on_critical_path": spec.get("on_critical_path"),
+                    "probe_on_critical_path": spec.get("probe_on_critical_path"),
+                    "billing_gb_s": spec.get("billing_gb_s"),
+                    "ms_per_gb_saved": spec.get("ms_per_gb_saved"),
+                    "primary_rung": spec.get("primary_rung"),
+                    "paired_dt_ns_at_50pct": spec.get("paired_dt_ns_at_50pct"),
+                    "catalog_billing": spec.get("catalog_billing"),
+                }
+                for name, spec in (cal.get("stream_classes") or {}).items()
+            },
+        },
+        "retrodictions": retro,
         "n_candidates": len(ranked),
         "n_live_material": len(live_material),
         "n_live_immaterial": len(live_immaterial),
@@ -1277,8 +1995,20 @@ def build() -> dict[str, Any]:
             "extra decode ALU of a codec that is not the incumbent: the FLOP term is GEMV-dressed, range [0, 4x]",
             "whether remaining bytes keep the organ's measured rate or retiming the whole organ is the right counterfactual — retime_organ is an explicit switch",
             "host work a new generator might add; the host gap is a floor, not a claim that host stays 0.989 ms",
+            "DeltaNet recurrent-state unique-byte traffic: the activation class is calibrated on MLP x, and catalog-scale state bills at the organ average rather than at the unique-x 2 GB/s number",
         ],
-        "sources": [AUX_REL, CODE_REL, DN_REL, SWEEP_REL, BA_REL],
+        "sources": [
+            AUX_REL,
+            CODE_REL,
+            DN_REL,
+            SWEEP_REL,
+            BA_REL,
+            f"receipts/future/{CALIBRATION_RECEIPT}",
+            "receipts/future/AUX_U8_LUT.json",
+            "receipts/future/DELTANET_WIDEN_AB.json",
+            "receipts/future/MLP_DECODE_CHEAPEN.json",
+            "receipts/future/AUX_CAPABILITY_SCREEN.json",
+        ],
         "top_live_material": [
             {
                 "id": cid,
@@ -1300,7 +2030,30 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("Input:")[0].strip())
     parser.add_argument("--record", action="store_true", help=f"write receipts/future/{RECEIPT}")
     parser.add_argument("--build", action="store_true", help="alias of --record")
+    parser.add_argument(
+        "--calibrate-from",
+        dest="calibrate_from",
+        default=None,
+        help=f"raw stream_criticality_probe JSON → receipts/future/{CALIBRATION_RECEIPT}",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
+    if args.calibrate_from:
+        raw_path = Path(args.calibrate_from)
+        if not raw_path.is_absolute():
+            raw_path = REPO / raw_path
+        raw = load_json(raw_path)
+        path = record_calibration(raw)
+        print(f"wrote {path}")
+        cal = load_calibration(force=True)
+        for name, spec in (cal.get("stream_classes") or {}).items():
+            print(
+                f"  {name:16s} critical={spec.get('on_critical_path')}  "
+                f"billing_gb_s={spec.get('billing_gb_s')}  "
+                f"ms/GB={spec.get('ms_per_gb_saved')}  "
+                f"dt50={spec.get('paired_dt_ns_at_50pct')} ns"
+            )
+        if not (args.record or args.build):
+            return 0
     doc = build()
     if args.record or args.build:
         path = record()
@@ -1316,6 +2069,15 @@ def main(argv: Iterable[str] | None = None) -> int:
             f"  {row['predicted_ms_saved']:+7.3f} ms  "
             f"{row['predicted_tps']:6.2f} pred-TPS  "
             f"{row['status']:16s}  {row['id']}"
+        )
+    print("  retrodictions:")
+    for r in doc.get("retrodictions") or []:
+        if "predicted_ms_delta" not in r:
+            continue
+        print(
+            f"    {r['id']:22s} pred {r['predicted_ms_delta']:+7.4f} ms  "
+            f"meas {r['measured_ms_delta']:+7.4f} ms  "
+            f"win_pred={r['predicted_is_win']} win_meas={r['measured_is_win']}"
         )
     return 0
 

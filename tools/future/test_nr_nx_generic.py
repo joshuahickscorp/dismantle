@@ -124,13 +124,13 @@ def test_generic_and_flash_facts_are_separate_and_not_merged():
     assert "GENERIC_NR_NX_PIPELINE_CALLABLE" in doc
     assert "FLASH_NX_READY" in doc
     assert doc["facts_are_independent"] is True
-    assert doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is False
     assert doc["FLASH_NX_READY"] is False
     assert doc["flash"]["FLASH_NX_READY"] is False
-    assert not (
-        doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is True and doc["FLASH_NX_READY"] is False
-        and doc.get("first_nx_lower_failure") is None
-    )
+    # generic True does not make FLASH True; they are independent facts.
+    if doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is True:
+        assert doc.get("first_nx_lower_failure") is None
+        nx_stage = next(s for s in doc["stages"] if s["stage"] == "NoeticExecutable")
+        assert nx_stage["status"] == nng.PASSED
 
 
 def test_stages_are_complete_never_skipped():
@@ -147,13 +147,17 @@ def test_stages_are_complete_never_skipped():
 
 def test_pipeline_callable_is_false_because_a_stage_did_not_pass():
     doc = _receipt()
-    assert nng.generic_pipeline_callable(doc["stages"]) is False
-    assert doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is False
+    live = nng.generic_pipeline_callable(doc["stages"])
+    assert doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is live
     failed = [s for s in doc["stages"] if s["status"] != nng.PASSED]
-    assert failed, "callable is False; at least one stage must not have passed"
-    first = doc["first_failing_stage"]
-    assert first is not None
-    assert first["stage"] == failed[0]["stage"]
+    if live:
+        assert not failed
+        assert doc["first_failing_stage"] is None
+    else:
+        assert failed, "callable is False; at least one stage must not have passed"
+        first = doc["first_failing_stage"]
+        assert first is not None
+        assert first["stage"] == failed[0]["stage"]
 
 
 def test_skipped_stage_cannot_be_declared_callable():
@@ -469,8 +473,13 @@ def test_check_nx_verifier_was_invoked():
     doc = _receipt()
     ver = next(s for s in doc["stages"] if s["stage"] == "Verifier")
     assert ver["invoked"] is True
-    assert ver["status"] != nng.PASSED
     assert ver["evidence"]["promotable"] is False
+    nx_stage = next(s for s in doc["stages"] if s["stage"] == "NoeticExecutable")
+    if nx_stage["status"] == nng.PASSED:
+        assert ver["status"] == nng.PASSED
+        assert ver["evidence"].get("packer_owned_ok") is True
+    else:
+        assert ver["status"] != nng.PASSED
 
 
 def test_architecture_recognizer_ran_or_refused_without_skipping():
@@ -696,10 +705,17 @@ def test_run_on_unfit_specimen_names_the_stage():
 
 def test_callable_on_and_receipt_agree_on_unmet_nx():
     doc = _receipt()
-    pre = doc["preflight"]
-    assert pre["ok"] is False
-    assert pre["first_failing_stage"]
-    assert doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is False
+    live = nng.generic_pipeline_callable(doc["stages"])
+    assert doc["GENERIC_NR_NX_PIPELINE_CALLABLE"] is live
+    if live:
+        assert doc["FLASH_NX_READY"] is False
+        nx_stage = next(s for s in doc["stages"] if s["stage"] == "NoeticExecutable")
+        assert nx_stage["status"] == nng.PASSED
+        assert nx_stage["evidence"]["did_not_execute_first_noetic_executable"] is True
+        packed = Path(str((nx_stage.get("evidence") or {}).get("packed_path") or ""))
+        assert packed.is_file()
+    else:
+        assert doc["first_failing_stage"] is not None
 
 
 def _name_only_kernel(organ: str = "mlp_down") -> dict:
@@ -969,7 +985,11 @@ def test_receipt_kernel_planner_passed_and_is_not_first_fail():
         assert ev.get("n_compiled") == 0
         assert ev.get("n_native_unmeasured") == len(ev.get("plan") or [])
         assert doc["kernel_planner_route"] == nng.KERNEL_PLANNER_ROUTE_PLAN_THEN_COMPILE
-        assert doc["first_failing_stage"]["stage"] != "KernelPlanner"
+        first = doc["first_failing_stage"]
+        if first is not None:
+            assert first["stage"] != "KernelPlanner"
+        else:
+            assert nng.generic_pipeline_callable(doc["stages"]) is True
         dc_row = next(s for s in doc["stages"] if s["stage"] == "DeviceCompiler")
         assert dc_row["invoked"] is True
         assert dc_row["status"] != "SKIPPED"
@@ -995,12 +1015,24 @@ def test_receipt_kernel_planner_passed_and_is_not_first_fail():
         if dc_row["status"] == nng.PASSED:
             assert dc_row["error"] is None
             assert (dc_row.get("evidence") or {}).get("n_compiled", 0) > 0
-            assert doc["first_failing_stage"]["stage"] != "DeviceCompiler"
-            assert doc["first_failing_stage"]["stage"] == "NoeticExecutable"
+            if doc["first_failing_stage"] is not None:
+                assert doc["first_failing_stage"]["stage"] != "DeviceCompiler"
             nx_stage = next(s for s in doc["stages"] if s["stage"] == "NoeticExecutable")
-            assert nx_stage["status"] == nng.BLOCKED
-            assert nx_stage["error"] == "no_generic_packer"
             assert (nx_stage.get("evidence") or {}).get("nx_fragment_received") is True
+            assert nx_stage["evidence"]["did_not_execute_first_noetic_executable"] is True
+            if nx_stage["status"] == nng.PASSED:
+                assert nx_stage["error"] is None
+                ident = (nx_stage.get("evidence") or {}).get("identity") or {}
+                assert ident.get("n_compiled_organs", 0) > 0
+                assert ident.get("did_not_hardlink") is True
+                packed = Path(str((nx_stage.get("evidence") or {}).get("packed_path") or ""))
+                assert packed.is_file()
+                if doc["first_failing_stage"] is not None:
+                    assert doc["first_failing_stage"]["stage"] != "NoeticExecutable"
+            else:
+                assert nx_stage["status"] in {nng.FAILED, nng.REFUSED, nng.BLOCKED}
+                assert nx_stage["status"] != "SKIPPED"
+                assert doc["first_failing_stage"]["stage"] == "NoeticExecutable"
         else:
             assert dc_row["status"] in {nng.FAILED, nng.REFUSED, nng.BLOCKED}
             assert doc["first_failing_stage"]["stage"] == "DeviceCompiler"

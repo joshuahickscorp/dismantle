@@ -2840,33 +2840,159 @@ def launch_verdict(results: Sequence[Mapping[str, Any]] | None = None) -> dict[s
 # ---------------------------------------------------------------------------
 
 
-def _identity_stub(kind: str, integration: str) -> dict[str, Any]:
-    rels = {
-        "resident": (
-            "receipts/future/RESIDENT_IDENTITY.json",
-            "receipts/headless/HCLI_AGENTOS_RESIDENT_GATE.json",
-        ),
-        "sandbox": (
-            "receipts/future/SANDBOX.json",
-            "receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-        ),
-    }[kind]
-    probe = probe_json(*rels)
+SANDBOX_RECEIPT = "receipts/future/RESIDENT_SANDBOX.json"
+SANDBOX_SCHEMA = "hawking.future.sandbox.v1"
+
+
+def _sha256_ok(value: Any) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    try:
+        int(value, 16)
+    except ValueError:
+        return False
+    return True
+
+
+def bind_resident_identity(integration: str) -> dict[str, Any]:
+    """Bind the launch receipt to the resident the identity document pins.
+
+    Finding RESIDENT_IDENTITY.json is not binding it. bound is true only
+    when the document pins nx_id, sealed_model_id, executable_hash,
+    artifact_root, tokenizer, and qualification, and sealed_model_id
+    agrees with the succession incumbent.
+    """
+    probe = probe_json("receipts/future/RESIDENT_IDENTITY.json")
+    loaded = _load_future_module("resident_identity")
+    if not loaded.get("ok"):
+        doc = probe.get("doc") if isinstance(probe.get("doc"), Mapping) else None
+        return {
+            "kind": "resident",
+            "found": bool(probe.get("found") and doc is not None),
+            "path_taken": probe.get("path_taken"),
+            "resolved": probe.get("resolved"),
+            "schema": None if not doc else doc.get("schema"),
+            "status": None
+            if not doc
+            else (
+                doc.get("status")
+                or (doc.get("identity_validation") or {}).get("status")
+                or doc.get("residency_status")
+            ),
+            "bound": False,
+            "pins": {},
+            "pins_named": [],
+            "missing": ["resident_identity_module"],
+            "unbound_reason": (
+                "found but resident_identity module is not importable: "
+                f"{loaded.get('why')}"
+            ),
+            "integration_point": integration,
+            "note": (
+                "Identity is not invented. A missing this-wave receipt stays unbound."
+            ),
+        }
+    fn = getattr(loaded["module"], "launch_binding", None)
+    if not callable(fn):
+        return {
+            "kind": "resident",
+            "found": bool(probe.get("found")),
+            "path_taken": probe.get("path_taken"),
+            "resolved": probe.get("resolved"),
+            "schema": None,
+            "status": None,
+            "bound": False,
+            "pins": {},
+            "pins_named": [],
+            "missing": ["launch_binding"],
+            "unbound_reason": "found but tools.future.resident_identity.launch_binding is not callable",
+            "integration_point": integration,
+            "note": (
+                "Identity is not invented. A missing this-wave receipt stays unbound."
+            ),
+        }
+    return fn(probe=probe, integration=integration)
+
+
+def bind_sandbox_identity(integration: str) -> dict[str, Any]:
+    """Bind the launch receipt to the orchestrator sandbox identity.
+
+    RESIDENT_SANDBOX.json is the this-wave receipt. HCLI AgentOS checkpoint
+    is a prior gate and is not this identity. bound is true only when the
+    document pins identity_sha256 and reentry_same_identity.
+    """
+    probe = probe_json(SANDBOX_RECEIPT)
     doc = probe.get("doc") if isinstance(probe.get("doc"), Mapping) else None
-    return {
-        "kind": kind,
-        "found": bool(probe.get("found")),
+    note = (
+        "Identity is not invented. A missing this-wave receipt stays unbound. "
+        "Bound only when RESIDENT_SANDBOX.json pins identity_sha256 and "
+        "reentry_same_identity. HCLI prior gates are not this identity."
+    )
+    base: dict[str, Any] = {
+        "kind": "sandbox",
+        "found": bool(probe.get("found") and doc is not None),
         "path_taken": probe.get("path_taken"),
         "resolved": probe.get("resolved"),
         "schema": None if not doc else doc.get("schema"),
-        "status": None if not doc else doc.get("status") or doc.get("qualification"),
-        "bound": False,
         "integration_point": integration,
-        "note": (
-            "Identity is not invented. A missing this-wave receipt stays unbound. "
-            "HCLI prior gates, if found, are cited and are not this identity."
-        ),
+        "note": note,
     }
+    if not base["found"]:
+        return {
+            **base,
+            "bound": False,
+            "status": None,
+            "pins": {},
+            "pins_named": [],
+            "missing": ["receipt"],
+            "unbound_reason": "sandbox receipt is missing; identity is not invented",
+        }
+    longevity = doc.get("longevity") if isinstance(doc.get("longevity"), Mapping) else {}
+    identity_sha256 = longevity.get("identity_sha256")
+    if not _sha256_ok(identity_sha256):
+        identity_sha256 = doc.get("identity_sha256")
+    reentry = longevity.get("reentry_same_identity")
+    if reentry is None:
+        reentry = doc.get("reentry_same_identity")
+    status = doc.get("status")
+    missing: list[str] = []
+    if doc.get("schema") != SANDBOX_SCHEMA:
+        missing.append("schema")
+    if not _sha256_ok(identity_sha256):
+        missing.append("identity_sha256")
+    if reentry is not True:
+        missing.append("reentry_same_identity")
+    provision = doc.get("provision") if isinstance(doc.get("provision"), Mapping) else {}
+    pins = {
+        "identity_sha256": identity_sha256 if _sha256_ok(identity_sha256) else None,
+        "reentry_same_identity": reentry,
+        "sandbox_id": provision.get("default_sandbox_id"),
+    }
+    bound = not missing
+    pins_named = [
+        name
+        for name in ("identity_sha256", "reentry_same_identity")
+        if name not in missing
+    ]
+    unbound_reason = None
+    if not bound:
+        unbound_reason = "found but does not pin " + ", ".join(missing)
+    return {
+        **base,
+        "bound": bound,
+        "status": status,
+        "pins": pins,
+        "pins_named": pins_named,
+        "missing": missing,
+        "unbound_reason": unbound_reason,
+    }
+
+
+def _identity_stub(kind: str, integration: str) -> dict[str, Any]:
+    """Backward-compatible name. Binding is real; this is not a stub anymore."""
+    if kind == "sandbox":
+        return bind_sandbox_identity(integration)
+    return bind_resident_identity(integration)
 
 
 def _machine_genome_pin() -> dict[str, Any]:
@@ -2954,7 +3080,11 @@ def write_launch_if_passed(
     allowed: bool,
     writer: Callable[[str, dict[str, Any], str], Path] | None = None,
 ) -> dict[str, Any]:
-    """Write ODYSSEY_I_LAUNCH.json only when the gate passes. Fail closed otherwise."""
+    """Write ODYSSEY_I_LAUNCH.json only when the gate passes AND the resident is bound.
+
+    A phase-transition receipt that cannot name its resident is not a phase
+    transition. This does not change can_launch() / the sixteen criteria.
+    """
     write = writer or write_receipt
     if not allowed:
         return {
@@ -2964,6 +3094,31 @@ def write_launch_if_passed(
             "reason": (
                 "gate REFUSED; ODYSSEY_I_LAUNCH.json is a phase-transition receipt "
                 "and is not written while any criterion is unmet"
+            ),
+        }
+    resident = payload.get("resident_identity") if isinstance(payload, Mapping) else None
+    if not (isinstance(resident, Mapping) and resident.get("bound") is True):
+        detail = "resident_identity is missing from the launch payload"
+        missing = None
+        if isinstance(resident, Mapping):
+            named = resident.get("unbound_reason")
+            missing = resident.get("missing")
+            if named:
+                detail = str(named)
+            elif missing:
+                detail = "found but does not pin " + ", ".join(str(x) for x in missing)
+            else:
+                detail = "resident_identity.bound is false"
+        return {
+            "written": False,
+            "path": None,
+            "name": LAUNCH_RECEIPT,
+            "unbound_identity": True,
+            "missing": list(missing) if isinstance(missing, (list, tuple)) else missing,
+            "reason": (
+                "resident_identity unbound; ODYSSEY_I_LAUNCH.json is a "
+                "phase-transition receipt and is not written while the resident "
+                f"is unbound: {detail}"
             ),
         }
     path = write(LAUNCH_RECEIPT, dict(payload), RECORDED_BY)
@@ -3044,6 +3199,8 @@ def gaps_closed() -> list[str]:
         "Sixteen launch criteria evaluated from evidence; can_launch is False until all pass.",
         "Refuse path names every unmet criterion; it does not stop at the first.",
         "ODYSSEY_I_LAUNCH.json is written only on pass; refuse does not write the phase-transition receipt.",
+        "write_launch_if_passed refuses an unbound resident_identity even if all sixteen criteria are met; a phase-transition receipt must name its resident.",
+        "resident_identity / sandbox_identity bind from RESIDENT_IDENTITY.json and RESIDENT_SANDBOX.json when those documents pin the named fields; a missing pin stays unbound with the field named; status is read from the document, not defaulted to null.",
         "Specimen curriculum proposes five roles from ModelLake seals / Odyssey I / law-store schools; other lake entries are recorded and not first-wave.",
         "First WorkGraphs emitted as real HCLI WorkUnits with dependencies and resource lanes.",
         "Phase II transfer and Phase III attack both depend on Phase I laws and not on each other — no global barrier.",
@@ -3093,7 +3250,8 @@ def resident_callable_block(verdict: Mapping[str, Any]) -> dict[str, Any]:
         "fail_closed": (
             "can_launch() is False while any criterion is unmet; unmet_criteria() names "
             "every unmet id; write_launch_if_passed() does not call write_receipt for "
-            f"{LAUNCH_RECEIPT} on refuse; --launch exits 1; HardwareClaimError on numeric "
+            f"{LAUNCH_RECEIPT} on refuse; write_launch_if_passed() also refuses when "
+            "resident_identity.bound is false; --launch exits 1; HardwareClaimError on numeric "
             "hardware fields; GPU units stay SLEEPING rather than inventing a result."
         ),
         "verdict_now": verdict.get("verdict"),
@@ -3244,7 +3402,18 @@ def verify() -> int:
         f"launch_receipt_written={doc['odyssey_i_launch_written']} "
         f"phase_transition={doc['phase_transition']}"
     )
+    draft = doc.get("launch_payload_draft") if isinstance(doc.get("launch_payload_draft"), Mapping) else {}
+    ident = draft.get("resident_identity")
+    print("resident_identity:")
+    print(json.dumps(ident, indent=2, sort_keys=True, default=str))
+    launch_write = doc.get("launch_receipt") if isinstance(doc.get("launch_receipt"), Mapping) else {}
     if verdict["allowed"] and not doc["odyssey_i_launch_written"]:
+        if launch_write.get("unbound_identity"):
+            print(
+                "launch_receipt withheld: resident_identity.bound is false "
+                f"({launch_write.get('reason')})"
+            )
+            return 0
         print("FAIL: gate allowed but ODYSSEY_I_LAUNCH.json was not written", file=sys.stderr)
         return 1
     if (not verdict["allowed"]) and doc["odyssey_i_launch_written"]:

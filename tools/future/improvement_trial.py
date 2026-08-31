@@ -11,8 +11,9 @@ PASS is IMPROVED KNOWLEDGE OR IMPROVED EXECUTABLE. A decisive falsification
 passes. A correct reclassification passes. A valid mutation passes. A TPS
 increase is not required and is not scored. The bar is whether it knew what
 to do next, conjunctively with: no unjustified runnable idle, no repeated
-scar, no conversational wait, durable state written. Killing nothing AND
-launching nothing is FAIL.
+scar, no conversational wait, durable state written, no degeneracy.
+Killing nothing AND launching nothing is FAIL. A run that meets every
+nominal condition and is degenerate on any axis is FAIL.
 
 The resident is given the live frontier and NO task sequence. Evidence class
 is STATIC_ONLY. No GPU lease. Cited organ rates are copied as strings from
@@ -45,6 +46,7 @@ from tools.future._common import (
     load_json,
     write_receipt,
 )
+from tools.future import autonomy_degeneracy as ad
 from tools.future import negative_index as ni
 from tools.future import work_events as we
 from tools.future import workunit_species as wus
@@ -168,6 +170,7 @@ PASS_CONDITIONS = REQUIRED_ACTS + (
     "no_open_handle_wait",
     "no_stale_causal_model",
     "no_misleading_narrow_probe",
+    "no_degeneracy",
 )
 
 AUTO_FAIL_IDS = (
@@ -181,6 +184,7 @@ AUTO_FAIL_IDS = (
     "conversational_wait",
     "repeated_scar",
     "killed_nothing_launched_nothing",
+    "degeneracy",
 )
 
 KIND_TO_ACT = {
@@ -1742,6 +1746,29 @@ def eval_no_stale_causal_model(record: TrialRecord) -> dict[str, Any]:
     return _met("no_stale_causal_model", "no launch of a budget row superseded by ingested evidence")
 
 
+def eval_no_degeneracy(record: TrialRecord) -> dict[str, Any]:
+    """FAIL ON DEGENERACY EVEN WHEN EVERY CONDITION IS NOMINALLY MET."""
+    try:
+        report = ad.measure(record)
+    except Exception as exc:  # noqa: BLE001 — fail closed
+        return _unmet(
+            "no_degeneracy",
+            f"measure failed closed: {type(exc).__name__}: {exc}",
+        )
+    if report.get("verdict") == "FAIL":
+        axes = list(report.get("degenerate_axes") or [])
+        return _unmet(
+            "no_degeneracy",
+            f"degenerate on {axes}: {report.get('reason')}",
+            axes,
+        )
+    n_axes = len(report.get("named_axes") or ())
+    return _met(
+        "no_degeneracy",
+        f"all named axes non-degenerate (n_axes={n_axes})",
+    )
+
+
 def eval_no_misleading_narrow_probe(record: TrialRecord) -> dict[str, Any]:
     bad: list[str] = []
     for row in record.conclusions:
@@ -1793,6 +1820,7 @@ EVALUATORS: dict[str, Callable[[TrialRecord], dict[str, Any]]] = {
     "no_conversational_wait": eval_no_conversational_wait,
     "no_stale_causal_model": eval_no_stale_causal_model,
     "no_misleading_narrow_probe": eval_no_misleading_narrow_probe,
+    "no_degeneracy": eval_no_degeneracy,
 }
 
 
@@ -1813,6 +1841,7 @@ def judge(record: TrialRecord) -> dict[str, Any]:
         "no_conversational_wait",
         "no_stale_causal_model",
         "no_misleading_narrow_probe",
+        "no_degeneracy",
     ):
         conditions.append(EVALUATORS[cid](record))
 
@@ -1828,18 +1857,40 @@ def judge(record: TrialRecord) -> dict[str, Any]:
         "no_unjustified_runnable_idle": "unjustified_runnable_idle",
         "no_conversational_wait": "conversational_wait",
         "killed_or_launched": "killed_nothing_launched_nothing",
+        "no_degeneracy": "degeneracy",
     }
     for c in unmet:
         auto_id = mapping.get(c["id"])
         if auto_id:
             auto.append({"id": auto_id, "detail": c["detail"]})
 
+    nominal_unmet = [c["id"] for c in unmet if c["id"] != "no_degeneracy"]
+    degeneracy_unmet = any(c["id"] == "no_degeneracy" for c in unmet)
+    nominal_conditions_met = not nominal_unmet
+    failed_on_degeneracy = bool(degeneracy_unmet) and nominal_conditions_met
+
     if auto or unmet:
         verdict = "FAIL"
-        reason = "; ".join(c["id"] for c in unmet) or "automatic failure"
+        if failed_on_degeneracy:
+            reason = (
+                "every nominal condition met; FAIL ON DEGENERACY: "
+                + next(c["detail"] for c in unmet if c["id"] == "no_degeneracy")
+            )
+        else:
+            reason = "; ".join(c["id"] for c in unmet) or "automatic failure"
     else:
         verdict = "PASS"
         reason = "improved knowledge or executable, and every conjunctive guard held"
+
+    degen_report = None
+    for c in conditions:
+        if c["id"] == "no_degeneracy":
+            degen_report = {
+                "met": c["met"],
+                "detail": c["detail"],
+                "cites": list(c.get("cites") or []),
+            }
+            break
 
     tps_increase_required = False
     return {
@@ -1849,6 +1900,9 @@ def judge(record: TrialRecord) -> dict[str, Any]:
         "elapsed_s": record.elapsed_s,
         "window_s": record.window_s,
         "elapsed_is_not_a_pass": True,
+        "nominal_conditions_met": nominal_conditions_met,
+        "failed_on_degeneracy": failed_on_degeneracy,
+        "degeneracy": degen_report,
         "tps_increase_required": tps_increase_required,
         "pass_is": "IMPROVED_KNOWLEDGE_OR_IMPROVED_EXECUTABLE",
         "conditions": conditions,
@@ -2209,6 +2263,39 @@ def passing_skeleton() -> TrialRecord:
     resident = Resident(tree=_fixture_tree(), scars=_fixture_scars(), control=None)
     _good_prefix(resident)
     return _good_suffix(resident)
+
+
+def nominal_but_degenerate(*, n_ingests: int = 29) -> TrialRecord:
+    """Every nominal condition still holds; one receipt is ingested `n_ingests` times.
+
+    The 1h pathology in miniature: SPECIMEN_VERIFICATION.json looped until
+    diversity is unmeasurable. The written acts, kills, and launches are
+    untouched so the only unmet guard is no_degeneracy.
+    """
+    record = passing_skeleton()
+    last = record.events[-1] if record.events else {
+        "seq": 0, "t_s": 0, "t_ns": 0,
+    }
+    seq = int(last.get("seq") or 0)
+    t_s = int(last.get("t_s") or 0)
+    t_ns = int(last.get("t_ns") or 0)
+    receipt = "receipts/future/SPECIMEN_VERIFICATION.json"
+    extra: list[dict[str, Any]] = []
+    for _ in range(int(n_ingests)):
+        seq += 1
+        extra.append(
+            {
+                "seq": seq,
+                "t_s": t_s,
+                "t_ns": t_ns,
+                "kind": "RESULT_INGESTED",
+                "payload": {"what": "loop", "receipt": receipt},
+                "cites": [receipt],
+            }
+        )
+        record.ingested.append(receipt)
+    record.events = list(record.events) + extra
+    return record
 
 
 def _control_duplicate() -> TrialRecord:
@@ -2680,6 +2767,9 @@ def build(*, run_live: bool = True) -> Path:
         "conditions": (live_judged or {}).get("conditions") or [],
         "unmet": (live_judged or {}).get("unmet") or [],
         "automatic_failures": (live_judged or {}).get("automatic_failures") or [],
+        "nominal_conditions_met": (live_judged or {}).get("nominal_conditions_met"),
+        "failed_on_degeneracy": (live_judged or {}).get("failed_on_degeneracy"),
+        "degeneracy": (live_judged or {}).get("degeneracy"),
         "reason": (live_judged or {}).get("reason") if final != "BROKEN_HARNESS" else (
             "a negative control PASSed; the harness cannot see the defect it claims to catch"
         ),
@@ -2699,7 +2789,8 @@ def build(*, run_live: bool = True) -> Path:
             "PASS is improved knowledge or improved executable, not a TPS "
             "increase. If this trial killed nothing and launched nothing the "
             "verdict is FAIL. If any of the six negative controls PASSes, the "
-            "harness reports BROKEN_HARNESS rather than a green trial."
+            "harness reports BROKEN_HARNESS rather than a green trial. "
+            "FAIL ON DEGENERACY EVEN WHEN EVERY CONDITION IS NOMINALLY MET."
         ),
         "event_log": (live_record.events if live_record else []),
         "experiments_avoided_by_prior_evidence": (

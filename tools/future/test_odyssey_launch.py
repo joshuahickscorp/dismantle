@@ -66,22 +66,28 @@ def test_sixteen_criteria_evaluated_in_contract_order():
         assert "operational" in row
 
 
-def test_can_launch_false_today_names_every_unmet():
-    """NEGATIVE CONTROL: refuse today, and name every unmet criterion."""
+def test_can_launch_names_every_unmet_and_agrees_with_itself():
+    """NEGATIVE CONTROL: name EVERY unmet criterion, and never disagree with can_launch.
+
+    This used to pin "nr_nx_path_callable" in unmet. Its own comment already had
+    the principle right - it deliberately refused to pin autonomy or
+    protected_scheduling because those were plumbing and would become met - and
+    then pinned a third criterion that also became met, so the test failed
+    BECAUSE the campaign closed an obligation.
+
+    The invariants that actually belong here and survive the gate opening: unmet
+    lists every failing criterion rather than stopping at the first, can_launch is
+    False exactly when something is unmet, and the verdict block agrees with both.
+    """
     results = ol.evaluate_launch_criteria()
     unmet = ol.unmet_criteria(results)
-    assert ol.can_launch(results) is False
     assert unmet == [r["id"] for r in results if not r["met"]]
-    assert unmet, "today several criteria are unmet; an empty unmet list would open the gate"
-    # Generic NR→NX is not callable on any available specimen. Flash NX readiness
-    # is a separate field and must not be used to pretend the generic path works.
-    assert "nr_nx_path_callable" in unmet
-    # Deliberately NOT pinning autonomy or protected_scheduling. Those two were
-    # unmet because of plumbing (unpersisted verdict; capability conflated with
-    # availability). They become met when the landed drivers are actually read.
+    assert ol.can_launch(results) is (not unmet), (
+        "can_launch and unmet_criteria must never disagree"
+    )
     verdict = ol.launch_verdict(results)
-    assert verdict["verdict"] == "REFUSED"
-    assert verdict["allowed"] is False
+    assert verdict["verdict"] == ("ALLOWED" if not unmet else "REFUSED")
+    assert verdict["allowed"] is (not unmet)
     assert verdict["unmet"] == unmet
     assert verdict["n_unmet"] == len(unmet)
     assert verdict["n_criteria"] == len(ol.CRITERION_IDS)
@@ -126,8 +132,43 @@ def test_launch_receipt_not_written_while_gate_refuses(tmp_path, monkeypatch):
     assert (tmp_path / ol.RECEIPT).is_file()
 
 
+def _bound_resident_block(**overrides):
+    block = {
+        "kind": "resident",
+        "found": True,
+        "bound": True,
+        "status": "ACCEPTED",
+        "schema": "hawking.future.resident_identity.v1",
+        "pins": {
+            "nx_id": {"model_id": "qwen3.8-27b-sealed-3.14"},
+            "sealed_model_id": "qwen3.8-27b-sealed-3.14",
+            "executable_hash": {"by_role": {"binary": "a" * 64}},
+            "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+            "tokenizer": {"sha256": "b" * 64},
+            "qualification": {"role": "CONTROL_HISTORICAL_NOT_CURRENT_PROOF"},
+        },
+        "pins_named": [
+            "nx_id",
+            "sealed_model_id",
+            "executable_hash",
+            "artifact_root",
+            "tokenizer",
+            "qualification",
+        ],
+        "missing": [],
+        "agrees_with_incumbent": True,
+        "unbound_reason": None,
+    }
+    block.update(overrides)
+    return block
+
+
 def test_forced_pass_writes_launch_receipt(tmp_path):
-    payload = {"schema": ol.LAUNCH_SCHEMA, "phase_transition": "STARTED"}
+    payload = {
+        "schema": ol.LAUNCH_SCHEMA,
+        "phase_transition": "STARTED",
+        "resident_identity": _bound_resident_block(),
+    }
     refused = ol.write_launch_if_passed(payload, allowed=False, writer=lambda n, d, r: tmp_path / n)
     assert refused["written"] is False
     launched = ol.write_launch_if_passed(
@@ -138,6 +179,112 @@ def test_forced_pass_writes_launch_receipt(tmp_path):
     assert launched["written"] is True
     assert launched["name"] == ol.LAUNCH_RECEIPT
     assert (tmp_path / ol.LAUNCH_RECEIPT).is_file()
+
+
+def test_write_launch_refuses_unbound_resident(tmp_path):
+    """NEGATIVE CONTROL: a pass on the sixteen criteria must not mint an unbound launch."""
+    payload = {
+        "schema": ol.LAUNCH_SCHEMA,
+        "phase_transition": "STARTED",
+        "resident_identity": {
+            "bound": False,
+            "found": True,
+            "status": "ACCEPTED",
+            "missing": ["executable_hash"],
+            "unbound_reason": "found but does not pin executable_hash",
+        },
+    }
+    written: list[str] = []
+
+    def spy(name, doc, recorded_by):
+        written.append(name)
+        path = tmp_path / name
+        path.write_text("no")
+        return path
+
+    out = ol.write_launch_if_passed(payload, allowed=True, writer=spy)
+    assert out["written"] is False
+    assert ol.LAUNCH_RECEIPT not in written
+    assert out.get("unbound_identity") is True
+    assert "unbound" in out["reason"]
+    assert "executable_hash" in out["reason"]
+    assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False
+
+
+def test_write_launch_clears_when_identity_binds(tmp_path):
+    """The unbound guard must not become a permanent blocker once the identity binds."""
+    payload = {
+        "schema": ol.LAUNCH_SCHEMA,
+        "phase_transition": "STARTED",
+        "resident_identity": _bound_resident_block(),
+    }
+    out = ol.write_launch_if_passed(
+        payload,
+        allowed=True,
+        writer=lambda n, d, r: (tmp_path / n).write_text("ok") or (tmp_path / n),
+    )
+    assert out["written"] is True
+    assert out.get("unbound_identity") is not True
+    assert (tmp_path / ol.LAUNCH_RECEIPT).is_file()
+
+
+def test_bound_identity_does_not_open_the_gate(tmp_path):
+    """Binding names the resident. It does not lower the sixteen-criterion bar."""
+    payload = {
+        "schema": ol.LAUNCH_SCHEMA,
+        "phase_transition": "STARTED",
+        "resident_identity": _bound_resident_block(),
+    }
+    out = ol.write_launch_if_passed(
+        payload,
+        allowed=False,
+        writer=lambda n, d, r: (tmp_path / n).write_text("no") or (tmp_path / n),
+    )
+    assert out["written"] is False
+    assert "criterion" in out["reason"]
+    assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False
+
+
+def test_launch_payload_identity_is_bound_or_names_the_missing_field():
+    results = ol.evaluate_launch_criteria()
+    curriculum = ol.propose_specimen_curriculum()
+    first = (curriculum.get("roles") or [{}])[0]
+    graphs = ol.emit_first_workgraphs(first)
+    payload = ol.launch_payload(
+        results, curriculum=curriculum, workgraphs=graphs, blockers=ol.physical_blockers()
+    )
+    resident = payload["resident_identity"]
+    sandbox = payload["sandbox_identity"]
+    assert resident["status"] is not None
+    assert sandbox["status"] is not None
+    if resident["bound"]:
+        for field in (
+            "nx_id",
+            "sealed_model_id",
+            "executable_hash",
+            "artifact_root",
+            "tokenizer",
+            "qualification",
+        ):
+            assert field in resident["pins"], field
+            assert field in resident["pins_named"], field
+        assert resident["missing"] == []
+        assert resident["unbound_reason"] is None
+        assert resident["agrees_with_incumbent"] is True
+    else:
+        assert resident["missing"]
+        assert resident["unbound_reason"]
+        assert "not invented" in resident["unbound_reason"] or "does not pin" in resident["unbound_reason"] or "incumbent" in resident["unbound_reason"]
+    if sandbox["bound"]:
+        assert sandbox["pins"]["identity_sha256"]
+        assert sandbox["pins"]["reentry_same_identity"] is True
+        assert sandbox["schema"] == ol.SANDBOX_SCHEMA
+        assert "RESIDENT_SANDBOX.json" in str(sandbox.get("resolved") or sandbox.get("rel") or "")
+    else:
+        assert sandbox["missing"]
+        assert sandbox["unbound_reason"]
+    # HCLI checkpoint is not this identity, even if that file exists.
+    assert "HCLI_AGENTOS_CHECKPOINT" not in str(sandbox.get("resolved") or "")
 
 
 def test_hcli_autonomy_gate_is_not_odyssey_trial():
@@ -828,12 +975,20 @@ def test_incapable_scheduler_does_not_meet(monkeypatch):
     assert row["PROTECTED_SCHEDULER_CAPABLE"] is False
 
 
-def test_flash_nx_ready_stays_false_and_is_not_the_generic_path():
-    """NEGATIVE CONTROL: Flash has no packed NX; that is not the generic criterion."""
+def test_flash_nx_ready_is_a_separate_field_from_the_generic_path():
+    """NEGATIVE CONTROL: Flash readiness is not the generic criterion.
+
+    This asserted GENERIC_NR_NX_PIPELINE_CALLABLE is False, which was a fact about
+    one afternoon rather than a property of the gate - the generic packer landed
+    and the criterion closed, and the test failed BECAUSE the obligation was met.
+    The real invariant is independence: Flash stays False, the criterion tracks
+    the GENERIC field, and the two are never conflated.
+    """
     row = ol._eval_nr_nx()
     assert row["FLASH_NX_READY"] is False
-    assert row["GENERIC_NR_NX_PIPELINE_CALLABLE"] is False
-    assert row["met"] is False
+    assert row["met"] is row["GENERIC_NR_NX_PIPELINE_CALLABLE"], (
+        "the criterion must track the generic field, not Flash"
+    )
     assert "generic" in row["reason"].lower() or "GENERIC" in row["reason"]
 
 
@@ -903,9 +1058,13 @@ def test_gate_never_writes_launch_receipt_while_any_criterion_unmet(tmp_path, mo
     assert out["launch"]["written"] is False
     assert out["doc"]["odyssey_i_launch_written"] is False
     assert out["doc"]["verdict"]["verdict"] == "REFUSED"
-    assert "nr_nx_path_callable" in out["doc"]["verdict"]["unmet"]
+    # The invariant is "ANY unmet criterion blocks the receipt", not the identity
+    # of today's unmet criterion. This used to name nr_nx_path_callable, which
+    # broke the moment that criterion was legitimately CLOSED - a test that fails
+    # when the campaign succeeds is testing the calendar, not the gate.
+    assert out["doc"]["verdict"]["unmet"], "REFUSED with an empty unmet set is incoherent"
     rewire = out["doc"]["rewire"]
-    assert rewire["gate_count_before"]["n_unmet"] == 3
+    assert rewire["gate_count_before"]["n_unmet"] >= 1
     assert rewire["gate_count_after"]["n_unmet"] >= 1
     assert rewire["still_refused_if_any_unmet"] is True
     assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False

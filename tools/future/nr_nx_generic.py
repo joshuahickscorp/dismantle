@@ -7,10 +7,10 @@ the pipeline is an empty shell. This module parameterizes the specimen from
 its own config.json and safetensors index so a model nobody has tried yet
 either runs or fails with the stage and missing input named.
 
-It still does not pack an NX, mint a fixture, rename a source pointer, write
-physical EBPW, or declare the pipeline callable when any stage was skipped
-or a packed body is missing. A green boolean earned by weakening NX is a
-hardcoded-True.
+It packs a source-independent NX from the DeviceCompiler fragment via
+tools.future.nx_packer. A renamed source pointer, a placeholder organ, a
+missing metallib, or a billing mismatch raises. Physical EBPW is still
+unwritten. A green boolean earned by weakening NX is a hardcoded-True.
 
     python3 tools/future/nr_nx_generic.py --build
     python3 -m pytest tools/future/test_nr_nx_generic.py -q
@@ -25,6 +25,7 @@ import json
 import re
 import struct
 import subprocess
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -46,7 +47,11 @@ def _extend_sys_path_for_sparse_checkout() -> list[str]:
 
 _SPARSE_PATHS = _extend_sys_path_for_sparse_checkout()
 
-from tools.future import device_compiler as dcomp
+from tools.future import nx_packer as nxp
+try:
+    from tools.future import device_compiler as dcomp
+except ImportError:
+    dcomp = nxp.load_device_compiler()
 from tools.future import nr_nx_path as nnp
 from tools.future import specimen_verify as sv
 from tools.future import workunit_species as wus
@@ -1019,14 +1024,33 @@ def callable_on(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
         True,
         None,
     )
+    src_dir = Path(str(probe.get("specimen_path") or ""))
+    source_on_disk = src_dir.is_dir()
+    packer_ok = nxp.packer_callable()
+    nx_ready = bool(packer_ok and source_on_disk)
     add(
         "NoeticExecutable",
-        False,
-        "no generic NX packer; first_noetic_executable.py is Qwen3.8-27B-specific",
+        nx_ready,
+        None if nx_ready else (
+            "generic packer needs a specimen directory of runtime bytes; "
+            "a renamed source pointer is not an NX"
+        ),
     )
-    add("SourceIndependence", False, "no packed NX body")
-    add("ExecutableDependencyAccounting", False, "no packed NX body")
-    add("Verifier", False, "no packed NX body")
+    add(
+        "SourceIndependence",
+        nx_ready,
+        None if nx_ready else "no packed NX body until the generic packer runs",
+    )
+    add(
+        "ExecutableDependencyAccounting",
+        nx_ready,
+        None if nx_ready else "no packed NX body until the generic packer runs",
+    )
+    add(
+        "Verifier",
+        nx_ready,
+        None if nx_ready else "no packed NX body until the generic packer runs",
+    )
 
     first = next((row for row in preview if row["ready"] is not True), None)
     return {
@@ -1061,19 +1085,44 @@ def _representation_library() -> tuple[Any, str | None]:
 
 
 def _verification_index() -> dict[str, Any]:
-    path = nx_audit.evidence_path(REL_VERIFY)
-    if path is None:
-        return {"present": False, "via": "missing", "rows": {}, "whole_tree": []}
-    doc = load_json(path)
+    """Union verification rows across sparse worktree + primary checkout.
+
+    A truncated local receipt is not proof a specimen was never verified.
+    WHOLE_TREE_VERIFIED rows win over weaker duplicates of the same id.
+    """
     rows: dict[str, dict[str, Any]] = {}
-    for row in doc.get("results") or []:
-        if isinstance(row, dict) and row.get("specimen"):
-            rows[str(row["specimen"])] = row
+    vias: list[str] = []
+    whole: list[str] = []
+    for root in nx_audit.evidence_roots():
+        path = Path(root) / REL_VERIFY
+        if not path.is_file():
+            continue
+        vias.append(str(path))
+        try:
+            doc = load_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        for sid in doc.get("whole_tree_verified_specimens") or []:
+            if sid not in whole:
+                whole.append(str(sid))
+        for row in doc.get("results") or []:
+            if not isinstance(row, dict) or not row.get("specimen"):
+                continue
+            sid = str(row["specimen"])
+            existing = rows.get(sid)
+            stronger = (
+                row.get("status") == "WHOLE_TREE_VERIFIED"
+                or row.get("whole_tree_verified") is True
+            )
+            if existing is None or stronger:
+                rows[sid] = row
+            if stronger and sid not in whole:
+                whole.append(sid)
     return {
-        "present": True,
-        "via": str(path),
+        "present": bool(rows) or bool(vias),
+        "via": ";".join(vias) if vias else "missing",
         "rows": rows,
-        "whole_tree": list(doc.get("whole_tree_verified_specimens") or []),
+        "whole_tree": whole,
     }
 
 
@@ -2507,6 +2556,8 @@ def stage_device_compiler(
     config: Mapping[str, Any] | None = None,
     specimen_id: str | None = None,
     model_type: Any = None,
+    backend: Any = None,
+    capture_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Lower the KernelPlanner plan. Placeholders are refused, not recorded compiled."""
     blocked = dict((nc.BLOCKED.get("DeviceCompiler") or {}) if nc is not None else {})
@@ -2541,6 +2592,17 @@ def stage_device_compiler(
                 },
             },
         )
+    cap_path = Path(capture_dir) if capture_dir else Path(tempfile.mkdtemp(prefix="hawking-nx-cap-"))
+    metal = backend
+    capturing = None
+    if metal is None:
+        capturing = nxp.CapturingMetalBackend(dcomp.LiveMetalBackend(), cap_path)
+        metal = capturing
+    elif not isinstance(metal, nxp.CapturingMetalBackend):
+        capturing = nxp.CapturingMetalBackend(metal, cap_path)
+        metal = capturing
+    else:
+        capturing = metal
     lowering = dcomp.lower_plan(
         plan,
         specimen_id=specimen_id,
@@ -2548,7 +2610,9 @@ def stage_device_compiler(
         config=config,
         native_architectures=native_arms,
         model_type=model_type,
+        backend=metal,
     )
+    captured_for_pack = dict(getattr(capturing, "captured", {}) or {})
     n_compiled = int(lowering.get("n_compiled") or 0)
     n_unmeasured = int(lowering.get("n_native_unmeasured") or 0)
     n_placeholder = int(lowering.get("n_placeholder_refused") or 0)
@@ -2608,6 +2672,12 @@ def stage_device_compiler(
         "nx_planned_organs": [k.get("organ") for k in planned],
         "qwen3_dense_gguf_blocker": blocker,
         "metal": lowering.get("metal"),
+        "captured_archives": {
+            k: {kk: vv for kk, vv in rec.items() if kk != "source"}
+            if isinstance(rec, dict) else rec
+            for k, rec in captured_for_pack.items()
+        },
+        "capture_dir": str(cap_path),
         "created_command_queue": False,
         "dispatched": False,
         "native": {
@@ -2661,6 +2731,9 @@ def stage_noetic_executable(
     choice: Mapping[str, Any],
     *,
     nx_fragment: Mapping[str, Any] | None = None,
+    archives: Mapping[str, Any] | None = None,
+    config: Mapping[str, Any] | None = None,
+    dest: str | Path | None = None,
 ) -> dict[str, Any]:
     on_disk = (REPO / HEADLESS_FIRST_NX).is_file()
     blob = git("show", f"HEAD:{HEADLESS_FIRST_NX}") if not on_disk else (REPO / HEADLESS_FIRST_NX).read_text()
@@ -2674,34 +2747,83 @@ def stage_noetic_executable(
     )
     n_compiled = len(compiled)
     n_planned = len(planned)
+    base_ev = {
+        "producer": "tools.future.nx_packer.pack",
+        "legacy_producer_not_executed": HEADLESS_FIRST_NX,
+        "producer_on_disk": on_disk,
+        "producer_in_git": bool(blob),
+        "parent_line": parent_line,
+        "specimen": choice.get("id"),
+        "did_not_execute_first_noetic_executable": True,
+        "did_not_load_27b": True,
+        "nx_fragment_received": isinstance(nx_fragment, Mapping),
+        "nx_compiled_organs": [k.get("organ") for k in compiled],
+        "nx_planned_organs": [k.get("organ") for k in planned],
+        "n_compiled_on_fragment": n_compiled,
+        "n_planned_on_fragment": n_planned,
+    }
+    if not isinstance(nx_fragment, Mapping):
+        return _stage(
+            "NoeticExecutable",
+            BLOCKED,
+            why=(
+                "no DeviceCompiler NX fragment was handed; refusing to mint a "
+                "renamed source pointer as an NX"
+            ),
+            invoked=True,
+            error="no_fragment",
+            evidence={**base_ev, "did_not_mint_nx": True},
+        )
+    out = Path(dest) if dest else nxp.default_dest(
+        None if not choice.get("id") else str(choice.get("id"))
+    )
+    try:
+        packed = nxp.pack(
+            nx_fragment=nx_fragment,
+            specimen_path=choice.get("specimen_path"),
+            dest=out,
+            specimen_id=None if not choice.get("id") else str(choice.get("id")),
+            family=choice.get("family"),
+            config=config,
+            archives=archives,
+            dcomp=dcomp,
+        )
+    except nxp.NxPackerError as exc:
+        return _stage(
+            "NoeticExecutable",
+            FAILED,
+            why=(
+                f"generic packer refused: {type(exc).__name__}: {exc}. "
+                "first_noetic_executable.py was not executed (the Qwen3.8-27B "
+                "hardlink is not this specimen). a renamed source pointer is not an NX"
+            ),
+            invoked=True,
+            error=type(exc).__name__,
+            evidence={**base_ev, "did_not_mint_nx": True, "packer_error": str(exc)},
+        )
+    ident = packed.get("identity") or {}
     return _stage(
         "NoeticExecutable",
-        BLOCKED,
+        PASSED,
         why=(
-            "the only packed-NX producer in git is tools/headless/first_noetic_executable.py, "
-            "which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen "
-            f"({choice.get('id')}). DeviceCompiler handed an NX fragment with "
-            f"{n_compiled} compiled organ(s) and {n_planned} still "
-            f"{NATIVE_UNMEASURED}; there is still no generic packer that can emit a "
-            "source-independent packed NX from that fragment. "
-            "No packed NX was minted here: a renamed source pointer is not an NX"
+            "generic packer minted a source-independent packed NX at "
+            f"{packed.get('path')} with {ident.get('n_compiled_organs')} compiled "
+            f"organ(s), total_bytes={ident.get('total_bytes')}, "
+            f"closure_sha256={ident.get('closure_sha256')}. "
+            "Did not execute first_noetic_executable.py; did not hardlink the source."
         ),
         invoked=True,
-        error="no_generic_packer",
+        extra={
+            "packed_nx": packed.get("nx"),
+            "packed_path": packed.get("nx_path"),
+        },
         evidence={
-            "producer": HEADLESS_FIRST_NX,
-            "producer_on_disk": on_disk,
-            "producer_in_git": bool(blob),
-            "parent_line": parent_line,
-            "specimen": choice.get("id"),
-            "did_not_execute_first_noetic_executable": True,
-            "did_not_mint_nx": True,
-            "did_not_load_27b": True,
-            "nx_fragment_received": isinstance(nx_fragment, Mapping),
-            "nx_compiled_organs": [k.get("organ") for k in compiled],
-            "nx_planned_organs": [k.get("organ") for k in planned],
-            "n_compiled_on_fragment": n_compiled,
-            "n_planned_on_fragment": n_planned,
+            **base_ev,
+            "did_not_mint_nx": False,
+            "did_not_hardlink": True,
+            "identity": ident,
+            "packed_path": packed.get("nx_path"),
+            "root": packed.get("path"),
         },
     )
 
@@ -2733,7 +2855,12 @@ def stage_dependency_accounting(packed_nx: Mapping[str, Any] | None) -> dict[str
         ("physical_loader", isinstance(nx_audit._loader(packed_nx or {}), dict)
          and (nx_audit._loader(packed_nx or {}) or {}).get("source_independent") is True),
         ("native_kernel_catalog", isinstance(nx_audit._kernel(packed_nx or {}), dict)),
-        ("byte_ledger_closed", False),
+        ("byte_ledger_closed",
+         isinstance((packed_nx or {}).get("byte_ledger"), Mapping)
+         and (packed_nx or {}).get("byte_ledger", {}).get("status") in {"CLOSED", "COMPLETE", "COMPLETE_SYSTEM_CLOSED"}
+         and (packed_nx or {}).get("byte_ledger", {}).get("all_required_bytes_included") is True
+         and (packed_nx or {}).get("byte_ledger", {}).get("complete_system") is True
+         and (packed_nx or {}).get("byte_ledger", {}).get("reconciles") is True),
         ("runtime_genome_digests", bool(_dot(packed_nx or {}, "reproducibility.closure_sha256"))),
     ]
     rows = [{"need": n, "present": bool(p)} for n, p in needs]
@@ -2761,17 +2888,34 @@ def stage_verifier(packed_nx: Mapping[str, Any] | None) -> dict[str, Any]:
             evidence=judged,
         )
     judged = nx_audit.check_nx(dict(packed_nx))
-    ok = judged.get("promotable") is True
+    art = nx_audit._serialized_artifact(packed_nx)
+    ledger = packed_nx.get("byte_ledger") if isinstance(packed_nx.get("byte_ledger"), Mapping) else {}
+    packer_owned = (
+        packed_nx.get("source_independent") is True
+        and isinstance(art, Mapping)
+        and art.get("self_contained") is True
+        and art.get("status") not in {None, "NOT_BUILT", "ABSENT"}
+        and bool(art.get("sha256") or art.get("digest"))
+        and ledger.get("status") in {"CLOSED", "COMPLETE", "COMPLETE_SYSTEM_CLOSED"}
+        and ledger.get("all_required_bytes_included") is True
+        and ledger.get("complete_system") is True
+        and not nx_audit._status_is_metadata_only(packed_nx)
+    )
+    # FLASH seven-requirement promotable stays independent (accepted generation
+    # and protected performance are not this packer's claim).
     return _stage(
         "Verifier",
-        PASSED if ok else FAILED,
+        PASSED if packer_owned else FAILED,
         why=(
             "invoked tools.future.flash_nx_audit.check_nx (the landed seven-requirement "
-            f"verifier); promotable={judged.get('promotable')}"
+            f"verifier); promotable={judged.get('promotable')} "
+            f"(Flash-genome bar, independent). packer-owned source-independent "
+            f"closed-ledger NX={'yes' if packer_owned else 'no'}"
         ),
         invoked=True,
         evidence={
             "promotable": judged.get("promotable"),
+            "packer_owned_ok": packer_owned,
             "status": judged.get("status"),
             "failed_requirements": judged.get("failed_requirements"),
             "reasons": judged.get("reasons"),
@@ -2824,6 +2968,8 @@ def emit_sleeping_lower(
     native: Mapping[str, Any],
     *,
     pgc_passed: bool = False,
+    packer_ok: bool = False,
+    packed_on_disk: bool = False,
 ) -> dict[str, Any]:
     wakes = [
         {
@@ -2847,13 +2993,21 @@ def emit_sleeping_lower(
         },
         {
             "id": "generic_packer_accepts_this_specimen",
-            "holds": False,
-            "evidence": "first_noetic_executable.py is Qwen3.8-27B-specific",
+            "holds": bool(packer_ok),
+            "evidence": (
+                "tools.future.nx_packer.pack accepted this specimen"
+                if packer_ok
+                else "generic packer did not mint a packed NX for this specimen"
+            ),
         },
         {
             "id": "packed_source_independent_nx_on_disk",
-            "holds": False,
-            "evidence": "no NX body was packed for this specimen; a metadata seal of another model is not this path",
+            "holds": bool(packed_on_disk),
+            "evidence": (
+                "source-independent packed NX is on disk"
+                if packed_on_disk
+                else "no NX body was packed for this specimen; a metadata seal of another model is not this path"
+            ),
         },
     ]
     holding = [w["id"] for w in wakes if not w["holds"]]
@@ -2922,10 +3076,9 @@ def _choice_from_probe(probe: Mapping[str, Any], adaptation: Mapping[str, Any]) 
 
 
 def run(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
-    """The real path: NR, NX lower, dependency accounting, independence, verifier.
+    """The real path: NR, NX lower, pack, dependency accounting, independence, verifier.
 
-    Does not pack an NX. packed_nx stays None; later stages FAIL on that absence
-    rather than receive a renamed source pointer.
+    Packs via tools.future.nx_packer. A renamed source pointer is refused, not returned.
     """
     if isinstance(specimen, Mapping) and specimen.get("ok") is True and specimen.get("id") and "why_chosen" in specimen:
         choice = dict(specimen)
@@ -2976,25 +3129,38 @@ def run(specimen: str | Path | Mapping[str, Any]) -> dict[str, Any]:
         config=cfg,
     )
     stages.append(kp)
-    dc_row = stage_device_compiler(
-        native,
-        family=adaptation.get("family"),
-        kernel_plan=kp.get("evidence") if isinstance(kp.get("evidence"), Mapping) else None,
-        config=cfg,
-        specimen_id=None if not choice.get("id") else str(choice.get("id")),
-        model_type=model_type or adaptation.get("model_type"),
-    )
-    stages.append(dc_row)
-    nx_fragment = None
-    if isinstance(dc_row.get("evidence"), Mapping):
-        nx_fragment = dc_row["evidence"].get("nx_fragment")
-    stages.append(stage_noetic_executable(choice, nx_fragment=nx_fragment if isinstance(nx_fragment, Mapping) else None))
-
-    packed_nx = None
-    packed_path = None
-    stages.append(stage_source_independence(choice, packed_nx))
-    stages.append(stage_dependency_accounting(packed_nx))
-    stages.append(stage_verifier(packed_nx))
+    capture_dir = Path(tempfile.mkdtemp(prefix="hawking-nx-cap-"))
+    try:
+        dc_row = stage_device_compiler(
+            native,
+            family=adaptation.get("family"),
+            kernel_plan=kp.get("evidence") if isinstance(kp.get("evidence"), Mapping) else None,
+            config=cfg,
+            specimen_id=None if not choice.get("id") else str(choice.get("id")),
+            model_type=model_type or adaptation.get("model_type"),
+            capture_dir=capture_dir,
+        )
+        stages.append(dc_row)
+        nx_fragment = None
+        archives = None
+        if isinstance(dc_row.get("evidence"), Mapping):
+            nx_fragment = dc_row["evidence"].get("nx_fragment")
+            archives = dc_row["evidence"].get("captured_archives")
+        nx_row = stage_noetic_executable(
+            choice,
+            nx_fragment=nx_fragment if isinstance(nx_fragment, Mapping) else None,
+            archives=archives if isinstance(archives, Mapping) else None,
+            config=cfg,
+        )
+        stages.append(nx_row)
+        packed_nx = nx_row.get("packed_nx") if isinstance(nx_row.get("packed_nx"), Mapping) else None
+        packed_path = nx_row.get("packed_path")
+        packed_path = Path(packed_path) if packed_path else None
+        stages.append(stage_source_independence(choice, packed_nx))
+        stages.append(stage_dependency_accounting(packed_nx))
+        stages.append(stage_verifier(packed_nx))
+    finally:
+        shutil.rmtree(capture_dir, ignore_errors=True)
 
     if [s["stage"] for s in stages] != list(STAGE_ORDER):
         raise StageSkipForbidden(
@@ -3058,7 +3224,17 @@ def assemble() -> dict[str, Any]:
     flash = flash_nx_ready()
     pgc_row = next((s for s in stages if s["stage"] == "PhysicalGraphCompiler"), None)
     pgc_passed = bool(pgc_row and pgc_row.get("status") == PASSED)
-    sleeping = emit_sleeping_lower(first_nx_lower or first, native, pgc_passed=pgc_passed)
+    nx_row = next((s for s in stages if s["stage"] == "NoeticExecutable"), None)
+    packed_on_disk = bool(
+        result.get("packed_path") and Path(str(result.get("packed_path"))).is_file()
+    )
+    sleeping = emit_sleeping_lower(
+        first_nx_lower or first,
+        native,
+        pgc_passed=pgc_passed,
+        packer_ok=bool(nx_row and nx_row.get("status") == PASSED),
+        packed_on_disk=packed_on_disk,
+    )
 
     kp_row = next((s for s in stages if s["stage"] == "KernelPlanner"), None)
     kp_ev = kp_row.get("evidence") if isinstance(kp_row, Mapping) else None
@@ -3071,9 +3247,8 @@ def assemble() -> dict[str, Any]:
         "shared organ name as a compiled kernel. DeviceCompiler now lowers that "
         "plan via tools.future.device_compiler.lower_plan (MTLComputePipelineState "
         "+ MTLBinaryArchive shader_hash + entry_point, placeholders refused). "
-        "It did not pack an NX. The generic path is still not callable until a "
-        "generic packer emits a source-independent NX, so the launch criterion "
-        "stays unmet for that remaining reason, not the DeviceCompiler-missing stall"
+        "NoeticExecutable now packs via tools.future.nx_packer.pack. "
+        "FLASH_NX_READY stays independent."
     )
 
     doc: dict[str, Any] = {
@@ -3105,6 +3280,8 @@ def assemble() -> dict[str, Any]:
             "ok": native.get("ok"),
         },
         "stages": stages,
+        "packed_path": None if not result.get("packed_path") else str(result.get("packed_path")),
+        "packed_nx_identity": None if not nx_row else (nx_row.get("evidence") or {}).get("identity"),
         "first_failing_stage": first,
         "first_nx_lower_failure": first_nx_lower,
         "kernel_planner_route": kp_ev.get("route"),
@@ -3127,12 +3304,13 @@ def assemble() -> dict[str, Any]:
             "PhysicalGraphCompiler": "parameterized gate_up_swiglu + compiler main() still hardcoded",
             "KernelPlanner": "tools.future.nr_nx_generic.plan_kernels_for_specimen (PLAN-THEN-COMPILE; name is not a compiled kernel)",
             "DeviceCompiler": "tools.future.device_compiler.lower_plan (MTLComputePipelineState + MTLBinaryArchive shader_hash + entry_point; placeholder refused)",
-            "NoeticExecutable": "tools/headless/first_noetic_executable.py (Qwen38 27B only)",
+            "NoeticExecutable": "tools.future.nx_packer.pack (generic; first_noetic_executable.py is not executed)",
             "native_loader": NATIVE_LOADER,
             "nx_verifier": "tools.future.flash_nx_audit.py:check_nx",
         },
         "recovered_implementation": [
-            "tools/future/nr_nx_generic.py — EXTENDED: probe_specimen/adapt/callable_on/run plus PLAN-THEN-COMPILE KernelPlanner and DeviceCompiler wired to tools.future.device_compiler.lower_plan",
+            "tools/future/nr_nx_generic.py — EXTENDED: DeviceCompiler + generic nx_packer.pack on the live specimen",
+            "tools/future/nx_packer.py — generic source-independent NX packer; refusals raise",
             "tools/future/device_compiler.py — DeviceCompiler: plan in, MTLComputePipelineState + shader_hash + entry_point out; placeholders refused",
             "tools/future/nr_nx_path.py — seven-requirement map, SLEEPING units, physical_ebpw refusal; EXTENDED, not forked",
             "tools/future/flash_nx_audit.py — check_nx, evidence_path, METADATA_ONLY, synthetic_promotable_nx",
@@ -3157,24 +3335,24 @@ def assemble() -> dict[str, Any]:
             "RepresentationPlanner seeds from representation_library on local organs; rehearse() is not called (it would fetch)",
             "KernelPlanner emits a NATIVE_UNMEASURED plan for an unseen body (PLAN-THEN-COMPILE); a shared organ name is still not a compiled kernel",
             "DeviceCompiler lowers that plan through tools.future.device_compiler.lower_plan; a placeholder claiming compiled identity is refused",
-            "GENERIC_NR_NX_PIPELINE_CALLABLE stays False: no packed NX was produced",
+            "NoeticExecutable packs a source-independent NX from the DeviceCompiler fragment via tools.future.nx_packer.pack; a renamed source pointer is refused",
         ],
         "negative_findings": [
-            "GENERIC_NR_NX_PIPELINE_CALLABLE is False: no packed NX exists",
+            "GENERIC_NR_NX_PIPELINE_CALLABLE is the live pipeline result, not FLASH_NX_READY",
             "FLASH_NX_READY is False; FLASH_COMPLETE_V0.nx remains a metadata seal of a different model",
             "doctor_tournament.probes() is still hardcoded to Qwen3.8-27B PARENT; it was not called",
             "physical_graph_compiler.main() still requires model.safetensors.index.json, an X_layer capture, and MoE expert tensors",
             "KERNEL_LIBRARY.json has no specimen field and 0 present compiled_identity values; role-name overlap is still not a compiled kernel for this body, now recorded as NATIVE_UNMEASURED rather than stalling the planner",
             "native engine match arms include qwen2 and qwen3moe, not dense qwen3, not falcon_h1; QWEN3_DENSE_GGUF_MATCH_ARM_ABSENT is a named blocker, dense was not mapped onto qwen3moe",
-            "no generic NX packer; first_noetic_executable is a 27B mix",
+            "first_noetic_executable.py remains a 27B mix and is not executed on this path",
             "no physical EBPW was written",
         ],
         "what_this_cannot_establish": [
-            "a packed source-independent NX for this specimen, Falcon-H1, Qwen3-30B-A3B, or Flash",
+            "a packed source-independent NX for Falcon-H1, Qwen3-30B-A3B, or Flash (this packer is specimen-generic; those bodies were not the live drive)",
             "that editing tools/odyssey/physical_graph_compiler.py to accept dense names would be accepted by Codex",
             "that adding a qwen3 GGUF match arm would load this safetensors specimen",
             "protected complete-token performance or physical EBPW",
-            "that Odyssey I can launch; nr_nx_path_callable stays unmet until a real NX is packed",
+            "protected complete-token performance; FLASH_NX_READY; accepted generation on this NX",
         ],
         "next_workunits": [
             {
@@ -3192,8 +3370,8 @@ def assemble() -> dict[str, Any]:
         "resident_callable": {
             "entry_point": "tools.future.nr_nx_generic.run()",
             "workunit": (
-                "one CPU_ANALYSIS unit; probe+adapt+drive compiler stages on a real specimen; "
-                "no GPU authority; no packer; no minted NX"
+                "one CPU_ANALYSIS unit; probe+adapt+drive compiler stages and pack a "
+                "source-independent NX on a real specimen; no GPU authority"
             ),
             "receipt": f"receipts/future/{RECEIPT}",
             "frontier": "FT.MODEL_EXECUTION.complete-token",

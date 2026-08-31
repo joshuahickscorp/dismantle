@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T08:55:57Z",
+  "recorded_at": "2026-08-31T09:55:24Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -13,6 +13,22 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement. A launch-gate REFUSED receipt is not Odyssey started. ODYSSEY_I_LAUNCH.json is the only phase-transition receipt and is written only when every criterion is met.",
  "criteria": [
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "AUTONOMY_TRIALS found=True path_taken=worktree candidate_is_mapping=True trial='1h' verdict='PASS' eligible=True resident_orchestration=True timeline_seal_verifies=True seal_why='timeline file digest matches the persisted seal' cognition_recorded=True cognition='UNAVAILABLE' AUTONOMY_TRIAL.json found=False not_authority=True hcli_all_requested_stages_passed=True not_this_criterion=True met=True",
    "evidence": [
     {
      "found": true,
@@ -47,7 +63,9 @@
      "schema": "hcli.agentos.autonomy_gate.v1"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "resident_autonomy_trial_pass",
+   "interpretation": "Odyssey I resident-orchestration autonomy trial 1h persisted PASS in AUTONOMY_TRIALS.json; timeline seal verifies; resident_orchestration=true; resident_model_cognition='UNAVAILABLE'",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -70,6 +88,8 @@
    },
    "persisted_trial": "1h",
    "persisted_verdict": "PASS",
+   "probe_kind": "measured_flags",
+   "probe_performed": "probe_json receipts/future/AUTONOMY_TRIALS.json (plural); autonomy_trial.launch_candidate_from_receipt; verify_timeline_digest(timeline_path, timeline_seal_digest); probe_json receipts/future/AUTONOMY_TRIAL.json recorded as not-authority; HCLI AgentOS autonomy all_requested_stages_passed recorded as not this criterion",
    "reason": "Odyssey I resident-orchestration autonomy trial 1h persisted PASS in AUTONOMY_TRIALS.json; timeline seal verifies; resident_orchestration=true; resident_model_cognition='UNAVAILABLE'",
    "resident_model_cognition": "UNAVAILABLE",
    "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
@@ -77,6 +97,21 @@
    "timeline_seal_verifies": true
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "measured_unmet",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
    "curriculum": {
     "census_probe": {
      "found": true,
@@ -513,6 +548,7 @@
     ],
     "schema": "hawking.future.odyssey_i.specimen_curriculum.v1"
    },
+   "direct_observation": "n_roles=5 n_ready=2 ready=False unready=['mid_size_dense_compiler', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']",
    "evidence": [
     {
      "curriculum_n_roles": 5,
@@ -524,7 +560,9 @@
      ]
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "specimen_curriculum_ready",
+   "interpretation": "curriculum proposes 5 roles; ready=2. unready=['mid_size_dense_compiler', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']. A proposal is not a ready specimen set.",
    "met": false,
    "operational": {
     "cli_is_not_enough": true,
@@ -543,9 +581,27 @@
     },
     "resident_operational": false
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "propose_specimen_curriculum(): ModelLake specimens/ listing, independent digest recomputation, lake census, Odyssey I patient seals, law-store schools; a proposal is not a ready specimen set",
    "reason": "curriculum proposes 5 roles; ready=2. unready=['mid_size_dense_compiler', 'qwen27_mature_physical', 'flash_heterogeneous_frontier']. A proposal is not a ready specimen set."
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "import_ok=True census_found=True path_taken=worktree schema_ok=True schema='hcli.agentos.modellake_census.v1' status='PASSED'",
    "evidence": [
     {
      "census": {
@@ -562,7 +618,9 @@
      }
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "modellake_identity",
+   "interpretation": "ModelLake identity machinery is importable and a census receipt schema='hcli.agentos.modellake_census.v1' status='PASSED' was loaded via worktree",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -580,9 +638,27 @@
     },
     "resident_operational": false
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "import hcli.agentos.modellake_receipts; probe_json census receipts ['receipts/headless/MODELLAKE_FLASH_NEXT_CENSUS.json', 'receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json', 'receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json'] for schema starting hcli.agentos.modellake",
    "reason": "ModelLake identity machinery is importable and a census receipt schema='hcli.agentos.modellake_census.v1' status='PASSED' was loaded via worktree"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "present=True invocable=True n_prior=5 missing_inputs=[] stale_declared_paths=[] absent_inputs=[] schedule=True frontier=FT.MODEL_CAPABILITY.hard-gates.drive-tools refill=True driver=odyssey_tool_driver.py flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True} resident_operational=True",
    "evidence": [
     {
      "absent_inputs": [],
@@ -651,7 +727,9 @@
      "stale_declared_paths": []
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "doctor_callable",
+   "interpretation": "Doctor is resident-operational",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -672,9 +750,27 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "_module_file on ['tools/odyssey/doctor_tournament.py', 'tools/doctor_seal.py', 'tools/doctor_seal.py', 'tools/gravity_doctor_capability.py', 'tools/gravity_doctor_dimensions.py', 'tools/gravity_doctor_gate.py']; glob prior seals *_DOCTOR_SEAL.json across checkout roots; ast-parse Path('/abs/...') literals and Path.exists(); _resolve_stale_input under MODEL_ROOTS; _resident_schedulable via orchestration.BINDINGS (Call nodes only; this gate cannot self-certify)",
    "reason": "Doctor is resident-operational"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "present=True invocable=True n_prior=108 missing_inputs=[] stale_declared_paths=[] absent_inputs=[] schedule=True frontier=FT.MODEL_CAPABILITY.hard-gates.drive-tools refill=True driver=odyssey_tool_driver.py flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True} resident_operational=True",
    "evidence": [
     {
      "absent_inputs": [],
@@ -834,7 +930,9 @@
      "stale_declared_paths": []
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "gravity_callable",
+   "interpretation": "Gravity is resident-operational",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -855,23 +953,36 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "_module_file on ['tools/odyssey/decoding_gravity.py', 'tools/odyssey/state_gravity.py', 'hcli/gravity/__init__.py']; glob prior seals *_GRAVITY_*.json across checkout roots; ast-parse Path('/abs/...') literals and Path.exists(); _resolve_stale_input under MODEL_ROOTS; _resident_schedulable via orchestration.BINDINGS (Call nodes only; this gate cannot self-certify)",
    "reason": "Gravity is resident-operational"
   },
   {
    "FLASH_NX_READY": false,
-   "GENERIC_NR_NX_PIPELINE_CALLABLE": false,
+   "GENERIC_NR_NX_PIPELINE_CALLABLE": true,
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable'] import_ok=True GENERIC_NR_NX_PIPELINE_CALLABLE=True GENERIC_FROM_RECEIPT=True FLASH_NX_READY=False FLASH_FROM_RECEIPT=False first_failing_stage=None n_stages=14 receipt_path_taken=worktree",
    "evidence": [
     {
      "FLASH_FROM_RECEIPT": false,
      "FLASH_NX_READY": false,
-     "GENERIC_FROM_RECEIPT": false,
-     "GENERIC_NR_NX_PIPELINE_CALLABLE": false,
-     "first_failing_stage": {
-      "error": "no_generic_packer",
-      "stage": "NoeticExecutable",
-      "status": "BLOCKED",
-      "why": "the only packed-NX producer in git is tools/headless/first_noetic_executable.py, which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen (Qwen--Qwen3-0.6B@c1899de289a0). DeviceCompiler handed an NX fragment with 6 compiled organ(s) and 0 still NATIVE_UNMEASURED; there is still no generic packer that can emit a source-independent packed NX from that fragment. No packed NX was minted here: a renamed source pointer is not an NX"
-     },
+     "GENERIC_FROM_RECEIPT": true,
+     "GENERIC_NR_NX_PIPELINE_CALLABLE": true,
+     "first_failing_stage": null,
      "flash_why": "FLASH_COMPLETE_V0.nx status='SEALED_METADATA_ONLY_NOT_FOR_PROMOTION'; check_nx.promotable=False",
      "import_ok": true,
      "import_path_taken": "import",
@@ -885,8 +996,10 @@
     }
    ],
    "facts_are_independent": true,
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "nr_nx_path_callable",
-   "met": false,
+   "interpretation": "generic NR\u2192NX pipeline is callable on an available specimen; FLASH_NX_READY is independent",
+   "met": true,
    "operational": {
     "cli_is_not_enough": true,
     "flags": {
@@ -901,13 +1014,31 @@
     "notes": {
      "FLASH_NX_READY": "False",
      "FLASH_NX_READY_is_not_this_criterion": "true",
-     "generic_pipeline_callable": "False"
+     "generic_pipeline_callable": "True"
     },
     "resident_operational": false
    },
-   "reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage='NoeticExecutable: the only packed-NX producer in git is tools/headless/first_noetic_executable.py, which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen (Qwen--Qwen3-0.6B@c1899de289a0). DeviceCompiler handed an NX fragment with 6 compiled organ(s) and 0 still NATIVE_UNMEASURED; there is still no generic packer that can emit a source-independent packed NX from that fragment. No packed NX was minted here: a renamed source pointer is not an NX'. invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path."
+   "probe_kind": "measured_flags",
+   "probe_performed": "import nr_nx_generic; invoke flash_nx_ready() and generic_pipeline_callable(stages); probe_json receipts/future/NR_NX_GENERIC.json; live function wins over a receipt declaration",
+   "reason": "generic NR\u2192NX pipeline is callable on an available specimen; FLASH_NX_READY is independent"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "lattice=['PROTECTED_ABSOLUTE', 'DIAGNOSTIC_RELATIVE', 'STATIC_ONLY'] lattice_ok=True snapshot_captured=46 path_taken=worktree dag_present=True dag_path_taken=worktree selftest_ok=True selftest_why=None flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "dag": {
@@ -924,7 +1055,9 @@
      "snapshot_captured": 46
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "evidence_hierarchy",
+   "interpretation": "evidence DAG is resident-operational",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -944,9 +1077,27 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "probe_json receipts/future/EVIDENCE_SNAPSHOT.json; compare contamination.MEASUREMENT_CLASSES to EVIDENCE_LATTICE; _module_file tools/future/evidence_dag.py; _exercise tools.future.evidence_dag.selftest",
    "reason": "evidence DAG is resident-operational"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "import_ok=True has_query=True path_taken=worktree found=True n_scars=663 sealed=True flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "import_ok": true,
@@ -954,7 +1105,9 @@
      "path_taken": "worktree"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "negative_science",
+   "interpretation": "negative-science index is importable, sealed, scars=663, query/refuse_if_dead callable",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -972,9 +1125,27 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "import tools.future.negative_index; hasattr query; probe_json receipts/future/NEGATIVE_SCIENCE_INDEX.json; read coverage.n_scars",
    "reason": "negative-science index is importable, sealed, scars=663, query/refuse_if_dead callable"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "runtime_present=True path_taken=worktree species_ok=True selftest_ok=True selftest_why=None flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "exercised": {
@@ -991,7 +1162,9 @@
      "workunit_species_import": true
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "workgraphs",
+   "interpretation": "WorkGraph runtime is resident-operational",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1011,9 +1184,27 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "_module_file tools/future/workgraph.py; import tools.future.workunit_species; _exercise tools.future.workgraph.selftest",
    "reason": "WorkGraph runtime is resident-operational"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "frontier_found=True path_taken=worktree frontiers_present=True succession_present=True refill_ok=True is_idle_ok=True refill_why=None idle_why=None flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "frontier": {
@@ -1034,7 +1225,9 @@
      }
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "self_refill",
+   "interpretation": "resident self-refill loop is operational",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1055,9 +1248,27 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "probe_json receipts/future/CLAUDE_GLOBAL_FRONTIER.json; _module_file frontiers.py and succession.py; _exercise tools.future.frontiers.refill and tools.future.frontiers.is_idle",
    "reason": "resident self-refill loop is operational"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "contamination_class='HEAVY' path_taken=worktree dirty_present=True build_ok=True build_why=None flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "contamination_class": "HEAVY",
@@ -1070,7 +1281,9 @@
      "path_taken": "worktree"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "dirty_measurement",
+   "interpretation": "dirty measurement is resident-operational",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1090,14 +1303,30 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "_module_file tools/future/dirty_measure.py; _exercise tools.future.dirty_measure.build; probe_json receipts/future/CONTAMINATION_SCIENCE.json; read contamination_class",
    "reason": "dirty measurement is resident-operational"
   },
   {
    "PROTECTED_SCHEDULER_CAPABLE": true,
    "PROTECTED_WINDOW_AVAILABLE": false,
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
    "contamination_class": "HEAVY",
-   "did_not_fabricate_lease": true,
-   "did_not_flock": true,
+   "direct_observation": "invoked=True why=\"protected-required unit cannot start: contamination_class='HEAVY' (needs QUIESCENT; at least one HEAVY probe fired); no proven HCLI lease (protected lock file(s) exist but no holder could be proven without flock; fail closed: present=false. flock would be a seizure). scheduler_capable remains true; the window is what is missing\" PROTECTED_SCHEDULER_CAPABLE=True PROTECTED_WINDOW_AVAILABLE=False contamination_class='HEAVY' live_verdict='BLOCKED_ON_PROTECTED_WINDOW' lease_present=False did_not_flock=True did_not_fabricate_lease=True receipt_path_taken=worktree",
    "evidence": [
     {
      "PROTECTED_SCHEDULER_CAPABLE": true,
@@ -1123,11 +1352,12 @@
       "rel": "tools/odyssey/protected_window.py",
       "resolved": "/Users/scammermike/Downloads/hawking/tools/odyssey/protected_window.py"
      },
-     "receipt_path_taken": "worktree",
-     "refusing_on": "PROTECTED_WINDOW_AVAILABLE"
+     "receipt_path_taken": "worktree"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "protected_scheduling",
+   "interpretation": "protected scheduler is CAPABLE; window AVAILABLE=False (contamination_class='HEAVY'). Capability is not availability; no lock was seized",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1148,29 +1378,38 @@
      "did_not_fabricate_lease": "True",
      "did_not_flock": "True",
      "integration": "tools/future/protected_scheduler.py \u2014 PROTECTED_SCHEDULER_CAPABLE vs PROTECTED_WINDOW_AVAILABLE",
-     "operational_flags_follow_capability_not_availability": "true",
-     "refusing_on": "PROTECTED_WINDOW_AVAILABLE",
      "sidecar_must_not_seize_lock": "true"
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "import protected_scheduler; invoke capability_report(); probe_json receipts/future/PROTECTED_SCHEDULER.json; _module_file protected_window.py; do not flock a bench lock; do not fabricate a lease",
    "protected_physical_run_completed": {
     "id": "protected_physical_run_completed",
     "required_for_odyssey_i_start": false,
-    "required_for_start_of_protected_work": true,
     "required_for_this_criterion": false,
     "status": "NOT_THIS_CRITERION",
-    "why": "A completed protected physical run would be PROTECTED_ABSOLUTE evidence this sidecar cannot produce. This criterion is HANDLE (CAPABLE), not START (AVAILABLE) and not a finished bench. The start bar still stands: start_of_protected_work.allowed is CAPABLE and AVAILABLE. Naming the physical-run requirement keeps it from being smuggled into CAPABLE or deleted."
+    "why": "A completed protected physical run would be PROTECTED_ABSOLUTE evidence this sidecar cannot produce. Odyssey I start needs a capable protected scheduler, not a finished protected bench. This field is named so it cannot be smuggled into CAPABLE."
    },
-   "reason": "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true. Start of protected work is REFUSED on PROTECTED_WINDOW_AVAILABLE=false (contamination_class='HEAVY', lease_present=False). These are separate fields; the scheduler is not incapable. No lock was seized and no lease was fabricated",
-   "refusing_on": "PROTECTED_WINDOW_AVAILABLE",
-   "start_of_protected_work": {
-    "allowed": false,
-    "refusing_on": "PROTECTED_WINDOW_AVAILABLE",
-    "rule": "HANDLE is PROTECTED_SCHEDULER_CAPABLE; START is CAPABLE and AVAILABLE. A missing window refuses START on PROTECTED_WINDOW_AVAILABLE, not the scheduler on PROTECTED_SCHEDULER_CAPABLE"
-   }
+   "reason": "protected scheduler is CAPABLE; window AVAILABLE=False (contamination_class='HEAVY'). Capability is not availability; no lock was seized"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "import_ok=True has_promote=True path_taken=worktree found=True n_laws=24 sealed=True flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "n_laws": 24,
@@ -1178,7 +1417,9 @@
      "schema": "hawking.future.odyssey2_law_store.v1"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "transfer_substrate",
+   "interpretation": "Odyssey II law store is sealed with n_laws=24; promote/transfer_candidates raise rather than flag",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1197,9 +1438,27 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "import tools.future.odyssey2_law_store; hasattr promote and transfer_candidates; probe_json receipts/future/ODYSSEY2_LAW_STORE.json; count n_laws",
    "reason": "Odyssey II law store is sealed with n_laws=24; promote/transfer_candidates raise rather than flag"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "import_ok=True has_p_refutation=True path_taken=worktree found=True n_attack_families=9 flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "n_attack_families": 9,
@@ -1207,7 +1466,9 @@
      "schema": "hawking.future.odyssey3_adversary.v1"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "adversary_substrate",
+   "interpretation": "Odyssey III adversary is sealed; attack_families derived from receipt (n=9)",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1226,9 +1487,27 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "import tools.future.odyssey3_adversary; hasattr p_refutation; probe_json receipts/future/ODYSSEY3_ADVERSARY.json; read attack_families",
    "reason": "Odyssey III adversary is sealed; attack_families derived from receipt (n=9)"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "repro_ok=True faults_ok=True hcli_recovery=True recovery_gate_found=True recovery_gate_path=worktree git_lock_found=True flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
      "faults_ok": true,
@@ -1244,7 +1523,9 @@
      "repro_path_taken": "worktree"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "crash_recovery",
+   "interpretation": "repro_science fault injectors all_detected and HCLI recovery module importable; sidecar fail-closed",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1263,16 +1544,36 @@
     },
     "resident_operational": true
    },
+   "probe_kind": "measured_flags",
+   "probe_performed": "import tools.future.repro_science; hasattr admit; probe_json receipts/future/REPRO_SCIENCE.json read fault_injection.all_detected; probe_json HCLI_AGENTOS_RECOVERY_GATE.json; import hcli.agentos.recovery; probe_json receipts/future/GIT_LOCK_DURABILITY_REPORT.json",
    "reason": "repro_science fault injectors all_detected and HCLI recovery module importable; sidecar fail-closed"
   },
   {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "dir_present=True n_json=188 path=/Users/scammermike/Downloads/hawking/receipts/future flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
-     "n_json": 181,
+     "n_json": 188,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "receipts",
+   "interpretation": "receipts/future is present with n_json=188 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -1291,7 +1592,9 @@
     },
     "resident_operational": true
    },
-   "reason": "receipts/future is present with n_json=181 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "probe_kind": "measured_flags",
+   "probe_performed": "Path.is_dir() and glob('*.json') on receipts/future; write_receipt seals STATIC_ONLY and raises on hardware fields",
+   "reason": "receipts/future is present with n_json=188 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -1995,6 +2298,8 @@
   "Sixteen launch criteria evaluated from evidence; can_launch is False until all pass.",
   "Refuse path names every unmet criterion; it does not stop at the first.",
   "ODYSSEY_I_LAUNCH.json is written only on pass; refuse does not write the phase-transition receipt.",
+  "write_launch_if_passed refuses an unbound resident_identity even if all sixteen criteria are met; a phase-transition receipt must name its resident.",
+  "resident_identity / sandbox_identity bind from RESIDENT_IDENTITY.json and RESIDENT_SANDBOX.json when those documents pin the named fields; a missing pin stays unbound with the field named; status is read from the document, not defaulted to null.",
   "Specimen curriculum proposes five roles from ModelLake seals / Odyssey I / law-store schools; other lake entries are recorded and not first-wave.",
   "First WorkGraphs emitted as real HCLI WorkUnits with dependencies and resource lanes.",
   "Phase II transfer and Phase III attack both depend on Phase I laws and not on each other \u2014 no global barrier.",
@@ -2034,8 +2339,7 @@
   "running_at": null,
   "status": "completed",
   "unmet": [
-   "specimen_curriculum_ready",
-   "nr_nx_path_callable"
+   "specimen_curriculum_ready"
   ],
   "verdict": "REFUSED",
   "verification": null,
@@ -2043,7 +2347,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "2d93a4bf8cbe65bd370f12293a7ca0ffe50f36c9",
+ "head": "9d90b5de0bab6ea019717ba42128cd78ff94705f",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -2062,6 +2366,22 @@
  },
  "launch_payload_draft": {
   "autonomy_status": {
+   "alternatives": [
+    {
+     "consistent_with_claim": true,
+     "consistent_with_observation": true,
+     "hypothetical": "the named flags were measured and have these values"
+    }
+   ],
+   "causality_verdict": "SUPPORTED",
+   "claim_kind": "field_value",
+   "confidence": {
+    "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+    "level": "HIGH",
+    "would_lower": "a demonstration that the observation is consistent with the claim being false",
+    "would_raise": "independent replication of the same probe"
+   },
+   "direct_observation": "AUTONOMY_TRIALS found=True path_taken=worktree candidate_is_mapping=True trial='1h' verdict='PASS' eligible=True resident_orchestration=True timeline_seal_verifies=True seal_why='timeline file digest matches the persisted seal' cognition_recorded=True cognition='UNAVAILABLE' AUTONOMY_TRIAL.json found=False not_authority=True hcli_all_requested_stages_passed=True not_this_criterion=True met=True",
    "evidence": [
     {
      "found": true,
@@ -2096,7 +2416,9 @@
      "schema": "hcli.agentos.autonomy_gate.v1"
     }
    ],
+   "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "resident_autonomy_trial_pass",
+   "interpretation": "Odyssey I resident-orchestration autonomy trial 1h persisted PASS in AUTONOMY_TRIALS.json; timeline seal verifies; resident_orchestration=true; resident_model_cognition='UNAVAILABLE'",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -2119,6 +2441,8 @@
    },
    "persisted_trial": "1h",
    "persisted_verdict": "PASS",
+   "probe_kind": "measured_flags",
+   "probe_performed": "probe_json receipts/future/AUTONOMY_TRIALS.json (plural); autonomy_trial.launch_candidate_from_receipt; verify_timeline_digest(timeline_path, timeline_seal_digest); probe_json receipts/future/AUTONOMY_TRIAL.json recorded as not-authority; HCLI AgentOS autonomy all_requested_stages_passed recorded as not this criterion",
    "reason": "Odyssey I resident-orchestration autonomy trial 1h persisted PASS in AUTONOMY_TRIALS.json; timeline seal verifies; resident_orchestration=true; resident_model_cognition='UNAVAILABLE'",
    "resident_model_cognition": "UNAVAILABLE",
    "resident_model_cognition_reason": "measured: Apple M3 Ultra GPU is present; the offline Metal shader compiler is absent (developer dir is /Library/Developer/CommandLineTools, full Xcode not installed), so no .metallib can be built ahead of time here; runtime shader compilation from source is AVAILABLE (exercised with the crate the runtime uses), so the missing offline compiler is a cold-start cost, not a wall; the loop under test is HCLI orchestration, not model cognition",
@@ -3314,15 +3638,65 @@
   "odyssey": "I WHAT IS TRUE?",
   "phase_transition": "NOT_STARTED",
   "resident_identity": {
-   "bound": false,
+   "agrees_with_incumbent": true,
+   "bound": true,
    "found": true,
+   "incumbent": {
+    "artifact_path": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+    "id": "qwen3.8-27b-sealed-3.14",
+    "load": "ON_DISK",
+    "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
+    "role": "CURRENT_NONFINAL_HCLI_WORKER",
+    "source": "receipts/future/SUCCESSION_TRIAL.json"
+   },
    "integration_point": "tools/future/resident_identity.py \u2014 canonical resident declaration the launch receipt binds",
    "kind": "resident",
-   "note": "Identity is not invented. A missing this-wave receipt stays unbound. HCLI prior gates, if found, are cited and are not this identity.",
+   "missing": [],
+   "note": "Identity is not invented. A missing this-wave receipt stays unbound. Bound only when the document pins nx_id, sealed_model_id, executable_hash, artifact_root, tokenizer, and qualification, and sealed_model_id agrees with the incumbent. HCLI prior gates, if found, are cited and are not this identity.",
    "path_taken": "worktree",
+   "pins": {
+    "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
+    "executable_hash": {
+     "by_role": {
+      "binary": "d34044cffae8f32055cca40aae27ec62beb44f043df081293126da89e51b8e76",
+      "resident_binary": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8"
+     },
+     "seal_declared_sha256_16": "d34044cffae8f320",
+     "seal_matching_role": "binary"
+    },
+    "nx_id": {
+     "model_id": "qwen3.8-27b-sealed-3.14",
+     "protocol": "hawking.qwen38.resident.v1",
+     "resident_identity": "sealed-3.14"
+    },
+    "qualification": {
+     "identity_sufficient": false,
+     "identity_validation": "ACCEPTED",
+     "label": "noetic-sealed-3.14",
+     "path": "receipts/headless/CAPABILITY_noetic-sealed-3.14.json",
+     "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
+     "role": "CONTROL_HISTORICAL_NOT_CURRENT_PROOF"
+    },
+    "sealed_model_id": "qwen3.8-27b-sealed-3.14",
+    "tokenizer": {
+     "declared_prefix_match": true,
+     "path": "/Users/scammermike/noetic/NOETIC_PARENT_A/tokenizer.json",
+     "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+    }
+   },
+   "pins_named": [
+    "nx_id",
+    "sealed_model_id",
+    "executable_hash",
+    "artifact_root",
+    "tokenizer",
+    "qualification"
+   ],
+   "residency_status": "CURRENT_NONFINAL_HCLI_WORKER",
    "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/RESIDENT_IDENTITY.json",
    "schema": "hawking.future.resident_identity.v1",
-   "status": null
+   "status": "ACCEPTED",
+   "unbound_reason": null
   },
   "resource_schedule": {
    "by_resource_class": {
@@ -3388,15 +3762,26 @@
    "sleeping_are_not_results": true
   },
   "sandbox_identity": {
-   "bound": false,
+   "bound": true,
    "found": true,
    "integration_point": "tools/future/sandbox.py \u2014 orchestrator sandbox identity the resident operates",
    "kind": "sandbox",
-   "note": "Identity is not invented. A missing this-wave receipt stays unbound. HCLI prior gates, if found, are cited and are not this identity.",
+   "missing": [],
+   "note": "Identity is not invented. A missing this-wave receipt stays unbound. Bound only when RESIDENT_SANDBOX.json pins identity_sha256 and reentry_same_identity. HCLI prior gates are not this identity.",
    "path_taken": "worktree",
-   "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/HCLI_AGENTOS_CHECKPOINT.json",
-   "schema": "hcli.agentos.program_checkpoint.v1",
-   "status": null
+   "pins": {
+    "identity_sha256": "01d52b60766cb97f00b0e43e4c90e4cf4ec1171525973780d03cff46265cc134",
+    "reentry_same_identity": true,
+    "sandbox_id": "resident"
+   },
+   "pins_named": [
+    "identity_sha256",
+    "reentry_same_identity"
+   ],
+   "resolved": "/Users/scammermike/Downloads/hawking/receipts/future/RESIDENT_SANDBOX.json",
+   "schema": "hawking.future.sandbox.v1",
+   "status": "BUILT_NOT_PROMOTED",
+   "unbound_reason": null
   },
   "schema": "hawking.future.odyssey_i_launch.v1",
   "verdict": {
@@ -3406,6 +3791,7 @@
     "modellake_identity",
     "doctor_callable",
     "gravity_callable",
+    "nr_nx_path_callable",
     "evidence_hierarchy",
     "negative_science",
     "workgraphs",
@@ -3418,12 +3804,11 @@
     "receipts"
    ],
    "n_criteria": 16,
-   "n_met": 14,
-   "n_unmet": 2,
+   "n_met": 15,
+   "n_unmet": 1,
    "rule": "every unmet criterion is named; the first failure does not hide the rest",
    "unmet": [
-    "specimen_curriculum_ready",
-    "nr_nx_path_callable"
+    "specimen_curriculum_ready"
    ],
    "verdict": "REFUSED"
   },
@@ -3437,7 +3822,7 @@
  },
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
-  "verdict=REFUSED n_unmet=2 unmet=['specimen_curriculum_ready', 'nr_nx_path_callable']",
+  "verdict=REFUSED n_unmet=1 unmet=['specimen_curriculum_ready']",
   "A gate that passed today would mistake 'Odyssey infrastructure ready' for 'Odyssey started'.",
   "physical blocker sleep.no-gpu-authority: Sidecar has no GPU authority and does not invoke MetalContext. Handoff blockers record no protected GPU authority on this campaign.",
   "physical blocker sleep.metal-compiler: xcrun -f metal did not locate the Metal compiler",
@@ -3584,7 +3969,7 @@
  },
  "resident_callable": {
   "entry_point": "python3 tools/future/odyssey_launch.py --verify",
-  "fail_closed": "can_launch() is False while any criterion is unmet; unmet_criteria() names every unmet id; write_launch_if_passed() does not call write_receipt for ODYSSEY_I_LAUNCH.json on refuse; --launch exits 1; HardwareClaimError on numeric hardware fields; GPU units stay SLEEPING rather than inventing a result.",
+  "fail_closed": "can_launch() is False while any criterion is unmet; unmet_criteria() names every unmet id; write_launch_if_passed() does not call write_receipt for ODYSSEY_I_LAUNCH.json on refuse; write_launch_if_passed() also refuses when resident_identity.bound is false; --launch exits 1; HardwareClaimError on numeric hardware fields; GPU units stay SLEEPING rather than inventing a result.",
   "frontier_fed": "Odyssey I start frontier: a REFUSED gate keeps the frontier at NOT_STARTED; a pass would write ODYSSEY_I_LAUNCH.json and that is the only start mark. Next refill trigger is a criterion flip or a SLEEPING wakeup.",
   "integration_points": {
    "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
@@ -3704,17 +4089,17 @@
     "why": "now reads AUTONOMY_TRIALS.json persisted --verify (plural) with orchestration/cognition split and timeline-seal verify; used to probe AUTONOMY_TRIAL.json which was never written"
    },
    {
-    "after_met": false,
+    "after_met": true,
     "before_met": false,
     "id": "nr_nx_path_callable",
-    "live_reason": "generic NR\u2192NX pipeline is not callable. GENERIC_NR_NX_PIPELINE_CALLABLE=False FLASH_NX_READY=False (separate field, not this criterion). first_failing_stage='NoeticExecutable: the only packed-NX producer in git is tools/headless/first_noetic_executable.py, which hardlinks a Qwen3.8-27B uniform-q4 catalog and is not this specimen (Qwen--Qwen3-0.6B@c1899de289a0). DeviceCompiler handed an NX fragment with 6 compiled organ(s) and 0 still NATIVE_UNMEASURED; there is still no generic packer that can emit a source-independent packed NX from that fragment. No packed NX was minted here: a renamed source pointer is not an NX'. invoked=['nr_nx_generic.flash_nx_ready', 'nr_nx_generic.generic_pipeline_callable']. A Flash metadata seal is not a packed NX and is not this path.",
+    "live_reason": "generic NR\u2192NX pipeline is callable on an available specimen; FLASH_NX_READY is independent",
     "why": "now reads nr_nx_generic GENERIC_NR_NX_PIPELINE_CALLABLE; used to key on FLASH_NX_COMPLETENESS_AUDIT / Flash NX metadata"
    },
    {
     "after_met": true,
     "before_met": false,
     "id": "protected_scheduling",
-    "live_reason": "protected_scheduling MET on PROTECTED_SCHEDULER_CAPABLE=true. Start of protected work is REFUSED on PROTECTED_WINDOW_AVAILABLE=false (contamination_class='HEAVY', lease_present=False). These are separate fields; the scheduler is not incapable. No lock was seized and no lease was fabricated",
+    "live_reason": "protected scheduler is CAPABLE; window AVAILABLE=False (contamination_class='HEAVY'). Capability is not availability; no lock was seized",
     "why": "now reads protected_scheduler.capability_report() CAPABLE vs AVAILABLE; used to AND capability with QUIESCENT+gpu_authority so a HEAVY machine looked incapable"
    }
   ],
@@ -3724,6 +4109,7 @@
     "modellake_identity",
     "doctor_callable",
     "gravity_callable",
+    "nr_nx_path_callable",
     "evidence_hierarchy",
     "negative_science",
     "workgraphs",
@@ -3736,11 +4122,10 @@
     "receipts"
    ],
    "n_criteria": 16,
-   "n_met": 14,
-   "n_unmet": 2,
+   "n_met": 15,
+   "n_unmet": 1,
    "unmet": [
-    "specimen_curriculum_ready",
-    "nr_nx_path_callable"
+    "specimen_curriculum_ready"
    ],
    "verdict": "REFUSED"
   },
@@ -3759,12 +4144,11 @@
   "rewired_net": {
    "became_met": [
     "resident_autonomy_trial_pass",
+    "nr_nx_path_callable",
     "protected_scheduling"
    ],
    "stayed_met": [],
-   "stayed_unmet": [
-    "nr_nx_path_callable"
-   ]
+   "stayed_unmet": []
   },
   "still_refused_if_any_unmet": true,
   "unmet_not_from_this_rewire": [
@@ -3772,7 +4156,7 @@
   ]
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "083813ed1712a7a1305a2ff017985a76cc0a97764ef3f063510c5814dc3e44ef",
+ "seal_sha256": "e93e2a6cccd22c13770e0fe67f4a4f09e110bb5d6d50c0e0efa5ef58e1964fe2",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -4451,6 +4835,7 @@
    "modellake_identity",
    "doctor_callable",
    "gravity_callable",
+   "nr_nx_path_callable",
    "evidence_hierarchy",
    "negative_science",
    "workgraphs",
@@ -4463,12 +4848,11 @@
    "receipts"
   ],
   "n_criteria": 16,
-  "n_met": 14,
-  "n_unmet": 2,
+  "n_met": 15,
+  "n_unmet": 1,
   "rule": "every unmet criterion is named; the first failure does not hide the rest",
   "unmet": [
-   "specimen_curriculum_ready",
-   "nr_nx_path_callable"
+   "specimen_curriculum_ready"
   ],
   "verdict": "REFUSED"
  },

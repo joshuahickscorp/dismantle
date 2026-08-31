@@ -8,6 +8,8 @@ A trial that cannot fail is not a trial. These tests prove:
 * a TPS increase is not required for PASS
 * killing nothing and launching nothing is FAIL
 * the real trial ran against live receipts and names what it killed and launched
+* a nominally-passing but degenerate run returns FAIL
+* duplicate WorkUnits and dead-scar repetition agree with the degeneracy measure
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ import json
 
 import pytest
 
+from tools.future import autonomy_degeneracy as ad
 from tools.future import improvement_trial as it
 from tools.future._common import RECEIPTS, _assert_no_hardware_claims
 
@@ -329,3 +332,87 @@ def test_velocity_fields_are_derived_from_the_log():
     for row in vel["receipt_to_next_launch_ns"]:
         assert isinstance(row["dt_ns"], int)
         assert row["dt_ns"] >= 0
+
+
+def test_nominally_passing_degenerate_run_returns_fail():
+    """The whole obligation: FAIL ON DEGENERACY EVEN WHEN EVERY CONDITION IS MET."""
+    record = it.nominal_but_degenerate(n_ingests=29)
+    judged = it.judge(record)
+    assert judged["nominal_conditions_met"] is True, judged["unmet"]
+    assert judged["failed_on_degeneracy"] is True
+    assert judged["verdict"] == "FAIL"
+    assert judged["verdict"] != "PASS"
+    assert "no_degeneracy" in judged["unmet"]
+    assert any(f["id"] == "degeneracy" for f in judged["automatic_failures"])
+    for condition in judged["conditions"]:
+        if condition["id"] == "no_degeneracy":
+            assert condition["met"] is False, condition
+        else:
+            assert condition["met"] is True, condition
+
+
+def test_passing_skeleton_still_passes_after_degeneracy_guard():
+    record = it.passing_skeleton()
+    judged = it.judge(record)
+    assert judged["verdict"] == "PASS"
+    assert judged["failed_on_degeneracy"] is False
+    assert judged["nominal_conditions_met"] is True
+    assert judged["unmet"] == []
+    degen = next(c for c in judged["conditions"] if c["id"] == "no_degeneracy")
+    assert degen["met"] is True
+
+
+def test_duplicate_workunits_agrees_with_degeneracy_measure():
+    record = it.CONTROL_FACTORIES["duplicate_workunits"]()
+    judged = it.judge(record)
+    report = ad.measure(record)
+    assert judged["verdict"] == "FAIL"
+    assert report["verdict"] == "FAIL"
+    assert "no_duplicate_workunits" in judged["unmet"]
+    assert "no_degeneracy" in judged["unmet"]
+    assert ad.axis_by_name(report, "workunit_ids")["degenerate"] is True
+    agree = ad.agreement_with_improvement_guards(
+        judge_unmet=judged["unmet"], report=report
+    )
+    assert agree["duplicate_workunits"]["agree"] is True
+    assert agree["agree"] is True
+
+
+def test_dead_scar_repetition_agrees_with_degeneracy_measure():
+    record = it.CONTROL_FACTORIES["dead_scar_repetition"]()
+    judged = it.judge(record)
+    report = ad.measure(record)
+    assert judged["verdict"] == "FAIL"
+    assert report["verdict"] == "FAIL"
+    assert "no_repeated_scar" in judged["unmet"]
+    assert "no_degeneracy" in judged["unmet"]
+    assert ad.axis_by_name(report, "scars")["degenerate"] is True
+    agree = ad.agreement_with_improvement_guards(
+        judge_unmet=judged["unmet"], report=report
+    )
+    assert agree["dead_scar_repetition"]["agree"] is True
+    assert agree["agree"] is True
+
+
+def test_other_negative_controls_still_fail_without_becoming_a_seventh_control():
+    doc = it.run_negative_controls()
+    assert doc["n_controls"] == 6
+    assert doc["all_failed"] is True
+    assert list(it.CONTROL_NAMES) == [
+        "duplicate_workunits",
+        "dead_scar_repetition",
+        "low_payoff_distraction",
+        "open_handle_wait",
+        "stale_causal_model",
+        "misleading_narrow_probe",
+    ]
+    # Degeneracy is a measure over every run, not a seventh control.
+    for name in ("low_payoff_distraction", "open_handle_wait", "misleading_narrow_probe"):
+        record = it.CONTROL_FACTORIES[name]()
+        judged = it.judge(record)
+        report = ad.measure(record)
+        assert judged["verdict"] == "FAIL"
+        assert judged["nominal_conditions_met"] is False
+        if name == "low_payoff_distraction":
+            assert report["verdict"] == "PASS"
+            assert "no_low_payoff_distraction" in judged["unmet"]

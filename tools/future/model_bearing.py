@@ -1045,12 +1045,14 @@ def choose(
         return refused
     parsed = asked["parsed"] if asked["parse_ok"] else None
     choice_id = _field(parsed, "choice_id", "id") if parsed else ""
+    choice_id, transcription_repaired = resolve_choice_id(choice_id, by_id)
     reason = _reason_of(parsed, "reason", "why")
     tools.update(
         {
             "prompt_sha256": asked["prompt_sha256"],
             "reply_sha256": asked["reply_sha256"],
             "parse_ok": asked["parse_ok"],
+            "transcription_repaired": transcription_repaired,
         }
     )
     model_decided = {
@@ -1531,6 +1533,43 @@ def run_trajectory(
             "difference": (hyp_b.get("tools_established") or {}).get("meaningfully_different"),
         },
     }
+
+
+def _normalize_id(text: str) -> str:
+    """Fold the differences a transcription introduces, and nothing else."""
+    return "".join(ch for ch in str(text).lower() if ch.isalnum())
+
+
+def resolve_choice_id(raw: str, by_id: Mapping[str, Any]) -> tuple[str, str | None]:
+    """Exact id, or a UNIQUE transcription match. Never a guess.
+
+    The 30m run's steady state: the model was shown two candidates, picked the
+    right one for the right reason - gain 2 against gain 1, cited correctly - and
+    wrote "WU.PROBE.decode_arith cost". One space where the id has an underscore.
+    The tools refused it as an invented id, nothing launched, the frontier never
+    advanced, and that same question was asked 94 more times.
+
+    Refusing invented ids is correct and stays. But requiring a model to
+    transcribe a long opaque identifier character-perfect, and then calling the
+    typo a judgment failure, measures the ask again rather than the chooser.
+
+    The match must be UNIQUE after folding case and non-alphanumerics. Two
+    candidates that collide under that fold are ambiguous and are refused: better
+    no launch than the wrong one. Every repair is RECORDED so the transcription
+    rate stays visible instead of being absorbed.
+    """
+    raw = str(raw or "").strip()
+    if not raw:
+        return "", None
+    if raw in by_id:
+        return raw, None
+    want = _normalize_id(raw)
+    if not want:
+        return raw, None
+    hits = [cid for cid in by_id if _normalize_id(cid) == want]
+    if len(hits) != 1:
+        return raw, None
+    return hits[0], raw
 
 
 def materially_participated(log: Sequence[Mapping[str, Any]] | None = None) -> dict[str, Any]:

@@ -76,6 +76,16 @@
    "status": "QUEUED",
    "target_ms_at_demonstrated": 1.792,
    "tps_gain": 1.02
+  },
+  {
+   "capability": "UNMEASURED",
+   "cost": "ONE_FIT_PLUS_A_CAPABILITY_SCREEN",
+   "falsifier": "held-out reconstruction plus organ error on a real layer",
+   "gb_saved": 0.277697891,
+   "id": "entropy_floor_of_mlp_codes",
+   "ms_saved": 0.807,
+   "status": "OPEN",
+   "tps_gain": 1.01
   }
  ],
  "gpu_authority": false,
@@ -94,6 +104,14 @@
    "requires": "executor work only; zero byte reduction",
    "rung": "every organ at the LM head's demonstrated 497.4 GB/s",
    "tps": 47.97
+  },
+  {
+   "capability": "UNMEASURED",
+   "class": "DEMONSTRATED_PLUS_OPEN_BYTE_LEVER",
+   "ms": 20.286,
+   "requires": "the above, plus 0.278 GB removed",
+   "rung": "demonstrated regime + entropy_floor_of_mlp_codes",
+   "tps": 49.29
   },
   {
    "capability": "UNMEASURED",
@@ -171,6 +189,35 @@
   "tps": 34.82
  },
  "recorded_by": "tools/future/causal_budget_71.py",
+ "refuted_levers": [
+  {
+   "evidence": "one MLP layer in one staging buffer under one serial encoder measured 332.2 GB/s against production 331.6, bit-identical",
+   "id": "region_granularity",
+   "source": "receipts/future/MLP_REGION_FALSIFIER.json",
+   "verdict": "GRANULARITY_REFUTED",
+   "was_worth_tps": 6.97
+  },
+  {
+   "evidence": "i.i.d. Shannon 1.87018 bits of 2 stored; Markov-1 adds 0.00195; 93.5% of the code body is independent information",
+   "gb_saved_if_perfect": 0.277697891,
+   "id": "entropy_code_the_mlp_codes",
+   "source": "receipts/future/MLP_CODE_INFORMATION.json",
+   "verdict": "AT_THE_FLOOR"
+  },
+  {
+   "evidence": "every decode+consume candidate eliminates ZERO intermediate bytes; the kernels decode in-register and dense_w_materialized stays 0",
+   "id": "fuse_representation_decode",
+   "source": "receipts/future/REPRESENTATION_DECODE_FUSION.json",
+   "verdict": "ALREADY_FUSED"
+  },
+  {
+   "evidence": "host gap is 0.989 ms of a 29.043 ms token, measured over three runs and stable to five decimals",
+   "id": "eliminate_all_host_gap",
+   "source": "receipts/future/WALL_GPU_RECONCILIATION.json",
+   "verdict": "BOUNDED_TOO_SMALL",
+   "was_worth_tps": 1.24
+  }
+ ],
  "schema": "hawking.future.causal_budget_71.v1",
  "the_two_numbers_that_matter": {
   "and_why_it_is_not_71": "the earlier 71.21 divided bytes by the clean roof and omitted the 0.99 ms host gap. With it, the roof on today's bytes is 66.54 TPS. 71 needs the roof AND about 7% fewer bytes, or the roof AND no host work at all.",
@@ -178,5 +225,6 @@
   "roof_on_todays_bytes_tps": 66.54,
   "why": "what the resident reaches if every organ merely matches the bandwidth the LM head ALREADY achieves here, with zero byte reduction. A demonstrated regime, not a theoretical one."
  },
- "version": 1
+ "version": 1,
+ "what_measurement_has_closed": "Region granularity is refuted by measurement, not argued away: buffer contiguity and encoder count moved 331.6 to 332.2 GB/s. Representation decode has nothing to fuse; it is already in-register. The MLP code body is at its entropy floor, so perfect coding of what is stored recovers 2.8% of the token. And the entire host class is 0.99 ms. The demonstrated-497 rung stays in the ladder as an upper bound on executor work, but the one mechanism proposed for reaching it is dead."
 }

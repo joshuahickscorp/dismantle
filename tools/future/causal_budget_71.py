@@ -40,7 +40,38 @@ ORGANS: tuple[dict[str, Any], ...] = (
 )
 
 # Byte levers with a measured byte model. Capability is UNMEASURED for all.
+# What measurement has KILLED, kept in the budget so it is not re-proposed.
+REFUTED_LEVERS: tuple[dict[str, Any], ...] = (
+    {"id": "region_granularity",
+     "was_worth_tps": 6.97,
+     "verdict": "GRANULARITY_REFUTED",
+     "evidence": "one MLP layer in one staging buffer under one serial encoder "
+                 "measured 332.2 GB/s against production 331.6, bit-identical",
+     "source": "receipts/future/MLP_REGION_FALSIFIER.json"},
+    {"id": "entropy_code_the_mlp_codes",
+     "gb_saved_if_perfect": 0.277697891,
+     "verdict": "AT_THE_FLOOR",
+     "evidence": "i.i.d. Shannon 1.87018 bits of 2 stored; Markov-1 adds 0.00195; "
+                 "93.5% of the code body is independent information",
+     "source": "receipts/future/MLP_CODE_INFORMATION.json"},
+    {"id": "fuse_representation_decode",
+     "verdict": "ALREADY_FUSED",
+     "evidence": "every decode+consume candidate eliminates ZERO intermediate "
+                 "bytes; the kernels decode in-register and dense_w_materialized "
+                 "stays 0",
+     "source": "receipts/future/REPRESENTATION_DECODE_FUSION.json"},
+    {"id": "eliminate_all_host_gap",
+     "was_worth_tps": 1.24,
+     "verdict": "BOUNDED_TOO_SMALL",
+     "evidence": "host gap is 0.989 ms of a 29.043 ms token, measured over three "
+                 "runs and stable to five decimals",
+     "source": "receipts/future/WALL_GPU_RECONCILIATION.json"},
+)
+
 BYTE_LEVERS: tuple[dict[str, Any], ...] = (
+    {"id": "entropy_floor_of_mlp_codes", "gb_saved": 0.277697891,
+     "status": "AT_THE_FLOOR_NOT_A_LEVER",
+     "source": "receipts/future/MLP_CODE_INFORMATION.json"},
     {"id": "quantize_aux_u8", "gb_saved": 0.534773760, "status": "OPEN",
      "source": "receipts/future/MLP_AUXILIARY_INFORMATION.json"},
     {"id": "group_size_256", "gb_saved": 0.802160640, "status": "OPEN",
@@ -197,6 +228,17 @@ def build() -> dict[str, Any]:
             ),
         },
         "ladder": ladder(),
+        "refuted_levers": list(REFUTED_LEVERS),
+        "what_measurement_has_closed": (
+            "Region granularity is refuted by measurement, not argued away: "
+            "buffer contiguity and encoder count moved 331.6 to 332.2 GB/s. "
+            "Representation decode has nothing to fuse; it is already "
+            "in-register. The MLP code body is at its entropy floor, so perfect "
+            "coding of what is stored recovers 2.8% of the token. And the entire "
+            "host class is 0.99 ms. The demonstrated-497 rung stays in the ladder "
+            "as an upper bound on executor work, but the one mechanism proposed "
+            "for reaching it is dead."
+        ),
         "experiments_ranked_by_gain": experiments(),
         "claim_boundary": (
             "Arithmetic over measured organ times, measured byte shares and a "

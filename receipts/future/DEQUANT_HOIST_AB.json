@@ -1,0 +1,48 @@
+{
+ "bit_identity": {
+  "MUST_NOT_BE_QUOTED_AS_BIT_IDENTICAL": "the harness fills x with (i % 17) * 0.125 - 1.0 - dyadic values with four mantissa bits - and the codes are 2-bit, so both orderings land on exactly representable intermediates. This is the input LEAST likely to expose a reassociation difference. Real activations are UNTESTED and the transform reassociates, so the honest expectation is that it is NOT bit-identical in production.",
+  "all_exact": true,
+  "n_bit_exact": 39936,
+  "n_compared": 39936,
+  "the_comparison_is_sound": "planting a 1e-6 error in the kernel took bit_exact from 39936 to 0 with max_abs 6.4e-4, which is 640 chunks times 1e-6. The instrument detects what it is supposed to detect.",
+  "what_would_settle_it": "re-run the comparison with x drawn from a real captured activation rather than the dyadic fill. Until then the FP behaviour of this transform on production data is unknown."
+ },
+ "claim_boundary": "One MLP layer, gate+up+down, on sealed-3.14, three dispatches in one command buffer, MTLCommandBuffer GPUStartTime/GPUEndTime, 11 reps after 5 warmup. CONTAMINATED WINDOW: absolute GB/s are not promotable and the ratio is inflated with every other ratio in the run, so the span recovery is the comparison that survives. The output comparison uses the harness's DYADIC synthetic input and therefore says nothing about FP behaviour on real activations.",
+ "evidence_class": "DIAGNOSTIC_RELATIVE",
+ "gpu_authority": true,
+ "kernel": "alu_roofline_affine_q2_geo_tpr64_tg128_hoist",
+ "measured": {
+  "arm_a_over_production": 2.5661,
+  "arm_a_stripped_gb_s": 502.10556677242573,
+  "hoist_gb_s": 319.6890279828904,
+  "hoist_over_production": 1.6338,
+  "loadavg": "{ 8.20 8.67 8.40 }",
+  "production_gb_s": 195.66833161218713,
+  "span_recovered": 0.4047,
+  "why_span_and_not_ratio": "this run is contended and ARM A's own ratio is 2.59x here against 1.51-1.64x in quieter runs, so every ratio is inflated together. The fraction of the production-to-ARM-A span recovered is the load-robust comparison, and it puts the hoist at 40.5% against k6's 42% on the earlier ladder."
+ },
+ "measurement_provenance": {
+  "absolutes_are_measured_under_load": true,
+  "gpu_lane_lock_held": true,
+  "lane": "g092-hoist",
+  "loadavg": "{ 7.22 7.73 8.03 }",
+  "measured_at": "2026-08-31T21:01:24Z",
+  "measured_at_source": "WRITE_TIME",
+  "why": "a hardware number that cannot be placed in time cannot be audited against a contention window"
+ },
+ "prediction_vs_measurement": {
+  "k6_span_recovery_on_the_earlier_ladder": 0.42,
+  "measured_ratio_this_run": 1.6338,
+  "measured_span_recovery": 0.4047,
+  "predicted_bracket_from_ladder": [
+   1.2679,
+   1.4256
+  ],
+  "predicted_from_fma_count": 1.6,
+  "reading": "on the load-robust measure the hoist behaves like k6 at 2.0 FMA/B, not like the 1.6667 its instruction count suggests. The likely cause is the one thing the FMA count ignores: the hoist adds a LOAD - sumx8[col>>3] - that k6 does not have. Trading six FMA for one load is not free, and an arithmetic-only model could not have said so."
+ },
+ "recorded_by": "tools/future/dequant_hoist_ab.py",
+ "schema": "hawking.future.dequant_hoist_ab.v1",
+ "seal_sha256": "fd1cd729a2384366187418ee86a7ef6068469176cbbb80756a942edace3081c7",
+ "version": 1
+}

@@ -286,6 +286,89 @@ static inline float qwen_uniform_q4_unpack8(
     return sum;
 }
 
+
+// DEQUANT HOIST. Same bytes, same access pattern, same loads. The affine is
+// applied ONCE PER 8-WEIGHT CHUNK instead of once per weight, using
+//
+//     sum_i (s*c_i + b) * x_i  ==  s * sum_i(c_i*x_i) + b * sum_i(x_i)
+//
+// sum_i(x_i) over a chunk is a property of x, not of the output row, so it is
+// precomputed once per token and read here rather than recomputed per row. That
+// is what makes this 10 FMA per 8 weights instead of 16: 8 for c_i*x_i and 2
+// for the affine, against the incumbent's 8 dequant + 8 mac.
+//
+// NOT bit-identical: the summation order changes.
+static inline float affine_q2_unpack8_hoist(
+    uint packed16, float scale, float bias,
+    device const float* x, uint col, float sumx8)
+{
+    float sc = 0.0f;
+    for (uint i = 0u; i < 8u; ++i) {
+        const uint q = (packed16 >> (2u * i)) & 3u;
+        sc += float(q) * x[col + i];
+    }
+    return scale * sc + bias * sumx8;
+}
+
+static inline float affine_q2_geo_acc_g64_hoist(
+    device const uchar* codes,
+    device const half* scales,
+    device const half* biases,
+    device const float* input,
+    device const float* sumx8,
+    uint row,
+    uint cols,
+    uint lane_in_row)
+{
+    const uint groups_per_row = cols >> 6u;
+    float acc = 0.0f;
+    for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+        const uint group = col >> 6u;
+        const uint local = col & 63u;
+        const uint rgb = row * groups_per_row + group;
+        const float scale = float(scales[rgb]);
+        const float bias = float(biases[rgb]);
+        const uint packed16 = uint(*((device const ushort*)(codes + rgb * 16u + (local >> 2u))));
+        acc += affine_q2_unpack8_hoist(packed16, scale, bias, input, col, sumx8[col >> 3u]);
+    }
+    return acc;
+}
+
+kernel void alu_roofline_affine_q2_geo_tpr64_tg128_hoist(
+    device const uchar* codes       [[buffer(0)]],
+    device const half*  scales      [[buffer(1)]],
+    device const half*  biases      [[buffer(2)]],
+    device const float* input       [[buffer(3)]],
+    device float*       output      [[buffer(4)]],
+    constant uint& rows             [[buffer(5)]],
+    constant uint& cols             [[buffer(6)]],
+    constant uint& group_size       [[buffer(7)]],
+    device const float* sumx8       [[buffer(8)]],
+    uint group_id                    [[threadgroup_position_in_grid]],
+    uint simd_lane                   [[thread_index_in_simdgroup]],
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])
+{
+    threadgroup float red[4];
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row = group_id * 2u + team;
+    float acc = 0.0f;
+    if (row < rows && group_size == 64u && affine_q2_group_ok(group_size, cols)) {
+        acc = affine_q2_geo_acc_g64_hoist(codes, scales, biases, input, sumx8,
+                                          row, cols, lane_in_row);
+    }
+    acc = simd_sum(acc);
+    if (simd_lane == 0u) {
+        red[simd_id] = acc;
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u && row < rows) {
+        output[row] = red[team * kSplit] + red[team * kSplit + 1u];
+    }
+}
+
 kernel void qwen_uniform_q4_group64_matvec_geo_tpr64_tg128(
     device const uchar* codes       [[buffer(0)]],
     device const half* scales       [[buffer(1)]],

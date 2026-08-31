@@ -427,6 +427,7 @@ mod macos {
             "alu_roofline_affine_q2_geo_tpr64_tg128_stripped",
             "alu_roofline_affine_q2_geo_tpr64_tg128_halfk",
             "alu_roofline_affine_q2_geo_tpr64_tg128_zero",
+            "alu_roofline_affine_q2_geo_tpr64_tg128_hoist",
             "qwen_uniform_q4_group64_matvec_geo_tpr64_tg128",
             "alu_roofline_q4_geo_tpr64_tg128_stripped",
             "alu_roofline_q4_geo_tpr64_tg128_halfk",
@@ -482,6 +483,12 @@ mod macos {
         biases: Buffer,
         input: Buffer,
         output: Buffer,
+        // Per-8-weight-chunk sum of x. A property of x and the chunk, NOT of the
+        // output row, so it is computed once here and read by every row - which
+        // is the whole reason the hoisted affine costs 2 FMA per chunk instead
+        // of 8 dequant FMA per chunk.
+        sumx8: Buffer,
+        sumx8_bytes: u64,
         weight_bytes: u64,
         code_bytes: u64,
         scale_bytes: u64,
@@ -525,6 +532,10 @@ mod macos {
         }
         let input = fill_f32(packed.cols);
         let output = vec![0f32; packed.rows];
+        let sumx8: Vec<f32> = input
+            .chunks(8)
+            .map(|c| c.iter().copied().sum::<f32>())
+            .collect();
         let code_bytes = packed.codes.len() as u64;
         let scale_bytes = (packed.scales_f16.len() * 2) as u64;
         let bias_bytes = (packed.biases_f16.len() * 2) as u64;
@@ -538,6 +549,8 @@ mod macos {
             biases: buf_u16(device, &packed.biases_f16),
             input: buf_f32(device, &input),
             output: buf_f32(device, &output),
+            sumx8_bytes: (sumx8.len() * 4) as u64,
+            sumx8: buf_f32(device, &sumx8),
             weight_bytes: code_bytes + scale_bytes + bias_bytes,
             code_bytes,
             scale_bytes,
@@ -598,6 +611,7 @@ mod macos {
         AffineStripped { work_cols: u32 },
         AffineHalfk { work_cols: u32 },
         AffineZero,
+        AffineHoist,
         Q4Prod,
         Q4Stripped { work_cols: u32 },
         Q4Halfk { work_cols: u32 },
@@ -622,6 +636,12 @@ mod macos {
         match kind {
             ArmKind::AffineStripped { work_cols } | ArmKind::AffineHalfk { work_cols } => {
                 set_u32(enc, 8, *work_cols);
+            }
+            // buffer(8) is a BUFFER here, not a u32. Different kernel, different
+            // signature - the stripped/halfk arms take work_cols there and the
+            // hoist takes the precomputed chunk sums.
+            ArmKind::AffineHoist => {
+                enc.set_buffer(8, Some(&proj.sumx8), 0);
             }
             _ => {}
         }
@@ -668,6 +688,42 @@ mod macos {
             }
         }
         gpu
+    }
+
+
+    /// Read an output buffer back as f32. A speed claim on a kernel whose output
+    /// nobody looked at is not a result - it is a faster way to be wrong.
+    fn read_f32(buf: &Buffer, n: usize) -> Vec<f32> {
+        unsafe { std::slice::from_raw_parts(buf.contents() as *const f32, n).to_vec() }
+    }
+
+    /// Relative Frobenius error and max abs error against a reference.
+    fn compare_out(reference: &[f32], variant: &[f32]) -> Value {
+        let n = reference.len().min(variant.len());
+        let mut num = 0f64;
+        let mut den = 0f64;
+        let mut max_abs = 0f64;
+        let mut n_exact = 0u64;
+        for i in 0..n {
+            let a = reference[i] as f64;
+            let b = variant[i] as f64;
+            let d = (a - b).abs();
+            if d == 0.0 {
+                n_exact += 1;
+            }
+            if d > max_abs {
+                max_abs = d;
+            }
+            num += d * d;
+            den += a * a;
+        }
+        json!({
+            "n_compared": n,
+            "n_bit_exact": n_exact,
+            "max_abs_err": max_abs,
+            "rel_fro": if den > 0.0 { (num / den).sqrt() } else { 0.0 },
+            "bit_identical": n_exact as usize == n,
+        })
     }
 
     fn arm_json(
@@ -963,9 +1019,25 @@ mod macos {
         let sr = args.session_reps;
 
         eprintln!("  structural names of as-executed organ");
-        let (named_t, kernel_names) = session
-            .measure_dn_as_executed_named()
-            .unwrap_or_else(|e| fail(e));
+        // REFUSES RATHER THAN BUILDING. Qwen38HybridDecodeSession has no
+        // measure_dn_as_executed_named: the session offers measure_isolated_organ
+        // and measure_named_matvec, and nothing that returns the as-executed
+        // kernel NAME list this mode needs. That is a real gap, not a typo, and
+        // inventing a method here would be worse than saying so.
+        //
+        // It broke the whole example rather than only this mode - Rust compiles
+        // every function regardless of the runtime path - so the ALU mode could
+        // not be built either. This restores that without pretending
+        // deltanet-decompose works.
+        fail(
+            "deltanet-decompose needs Qwen38HybridDecodeSession::\
+             measure_dn_as_executed_named, which does not exist. The session has \
+             measure_isolated_organ and measure_named_matvec; neither returns the \
+             as-executed kernel name list. Implement it in the session or drop \
+             this mode - do not stub it here.",
+        );
+        #[allow(unreachable_code)]
+        let (named_t, kernel_names): (CommandBufferTiming, Vec<String>) = unreachable!();
         let mut kernel_hist: HashMap<String, u64> = HashMap::new();
         for n in &kernel_names {
             *kernel_hist.entry(n.clone()).or_insert(0) += 1;
@@ -1263,6 +1335,7 @@ mod macos {
                                 work_cols: *work_cols,
                             },
                             ArmKind::AffineZero => ArmKind::AffineZero,
+                            ArmKind::AffineHoist => ArmKind::AffineHoist,
                             _ => ArmKind::AffineProd,
                         },
                     };
@@ -1300,6 +1373,32 @@ mod macos {
         );
         let _ = time_mlp(args.warmup, ArmKind::AffineZero, affine_zero);
         let mlp_zero_ns = time_mlp(args.reps, ArmKind::AffineZero, affine_zero);
+        // DEQUANT HOIST: same bytes, same loads, affine applied once per 8-weight
+        // chunk instead of once per weight. Only meaningful on group_size 64, and
+        // the kernel returns 0 for anything else rather than computing nonsense.
+        let affine_hoist = pipes
+            .get("alu_roofline_affine_q2_geo_tpr64_tg128_hoist")
+            .unwrap();
+        let _ = time_mlp(args.warmup, ArmKind::AffineHoist, affine_hoist);
+        // Capture production's output BEFORE the hoist overwrites it, then the
+        // hoist's, and compare. Without this the arm is a speed number for a
+        // kernel nobody checked.
+        let _ = time_mlp(1, ArmKind::AffineProd, affine_prod);
+        let ref_out: Vec<Vec<f32>> = mlp
+            .iter()
+            .map(|p| read_f32(&p.output, p.rows as usize))
+            .collect();
+        let mlp_hoist_ns = time_mlp(args.reps, ArmKind::AffineHoist, affine_hoist);
+        let hoist_cmp: Vec<Value> = mlp
+            .iter()
+            .zip(ref_out.iter())
+            .map(|(p, r)| {
+                let v = read_f32(&p.output, p.rows as usize);
+                let mut c = compare_out(r, &v);
+                c["tensor"] = json!(p.name.clone());
+                c
+            })
+            .collect();
         let _ = time_mlp(
             args.warmup,
             ArmKind::AffineStripped {
@@ -1398,6 +1497,29 @@ mod macos {
                     3,
                     &mlp_occ,
                     json!({"group_size": mlp_gs, "cols": mlp_cols}),
+                ),
+                // DEQUANT HOIST: identical bytes and loads, the affine applied
+                // once per 8-weight chunk instead of once per weight, using a
+                // precomputed per-chunk sum of x. 10 FMA per 8 weights against
+                // the incumbent's 16. NOT bit-identical - the summation order
+                // changes - so the output comparison is reported, never assumed.
+                "hoist": arm_json(
+                    "hoist",
+                    affine_hoist.name,
+                    mlp_bytes,
+                    mlp_hoist_ns,
+                    3,
+                    &mlp_occ,
+                    json!({
+                        "group_size": mlp_gs,
+                        "cols": mlp_cols,
+                        "arithmetic": "s*sum(c_i*x_i) + b*sum(x_i), affine per 8-chunk",
+                        "fma_per_weight_byte": 1.6667,
+                        "incumbent_fma_per_weight_byte": 2.6667,
+                        "sumx8_bytes_read": mlp.iter().map(|p| p.sumx8_bytes).sum::<u64>(),
+                        "output_compare": hoist_cmp.clone(),
+                        "why_not_bit_identical": "summation order changes",
+                    }),
                 ),
                 "arm_a_stripped": arm_json(
                     "arm_a_stripped",

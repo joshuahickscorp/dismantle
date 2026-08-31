@@ -371,16 +371,61 @@ def _ensure_hcli_on_path() -> Path:
 MKDIR_PROTOCOL_LOCKS = frozenset({str(GPU_LOCK)})
 
 
+
+def _ancestor_pids(limit: int = 64) -> set[int]:
+    """This process and every ancestor, so we can tell OUR lock from a rival's."""
+    out: set[int] = set()
+    pid = os.getpid()
+    for _ in range(limit):
+        if pid <= 1 or pid in out:
+            break
+        out.add(pid)
+        try:
+            pid = int(
+                subprocess.run(
+                    ["ps", "-o", "ppid=", "-p", str(pid)],
+                    capture_output=True, text=True, timeout=5,
+                ).stdout.strip()
+                or 0
+            )
+        except (OSError, ValueError, subprocess.SubprocessError):
+            break
+    return out
+
+
 def _mkdir_lock_acquire(path: Path, *, owner: str, timeout_s: float = 5400.0) -> dict[str, Any]:
     """Same protocol as tools/gpu_lane_lock.sh: mkdir is the atom."""
     t0 = time.time()
     holder: Any = None
     parked = False
+    mine = _ancestor_pids()
     while True:
         try:
             path.mkdir()
             break
         except FileExistsError:
+            # HELD BY US ALREADY. The trial is normally launched under
+            # tools/gpu_lane_lock.sh, so the wrapper - this process's own parent -
+            # holds the directory with its pid inside. Before this branch existed,
+            # _mkdir_lock_acquire read that pid, found it alive (of course: it is
+            # the parent), and parked for its full 5400 s deadline waiting for a
+            # lock its own launcher was holding on its behalf. That is a deadlock,
+            # and it cost a 45-minute run that burned 0.78 s of CPU.
+            # Worth naming precisely: the old flock code FAILED OPEN here with
+            # [Errno 21] Is a directory and the run continued. Making the park
+            # correct turned a benign failure into a hang, which is exactly the
+            # kind of regression a correctness fix can introduce.
+            try:
+                held_by = int((path / "pid").read_text().strip())
+            except (OSError, ValueError):
+                held_by = None
+            if held_by is not None and held_by in mine:
+                return {
+                    "path": str(path), "holder_when_parked": None, "parked": False,
+                    "waited_s": 0.0, "protocol": "mkdir",
+                    "already_held_by_ancestor": held_by,
+                    "release_is_not_ours": True,
+                }
             if path.exists() and not path.is_dir():
                 # Not a lock, a wedge: nothing can be holding a regular file.
                 path.unlink(missing_ok=True)
@@ -410,9 +455,13 @@ def _mkdir_lock_acquire(path: Path, *, owner: str, timeout_s: float = 5400.0) ->
 
 def _mkdir_lock_release(path: Path) -> None:
     try:
-        if (path / "pid").read_text().strip() != str(os.getpid()):
-            return  # not ours; never remove someone else's lock
+        held_by = (path / "pid").read_text().strip()
     except OSError:
+        return
+    # Not ours, and an ANCESTOR's is not ours either: the wrapper releases its own
+    # lock in its EXIT trap, and tearing it down from inside would leave the
+    # wrapper's trap deleting a lock a later lane had legitimately taken.
+    if held_by != str(os.getpid()):
         return
     shutil.rmtree(path, ignore_errors=True)
 

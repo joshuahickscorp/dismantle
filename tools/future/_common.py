@@ -100,6 +100,8 @@ def measurement_provenance(
     lock_held: bool,
     loadavg: str | None = None,
     lane: str | None = None,
+    measured_at: str | None = None,
+    retrofit: bool = False,
 ) -> dict[str, Any]:
     """Provenance every hardware number needs and none of them carried.
 
@@ -118,8 +120,29 @@ def measurement_provenance(
             loadavg = f"{{ {one:.2f} {five:.2f} {fifteen:.2f} }}"
         except (OSError, AttributeError):
             loadavg = None
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    if retrofit and measured_at is None:
+        # A receipt REGENERATED from a stored raw measurement must not stamp the
+        # regeneration time as the measurement time. That would be a fabricated
+        # provenance - precisely the thing this block exists to prevent - and it
+        # is an easy mistake because the writer happens to be running now.
+        return {
+            "measured_at": None,
+            "measured_at_source": "RETROFIT_UNKNOWN",
+            "receipt_regenerated_at": now,
+            "gpu_lane_lock_held": None,
+            "loadavg": loadavg,
+            "lane": lane,
+            "absolutes_are_measured_under_load": True,
+            "why": (
+                "this receipt predates measurement provenance; the raw capture "
+                "carries no timestamp, so the measurement time is genuinely "
+                "unknown and is recorded as unknown rather than invented"
+            ),
+        }
     return {
-        "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "measured_at": measured_at or now,
+        "measured_at_source": "CAPTURED" if measured_at else "WRITE_TIME",
         "gpu_lane_lock_held": bool(lock_held),
         "loadavg": loadavg,
         "lane": lane,
@@ -174,7 +197,7 @@ def write_measured_receipt(
                 f"a hardware number that cannot be placed in time cannot be "
                 f"audited against a contention window"
             )
-        if not prov.get("measured_at"):
+        if not prov.get("measured_at") and prov.get("measured_at_source") != "RETROFIT_UNKNOWN":
             raise MeasurementProvenanceError(
                 f"{recorded_by}: measured_at is empty; landing time is a proxy, "
                 f"not a measurement time"

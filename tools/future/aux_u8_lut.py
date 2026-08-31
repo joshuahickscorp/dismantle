@@ -33,6 +33,7 @@ _sys.path.insert(
 
 import argparse
 import json
+import os
 import math
 import subprocess
 from pathlib import Path
@@ -43,7 +44,12 @@ import numpy as np
 from tools.future import aux_capability_screen as acs
 from tools.future import aux_u8_native as n8
 from tools.future import executable_economics as ee
-from tools.future._common import REPO, RECEIPTS
+from tools.future._common import (
+    REPO,
+    RECEIPTS,
+    measurement_provenance,
+    write_measured_receipt,
+)
 from tools.future.mlp_auxiliary_information import AUXILIARY_BYTES_TARGET
 
 
@@ -1140,7 +1146,22 @@ def record(
         )
     out = path or RECEIPT
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
+    # A hardware number must be placeable in time. This module used to write its
+    # own json.dumps with no timestamp, so when /tmp/hawking-gpu-lane.lock was
+    # found wedged, placing this receipt against that window needed git landing
+    # time - a proxy for when the measurement actually ran.
+    doc.setdefault(
+        "measurement_provenance",
+        measurement_provenance(
+            lock_held=bool(os.environ.get("HAWKING_GPU_LANE_LOCK_HELD")),
+            lane="aux_u8_lut",
+            # A receipt rebuilt from a stored raw capture must not stamp the
+            # rebuild time as the measurement time. The raw files carry no
+            # timestamp, so a retrofit records the measurement time as UNKNOWN.
+            retrofit=not os.environ.get("HAWKING_MEASURED_NOW"),
+        ),
+    )
+    write_measured_receipt(out, doc, "tools/future/aux_u8_lut.py")
     return out
 
 

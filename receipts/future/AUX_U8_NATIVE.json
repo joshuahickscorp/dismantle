@@ -792,6 +792,16 @@
  },
  "gpu_authority": false,
  "lever_id": "quantize_aux_u8",
+ "measurement_provenance": {
+  "absolutes_are_measured_under_load": true,
+  "gpu_lane_lock_held": null,
+  "lane": "aux_u8_native",
+  "loadavg": "{ 8.19 6.61 6.17 }",
+  "measured_at": null,
+  "measured_at_source": "RETROFIT_UNKNOWN",
+  "receipt_regenerated_at": "2026-08-31T10:31:56Z",
+  "why": "this receipt predates measurement provenance; the raw capture carries no timestamp, so the measurement time is genuinely unknown and is recorded as unknown rather than invented"
+ },
  "native_prove": null,
  "recorded_by": "tools/future/aux_u8_native.py",
  "schema": "hawking.future.aux_u8_native.v1",
@@ -1287,6 +1297,7 @@
    }
   }
  },
+ "seal_sha256": "62f47b9a6de61dc80b4fd1c700aebcd25c4585497938a5d24f51a141715ce5cb",
  "shader_invariants": {
   "binds_u8_aux": true,
   "forbidden_hits": [],

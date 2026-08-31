@@ -138,3 +138,31 @@ def test_a_missing_organ_refuses(monkeypatch):
     monkeypatch.setattr(g, "_budget", lambda: trimmed)
     with pytest.raises(g.GapRefused, match="budget has no rows for"):
         g.arithmetic_ceiling()
+
+
+def test_sixty_needs_bytes_removed_and_says_how_many():
+    b = g.bytes_required_after_arithmetic()
+    assert b["further_ms_needed_for_60"] > 0
+    assert 0.10 < b["fraction_of_matvec_bytes_to_remove"] < 0.30
+    assert "must stop existing" in b["statement"]
+
+
+def test_it_rules_out_entropy_coding_with_the_measured_entropy():
+    b = g.bytes_required_after_arithmetic()
+    w = b["why_entropy_coding_does_not_supply_it"]
+    assert "1.87 bits" in w and "93.5%" in w
+    assert "INFORMATION ELIMINATION" in w
+
+
+def test_it_names_what_this_accounting_does_not_cover():
+    b = g.bytes_required_after_arithmetic()
+    o = b["the_other_place_to_look"]
+    assert "DeltaNet state update" in o
+    assert "lm_head" in o
+    assert "G053" in o, "the open obligation aimed at that time"
+
+
+def test_the_composition_assumption_is_declared():
+    b = g.bytes_required_after_arithmetic()
+    assert "do not automatically" in b["caveat"]
+    assert "reopened after every representation change" in b["caveat"]

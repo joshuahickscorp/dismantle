@@ -38,6 +38,15 @@
   "what_this_does_not_say": "it does not say the arithmetic school is not worth working. It is the largest single block on the board and the bitcast candidates have already taken a measured 3.854 ms of it. It says the school must not be the ONLY thing running if 60 is the target."
  },
  "authority": "S026 \u00a70, \u00a71, \u00a711, \u00a712, \u00a748",
+ "bytes_required_after_arithmetic": {
+  "caveat": "this assumes arithmetic removal and byte removal compose, which they do not automatically: a representation that removes bytes usually changes the arithmetic too, and the accelerator has to be reopened after every representation change.",
+  "fraction_of_matvec_bytes_to_remove": 0.1677,
+  "further_ms_needed_for_60": 2.5609,
+  "statement": "after perfect arithmetic removal the q2 and q4 matvecs are 15.27 ms of pure streaming. Reaching 60 needs 2.56 ms more, which at that point can only come from reading fewer bytes: 16.8% of the matvec weight bytes must stop existing.",
+  "streaming_ms_at_arm_a": 15.269,
+  "the_other_place_to_look": "this accounting covers only the q2 and q4 matvecs. The DeltaNet state update, rearrange and gated norm are about 2.0 ms and sit OUTSIDE it entirely, as do lm_head at 1.0204 ms and sampling at 0.334 ms. G053 - DeltaNet as a state machine rather than four matrices - is aimed at exactly that 2.0 ms and is still open.",
+  "why_entropy_coding_does_not_supply_it": "the MLP 2-bit code body measures ~1.87 bits of entropy per 2 stored bits and the codes are 93.5% independent information, so ordinary coding has single-digit percent to give, not 17%. A cut this size is INFORMATION ELIMINATION - a smaller executable program for the same function - which is the ULTRAGOAL's stated primary weapon."
+ },
  "checkpoints": [
   {
    "fraction_of_token_to_remove": 0.0839,
@@ -71,8 +80,8 @@
  "does_the_open_set_reach_60": false,
  "escalation_clock": {
   "deprivilege_condition_would_fire": true,
-  "elapsed_hours": 0.912,
-  "hours_to_next_phase": 5.088,
+  "elapsed_hours": 0.931,
+  "hours_to_next_phase": 5.069,
   "next_phase": "SURVIVOR_OR_COLLAPSE",
   "not_an_abandonment": "the clock forbids complacency, not the incumbent. Passing a phase boundary licenses widening the search; it never requires dropping work that is producing evidence.",
   "phase": "DISCOVERY",
@@ -111,10 +120,10 @@
   "absolutes_are_measured_under_load": true,
   "gpu_lane_lock_held": null,
   "lane": "derived",
-  "loadavg": "{ 6.58 6.80 7.10 }",
+  "loadavg": "{ 7.32 6.96 7.13 }",
   "measured_at": null,
   "measured_at_source": "RETROFIT_UNKNOWN",
-  "receipt_regenerated_at": "2026-08-31T22:26:13Z",
+  "receipt_regenerated_at": "2026-08-31T22:27:24Z",
   "why": "this receipt predates measurement provenance; the raw capture carries no timestamp, so the measurement time is genuinely unknown and is recorded as unknown rather than invented"
  },
  "obligation": "G095",
@@ -315,7 +324,7 @@
   }
  ],
  "recorded_by": "tools/future/gap_ledger_60.py",
- "seal_sha256": "7cb79f5f0a029f2a3ff8d098b7977c335df61b031c01de2e90b525c5965d40ac",
+ "seal_sha256": "de62b72f611be913d037e3848321d472e1289aa0e334a89342aaccc384733c1d",
  "sum_of_material_open_ms": 7.063,
  "three_dominant_kernels": {
   "combined_ms": 21.2444,

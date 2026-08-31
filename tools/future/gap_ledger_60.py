@@ -308,6 +308,60 @@ def arithmetic_ceiling() -> dict[str, Any]:
     }
 
 
+def bytes_required_after_arithmetic() -> dict[str, Any]:
+    """If arithmetic perfectly succeeds, what does 60 then demand of the BYTES?
+
+    At arm_a the matvecs are pure streaming: every arithmetic operation is gone
+    and only the loads remain. Any further saving must therefore come from
+    reading fewer bytes, and the fraction is computable rather than guessed.
+    """
+    a = arithmetic_ceiling()
+    d = _budget()
+    rows = {r["organ"]: float(r["gpu_ms"]) for r in d["organs"]["rows"]}
+    streaming_ms = 0.0
+    for part in a["parts"]:
+        ms = sum(rows[o] for o in part["organs"])
+        if part["codec"] == "q4":
+            ms += DN_INPROJ_MS
+        streaming_ms += ms / part["arm_a_over_production"]
+    need = a["token_ms_after"] - 1000.0 / 60.0
+    if need <= 0:
+        return {"already_reached": True}
+    frac = need / streaming_ms
+    return {
+        "streaming_ms_at_arm_a": round(streaming_ms, 4),
+        "further_ms_needed_for_60": round(need, 4),
+        "fraction_of_matvec_bytes_to_remove": round(frac, 4),
+        "statement": (
+            f"after perfect arithmetic removal the q2 and q4 matvecs are "
+            f"{round(streaming_ms, 2)} ms of pure streaming. Reaching 60 needs "
+            f"{round(need, 2)} ms more, which at that point can only come from "
+            f"reading fewer bytes: {round(frac * 100, 1)}% of the matvec weight "
+            "bytes must stop existing."
+        ),
+        "why_entropy_coding_does_not_supply_it": (
+            "the MLP 2-bit code body measures ~1.87 bits of entropy per 2 stored "
+            "bits and the codes are 93.5% independent information, so ordinary "
+            "coding has single-digit percent to give, not 17%. A cut this size "
+            "is INFORMATION ELIMINATION - a smaller executable program for the "
+            "same function - which is the ULTRAGOAL's stated primary weapon."
+        ),
+        "the_other_place_to_look": (
+            "this accounting covers only the q2 and q4 matvecs. The DeltaNet "
+            "state update, rearrange and gated norm are about 2.0 ms and sit "
+            "OUTSIDE it entirely, as do lm_head at 1.0204 ms and sampling at "
+            "0.334 ms. G053 - DeltaNet as a state machine rather than four "
+            "matrices - is aimed at exactly that 2.0 ms and is still open."
+        ),
+        "caveat": (
+            "this assumes arithmetic removal and byte removal compose, which "
+            "they do not automatically: a representation that removes bytes "
+            "usually changes the arithmetic too, and the accelerator has to be "
+            "reopened after every representation change."
+        ),
+    }
+
+
 def build() -> dict[str, Any]:
     lv = live()
     cps = checkpoints()
@@ -332,6 +386,7 @@ def build() -> dict[str, Any]:
             sum(r["max_ms_removable"] for r in material) >= sixty["ms_to_remove_from_live"]
         ),
         "arithmetic_ceiling": arithmetic_ceiling(),
+        "bytes_required_after_arithmetic": bytes_required_after_arithmetic(),
         "escalation_clock": escalation_clock(),
         "honest_reading": (
             "the material open experiments are bandwidth-recovery bounds - what "

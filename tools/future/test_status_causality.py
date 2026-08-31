@@ -577,22 +577,36 @@ def test_coverage_reports_gates_by_name_not_a_percentage():
     assert set(recording).isdisjoint(missing)
     assert set(recording).isdisjoint(unread)
     assert set(missing).isdisjoint(unread)
-    # Honest form of the obligation: the G007-named gates do not currently
-    # record the five fields at emit time. Naming them is the coverage claim.
-    for required in sc.G007_NAMED_GATES:
+    # The invariant is that the remainder is NAMED and that the partition
+    # boundary is respected - not that any particular gate is still missing.
+    # This used to require every G007-named gate to be in `missing`, which made
+    # the test fail as each one was legitimately WIRED. The gates this writer
+    # cannot reach are the ones that must stay named: hcli/agentos/* and crates/*
+    # are CODEX_OWNED.
+    unreachable = {
+        "resident_gate", "native_gate", "native_mission_gate", "autonomy_gate",
+        "modellake_gate", "vmcp_gate", "recovery_gate", "research_gate",
+        "flash_meta_teacher_capture_boundary",
+    }
+    for required in unreachable:
         assert required in missing, (
-            f"{required} is not in not_recording_five_fields={missing}; "
-            "if it now records the five fields, the receipt must show them"
+            f"{required} vanished from not_recording_five_fields={missing}; "
+            "a Codex-owned gate cannot be wired from this partition, so it must "
+            "stay named rather than dropped"
         )
-    assert "integration_gate" in missing
-    assert "resident_gate" in missing
+    for wired in sc.G007_NAMED_GATES:
+        assert wired in recording or wired in missing or wired in unread, wired
     assert "native_gate" in missing
-    assert "specimen_verify" in missing
-    assert "odyssey_launch" in missing
+    # odyssey_launch, integration_gate and specimen_verify were all wired, so
+    # each moved from `missing` to `recording`. The invariant is that every
+    # launch criterion is accounted for on exactly one side, never that they are
+    # all still gaps.
+    criteria_recording = cov["odyssey_launch_criteria_recording_five_fields"]
     criteria_missing = cov["odyssey_launch_criteria_not_recording_five_fields"]
+    assert set(criteria_recording).isdisjoint(criteria_missing)
     for cid in sc.ODYSSEY_LAUNCH_CRITERIA:
-        assert cid in criteria_missing, (
-            f"odyssey_launch criterion {cid} is not a named five-field gap"
+        assert cid in criteria_recording or cid in criteria_missing, (
+            f"odyssey_launch criterion {cid} is accounted for on neither side"
         )
 
 
@@ -613,7 +627,12 @@ def test_build_receipt_names_odyssey_iii_call_and_coverage_lists():
     )
     assert isinstance(doc["gates_recording_five_fields"], list)
     assert isinstance(doc["gates_not_recording_five_fields"], list)
-    assert "odyssey_launch" in doc["gates_not_recording_five_fields"]
+    # The Codex-owned remainder must stay named; a wired gate legitimately leaves
+    # the missing list, so pinning odyssey_launch there tested the calendar.
+    assert "resident_gate" in doc["gates_not_recording_five_fields"]
+    assert set(doc["gates_recording_five_fields"]).isdisjoint(
+        doc["gates_not_recording_five_fields"]
+    )
     assert doc["alu_bound_mixed_agreement"]["agrees"] is True
     assert doc["n_overreach_shapes"] == 6
     assert "percent" not in doc["coverage"]

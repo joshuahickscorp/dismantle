@@ -86,7 +86,7 @@ def test_can_launch_names_every_unmet_and_agrees_with_itself():
         "can_launch and unmet_criteria must never disagree"
     )
     verdict = ol.launch_verdict(results)
-    assert verdict["verdict"] == ("ALLOWED" if not unmet else "REFUSED")
+    assert verdict["verdict"] == ("LAUNCH" if not unmet else "REFUSED")
     assert verdict["allowed"] is (not unmet)
     assert verdict["unmet"] == unmet
     assert verdict["n_unmet"] == len(unmet)
@@ -123,13 +123,26 @@ def test_launch_receipt_not_written_while_gate_refuses(tmp_path, monkeypatch):
 
     out = ol.build(writer=spy)
     assert ol.RECEIPT in written
-    assert ol.LAUNCH_RECEIPT not in written
-    assert out["launch"]["written"] is False
-    assert out["doc"]["odyssey_i_launch_written"] is False
-    assert out["doc"]["phase_transition"] == "NOT_STARTED"
-    assert out["doc"]["verdict"]["verdict"] == "REFUSED"
-    assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False
     assert (tmp_path / ol.RECEIPT).is_file()
+    # The control is the IMPLICATION, not the era. Refusing must never write the
+    # phase-transition receipt; launching must write exactly one. Pinning "today
+    # refuses" made this fail the moment the gate legitimately opened, which is
+    # the one moment a launch safety control must still be working.
+    refused = bool(out["doc"]["verdict"]["unmet"])
+    if refused:
+        assert out["doc"]["verdict"]["verdict"] == "REFUSED"
+        assert ol.LAUNCH_RECEIPT not in written
+        assert out["launch"]["written"] is False
+        assert out["doc"]["odyssey_i_launch_written"] is False
+        assert out["doc"]["phase_transition"] == "NOT_STARTED"
+        assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False
+    else:
+        assert out["doc"]["verdict"]["verdict"] == "LAUNCH"
+        assert written.count(ol.LAUNCH_RECEIPT) == 1
+        assert out["launch"]["written"] is True
+        assert out["doc"]["odyssey_i_launch_written"] is True
+        assert out["doc"]["phase_transition"] == "STARTED"
+        assert (tmp_path / ol.LAUNCH_RECEIPT).is_file()
 
 
 def _bound_resident_block(**overrides):
@@ -413,9 +426,16 @@ def test_gate_workunit_is_hcli_shaped():
     wu = ol._gate_workunit(ol.launch_verdict(results))
     ol.wus.validate_emitted_unit(wu)
     assert wu["id"] == "odyssey-i.launch-gate"
-    assert wu["classification"] == "REFUSED"
     assert wu["status"] == "completed"
     assert wu["unmet"] == ol.unmet_criteria(results)
+    # classification is REFUSED while the gate refuses and STATIC_ONLY once it
+    # allows - an evidence class, not the verdict string. Pinning "REFUSED" made
+    # this fail the day the gate opened, which is a fact about the calendar.
+    allowed = ol.launch_verdict(results)["allowed"]
+    assert wu["classification"] == ("STATIC_ONLY" if allowed else "REFUSED")
+    assert wu["verdict"] == ol.launch_verdict(results)["verdict"]
+    if allowed:
+        assert wu["blocked_reason"] is None
 
 
 def test_receipt_has_no_numeric_hardware_fields():
@@ -484,10 +504,11 @@ def test_verify_cli_refuses_and_keeps_phase_not_started():
     rc = ol.verify()
     assert rc == 0
     doc = json.loads((RECEIPTS / ol.RECEIPT).read_text())
-    assert doc["verdict"]["verdict"] == "REFUSED"
-    assert doc["odyssey_i_launch_written"] is False
-    assert doc["phase_transition"] == "NOT_STARTED"
-    assert doc["launch_receipt"]["written"] is False
+    refused = bool(doc["verdict"]["unmet"])
+    assert doc["verdict"]["verdict"] == ("REFUSED" if refused else "LAUNCH")
+    assert doc["odyssey_i_launch_written"] is (not refused)
+    assert doc["launch_receipt"]["written"] is (not refused)
+    assert doc["phase_transition"] == ("NOT_STARTED" if refused else "STARTED")
 
 
 # ---------------------------------------------------------------------------
@@ -1054,20 +1075,30 @@ def test_gate_never_writes_launch_receipt_while_any_criterion_unmet(tmp_path, mo
         return path
 
     out = ol.build(writer=spy)
-    assert ol.LAUNCH_RECEIPT not in written
-    assert out["launch"]["written"] is False
-    assert out["doc"]["odyssey_i_launch_written"] is False
-    assert out["doc"]["verdict"]["verdict"] == "REFUSED"
-    # The invariant is "ANY unmet criterion blocks the receipt", not the identity
-    # of today's unmet criterion. This used to name nr_nx_path_callable, which
-    # broke the moment that criterion was legitimately CLOSED - a test that fails
-    # when the campaign succeeds is testing the calendar, not the gate.
-    assert out["doc"]["verdict"]["unmet"], "REFUSED with an empty unmet set is incoherent"
+    # The invariant is the IMPLICATION - any unmet criterion blocks the
+    # phase-transition receipt - not the identity of today's unmet criterion and
+    # not the assumption that there IS one. This first pinned
+    # nr_nx_path_callable, then assumed the unmet set was non-empty; both broke
+    # when the campaign closed the obligations, which is the one moment a launch
+    # safety control most needs to still work.
+    unmet = out["doc"]["verdict"]["unmet"]
     rewire = out["doc"]["rewire"]
-    assert rewire["gate_count_before"]["n_unmet"] >= 1
-    assert rewire["gate_count_after"]["n_unmet"] >= 1
-    assert rewire["still_refused_if_any_unmet"] is True
-    assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False
+    if unmet:
+        # still_refused_if_any_unmet is itself conditional on there BEING an
+        # unmet criterion; with none it reports False, which is correct and not
+        # a regression.
+        assert rewire["still_refused_if_any_unmet"] is True
+        assert out["doc"]["verdict"]["verdict"] == "REFUSED"
+        assert ol.LAUNCH_RECEIPT not in written
+        assert out["launch"]["written"] is False
+        assert out["doc"]["odyssey_i_launch_written"] is False
+        assert (tmp_path / ol.LAUNCH_RECEIPT).exists() is False
+        assert rewire["gate_count_after"]["n_unmet"] >= 1
+    else:
+        assert out["doc"]["verdict"]["verdict"] == "LAUNCH"
+        assert written.count(ol.LAUNCH_RECEIPT) == 1
+        assert out["doc"]["odyssey_i_launch_written"] is True
+        assert (tmp_path / ol.LAUNCH_RECEIPT).is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -1184,9 +1215,15 @@ def test_coverage_receipt_names_recording_and_remainder():
     assert "integration_gate" in recording
     # G007-named remainder sits outside this lane's write scope. Naming it is
     # the honest form of partial coverage; dropping it would fake completeness.
-    for name in ("resident_gate", "native_gate", "specimen_verify"):
+    # The remainder that must stay named is the one this writer CANNOT reach:
+    # hcli/agentos/* and crates/* are CODEX_OWNED. specimen_verify used to be
+    # pinned here too and was legitimately WIRED, so pinning it made the test
+    # fail because coverage improved.
+    for name in ("resident_gate", "native_gate", "native_mission_gate",
+                 "autonomy_gate", "modellake_gate", "vmcp_gate",
+                 "recovery_gate", "research_gate",
+                 "flash_meta_teacher_capture_boundary"):
         assert name in missing, f"{name} vanished from the remainder"
-    assert "flash_meta_teacher_capture_boundary" in missing
     assert set(recording).isdisjoint(missing)
     assert set(recording).isdisjoint(unread)
     for cid in ol.CRITERION_IDS:

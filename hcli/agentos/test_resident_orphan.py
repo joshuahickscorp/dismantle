@@ -52,13 +52,6 @@ def test_opt_in_survives_a_durable_config_round_trip():
     assert ResidentConfig.from_mapping(config.to_dict()).exit_when_orphaned is True
 
 
-if __name__ == "__main__":
-    test_owned_supervisor_reparented_to_init_stops_and_says_why()
-    test_supervisor_whose_launcher_is_alive_keeps_running()
-    test_supervisor_detached_at_start_is_not_an_orphan()
-    test_exit_is_opt_in_and_defaults_off()
-    test_opt_in_survives_a_durable_config_round_trip()
-    print("ok")
 
 
 def _configured_supervisor(tmp: Path, **overrides) -> ResidentSupervisor:
@@ -131,3 +124,58 @@ def test_the_exit_is_on_by_default():
     repo-wide grep found zero callers opting in."""
     assert ResidentConfig(workspace=".", goal="g").exit_when_orphaned is True
     assert ResidentConfig.from_mapping({"workspace": ".", "goal": "g"}).exit_when_orphaned is True
+
+
+# --- the last link of the self-build loop ---------------------------------
+# _child_workunit built a unit from the model's proposal but dropped `tool` and
+# `tool_arguments`, so a resident that asked for filesystem.search got a
+# cognition unit instead and never reached the tool surface it can enumerate.
+
+
+def test_a_child_workunit_can_carry_a_tool_call():
+    from hcli.agentos.resident import _child_workunit
+
+    child = _child_workunit("parent-1", {
+        "id": "wu-child-1",
+        "description": "read my own executor to find the dispatch seam",
+        "tool": "filesystem.read",
+        "tool_arguments": {"path": "hcli/executors.py"},
+    })
+    assert child.tool == "filesystem.read"
+    assert child.tool_arguments == {"path": "hcli/executors.py"}
+    # And it must actually route there, not merely store the field.
+    from hcli.executors import BACKEND_TOOL, select_backend_name
+    assert select_backend_name(child) == BACKEND_TOOL
+
+
+def test_a_child_without_a_tool_is_unchanged():
+    from hcli.agentos.resident import _child_workunit
+
+    child = _child_workunit("parent-1", {"id": "wu-c", "description": "think about it"})
+    assert child.tool is None
+    assert child.tool_arguments is None
+
+
+def test_a_malformed_tool_proposal_is_refused_where_children_are_admitted():
+    from hcli.agentos.resident import _child_workunit
+
+    for bad, why in (
+        ({"tool": 42}, "non-string tool"),
+        ({"tool": "git.status", "tool_arguments": ["not", "a", "map"]}, "non-object arguments"),
+        ({"tool_arguments": {"path": "x"}}, "arguments with no tool"),
+    ):
+        payload = {"id": "wu-bad", "description": "d", **bad}
+        try:
+            _child_workunit("parent-1", payload)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted a child with {why}: {payload}")
+
+
+if __name__ == "__main__":
+    # Only the argument-free checks; the loop tests need pytest fixtures.
+    for _name, _fn in sorted(globals().items()):
+        if _name.startswith("test_") and _fn.__code__.co_argcount == 0:
+            _fn()
+            print(f"ok  {_name}")
+    print("all green (pytest runs the fixture-based loop tests)")

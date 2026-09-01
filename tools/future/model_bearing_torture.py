@@ -2418,24 +2418,36 @@ def run_torture(
             if time.time() >= deadline:
                 break
             if not remaining and not in_flight:
-                # Refill a distinct Hawking-self inspection with a unique id.
-                new_id = f"WU.HAWKING.health_probe.{cycle:03d}"
-                remaining.append(
+                # END THE RUN. Do not manufacture work to fill the clock.
+                #
+                # This used to append WU.HAWKING.health_probe.NNN whenever the
+                # live catalog ran dry, which is how a 1800 s run produced 33
+                # launches from a 16-row catalog: 16 of them were fabricated
+                # probes. The trial then measured the padding rather than the
+                # autonomy, and "zero filler" could never hold no matter what
+                # the resident did.
+                #
+                # A catalog that sustains N cycles of real choice and then runs
+                # out is a true and useful measurement. A synthetic probe that
+                # keeps a clock ticking is not, and productive autonomy is
+                # exactly the law that forbids inventing low-information work.
+                # Reporting the exhaustion honestly is the correct behaviour;
+                # it is also what tells us the catalog needs real depth.
+                tape.emit(
+                    "work_exhausted",
                     {
-                        "id": new_id,
-                        "expected_information_gain": 2,
-                        "title": "health-probe the live resident without a second body",
-                        "description": "Hawking itself: pid, identity, fusion env still applied",
-                        "frontier": "HCLI_SELF",
-                        "hypothesis_family": "resident_health_probe",
-                        "surface": "hawking.resident",
-                        "organ": "hawking",
-                        "hawking_self": True,
-                        "dead": False,
-                    }
+                        "cycle": cycle,
+                        "elapsed_s": round(time.time() - t0, 3),
+                        "remaining_s": round(deadline - time.time(), 3),
+                        "reason": "live catalog empty and nothing in flight",
+                        "wake_condition": (
+                            "new real work in the catalog: a landed receipt, a "
+                            "staleness finding, or an HCLI_SELF unit the resident "
+                            "authors itself"
+                        ),
+                    },
                 )
-                queued = [new_id]
-                tape.emit("work_refilled", {"unit_ids": list(queued)}, cites=list(queued))
+                break
     finally:
         ingest_finished()
         # Stop the native body, then the CLI resident, then prove restorability.

@@ -63,6 +63,12 @@ NETWORK_SAMPLE_EMIT_SECONDS = 1.0
 STATE_SAMPLE_EMIT_SECONDS = 10.0
 STALL_SECONDS = 15 * 60
 AUTH_CHECK_SECONDS = 10 * 60
+# G101: without this, a sealed specimen only becomes a WorkUnit when a human
+# remembers to run `python3 tools/future/modellake_events.py --build` by
+# hand. A seal is a rare event; this cadence is deliberately far coarser than
+# the download-health polling above so the consumer's disk reads never
+# compete with the two live transfers this watcher is admitting.
+MODELLAKE_EVENTS_INTERVAL_SECONDS = 5 * 60
 KNOWN_TEMP_BYTES = 20_000_000_000
 # A transient interface dip is not evidence that a pinned downloader is bad.
 # Transfer rate is telemetry, not sufficient evidence to terminate a live
@@ -591,6 +597,44 @@ def auth_check() -> tuple[str, str]:
     return "network_error", output
 
 
+def emit_modellake_events_once() -> int:
+    """Run the seal -> registry -> fingerprint -> role -> WorkUnit consumer
+    once, and persist its receipt. Returns the number of specimens for which
+    a first-sight seal was emitted this run.
+
+    Imported lazily: a missing or broken sidecar module must not stop this
+    watcher from starting, and must not touch the download loop it takes no
+    part in. This does no network I/O; it reads lake manifests already on
+    disk and this watcher's own JSONL tail.
+    """
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from tools.future import modellake_events as me
+    from tools.future._common import write_receipt
+
+    doc = me.build()
+    write_receipt(me.RECEIPT_NAME, doc, me.RECORDED_BY)
+    return int(doc["n_emitted_specimens"])
+
+
+def maybe_emit_modellake_events(loop_started: float, last_events_emit: float) -> float:
+    """Gate emit_modellake_events_once() to MODELLAKE_EVENTS_INTERVAL_SECONDS.
+
+    Never raises: a broken sidecar module is logged and retried next
+    interval, not once per poll tick, and never crashes the watcher that
+    is actively managing the two live downloads. Returns the timestamp to
+    remember as last_events_emit for the next call.
+    """
+    if last_events_emit and loop_started - last_events_emit < MODELLAKE_EVENTS_INTERVAL_SECONDS:
+        return last_events_emit
+    try:
+        n_new = emit_modellake_events_once()
+        emit("modellake_events_run", n_new_seal_specimens=n_new)
+    except Exception as exc:
+        emit("modellake_events_error", error=redact(str(exc)))
+    return loop_started
+
+
 def acquire_lock():
     ODYSSEY.mkdir(parents=True, exist_ok=True)
     handle = LOCK_PATH.open("w", encoding="utf-8")
@@ -635,6 +679,7 @@ def main() -> int:
     last_net_time = time.monotonic()
     last_network_emit = 0.0
     last_state_emit = 0.0
+    last_events_emit = 0.0
     last_ssd_cache_bytes = None
     last_ssd_cache_mounted = False
     notified_ssd_cache_limit = False
@@ -994,6 +1039,9 @@ def main() -> int:
                  ssd_xet_cache_mounted=last_ssd_cache_mounted,
                  reconstruct_write_sequentially=True)
             last_state_emit = loop_started
+
+        last_events_emit = maybe_emit_modellake_events(loop_started, last_events_emit)
+
         if args.once:
             return 0
         sleep_for = max(0.05, args.poll_secs - (time.monotonic() - loop_started))

@@ -407,12 +407,22 @@ def memory_decision(
 
 
 def _mission_has_work(workspace: Path) -> bool:
+    from hcli.mission import MissionCorruptError, load_state
+
     path = workspace / ".hcli" / "mission" / "state.json"
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, OSError, UnicodeError, json.JSONDecodeError):
+        value = load_state(path)
+    except FileNotFoundError:
+        # Mission genuinely absent: nothing to do.
         return False
-    units = value.get("units") if isinstance(value, dict) else None
+    except MissionCorruptError:
+        # The file exists but is unreadable/malformed. That is NOT "no
+        # work" - agent.recover_mission() will hit this exact same
+        # load_state() and raise, and the worker must be spawned so that
+        # failure surfaces as a visible worker_failed/error instead of the
+        # supervisor silently freezing in IDLE forever with no signal.
+        return True
+    units = value.get("units")
     if not isinstance(units, dict):
         return False
     return any(
@@ -551,6 +561,22 @@ def _child_workunit(parent_id: str, value: Mapping[str, Any]) -> WorkUnit:
     dependencies = [str(item) for item in (value.get("dependencies") or [])]
     if parent_id not in dependencies:
         dependencies.insert(0, parent_id)
+    # A child may be a TYPED TOOL CALL, not only cognition. Dropping these two
+    # fields is what kept the self-build loop open at its last link: the model
+    # could ask for `filesystem.search` and the request was silently discarded,
+    # so the unit fell back to cognition and the resident never touched the tool
+    # surface it can see. Validate here rather than at execution: a malformed
+    # proposal must be refused where children are admitted, not become a unit
+    # that fails later for a reason the model cannot connect to what it asked.
+    tool = value.get("tool")
+    if tool is not None and not isinstance(tool, str):
+        raise ValueError("child WorkUnit tool must be a string")
+    tool = (tool or "").strip() or None
+    tool_arguments = value.get("tool_arguments")
+    if tool_arguments is not None and not isinstance(tool_arguments, Mapping):
+        raise ValueError("child WorkUnit tool_arguments must be an object")
+    if tool_arguments is not None and tool is None:
+        raise ValueError("child WorkUnit tool_arguments without a tool")
     return WorkUnit(
         id=uid,
         role=str(value.get("role") or "research"),
@@ -564,6 +590,8 @@ def _child_workunit(parent_id: str, value: Mapping[str, Any]) -> WorkUnit:
             else None
         ),
         provider=(str(value["provider"]) if value.get("provider") else None),
+        tool=tool,
+        tool_arguments=(dict(tool_arguments) if tool_arguments is not None else None),
     )
 
 

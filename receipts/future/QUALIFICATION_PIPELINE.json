@@ -25,7 +25,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T17:38:01Z",
+  "recorded_at": "2026-09-01T05:41:03Z",
   "recorded_by": "tools.future.qualification_pipeline.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -72,7 +72,7 @@
   "stages 10-12 emit REQUEST/SPEC only; scoreboard and HCLI lock are not written",
   "next WorkUnits derived from survivors + drops + a blocked lease-request proposal"
  ],
- "head": "93215fb976f05581c6608f5d630c8181057280eb",
+ "head": "b087a0606c9a5f45b0468f91c017aed36a53931c",
  "integration": {
   "admit_checkpoint": "admit_checkpoint(doc) -> dict  # raises FailClosed on corrupt/partial",
   "execute": "execute(*, explicit_execute=False, lease=None, contamination_class=None) -> None  # always raises ExecuteRefused",
@@ -102,7 +102,7 @@
  ],
  "pipeline": {
   "bench_state": "UNKNOWN",
-  "contamination_class": "HEAVY",
+  "contamination_class": "LIGHT",
   "dropped_ids": [
    "qwen27-attention-gate-fusion",
    "qwen27-ba-delta-fusion",
@@ -170,30 +170,30 @@
     "name": "assess_machine_quiescence",
     "payload": {
      "acquires_lease": false,
-     "contamination_class": "HEAVY",
-     "contamination_reason": "at least one HEAVY probe fired",
+     "contamination_class": "LIGHT",
+     "contamination_reason": "contenders or mild pressure without a HEAVY trigger",
      "executes_benchmark": false,
      "execution_ok": false,
      "gpu_authority": false,
-     "n_competing_workloads": 4,
+     "n_competing_workloads": 8,
      "quiesces_worker": false,
-     "reason": "machine is HEAVY; queue_policy.protected_start_requires_machine_quiescence. sidecar will not quiesce a worker to make it so",
+     "reason": "machine is LIGHT; queue_policy.protected_start_requires_machine_quiescence. sidecar will not quiesce a worker to make it so",
      "required_probes": {
       "loadavg": true,
       "memory": true,
       "processes_cpu_pct": true
      },
      "resident_local_model": {
-      "cpu_pct": 121.5,
+      "cpu_pct": 105.2,
       "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
       "note": "largest RSS neighbour over the quiet threshold; not a model-name guess",
-      "pid": 36298,
-      "rss_gib": 17.65
+      "pid": 75282,
+      "rss_gib": 4.59
      },
      "signals_process": false,
      "source": "tools.future.contamination.snapshot + classify_contamination"
     },
-    "reason": "machine is HEAVY; queue_policy.protected_start_requires_machine_quiescence. sidecar will not quiesce a worker to make it so",
+    "reason": "machine is LIGHT; queue_policy.protected_start_requires_machine_quiescence. sidecar will not quiesce a worker to make it so",
     "status": "COMPLETED"
    },
    {
@@ -204,7 +204,7 @@
      "acquires_lease": false,
      "executes_benchmark": false,
      "gpu_authority": false,
-     "n_over_threshold": 4,
+     "n_over_threshold": 8,
      "pausable_patterns": [
       "hf download",
       "lake_filler.py"
@@ -212,62 +212,102 @@
      "policy_source": "tools/odyssey/gpu_cleanliness.py PAUSE_PATTERN (recovered, not imported)",
      "primary": {
       "class": "STANDING",
-      "cpu_pct": 121.5,
+      "cpu_pct": 105.2,
       "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-      "pid": 36298,
+      "pid": 75282,
       "policy_would_permit_quiesce": false,
       "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
-      "rss_gib": 17.65,
+      "rss_gib": 4.59,
       "sidecar_will_quiesce": false
      },
      "quiesces_worker": false,
-     "reason": "primary='/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python' pid=36298 class=STANDING; policy_would_permit_quiesce=False; sidecar_will_quiesce=false",
+     "reason": "primary='/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python' pid=75282 class=STANDING; policy_would_permit_quiesce=False; sidecar_will_quiesce=false",
      "sidecar_will_quiesce_any": false,
      "signals_process": false,
      "workers": [
       {
        "class": "STANDING",
-       "cpu_pct": 121.5,
+       "cpu_pct": 105.2,
        "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-       "pid": 36298,
+       "pid": 75282,
        "policy_would_permit_quiesce": false,
        "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
-       "rss_gib": 17.65,
+       "rss_gib": 4.59,
        "sidecar_will_quiesce": false
       },
       {
        "class": "STANDING",
-       "cpu_pct": 69.2,
+       "cpu_pct": 89.2,
        "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-       "pid": 38241,
+       "pid": 75304,
        "policy_would_permit_quiesce": false,
        "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
-       "rss_gib": 15.23,
+       "rss_gib": 3.13,
        "sidecar_will_quiesce": false
       },
       {
        "class": "STANDING",
-       "cpu_pct": 30.0,
+       "cpu_pct": 26.7,
        "name": "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
-       "pid": 59762,
+       "pid": 78838,
        "policy_would_permit_quiesce": false,
        "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
-       "rss_gib": 4.29,
+       "rss_gib": 2.22,
        "sidecar_will_quiesce": false
       },
       {
        "class": "STANDING",
-       "cpu_pct": 21.5,
+       "cpu_pct": 47.6,
+       "name": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
+       "pid": 77282,
+       "policy_would_permit_quiesce": false,
+       "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
+       "rss_gib": 0.06,
+       "sidecar_will_quiesce": false
+      },
+      {
+       "class": "STANDING",
+       "cpu_pct": 30.2,
        "name": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
        "pid": 180,
        "policy_would_permit_quiesce": false,
        "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
-       "rss_gib": 0.05,
+       "rss_gib": 0.06,
+       "sidecar_will_quiesce": false
+      },
+      {
+       "class": "STANDING",
+       "cpu_pct": 82.4,
+       "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
+       "pid": 77296,
+       "policy_would_permit_quiesce": false,
+       "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
+       "rss_gib": 0.03,
+       "sidecar_will_quiesce": false
+      },
+      {
+       "class": "STANDING",
+       "cpu_pct": 38.9,
+       "name": "/System/Library/CoreServices/RemoteManagement/screensharingd.bundle/Contents/MacOS/screensharingd",
+       "pid": 41075,
+       "policy_would_permit_quiesce": false,
+       "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
+       "rss_gib": 0.03,
+       "sidecar_will_quiesce": false
+      },
+      {
+       "class": "STANDING",
+       "cpu_pct": 94.9,
+       "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
+       "pid": 77305,
+       "policy_would_permit_quiesce": false,
+       "reason": "STANDING (or unidentified) neighbour: pausing it would forge a speedup. queue_policy.protected_start_requires_machine_quiescence is a requirement on the machine, not permission for this sidecar to quiesce a worker",
+       "rss_gib": 0.02,
        "sidecar_will_quiesce": false
       }
      ]
     },
-    "reason": "primary='/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python' pid=36298 class=STANDING; policy_would_permit_quiesce=False; sidecar_will_quiesce=false",
+    "reason": "primary='/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python' pid=75282 class=STANDING; policy_would_permit_quiesce=False; sidecar_will_quiesce=false",
     "status": "COMPLETED"
    },
    {
@@ -1346,7 +1386,7 @@
   }
  ],
  "schema": "hawking.future.qualification_pipeline.v1",
- "seal_sha256": "807196f19450428cff93fd6039cd13fd0e2e3759e1fc110e911db2b8c7b23530",
+ "seal_sha256": "c41e235b4f5d20208a79d065ba5250fa3475da0ee37a4bc8482d4b5649dee9f7",
  "stages_declared": [
   "identify_lease_availability",
   "assess_machine_quiescence",

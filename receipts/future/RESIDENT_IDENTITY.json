@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T17:38:55Z",
+  "recorded_at": "2026-09-01T05:41:53Z",
   "recorded_by": "tools/future/resident_identity.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -25,7 +25,7 @@
    "executable_hash": {
     "by_role": {
      "binary": "d34044cffae8f32055cca40aae27ec62beb44f043df081293126da89e51b8e76",
-     "resident_binary": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8"
+     "resident_binary": "9f79d8a26540b86091296ddbc5829cf372bd75e789b9b0551a76d6ce2446fc37"
     },
     "seal_declared_sha256_16": "d34044cffae8f320",
     "seal_matching_role": "binary"
@@ -341,7 +341,7 @@
     "source": "ON_DISK"
    },
    "codex_accelerator_handoff": {
-    "in_git_head": false,
+    "in_git_head": true,
     "on_disk": true,
     "path": "CODEX_ACCELERATOR_HANDOFF.json",
     "source": "ON_DISK"
@@ -354,7 +354,7 @@
    },
    "qualification_queue": [
     {
-     "in_git_head": false,
+     "in_git_head": true,
      "on_disk": true,
      "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
      "source": "ON_DISK"
@@ -375,7 +375,7 @@
     "source": "ON_DISK"
    },
    "teacher_capture": {
-    "in_git_head": false,
+    "in_git_head": true,
     "on_disk": true,
     "path": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
     "source": "ON_DISK"
@@ -1278,14 +1278,14 @@
     "exists": true,
     "missing_evidence": [],
     "path": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-    "sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+    "sha256": "9f79d8a26540b86091296ddbc5829cf372bd75e789b9b0551a76d6ce2446fc37",
     "source_state": "COMPUTED"
    },
    "seal_runtime_binary": "workspace/ops/build/rust/release-fast/examples/ascension_qwen38_hybrid_greedy",
    "value": {
     "by_role": {
      "binary": "d34044cffae8f32055cca40aae27ec62beb44f043df081293126da89e51b8e76",
-     "resident_binary": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8"
+     "resident_binary": "9f79d8a26540b86091296ddbc5829cf372bd75e789b9b0551a76d6ce2446fc37"
     },
     "note": "Two executables are declared. The resident seal's runtime_binary_sha256_16 matches 'binary' (hybrid greedy) when that file is present; resident_binary is a different artifact.",
     "seal_declared_sha256_16": "d34044cffae8f320",
@@ -1382,6 +1382,14 @@
      },
      {
       "family": "butterfly",
+      "n": 1
+     },
+     {
+      "family": "byte_count_times_organ_average",
+      "n": 1
+     },
+     {
+      "family": "bytes_traded_for_decode_arithmetic",
       "n": 1
      },
      {
@@ -2252,7 +2260,7 @@
      },
      {
       "model": "qwen3.8-27b",
-      "n": 53
+      "n": 55
      },
      {
       "model": "unrecorded",
@@ -2343,6 +2351,13 @@
       "n_unparsed": 1,
       "origin": "disk",
       "path": "receipts/future/DELTANET_GENERATED_TRANSITION.json"
+     },
+     {
+      "n_parsed": 2,
+      "n_scars": 2,
+      "n_unparsed": 0,
+      "origin": "disk",
+      "path": "receipts/future/ECONOMICS_CALIBRATION.json"
      },
      {
       "n_parsed": 0,
@@ -2578,15 +2593,15 @@
      "ramanujan.scaffold.core.stores Graveyard (in-process bury/revive, not a corpus index).",
      "Worktrees and grok/* branches the noetic sweeper walked; this index is HEAD + disk only."
     ],
-    "n_parsed": 669,
-    "n_refuse_eligible": 597,
-    "n_scars": 683,
-    "n_sources": 44,
+    "n_parsed": 671,
+    "n_refuse_eligible": 599,
+    "n_scars": 685,
+    "n_sources": 45,
     "n_unparsed": 14
    },
    "missing_evidence": [],
-   "n": 60,
-   "n_refuse_eligible": 45,
+   "n": 62,
+   "n_refuse_eligible": 47,
    "note": "compact projection of NEGATIVE_SCIENCE_INDEX; not the full corpus dump",
    "query": {
     "model": "qwen3.8-27b"
@@ -2752,6 +2767,22 @@
      "scar_id": "receipts/future/CAMPAIGN_SCARS.json#SOURCE_INSTRUMENTED_RUNTIME_BINARY_STALE",
      "source_path": "receipts/future/CAMPAIGN_SCARS.json",
      "verdict": "FALSIFIED"
+    },
+    {
+     "hypothesis_family": "bytes_traded_for_decode_arithmetic",
+     "level": "MODEL_SPECIFIC",
+     "refuse_eligible": true,
+     "scar_id": "receipts/future/ECONOMICS_CALIBRATION.json#BYTES_TRADED_FOR_DECODE_ARITHMETIC",
+     "source_path": "receipts/future/ECONOMICS_CALIBRATION.json",
+     "verdict": "MEASURED_NEGATIVE"
+    },
+    {
+     "hypothesis_family": "byte_count_times_organ_average",
+     "level": "MODEL_SPECIFIC",
+     "refuse_eligible": true,
+     "scar_id": "receipts/future/ECONOMICS_CALIBRATION.json#BYTE_COUNT_TIMES_ORGAN_AVERAGE",
+     "source_path": "receipts/future/ECONOMICS_CALIBRATION.json",
+     "verdict": "MEASURED_NEGATIVE"
     },
     {
      "hypothesis_family": "conditional_program",
@@ -3616,7 +3647,7 @@
    "source": "ON_DISK"
   },
   "codex_accelerator_handoff": {
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk": true,
    "path": "CODEX_ACCELERATOR_HANDOFF.json",
    "role": "current_qwen27_incumbent_control_identity if present; this worktree copes with either ON_DISK or ABSENT and does not invent the block",
@@ -3720,7 +3751,7 @@
   }
  },
  "schema": "hawking.future.resident_identity.v1",
- "seal_sha256": "8a92e9788a9f7be312b2b599ec7d0abe90da21c61edcb834d36d967af8a31939",
+ "seal_sha256": "d2c298266db7af22d6d920a81d48563f52f90fd6b21e9a544726191d317ed0e2",
  "status": "ACCEPTED",
  "version": 1,
  "work_unit": {

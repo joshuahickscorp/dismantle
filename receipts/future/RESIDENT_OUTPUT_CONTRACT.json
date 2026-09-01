@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T03:21:14Z",
+  "recorded_at": "2026-09-01T05:41:53Z",
   "recorded_by": "tools/future/resident_output_contract.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -740,7 +740,7 @@
   "reask"
  ],
  "schema": "hawking.future.resident_output_contract.v1",
- "seal_sha256": "10a941481ec89ed29b235b296ab93b7aae8b23e6c062f6c2d35ccdc5bc6f748a",
+ "seal_sha256": "df2a25e05a6b519a2e263791723834ded2eace0570c0ef238c0c843092dde8c4",
  "untested": [
   "whether the live hcli_sovereign loop has adopted admit(); it has not",
   "whether a terse re-ask that names only missing fields changes the body's next reply (UNTESTED)"

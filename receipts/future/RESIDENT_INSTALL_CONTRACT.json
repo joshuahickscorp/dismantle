@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T17:38:56Z",
+  "recorded_at": "2026-09-01T05:41:53Z",
   "recorded_by": "tools/future/resident_install.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -146,7 +146,7 @@
   }
  ],
  "schema": "hawking.future.resident_install.v1",
- "seal_sha256": "76f7e2ab11343dd317dadd81e6f0724879795ec318d04415ebaed36b6ad9f799",
+ "seal_sha256": "8566d62241fb3bb2215e6c44d20caf935d8b6e460642e587c35e6be0f395ed74",
  "unbound_template": {
   "existing_lifecycle": {
    "genesis_resident": "tools/agentos/genesis_resident.py",

@@ -10,7 +10,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T17:37:43Z",
+  "recorded_at": "2026-09-01T05:40:45Z",
   "recorded_by": "tools/future/protected_scheduler.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -19,7 +19,7 @@
   "PROTECTED_SCHEDULER_CAPABLE": true,
   "PROTECTED_WINDOW_AVAILABLE": false,
   "contamination_class": "HEAVY",
-  "continue_with_n": 32,
+  "continue_with_n": 33,
   "lease_present": false,
   "live_reason": "protected-required unit cannot start: contamination_class='HEAVY' (needs QUIESCENT; at least one HEAVY probe fired); no proven HCLI lease (protected lock file(s) exist but no holder could be proven without flock; fail closed: present=false. flock would be a seizure). scheduler_capable remains true; the window is what is missing",
   "live_verdict": "BLOCKED_ON_PROTECTED_WINDOW",
@@ -41,7 +41,7 @@
   },
   "continue_with": {
    "failed_closed": false,
-   "n": 32,
+   "n": 33,
    "n_dropped_protected": 0,
    "reason": "protected unit is parked; resident continues with CPU-class work that does not need a protected window",
    "unit_ids": [
@@ -53,6 +53,7 @@
     "FT.GPU_KERNELS.static-warnings",
     "FT.HCLI_SELF.emit-workunits",
     "FT.MODEL_CAPABILITY.hard-gates.drive-tools",
+    "FT.MODEL_EXECUTION.capacity-register_limited_occupancy",
     "FT.MODEL_REPRESENTATION.meta-gates-3-9",
     "FT.ODYSSEY_ADVERSARY.attacks",
     "FT.ODYSSEY_TRANSFER.re-earn",
@@ -353,7 +354,7 @@
   "workunit": "one CPU_ANALYSIS unit; recognize/decide/park/continue_with against declared GPU_EXCLUSIVE without opening a window"
  },
  "schema": "hawking.future.protected_scheduler.v1",
- "seal_sha256": "d5f9e8d17d74ee936abec522991adf8edd6183d8ace3067ba43821b2be497e02",
+ "seal_sha256": "32940eb9e92661a07306d17ef41aa2d9c61ed10d90e3a4385bcf8ef77948a940",
  "version": 1,
  "vocabulary": {
   "BLOCKED_ON_PROTECTED_WINDOW": "protected-required, and the window is not available",

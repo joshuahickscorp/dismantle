@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:38:12Z",
+  "recorded_at": "2026-09-01T05:38:44Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -4967,7 +4967,7 @@
   "unmet_not_from_this_rewire": []
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "2e6b3c1f69170cdf3fecf8054e20863c57229e75e47e5e72c8dbaf57230dd050",
+ "seal_sha256": "abeebc1b7336f8d45b615d9c31cef172f17d187abe4bf650acfecd0882c50948",
  "sleeping_workunits": [
   {
    "assigned_backend": null,

@@ -231,7 +231,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:32:16Z",
+  "recorded_at": "2026-09-01T06:01:45Z",
   "recorded_by": "tools/future/mlp_code_information.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -3049,7 +3049,7 @@
   "reconstruction": "w = float(q)*scale + bias, q unsigned in {0,1,2,3}"
  },
  "schema": "hawking.future.mlp_code_information.v1",
- "seal_sha256": "9326b611a7c642cf1bceb4e51b000116f3e1b8576de6a780165420ea888acce4",
+ "seal_sha256": "641acab8bce86e6162bffcb7733dfe73b4028b13d82235fcf7bfe3c7e196876c",
  "unmeasured_attractive": [
   {
    "id": "shared_input_transforms",

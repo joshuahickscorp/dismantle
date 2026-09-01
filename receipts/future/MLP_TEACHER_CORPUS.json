@@ -23,7 +23,7 @@
   "gpu_authority": false,
   "machine": "Apple host; CPU/MPS affine-Q2 F(X), no GPU lease",
   "measurement_state": "DIAGNOSTIC_RELATIVE",
-  "recorded_at": "2026-09-01T05:36:04Z",
+  "recorded_at": "2026-09-01T06:06:06Z",
   "recorded_by": "tools/future/mlp_teacher_corpus.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -208,7 +208,7 @@
     "num_hidden_layers": 64
    },
    "model_id": "qwen3.8-27b-sealed-3.14",
-   "pinned_revision": "fb75f701192b009b9dc1a5255d0c2c3ec8bdf899",
+   "pinned_revision": "b087a0606c9a5f45b0468f91c017aed36a53931c",
    "protocol": "hawking.qwen38.resident.v1",
    "require_fusion_env": true,
    "resident_binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release/examples/ascension_qwen38_resident",
@@ -1063,7 +1063,7 @@
   "NNS-015": "Layer 31 down_proj is the named distillation surface; included."
  },
  "schema": "hawking.future.mlp_teacher_corpus.v1",
- "seal_sha256": "346a5d52150bf7d3d01f075234ff4a9ad0bea7960b9bd1297d23b98957821482",
+ "seal_sha256": "14ff22d6d66a00918b86989e5872c648eabcb5291940d27729f9a6e4f52d0496",
  "selftest": {
   "chosen_layers": [
    3,
@@ -1114,7 +1114,7 @@
    "num_hidden_layers": 64
   },
   "model_id": "qwen3.8-27b-sealed-3.14",
-  "pinned_revision": "fb75f701192b009b9dc1a5255d0c2c3ec8bdf899",
+  "pinned_revision": "b087a0606c9a5f45b0468f91c017aed36a53931c",
   "protocol": "hawking.qwen38.resident.v1",
   "require_fusion_env": true,
   "resident_binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release/examples/ascension_qwen38_resident",

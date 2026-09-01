@@ -26,6 +26,9 @@ import time
 from pathlib import Path
 
 from hcli.commands import (
+    MODELLAKE_TAIL_BYTES,
+    STATUS_LINE_CHARS,
+    STATUS_MAX_LINES,
     _last_watcher_sample,
     _modellake_status,
     _pid_liveness,
@@ -200,18 +203,39 @@ def test_a_log_with_no_sample_yet_reports_unknown():
 
 
 def test_only_a_bounded_tail_of_the_log_is_read():
-    """The live log is 580 MB. Reading it whole would stall every /status."""
+    """The live log is 580 MB. Reading it whole would stall every /status.
+
+    Asserted by what is NOT reachable: a sample buried behind more than
+    MODELLAKE_TAIL_BYTES of later rows must come back as None. A full read
+    would find it, which is exactly the behaviour being ruled out -- checking
+    that the newest sample wins proves nothing here, since a full read
+    returns that one too.
+    """
     root = fresh()
     filler = [{"event": "network_sample", "rx_bytes": n, "pad": "x" * 512} for n in range(4000)]
     write_watcher(
         root,
         pid=None,
         rows=[{"event": "watcher_sample", "active_jobs": ["buried"], "ts": "2020-01-01T00:00:00+00:00"}]
-        + filler
-        + [{"event": "watcher_sample", "active_jobs": ["recent"], "ts": "2020-01-02T00:00:00+00:00"}],
+        + filler,
     )
     log = root / "workspace" / "campaign" / "odyssey" / "downloads" / "modellake-watch.jsonl"
-    assert log.stat().st_size > 2 * 1024 * 1024, "the fixture must exceed the tail"
+    assert log.stat().st_size > 4 * MODELLAKE_TAIL_BYTES, "the fixture must exceed the tail"
+    assert _last_watcher_sample(log) is None
+
+
+def test_the_newest_sample_inside_the_tail_wins():
+    root = fresh()
+    filler = [{"event": "network_sample", "rx_bytes": n} for n in range(50)]
+    write_watcher(
+        root,
+        pid=None,
+        rows=[{"event": "watcher_sample", "active_jobs": ["older"], "ts": "2020-01-01T00:00:00+00:00"}]
+        + filler
+        + [{"event": "watcher_sample", "active_jobs": ["recent"], "ts": "2020-01-02T00:00:00+00:00"}]
+        + filler,
+    )
+    log = root / "workspace" / "campaign" / "odyssey" / "downloads" / "modellake-watch.jsonl"
     assert _last_watcher_sample(log)["active_jobs"] == ["recent"]
 
 
@@ -284,3 +308,57 @@ if __name__ == "__main__":
             fn()
             print(f"ok  {name}")
     print("all green")
+
+
+def test_a_warning_carrying_mission_still_fits_one_screen():
+    """The case the boundary test above misses.
+
+    That test lands on exactly 10 with no warning and asserts <= 10, so it
+    certifies the boundary without ever crossing it. A mission carrying a
+    no_progress warning spends an eleventh row, and the machine section is
+    what has to give way -- not the cap, and not the warning.
+    """
+    root = fresh()
+    write_resident(root, supervisor_pid=2**22)
+    write_watcher(
+        root,
+        pid=os.getpid(),
+        rows=[{"event": "watcher_sample", "active_jobs": ["a"], "ts": "2020-01-01T00:00:00+00:00"}],
+    )
+    snap = {
+        "mission_id": "m-observe",
+        "phase": "no_progress",
+        "goal": "ship status",
+        "resident": _resident_status([root]),
+        "modellake": _modellake_status([root]),
+        "no_progress_warning": "fingerprint repeated",
+    }
+    lines = format_status(snap).splitlines()
+    assert len(lines) <= STATUS_MAX_LINES, lines
+    assert any(line.startswith("no_progress:") for line in lines), "warning must survive"
+    machine = [l for l in lines if l.startswith(("Resident ", "ModelLake ", "Machine "))]
+    assert len(machine) == 1, machine
+    # Collapsing must not silently drop the field that says ModelLake is still
+    # competing for this host; a hard line[:80] cut used to eat it.
+    assert "modellake=" in machine[0]
+    assert max(len(line) for line in lines) <= STATUS_LINE_CHARS
+
+
+def test_without_a_warning_both_machine_lines_are_kept():
+    root = fresh()
+    write_resident(root, supervisor_pid=2**22)
+    write_watcher(
+        root,
+        pid=os.getpid(),
+        rows=[{"event": "watcher_sample", "active_jobs": ["a"], "ts": "2020-01-01T00:00:00+00:00"}],
+    )
+    snap = {
+        "mission_id": "m-1",
+        "phase": "running",
+        "goal": "ship it",
+        "resident": _resident_status([root]),
+        "modellake": _modellake_status([root]),
+    }
+    lines = format_status(snap).splitlines()
+    assert len(lines) <= STATUS_MAX_LINES, lines
+    assert sum(1 for l in lines if l.startswith(("Resident ", "ModelLake "))) == 2

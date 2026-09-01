@@ -168,7 +168,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T17:53:26Z",
+  "recorded_at": "2026-09-01T05:56:36Z",
   "recorded_by": "tools/future/sandbox.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -183,19 +183,19 @@
   "mechanism": "BoundedFS.resolve_writable walks components and refuses escape by kind",
   "proofs": [
    {
-    "error": "absolute escape refused for '/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/outside.txt': absolute path /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/outside.txt is outside /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/canonical/.worktrees/resident/writable",
+    "error": "absolute escape refused for '/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/outside.txt': absolute path /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/outside.txt is outside /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/canonical/.worktrees/resident/writable",
     "kind": "absolute",
-    "path": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/outside.txt",
+    "path": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/outside.txt",
     "refused": true
    },
    {
-    "error": "dotdot escape refused for '../ESCAPE_DOTDOT.txt': path /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/canonical/.worktrees/resident/ESCAPE_DOTDOT.txt leaves /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/canonical/.worktrees/resident/writable via .. traversal",
+    "error": "dotdot escape refused for '../ESCAPE_DOTDOT.txt': path /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/canonical/.worktrees/resident/ESCAPE_DOTDOT.txt leaves /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/canonical/.worktrees/resident/writable via .. traversal",
     "kind": "dotdot",
     "path": "../ESCAPE_DOTDOT.txt",
     "refused": true
    },
    {
-    "error": "symlink escape refused for 'escape_link': /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/canonical/.worktrees/resident/writable/escape_link -> /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/outside.txt leaves /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/canonical/.worktrees/resident/writable",
+    "error": "symlink escape refused for 'escape_link': /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/canonical/.worktrees/resident/writable/escape_link -> /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/outside.txt leaves /private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/canonical/.worktrees/resident/writable",
     "kind": "symlink",
     "path": "escape_link",
     "refused": true
@@ -231,7 +231,7 @@
   "layout_dirs": 5,
   "permitted_autonomous": 10,
   "refused_higher": 9,
-  "source_index_files": 829
+  "source_index_files": 1823
  },
  "gaps_closed": [
   "isolated git worktree under the canonical repo's own .worktrees/",
@@ -246,7 +246,7 @@
   "HCLI WorkUnit emitted for provision; verifier is not the proposer"
  ],
  "gpu_authority": false,
- "head": "702aa875391fe224cb6336f4a9071e693b771181",
+ "head": "b087a0606c9a5f45b0468f91c017aed36a53931c",
  "hermetic_source_index": {
   "copes_with_sparse_checkout": true,
   "entries": [
@@ -316,7 +316,7 @@
   }
  ],
  "longevity": {
-  "identity_sha256": "0e07a1eecc5e4dbb8ef1ed2ebe0d6db738716ac235ab5ad3dcf4eca5c707fff6",
+  "identity_sha256": "62912632605e63479f4d67855621cd0b1727b6a6d6d5fa4b9b7bfbf7eed72468",
   "reentry_same_identity": true,
   "second_provision_creates_second_sandbox": false,
   "state_survives_process_restart": true
@@ -342,7 +342,7 @@
  "provision": {
   "default_sandbox_id": "resident",
   "git_worktree": "git worktree add --detach --no-checkout --lock (reason: resident-sandbox preserve-artifacts)",
-  "hermetic_proof_worktree": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-2_ycjg6v/canonical/.worktrees/resident",
+  "hermetic_proof_worktree": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/resident-sandbox-27x66nwj/canonical/.worktrees/resident",
   "idempotent": true,
   "layout_dirs": [
    "build",
@@ -462,7 +462,7 @@
   }
  },
  "schema": "hawking.future.sandbox.v1",
- "seal_sha256": "c4d823d0c9eb81c1848086bd3118d70a7c61d06f536ab1183982fdd04d33fa11",
+ "seal_sha256": "b55cf7ba1a6cd37b201377334a32312ad3972b5d543ae82873f375dec8448bbf",
  "sleeping_physical_blockers": [
   "MetalContext reports no Metal-capable GPU on this host",
   "xcrun cannot locate the Metal compiler under CommandLineTools",
@@ -475,7 +475,7 @@
   "copes_with_sparse_checkout": true,
   "entries": [
    {
-    "file_count": 391,
+    "file_count": 514,
     "files_head": [
      "tools/future/__init__.py",
      "tools/future/_common.py",
@@ -488,7 +488,9 @@
      "tools/future/addressing_attribution.py",
      "tools/future/addressing_gap.py",
      "tools/future/ane_preboard.py",
+     "tools/future/ane_probe_lab.py",
      "tools/future/artifact_identity.py",
+     "tools/future/attribution_audit.py",
      "tools/future/autonomy_degeneracy.py",
      "tools/future/autonomy_run.py",
      "tools/future/autonomy_scars.py",
@@ -497,24 +499,22 @@
      "tools/future/aux_u8_lut.py",
      "tools/future/aux_u8_native.py",
      "tools/future/ba_delta_ab.py",
+     "tools/future/baseline_staleness.py",
+     "tools/future/bitcast_dequant_ab.py",
      "tools/future/bootstrap_golden.py",
      "tools/future/campaign_scars.py",
      "tools/future/candidate_planner.py",
+     "tools/future/capability_byte_elimination.py",
+     "tools/future/capability_curve.py",
      "tools/future/capability_information_map.py",
-     "tools/future/causal_budget_71.py",
-     "tools/future/choice_json_probe.py",
-     "tools/future/claim_scope.py",
-     "tools/future/claude_abi_adjudication.py",
-     "tools/future/codex_behaviors.py",
-     "tools/future/codex_ingest.py",
-     "tools/future/concurrency_doctor.py",
-     "tools/future/concurrency_measure.py"
+     "tools/future/capability_stages.py",
+     "tools/future/capacity_inference_rule.py"
     ],
     "present": true,
     "root": "tools/future"
    },
    {
-    "file_count": 107,
+    "file_count": 117,
     "files_head": [
      "hcli/__init__.py",
      "hcli/__main__.py",
@@ -524,6 +524,7 @@
      "hcli/architecture.py",
      "hcli/backends.py",
      "hcli/cli.py",
+     "hcli/command_registry.py",
      "hcli/commands.py",
      "hcli/config.py",
      "hcli/connectivity.py",
@@ -546,14 +547,13 @@
      "hcli/mission.py",
      "hcli/models.py",
      "hcli/mutation.py",
-     "hcli/nomenclature.py",
-     "hcli/paths.py"
+     "hcli/nomenclature.py"
     ],
     "present": true,
     "root": "hcli"
    },
    {
-    "file_count": 331,
+    "file_count": 1192,
     "files_head": [
      "receipts/future/ABI_VERDICT_HARNESS.json",
      "receipts/future/ABLITERATION.json",
@@ -563,7 +563,9 @@
      "receipts/future/ADDRESSING_ATTRIBUTION.json",
      "receipts/future/ADDRESSING_GAP.json",
      "receipts/future/ANE_PREBOARD.json",
+     "receipts/future/ANE_PROBE_LAB.json",
      "receipts/future/ARTIFACT_IDENTITY.json",
+     "receipts/future/ATTRIBUTION_AUDIT.json",
      "receipts/future/AUTONOMY_DEGENERACY.json",
      "receipts/future/AUTONOMY_MISSION_STATE.json",
      "receipts/future/AUTONOMY_RUN.json",
@@ -575,24 +577,22 @@
      "receipts/future/AUX_CAPABILITY_SCREEN.json",
      "receipts/future/AUX_U8_LUT.json",
      "receipts/future/AUX_U8_NATIVE.json",
+     "receipts/future/BASELINE_STALENESS.json",
      "receipts/future/BA_DELTA_AB.json",
+     "receipts/future/BITCAST_DEQUANT_AB.json",
      "receipts/future/CAMPAIGN_SCARS.json",
      "receipts/future/CANDIDATE_STAGED_PLAN.json",
+     "receipts/future/CAPABILITY_BYTE_ELIMINATION.json",
+     "receipts/future/CAPABILITY_CURVE.json",
      "receipts/future/CAPABILITY_INFORMATION_MAP.json",
-     "receipts/future/CATALOG_ADDRESSING.json",
-     "receipts/future/CHOICE_JSON_PROBE.json",
-     "receipts/future/CLAIM_SCOPE.json",
-     "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
-     "receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
-     "receipts/future/CODEX_INGEST_STATE.json",
-     "receipts/future/CODEX_MUTATION_SURFACE.json",
-     "receipts/future/CODEX_WORKUNIT_SPECIES.json"
+     "receipts/future/CAPABILITY_STAGES.json",
+     "receipts/future/CAPACITY_INFERENCE_RULE.json"
     ],
     "present": true,
     "root": "receipts/future"
    }
   ],
-  "file_count_total": 829,
+  "file_count_total": 1823,
   "missing_roots": [],
   "present_roots": [
    "tools/future",

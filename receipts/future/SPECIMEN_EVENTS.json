@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T17:53:34Z",
+  "recorded_at": "2026-09-01T05:56:52Z",
   "recorded_by": "tools/future/specimen_events.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -17,22 +17,22 @@
  ],
  "cite_existing_seal": {
   "action": "CITED_EXISTING_SEAL",
-  "bytes_hashed_cited": 23782,
+  "bytes_hashed_cited": 13957873280,
   "expected_revision": null,
-  "n_files_cited": 2,
-  "n_sha256_verified_cited": 2,
+  "n_files_cited": 9,
+  "n_sha256_verified_cited": 9,
   "rehashed": false,
   "revision_matches": true,
   "rule": "a sealed source is not re-hashed; the existing whole-tree receipt is the seal",
-  "specimen": "tencent--HunyuanVideo@6204ad6aea1a",
+  "specimen": "facebook--musicgen-large@15ccdc920998",
   "status": "WHOLE_TREE_VERIFIED",
-  "tag_revision_prefix": "6204ad6aea1a",
+  "tag_revision_prefix": "15ccdc920998",
   "verification_source": "receipts/future/SPECIMEN_VERIFICATION.json",
   "whole_tree_verified": true
  },
  "claim_boundary": "Static sidecar artifact. A specimen-seal event ADDS a WorkGraph to the running Odyssey I mission. It does not restart Odyssey, does not rewrite ODYSSEY_I_LAUNCH.json, does not re-hash a sealed source, and does not record a partial-weight experiment as specimen science.",
  "demonstration_mode": "replay",
- "demonstration_why": "no live ModelLake completion sealed while this lane ran; replaying the already-sealed transition of tencent--HunyuanVideo@6204ad6aea1a",
+ "demonstration_why": "no live ModelLake completion sealed while this lane ran; replaying the already-sealed transition of facebook--musicgen-large@15ccdc920998",
  "durable_event": {
   "in_memory_callback_is_not_this": true,
   "n_events": 3,
@@ -40,14 +40,14 @@
   "survives_restart": true,
   "transitions": [
    {
-    "event_id": "9b2389cc71f0f4215e1800eabedaaf9cb1630b36a698c91b6adaae03a38a775f",
+    "event_id": "0d169f3ba4af4483db5ba3b359112a5c2618d24e87f48356874f422a481899c3",
     "from_state": "DOWNLOADING",
     "kind": "SPECIMEN_STATE_TRANSITION",
     "replay": true,
     "to_state": "COMPLETE_UNSEALED"
    },
    {
-    "event_id": "3d6ac1a0c1794ed88b54695cffe1107352f435b2368f21123cf59730262db471",
+    "event_id": "0b63a8be2fc2828b1f5eba55d95206a6dc71ea3a353860e2095d16dc8f66476b",
     "from_state": "COMPLETE_UNSEALED",
     "kind": "SPECIMEN_STATE_TRANSITION",
     "replay": true,
@@ -156,7 +156,7 @@
    "lm_head",
    "norm"
   ],
-  "size_bytes": 23782,
+  "size_bytes": 13957873280,
   "source": "config.json+optional_index",
   "weights_opened": false
  },
@@ -187,26 +187,26 @@
  "live_arrival": false,
  "mission": {
   "identity_after": {
-   "launch_seal_sha256": "29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
-   "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+   "launch_seal_sha256": "1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
+   "mission_id": "odyssey-i/1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
    "phase_transition": "STARTED"
   },
   "identity_before": {
-   "launch_seal_sha256": "29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
-   "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+   "launch_seal_sha256": "1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
+   "mission_id": "odyssey-i/1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
    "phase_transition": "STARTED"
   },
   "launch_receipt": "receipts/future/ODYSSEY_I_LAUNCH.json",
   "launch_untouched": {
-   "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+   "mission_id": "odyssey-i/1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
    "mission_id_unchanged": true,
    "path": "/Users/scammermike/Downloads/hawking/receipts/future/ODYSSEY_I_LAUNCH.json",
    "phase_transition": "STARTED",
    "phase_transition_unchanged": true,
-   "seal_sha256": "29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+   "seal_sha256": "1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
    "seal_unchanged": true
   },
-  "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+  "mission_id": "odyssey-i/1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
   "phase_transition": "STARTED",
   "restarts_odyssey": false
  },
@@ -336,26 +336,26 @@
   }
  ],
  "scheduler_wake": {
-  "event_id": "3d6ac1a0c1794ed88b54695cffe1107352f435b2368f21123cf59730262db471",
+  "event_id": "0b63a8be2fc2828b1f5eba55d95206a6dc71ea3a353860e2095d16dc8f66476b",
   "human_reminder": false,
   "kind": "SCHEDULER_WAKE",
-  "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+  "mission_id": "odyssey-i/1cd14dff83c8565806217473bc7cb156f870a210e3bf38bf2ba4d3607fb33106",
   "phase_transition": "STARTED",
   "restarts_odyssey": false,
-  "ts": "2026-08-31T17:53:34Z"
+  "ts": "2026-09-01T05:56:52Z"
  },
  "schema": "hawking.future.specimen_events.v1",
- "seal_sha256": "d3bab2f386dd00bff2519754b7d39c6ce7282fb00207f6ed3e9ea58edb6228d2",
+ "seal_sha256": "f5f2a8e8f8cd8c4c48e40c4b4e6fc06eaa3537e7e0b88a0e1acd881c8d75bbd4",
  "specimen": {
-  "bytes_hashed": 23782,
-  "n_files": 2,
-  "repo": "tencent/HunyuanVideo",
+  "bytes_hashed": 13957873280,
+  "n_files": 9,
+  "repo": "facebook/musicgen-large",
   "revision": null,
   "specimen_path": null,
-  "tag": "tencent--HunyuanVideo@6204ad6aea1a",
+  "tag": "facebook--musicgen-large@15ccdc920998",
   "verification": {
-   "bytes_hashed": 23782,
-   "n_files": 2,
+   "bytes_hashed": 13957873280,
+   "n_files": 9,
    "status": "WHOLE_TREE_VERIFIED",
    "whole_tree_verified": true
   }
@@ -403,40 +403,40 @@
   "budget": {
    "allow_gpu": false,
    "allow_new_search": true,
-   "band": "small",
-   "max_units": 8,
-   "size_bytes": 23782,
-   "why": "small: still bounded; GPU stages stay out until economics and a role earn them"
+   "band": "mid",
+   "max_units": 6,
+   "size_bytes": 13957873280,
+   "why": "mid-size: transfer/scars first, at most one new-search unit, no GPU depth"
   },
   "n_units": 5,
   "new_search_ids": [
-   "odyssey-i.arrival.hunyuanvideo@unpinned.new_search"
+   "odyssey-i.arrival.musicgen-large@unpinned.new_search"
   ],
   "restarts_odyssey": false,
   "transfer_and_scar_ids": [
-   "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint",
-   "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal",
-   "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars",
-   "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws"
+   "odyssey-i.arrival.musicgen-large@unpinned.architecture_fingerprint",
+   "odyssey-i.arrival.musicgen-large@unpinned.cite_existing_seal",
+   "odyssey-i.arrival.musicgen-large@unpinned.relevant_scars",
+   "odyssey-i.arrival.musicgen-large@unpinned.transfer_laws"
   ],
   "transfer_before_new_search": true,
   "transfer_does_not_depend_on_new_search": true,
   "unit_ids": [
-   "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint",
-   "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal",
-   "odyssey-i.arrival.hunyuanvideo@unpinned.new_search",
-   "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars",
-   "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws"
+   "odyssey-i.arrival.musicgen-large@unpinned.architecture_fingerprint",
+   "odyssey-i.arrival.musicgen-large@unpinned.cite_existing_seal",
+   "odyssey-i.arrival.musicgen-large@unpinned.new_search",
+   "odyssey-i.arrival.musicgen-large@unpinned.relevant_scars",
+   "odyssey-i.arrival.musicgen-large@unpinned.transfer_laws"
   ],
   "units": [
    {
     "campaign_phase": "transfer_and_scars",
     "cost_units": 1,
     "dependencies": [
-     "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal"
+     "odyssey-i.arrival.musicgen-large@unpinned.cite_existing_seal"
     ],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint",
+    "id": "odyssey-i.arrival.musicgen-large@unpinned.architecture_fingerprint",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"
@@ -446,7 +446,7 @@
     "cost_units": 1,
     "dependencies": [],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal",
+    "id": "odyssey-i.arrival.musicgen-large@unpinned.cite_existing_seal",
     "resource_lane": "CPU_VERIFY",
     "role": "verify",
     "status": "pending"
@@ -455,11 +455,11 @@
     "campaign_phase": "new_search",
     "cost_units": 3,
     "dependencies": [
-     "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws",
-     "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars"
+     "odyssey-i.arrival.musicgen-large@unpinned.transfer_laws",
+     "odyssey-i.arrival.musicgen-large@unpinned.relevant_scars"
     ],
     "expected_information_gain": 2,
-    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.new_search",
+    "id": "odyssey-i.arrival.musicgen-large@unpinned.new_search",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"
@@ -468,10 +468,10 @@
     "campaign_phase": "transfer_and_scars",
     "cost_units": 1,
     "dependencies": [
-     "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint"
+     "odyssey-i.arrival.musicgen-large@unpinned.architecture_fingerprint"
     ],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars",
+    "id": "odyssey-i.arrival.musicgen-large@unpinned.relevant_scars",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"
@@ -480,10 +480,10 @@
     "campaign_phase": "transfer_and_scars",
     "cost_units": 1,
     "dependencies": [
-     "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint"
+     "odyssey-i.arrival.musicgen-large@unpinned.architecture_fingerprint"
     ],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws",
+    "id": "odyssey-i.arrival.musicgen-large@unpinned.transfer_laws",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"

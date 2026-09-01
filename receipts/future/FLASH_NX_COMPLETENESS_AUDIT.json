@@ -10,7 +10,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:26:55Z",
+  "recorded_at": "2026-09-01T05:59:07Z",
   "recorded_by": "tools/future/flash_nx_audit.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2241,7 +2241,7 @@
   "designed-vs-built runtime audit for loader, kernel, catalog, and consumer",
   "verification-vs-production dense rematerialization split"
  ],
- "head": "7f3f1ffc5bce328d4fa3e2cdf84cb369d8033e39",
+ "head": "b087a0606c9a5f45b0468f91c017aed36a53931c",
  "interpretation": "seven_all_met is False because the scored requirement states on disk are as listed; this is a receipt-field conjunction, not a hardware measurement",
  "meta_measurement_state": {
   "capability": "NOT_MEASURED",
@@ -2376,7 +2376,7 @@
     "present": true,
     "rel": "receipts/headless/FLASH_ORGAN_CENSUS.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_ORGAN_CENSUS.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "ebpw": {
     "in_this_worktree": true,
@@ -2397,77 +2397,77 @@
     "present": true,
     "rel": "receipts/headless/FLASH_COMPLETE_V0.BYTE_LEDGER.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_V0.BYTE_LEDGER.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "meta": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_META_REPRESENTATION_SUB1.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_META_REPRESENTATION_SUB1.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "nr_v2": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_COMPLETE_V2.nr.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_V2.nr.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "nx_next_machine": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_NEXT_MACHINE.nx.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_NEXT_MACHINE.nx.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "nx_v0": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_COMPLETE_V0.nx.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_V0.nx.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "nx_v1": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_COMPLETE_V1.nx.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_V1.nx.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "nx_v2": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_COMPLETE_V2.nx.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_V2.nx.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "queue": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "token_accepted": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_STATEFUL_COMPLETE_TOKEN_ACCEPTED.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_STATEFUL_COMPLETE_TOKEN_ACCEPTED.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "token_attempt": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_COMPLETE_TOKEN_NATIVE_ATTEMPT.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_TOKEN_NATIVE_ATTEMPT.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "token_device": {
     "in_this_worktree": true,
     "present": true,
     "rel": "receipts/headless/FLASH_COMPLETE_TOKEN_DEVICE_RESIDENT_V1.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_COMPLETE_TOKEN_DEVICE_RESIDENT_V1.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    },
    "token_ns": {
     "in_this_worktree": true,
@@ -2481,7 +2481,7 @@
     "present": true,
     "rel": "receipts/headless/FLASH_STATEFUL_COMPLETE_TOKEN_SESSION.json",
     "resolved": "/Users/scammermike/Downloads/hawking/receipts/headless/FLASH_STATEFUL_COMPLETE_TOKEN_SESSION.json",
-    "tracked_in_head": false
+    "tracked_in_head": true
    }
   },
   "existing_tools": [
@@ -2548,21 +2548,7 @@
   ],
   "fork_decision": "Nothing on disk is an NX completeness checker that maps the seven requirements onto the BLOCKED Flash candidates. This module adds that checker and the dependency chain. It does not fork flash_nx_genome.py or evaluate_flash_promotion.",
   "this_worktree_is_sparse": true,
-  "untracked_on_origin_working_tree": [
-   "queue",
-   "nr_v2",
-   "nx_v0",
-   "nx_v1",
-   "nx_v2",
-   "nx_next_machine",
-   "meta",
-   "ledger",
-   "census",
-   "token_attempt",
-   "token_device",
-   "token_accepted",
-   "token_session"
-  ]
+  "untracked_on_origin_working_tree": []
  },
  "runtime_dependency_audit": [
   {
@@ -2847,7 +2833,7 @@
   }
  ],
  "schema": "hawking.future.flash_nx_audit.v1",
- "seal_sha256": "9c4e844c8ce64152f78479e316e32a2d2824f5ba99c7303cb8f98c73b2c56468",
+ "seal_sha256": "c4f893238e5a2d8a107b66fdf5da7d153dc70b7f31f695eb8ef28cbd5e4c5b70",
  "seven_all_met": false,
  "seven_requirements": [
   {

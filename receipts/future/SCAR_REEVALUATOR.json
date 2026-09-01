@@ -4,7 +4,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T02:18:41Z",
+  "recorded_at": "2026-09-01T05:56:42Z",
   "recorded_by": "tools/future/scar_reevaluator.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -6886,7 +6886,7 @@
  },
  "evidence_class": "STATIC_ONLY",
  "gpu_authority": false,
- "head": "00cdaa07f7009b7d25142d9349f794f1712f833d",
+ "head": "b087a0606c9a5f45b0468f91c017aed36a53931c",
  "n_scars_ingested": 685,
  "nothing_relaunched": true,
  "nothing_relaunched_statement": "This module classified existing scars and ranked POSSIBLY_REOPENABLE ones by theoretical EBPW-cut rank, token_ns opportunity rank, and implementation cost rank. It did not relaunch, reschedule, admit, or run any candidate. The resident owning SUB2_EBPW decides.",
@@ -6904,7 +6904,7 @@
  "ranking_rule": "Sort POSSIBLY_REOPENABLE by theoretical EBPW-reduction rank descending, then token_ns opportunity rank descending, then implementation cost rank ascending. Missing family/organ is UNTESTED and sorts last. Ranks are ordinal tables over named families and organs plus cited byte shares from receipts/future/MLP_BYTE_CENSUS.json; they are not hardware measurements and they are not a recommendation to relaunch.",
  "resident_decides": true,
  "schema": "hawking.future.scar_reevaluator.v1",
- "seal_sha256": "9c335219998aa641b1e232ce000e5dfc239a3ff2044f2ea60989a4e42a9a0caa",
+ "seal_sha256": "5b63334d7d034d39a5f3a563dad043f205f93419bedad41f49f5b4a7d2de29ad",
  "top_reopenable_families": [
   {
    "died_at": {

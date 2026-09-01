@@ -360,12 +360,14 @@ impl Qwen38DeltaNetStateKernel {
                 "tg32" | "coalesce" | "coalesce_tg32" => Self::CoalesceTg32,
                 _ => Self::Baseline,
             },
+            // G126: PROMOTED. widen_f4 is the sealed default, not a fast-profile
+            // opt-in. It is the CONTROL arm of the protected bitcast lease
+            // (580 dispatches, token-identical), so the sealed graph and the
+            // measured graph are the same graph. `fast` no longer selects it
+            // because it is already on.
             Err(_) => {
-                if fast {
-                    Self::WidenF4
-                } else {
-                    Self::Baseline
-                }
+                let _ = fast;
+                Self::WidenF4
             }
         }
     }
@@ -465,11 +467,15 @@ pub const QWEN38_Q4_PAIR_CONCAT_BITCAST: &str =
 /// Whether the q4 bitcast unpack is selected. Read once per call rather than
 /// cached, matching how HAWKING_AFFINE2_GEO is read: a lever that cannot be
 /// turned off inside one process is a lever that cannot be A/B'd.
+/// G126: PROMOTED. Bitcast is the sealed default; the env var now turns it OFF
+/// rather than on. An unset var must return the MEASURED arm, or the sealed
+/// default reports the old number under a new label.
 pub fn qwen38_q4_bitcast_on() -> bool {
-    matches!(
-        std::env::var("HAWKING_Q4_UNPACK").as_deref(),
-        Ok("bitcast") | Ok("mantissa")
-    )
+    match std::env::var("HAWKING_Q4_UNPACK").as_deref() {
+        Ok("bitcast") | Ok("mantissa") => true,
+        Ok(_) => false,
+        Err(_) => true,
+    }
 }
 
 /// Production name, or its bitcast sibling when the lever is on. Any q4 matvec
@@ -627,12 +633,12 @@ impl Affine2Geo {
     fn from_env_with_fast(fast: bool) -> Self {
         match std::env::var("HAWKING_AFFINE2_GEO") {
             Ok(v) => Self::from_value(&v),
+            // G126: PROMOTED. The fast profile used to select SplitK4, which was
+            // never the measured arm. Bitcast is what the protected lease timed
+            // at 22.0100 ms GPU, token-identical, 0 fallbacks.
             Err(_) => {
-                if fast {
-                    Self::SplitK4
-                } else {
-                    Self::Tpr64
-                }
+                let _ = fast;
+                Self::Bitcast
             }
         }
     }
@@ -8070,8 +8076,11 @@ mod mlp_fusion_env_tests {
         assert_eq!(qwen38_fuse_add_rmsnorm_from_env(), (true, false));
         assert_eq!(qwen38_fuse_ba_delta_from_env(), (true, false));
         assert_eq!(Qwen38DeltaNetStateKernel::from_env(), Qwen38DeltaNetStateKernel::WidenF4);
-        assert_eq!(Affine2Geo::from_env(), Affine2Geo::SplitK4);
-        assert_eq!(qwen38_q2f_geo_from_env(), Affine2Geo::SplitK4);
+        // G126 PROMOTED: the fast profile used to select SplitK4, which no
+        // protected lease ever timed. Bitcast is the measured arm and is now the
+        // default everywhere, so fast composes with it instead of overriding it.
+        assert_eq!(Affine2Geo::from_env(), Affine2Geo::Bitcast);
+        assert_eq!(qwen38_q2f_geo_from_env(), Affine2Geo::Bitcast);
         assert_eq!(Qwen38MatvecKernel::from_env(), Qwen38MatvecKernel::GeoTpr64Tg128);
         assert!(qwen38_serial_token_encoder_enabled());
         assert!(qwen38_fuse_attention_gate_enabled());
@@ -8174,9 +8183,12 @@ mod dn_state_kernel_tests {
         const K: &str = "HAWKING_QWEN38_DN_STATE";
         let restore = std::env::var(K).ok();
         std::env::remove_var(K);
+        // G126 PROMOTED: unset is the MEASURED arm. If this ever reads Baseline
+        // again the sealed graph has silently diverged from the graph the
+        // protected lease timed, and every downstream absolute is stale.
         assert_eq!(
             Qwen38DeltaNetStateKernel::from_env(),
-            Qwen38DeltaNetStateKernel::Baseline
+            Qwen38DeltaNetStateKernel::WidenF4
         );
         std::env::set_var(K, "widen_f4");
         assert_eq!(
@@ -8669,7 +8681,10 @@ mod mixed_catalog_contract_tests {
         // HQ30UQ4 supported set is exactly {64, 128}. An unsupported group
         // size still refuses — a gate that stops refusing is not a fixed gate.
         let hq64 = qwen38_uniform_q4_geo_tpr64_launch(64, 248320, 5120).expect("hq64");
-        assert_eq!(hq64.0, QWEN38_Q4_MATVEC_KERNEL);
+        // The bind under test is the FAMILY, not the unpack arm: G126 flipped
+        // the q4 default to bitcast, and a bare const here would be asserting
+        // the ambient default rather than the catalog contract.
+        assert_eq!(hq64.0, qwen38_q4_kernel(QWEN38_Q4_MATVEC_KERNEL));
         assert_eq!(hq64.1, (248320u32.div_ceil(2) * 128, 1, 1));
         assert_eq!(hq64.2, (128, 1, 1));
         let hq128 = qwen38_uniform_q4_geo_tpr64_launch(128, 248320, 5120).expect("hq128");
@@ -9354,7 +9369,7 @@ mod mixed_catalog_contract_tests {
         assert_eq!(
             qwen38_uniform_q4_geo_tpr64_launch(64, 248320, 5120)
                 .map(|(name, _, _)| name),
-            Some(QWEN38_Q4_MATVEC_KERNEL)
+            Some(qwen38_q4_kernel(QWEN38_Q4_MATVEC_KERNEL))
         );
     }
 
@@ -9486,7 +9501,7 @@ mod mixed_catalog_contract_tests {
         let x = ramp_x(COLS);
         let (name, grid, tg) =
             qwen38_uniform_q4_geo_tpr64_launch(64, ROWS as u32, COLS as u32).expect("g64 bind");
-        assert_eq!(name, QWEN38_Q4_MATVEC_KERNEL);
+        assert_eq!(name, qwen38_q4_kernel(QWEN38_Q4_MATVEC_KERNEL));
         let geo = dispatch_hq30uq4_geo(
             &context,
             name,
@@ -9663,7 +9678,7 @@ mod mixed_catalog_contract_tests {
         let x = ramp_x(cols);
         let (name, grid, tg) =
             qwen38_uniform_q4_geo_tpr64_launch(64, rows_n as u32, cols as u32).expect("g0 bind");
-        assert_eq!(name, QWEN38_Q4_MATVEC_KERNEL);
+        assert_eq!(name, qwen38_q4_kernel(QWEN38_Q4_MATVEC_KERNEL));
         let geo = dispatch_hq30uq4_geo(
             &context,
             name,

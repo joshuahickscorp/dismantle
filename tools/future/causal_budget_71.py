@@ -560,14 +560,8 @@ if __name__ == "__main__":
     # NOTHING, so the terminal showed current numbers while the receipt stayed
     # stale. A tool that reports success without doing the work is the failure
     # this campaign keeps finding in its own checks.
-    _known = {"--record", "--build"}
-    _unknown = [a for a in sys.argv[1:] if a not in _known]
-    if _unknown:
-        raise SystemExit(
-            f"causal_budget_71: unknown flag(s) {_unknown}; known flags are "
-            f"{sorted(_known)}. Refusing rather than printing a table and "
-            "writing nothing."
-        )
+    from _common import require_known_flags
+    require_known_flags(["--build", "--record"])
     d = build()
     if "--record" in sys.argv or "--build" in sys.argv:
         print(f"wrote {record()}")

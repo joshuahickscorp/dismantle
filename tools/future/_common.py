@@ -12,7 +12,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Any
+from typing import Iterable, Sequence,  Any
 
 REPO = Path(__file__).resolve().parents[2]
 RECEIPTS = REPO / "receipts" / "future"
@@ -309,3 +309,31 @@ def newest_mtime(root: Path, skip: tuple[str, ...] = ()) -> tuple[float, str | N
             if m > best:
                 best, who = m, os.path.relpath(p, REPO)
     return best, who
+
+
+class UnknownFlag(SystemExit):
+    """A CLI was handed a flag it does not implement."""
+
+
+def require_known_flags(known: "Iterable[str]", argv: "Sequence[str] | None" = None) -> None:
+    """Refuse an unrecognised flag instead of ignoring it.
+
+    Modules that dispatch with `if "--record" in sys.argv` treat every other
+    argument as absent. So `--build` - the verb most of tools/future uses -
+    printed a freshly computed table, exited 0, and WROTE NOTHING. The terminal
+    showed current numbers while the receipt on disk stayed stale, and that cost
+    two silently-stale receipts before it was noticed (path_to_71,
+    causal_budget_71).
+
+    A tool that reports success without doing the work is the failure this
+    campaign keeps finding in its own checks. Call this first in __main__.
+    """
+    import sys as _sys
+    args = list(argv if argv is not None else _sys.argv[1:])
+    ok = set(known)
+    bad = [a for a in args if a.startswith("-") and a.split("=", 1)[0] not in ok]
+    if bad:
+        raise UnknownFlag(
+            f"unknown flag(s) {bad}; known flags are {sorted(ok)}. Refusing "
+            "rather than running with the argument silently ignored."
+        )

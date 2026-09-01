@@ -415,8 +415,22 @@ def record() -> Path:
 
 
 if __name__ == "__main__":
+    # AN UNKNOWN FLAG IS A REFUSAL, NOT A NO-OP. This CLI took --record and
+    # silently ignored everything else, so `--build` - the verb every other
+    # module in tools/future uses - printed the new table, exited 0, and wrote
+    # NOTHING. The receipt stayed stale while the terminal showed fresh numbers.
+    # A tool that reports success without doing the work is the exact failure
+    # this campaign keeps finding in its own checks.
+    _known = {"--record", "--build"}
+    _unknown = [a for a in sys.argv[1:] if a not in _known]
+    if _unknown:
+        raise SystemExit(
+            f"path_to_71: unknown flag(s) {_unknown}; known flags are "
+            f"{sorted(_known)}. Refusing rather than silently printing a table "
+            "and writing nothing."
+        )
     d = build()
-    if "--record" in sys.argv:
+    if "--record" in sys.argv or "--build" in sys.argv:
         print(f"wrote {record()}")
     for r in d["paths"]:
         print(f"  {r['path']}  {r['tps']:6.2f} TPS  {r['token_ms']:7.3f} ms  "

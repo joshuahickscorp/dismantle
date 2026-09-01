@@ -141,3 +141,34 @@ def test_no_qualified_component_lacks_parity_evidence():
         if c["evidence"] == "QUALIFIED":
             assert c.get("parity"), cid
             assert c.get("source"), cid
+
+
+def test_an_unknown_flag_refuses_rather_than_writing_nothing(tmp_path):
+    """--build printed the new table, exited 0 and wrote NOTHING, because the
+    CLI only knew --record. The receipt stayed stale while the terminal showed
+    fresh numbers."""
+    import subprocess, sys as _s
+    r = subprocess.run([_s.executable, str(Path(p.__file__)), "--bogus"],
+                       capture_output=True, text=True)
+    assert r.returncode != 0
+    assert "unknown flag" in (r.stderr + r.stdout)
+
+
+def test_both_write_verbs_actually_write(tmp_path, monkeypatch):
+    import subprocess, sys as _s
+    for flag in ("--record", "--build"):
+        r = subprocess.run([_s.executable, str(Path(p.__file__)), flag],
+                           capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        assert "wrote " in r.stdout, f"{flag} printed no write"
+
+
+def test_the_receipt_on_disk_matches_what_build_computes():
+    """The staleness this obligation is about: a receipt that disagrees with its
+    own producer is worse than no receipt."""
+    import json as _j
+    on_disk = _j.loads((p.REPO / "receipts/future/PATH_TO_71.json").read_text())
+    fresh = p.build()
+    assert on_disk["gap_to_71"]["best_composed_tps"] == \
+        fresh["gap_to_71"]["best_composed_tps"]
+    assert on_disk["baseline"]["token_ms"] == fresh["baseline"]["token_ms"]

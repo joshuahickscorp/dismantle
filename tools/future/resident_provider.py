@@ -947,6 +947,14 @@ def finalize_generation(
     else:
         label = QUALITY_TRUNCATED
 
+    # G120: SALVAGE HAPPENS HERE, NOT IN THE CALLER. degenerate_prefix was a
+    # library function every consumer had to remember to call, so a reply that
+    # looped after two good sentences reached a caller as DEGENERATE with no
+    # usable text attached and self-direction stopped. The clean prefix is now
+    # part of the reply, with the provenance to audit it: hashes of both the
+    # full reply and the prefix, where degeneration starts, and how much
+    # survived.
+    salvaged = degenerate_prefix(answer) if degenerate and answer else answer
     return {
         "text": answer,
         "raw_text": raw,
@@ -958,6 +966,37 @@ def finalize_generation(
         "degenerate": degenerate,
         "extractable": label == QUALITY_CLEAN and bool(answer),
         "observed_thinking": observe_thinking(raw),
+        "salvaged_text": salvaged,
+        "salvage": salvage_provenance(answer, salvaged, degenerate),
+    }
+
+
+def salvage_provenance(answer: str, salvaged: str, degenerate: bool) -> dict[str, Any]:
+    """Everything needed to audit a salvage without rerunning the model.
+
+    S031 §23-§25: a degenerate reply must not stop self-direction. But salvage
+    that leaves no trail is worse than none - a caller cannot tell a two-sentence
+    answer that was always short from a two-sentence answer carved out of a
+    thousand-character loop, and those mean different things about the body.
+    """
+    full = answer or ""
+    clean = salvaged or ""
+    start = None
+    if degenerate and len(clean) < len(full):
+        start = len(clean)
+    return {
+        "full_reply_hash": hashlib.sha256(full.encode()).hexdigest()[:16],
+        "clean_prefix_hash": hashlib.sha256(clean.encode()).hexdigest()[:16],
+        "full_chars": len(full),
+        "salvaged_chars": len(clean),
+        "degeneration_start": start,
+        "degeneration_class": (
+            "none" if not degenerate else
+            "whole_reply" if not clean else
+            "tail_after_clean_prefix"
+        ),
+        "salvage_fraction": round(len(clean) / len(full), 4) if full else None,
+        "salvaged": degenerate and bool(clean),
     }
 
 
@@ -1475,6 +1514,13 @@ class ResidentProvider:
         self._sessions: dict[str, dict[str, Any]] = {}
         self._requests_served = 0
         self._failures = 0
+        # G120: counted in the REPLY path, so they describe what was returned
+        # rather than what was asked for. requests_served alone cannot tell a
+        # provider serving 100 looping replies from one serving 100 clean ones.
+        self._quality_counts: dict[str, int] = {
+            "replies": 0, "clean": 0, "truncated": 0,
+            "degenerate": 0, "salvaged": 0,
+        }
         self._generation = 0
         self._stderr_path: str | None = None
         self._spawned_at: float | None = None
@@ -1910,6 +1956,16 @@ class ResidentProvider:
                 rec["process_generation"] = self._generation
                 rec["templated"] = True
                 self._requests_served += 1
+                q = self._quality_counts
+                q["replies"] += 1
+                if final["quality"] == QUALITY_CLEAN:
+                    q["clean"] += 1
+                elif final["quality"] == QUALITY_TRUNCATED:
+                    q["truncated"] += 1
+                if final.get("degenerate"):
+                    q["degenerate"] += 1
+                if (final.get("salvage") or {}).get("salvaged"):
+                    q["salvaged"] += 1
             return {
                 "id": request_id,
                 "session": sid,
@@ -1923,6 +1979,8 @@ class ResidentProvider:
                 "template_sha256": (self._template or {}).get("sha256"),
                 "template_path": (self._template or {}).get("path"),
                 "thinking_arm": arm,
+                "salvaged_text": final.get("salvaged_text"),
+                "salvage": final.get("salvage"),
                 "generated_tokens": public.get("generated_tokens"),
                 "max_new_tokens": n_new,
                 "new_token_ids": public.get("new_token_ids"),
@@ -1940,6 +1998,39 @@ class ResidentProvider:
                     "ranks_nothing": True,
                 },
             }
+
+    def reasoning_quality(self) -> dict[str, Any]:
+        """G120 / S031 §31: is the body producing usable reasoning, or just text?
+
+        requests_served alone cannot answer that - a provider serving 100 looping
+        replies looks identical to one serving 100 clean ones. These counters are
+        incremented in the reply path, so they describe what was actually
+        returned rather than what was asked for.
+
+        Rates are null until there is a request to divide by. A rate reported as
+        0.0 on zero requests reads as a failure when it is an absence.
+        """
+        n = self._quality_counts.get("replies", 0)
+        c = self._quality_counts
+
+        def rate(k: str) -> float | None:
+            return round(c.get(k, 0) / n, 4) if n else None
+
+        return {
+            "replies": n,
+            "degeneration_rate": rate("degenerate"),
+            "salvage_rate": rate("salvaged"),
+            "clean_rate": rate("clean"),
+            "truncated_rate": rate("truncated"),
+            "counts": dict(c),
+            "not_measured_here": (
+                "valid STRUCTURED reply rate, arithmetic correction rate, "
+                "useful hypothesis rate and repeated-ask rate are properties of "
+                "the CALLER's schema and mission, not of the provider. "
+                "resident_output_contract.admit and the sovereign log carry "
+                "those; inventing them here would double-count."
+            ),
+        }
 
     def health(self) -> dict[str, Any]:
         """Snapshot. A dead pid is ABSENT with rss_bytes null, never healthy-with-zero."""
@@ -1989,6 +2080,7 @@ class ResidentProvider:
             "model_open_count": ready_pub.get("model_open_count"),
             "weight_upload_count": ready_pub.get("weight_upload_count"),
             "identity": (self._spec or {}).get("identity"),
+            "reasoning_quality": self.reasoning_quality(),
             "reason": reason,
             "evidence_class": "SELF_MEASURED_DIRTY",
             "gpu_authority": False,

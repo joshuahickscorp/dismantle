@@ -262,6 +262,7 @@ class AgentOS:
         resumable: bool = True,
         env: Optional[Mapping[str, str]] = None,
         timeout_s: Optional[float] = None,
+        parent_job_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Start shell-free background work and persist its restart record."""
         job = self.background.start(
@@ -271,6 +272,7 @@ class AgentOS:
             resumable=resumable,
             env=env,
             timeout_s=timeout_s,
+            parent_job_id=parent_job_id,
         )
         self._persist_control_checkpoint(event=f"background_started:{job['job_id']}")
         return job

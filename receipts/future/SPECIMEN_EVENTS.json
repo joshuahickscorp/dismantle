@@ -3,36 +3,36 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T12:12:47Z",
+  "recorded_at": "2026-08-31T17:53:34Z",
   "recorded_by": "tools/future/specimen_events.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "candidate_roles": [
   {
-   "role": "small_dense_alternate_architecture_transfer",
+   "role": "deferred_lake_entry",
    "status": "CANDIDATE",
-   "why": "falcon_h1 is the alternate-architecture first-wave role"
+   "why": "no first-wave role matches; recorded and deferred"
   }
  ],
  "cite_existing_seal": {
   "action": "CITED_EXISTING_SEAL",
-  "bytes_hashed_cited": 15182220635,
-  "expected_revision": "41e72f27effbab80cd45b6e884688452253a3686",
-  "n_files_cited": 13,
-  "n_sha256_verified_cited": 13,
+  "bytes_hashed_cited": 23782,
+  "expected_revision": null,
+  "n_files_cited": 2,
+  "n_sha256_verified_cited": 2,
   "rehashed": false,
   "revision_matches": true,
   "rule": "a sealed source is not re-hashed; the existing whole-tree receipt is the seal",
-  "specimen": "tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+  "specimen": "tencent--HunyuanVideo@6204ad6aea1a",
   "status": "WHOLE_TREE_VERIFIED",
-  "tag_revision_prefix": "41e72f27effb",
+  "tag_revision_prefix": "6204ad6aea1a",
   "verification_source": "receipts/future/SPECIMEN_VERIFICATION.json",
   "whole_tree_verified": true
  },
  "claim_boundary": "Static sidecar artifact. A specimen-seal event ADDS a WorkGraph to the running Odyssey I mission. It does not restart Odyssey, does not rewrite ODYSSEY_I_LAUNCH.json, does not re-hash a sealed source, and does not record a partial-weight experiment as specimen science.",
  "demonstration_mode": "replay",
- "demonstration_why": "no live ModelLake completion sealed while this lane ran; replaying the already-sealed transition of tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+ "demonstration_why": "no live ModelLake completion sealed while this lane ran; replaying the already-sealed transition of tencent--HunyuanVideo@6204ad6aea1a",
  "durable_event": {
   "in_memory_callback_is_not_this": true,
   "n_events": 3,
@@ -40,14 +40,14 @@
   "survives_restart": true,
   "transitions": [
    {
-    "event_id": "5ecb2d102d93b3a0b913c1c02ca5f44166f5c9b1bfeb1546deafadadf5aba7da",
+    "event_id": "9b2389cc71f0f4215e1800eabedaaf9cb1630b36a698c91b6adaae03a38a775f",
     "from_state": "DOWNLOADING",
     "kind": "SPECIMEN_STATE_TRANSITION",
     "replay": true,
     "to_state": "COMPLETE_UNSEALED"
    },
    {
-    "event_id": "0438409bf09cb7ea1d3bb48adb37256c659977afd1c72e98f41f9f1a428630f9",
+    "event_id": "3d6ac1a0c1794ed88b54695cffe1107352f435b2368f21123cf59730262db471",
     "from_state": "COMPLETE_UNSEALED",
     "kind": "SPECIMEN_STATE_TRANSITION",
     "replay": true,
@@ -141,25 +141,22 @@
   }
  ],
  "fingerprint": {
-  "architecture_family": "falcon_h1",
-  "architectures": [
-   "FalconH1ForCausalLM"
-  ],
-  "hidden_size": 3072,
-  "model_type": "falcon_h1",
+  "architecture_family": "UNKNOWN",
+  "architectures": [],
+  "hidden_size": null,
+  "model_type": "",
   "moe": false,
   "multimodal": false,
-  "n_named_tensors": 751,
-  "num_hidden_layers": 44,
+  "n_named_tensors": 0,
+  "num_hidden_layers": null,
   "organ_families": [
-   "mlp",
    "attention",
-   "mamba_ssm",
+   "mlp",
    "embed",
    "lm_head",
    "norm"
   ],
-  "size_bytes": 15171309760,
+  "size_bytes": 23782,
   "source": "config.json+optional_index",
   "weights_opened": false
  },
@@ -190,26 +187,26 @@
  "live_arrival": false,
  "mission": {
   "identity_after": {
-   "launch_seal_sha256": "d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
-   "mission_id": "odyssey-i/d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
+   "launch_seal_sha256": "29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+   "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
    "phase_transition": "STARTED"
   },
   "identity_before": {
-   "launch_seal_sha256": "d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
-   "mission_id": "odyssey-i/d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
+   "launch_seal_sha256": "29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
+   "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
    "phase_transition": "STARTED"
   },
   "launch_receipt": "receipts/future/ODYSSEY_I_LAUNCH.json",
   "launch_untouched": {
-   "mission_id": "odyssey-i/d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
+   "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
    "mission_id_unchanged": true,
    "path": "/Users/scammermike/Downloads/hawking/receipts/future/ODYSSEY_I_LAUNCH.json",
    "phase_transition": "STARTED",
    "phase_transition_unchanged": true,
-   "seal_sha256": "d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
+   "seal_sha256": "29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
    "seal_unchanged": true
   },
-  "mission_id": "odyssey-i/d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
+  "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
   "phase_transition": "STARTED",
   "restarts_odyssey": false
  },
@@ -339,28 +336,26 @@
   }
  ],
  "scheduler_wake": {
-  "event_id": "0438409bf09cb7ea1d3bb48adb37256c659977afd1c72e98f41f9f1a428630f9",
+  "event_id": "3d6ac1a0c1794ed88b54695cffe1107352f435b2368f21123cf59730262db471",
   "human_reminder": false,
   "kind": "SCHEDULER_WAKE",
-  "mission_id": "odyssey-i/d6ae606071fac80dc815ceabfaa63b684154e9d79dfca331e5c161083849c09b",
+  "mission_id": "odyssey-i/29d55409cc67a672cef9a2aaa17296f5379b785e45256ec04daf118f821d3dd0",
   "phase_transition": "STARTED",
   "restarts_odyssey": false,
-  "ts": "2026-08-31T12:12:47Z"
+  "ts": "2026-08-31T17:53:34Z"
  },
  "schema": "hawking.future.specimen_events.v1",
- "seal_sha256": "27e424d090cbc8cfb021fd52e1993a336d9f9211bb61284ebaef61a0e36d68e2",
+ "seal_sha256": "d3bab2f386dd00bff2519754b7d39c6ce7282fb00207f6ed3e9ea58edb6228d2",
  "specimen": {
-  "architecture_family": "falcon_h1",
-  "bytes_hashed": 15182220635,
-  "n_files": 13,
-  "repo": "tiiuae/Falcon-H1-7B-Instruct",
-  "revision": "41e72f27effbab80cd45b6e884688452253a3686",
-  "role": "small_dense_alternate_architecture_transfer",
-  "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
-  "tag": "tiiuae--Falcon-H1-7B-Instruct@41e72f27effb",
+  "bytes_hashed": 23782,
+  "n_files": 2,
+  "repo": "tencent/HunyuanVideo",
+  "revision": null,
+  "specimen_path": null,
+  "tag": "tencent--HunyuanVideo@6204ad6aea1a",
   "verification": {
-   "bytes_hashed": 15182220635,
-   "n_files": 13,
+   "bytes_hashed": 23782,
+   "n_files": 2,
    "status": "WHOLE_TREE_VERIFIED",
    "whole_tree_verified": true
   }
@@ -408,40 +403,40 @@
   "budget": {
    "allow_gpu": false,
    "allow_new_search": true,
-   "band": "mid",
-   "max_units": 6,
-   "size_bytes": 15171309760,
-   "why": "mid-size: transfer/scars first, at most one new-search unit, no GPU depth"
+   "band": "small",
+   "max_units": 8,
+   "size_bytes": 23782,
+   "why": "small: still bounded; GPU stages stay out until economics and a role earn them"
   },
   "n_units": 5,
   "new_search_ids": [
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.new_search"
+   "odyssey-i.arrival.hunyuanvideo@unpinned.new_search"
   ],
   "restarts_odyssey": false,
   "transfer_and_scar_ids": [
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.architecture_fingerprint",
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.cite_existing_seal",
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.relevant_scars",
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.transfer_laws"
+   "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint",
+   "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal",
+   "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars",
+   "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws"
   ],
   "transfer_before_new_search": true,
   "transfer_does_not_depend_on_new_search": true,
   "unit_ids": [
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.architecture_fingerprint",
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.cite_existing_seal",
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.new_search",
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.relevant_scars",
-   "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.transfer_laws"
+   "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint",
+   "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal",
+   "odyssey-i.arrival.hunyuanvideo@unpinned.new_search",
+   "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars",
+   "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws"
   ],
   "units": [
    {
     "campaign_phase": "transfer_and_scars",
     "cost_units": 1,
     "dependencies": [
-     "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.cite_existing_seal"
+     "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal"
     ],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.architecture_fingerprint",
+    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"
@@ -451,7 +446,7 @@
     "cost_units": 1,
     "dependencies": [],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.cite_existing_seal",
+    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.cite_existing_seal",
     "resource_lane": "CPU_VERIFY",
     "role": "verify",
     "status": "pending"
@@ -460,11 +455,11 @@
     "campaign_phase": "new_search",
     "cost_units": 3,
     "dependencies": [
-     "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.transfer_laws",
-     "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.relevant_scars"
+     "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws",
+     "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars"
     ],
     "expected_information_gain": 2,
-    "id": "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.new_search",
+    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.new_search",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"
@@ -473,10 +468,10 @@
     "campaign_phase": "transfer_and_scars",
     "cost_units": 1,
     "dependencies": [
-     "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.architecture_fingerprint"
+     "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint"
     ],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.relevant_scars",
+    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.relevant_scars",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"
@@ -485,10 +480,10 @@
     "campaign_phase": "transfer_and_scars",
     "cost_units": 1,
     "dependencies": [
-     "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.architecture_fingerprint"
+     "odyssey-i.arrival.hunyuanvideo@unpinned.architecture_fingerprint"
     ],
     "expected_information_gain": 3,
-    "id": "odyssey-i.arrival.falcon-h1-7b-instruct@41e72f27effb.transfer_laws",
+    "id": "odyssey-i.arrival.hunyuanvideo@unpinned.transfer_laws",
     "resource_lane": "CPU_ANALYSIS",
     "role": "science",
     "status": "pending"

@@ -13,7 +13,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T11:18:44Z",
+  "recorded_at": "2026-08-31T19:45:07Z",
   "recorded_by": "tools/future/status_causality.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -968,7 +968,7 @@
    "schema": "hawking.flash.meta_teacher_trace_boundary.v1"
   },
   {
-   "n_keys": 25,
+   "n_keys": 19,
    "rel": "receipts/future/METAL_REACHABILITY.json",
    "schema": "hawking.future.metal_reachability.v1"
   },
@@ -1154,7 +1154,7 @@
  },
  "scar": "STATUS_LABEL_LAUNDERED_AS_CAUSAL_CLAIM",
  "schema": "hawking.future.status_causality.v1",
- "seal_sha256": "54118b9b186225c7bc84b3496fb48d95a22bbff046ef4808b8d015a4064a78be",
+ "seal_sha256": "3ab6fb400966a588bd190244324c47c3ceb969f104ca7583830b6a6b1c34a11a",
  "supported_fixtures": [
   {
    "alternatives": [

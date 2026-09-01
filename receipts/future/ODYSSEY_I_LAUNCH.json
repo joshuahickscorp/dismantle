@@ -87,7 +87,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T10:13:39Z",
+  "recorded_at": "2026-09-01T05:38:12Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -568,7 +568,24 @@
     "gap_class": null,
     "identity_source": "odyssey2_law_store.SCHOOLS.Qwen27",
     "local_specimen": {
+     "alternatives": [
+      {
+       "consistent_with_claim": true,
+       "consistent_with_observation": true,
+       "hypothetical": "every published digest matched the hash recomputed here"
+      }
+     ],
      "bytes_hashed": 55586059240,
+     "causality_verdict": "SUPPORTED",
+     "claim_kind": "digest_match",
+     "confidence": {
+      "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+      "level": "HIGH",
+      "would_lower": "a demonstration that the observation is consistent with the claim being false",
+      "would_raise": "independent replication of the same probe"
+     },
+     "direct_observation": "specimen=qwen3.8-27b-abliterated-bf16@local; n_files=31; verified=31; mismatched=0; no_remote_digest=0; bytes_hashed=55586059240; whole_tree_verified=True",
+     "falsifier": "recompute one file and compare",
      "files": [
       {
        "actual": "52373fe24473b1aa44333d318f578ae6bf04b49b",
@@ -819,11 +836,14 @@
        "verdict": "VERIFIED"
       }
      ],
+     "interpretation": "qwen3.8-27b-abliterated-bf16@local: every file carried a published digest and the hash recomputed here matched",
      "mismatched": 0,
      "modellake_mutated": false,
      "n_files": 31,
      "no_remote_digest": 0,
      "owner": "local_directory",
+     "probe_kind": "hash_recompute",
+     "probe_performed": "recompute published HuggingFace .metadata digests for specimen 'qwen3.8-27b-abliterated-bf16@local' at /Volumes/corpdrive/personalmodel/correspondent/qwen3.8-27b-abliterated-bf16",
      "skipped_time_budget": 0,
      "source_mutated": false,
      "specimen": "qwen3.8-27b-abliterated-bf16@local",
@@ -1804,7 +1824,7 @@
   "note": "Identity is not invented. A missing this-wave receipt stays unbound. Bound only when RESIDENT_SANDBOX.json pins identity_sha256 and reentry_same_identity. HCLI prior gates are not this identity.",
   "path_taken": "worktree",
   "pins": {
-   "identity_sha256": "01d52b60766cb97f00b0e43e4c90e4cf4ec1171525973780d03cff46265cc134",
+   "identity_sha256": "0e07a1eecc5e4dbb8ef1ed2ebe0d6db738716ac235ab5ad3dcf4eca5c707fff6",
    "reentry_same_identity": true,
    "sandbox_id": "resident"
   },
@@ -1818,7 +1838,7 @@
   "unbound_reason": null
  },
  "schema": "hawking.future.odyssey_i_launch.v1",
- "seal_sha256": "93fc95b7112fc8f2f02ee8f194a1d90bb761bfe7f3ad20500e2b1ae82a121d13",
+ "seal_sha256": "d19133d3d2ede1e2ea9a018c8576a726f990ec81560a3f70391f227f088f9b4c",
  "verdict": {
   "allowed": true,
   "met": [

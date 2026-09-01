@@ -1,9 +1,16 @@
 {
+ "alternatives": [
+  {
+   "consistent_with_claim": true,
+   "consistent_with_observation": true,
+   "hypothetical": "the receipt field currently has this value"
+  }
+ ],
  "bench": {
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T21:47:10Z",
+  "recorded_at": "2026-09-01T05:26:55Z",
   "recorded_by": "tools/future/flash_nx_audit.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -734,8 +741,16 @@
    "status": "BLOCKED"
   }
  ],
+ "causality_verdict": "SUPPORTED",
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "claim_boundary_audit": "STATIC_ONLY. No hardware measurement. DIAGNOSTIC_RELATIVE token receipts are cited by status/path only and are not promoted to PROTECTED_ABSOLUTE.",
+ "claim_kind": "field_value",
+ "confidence": {
+  "about": "whether the recorded probe entails the claim \u2014 not whether the world is that way for reasons this probe did not test",
+  "level": "HIGH",
+  "would_lower": "a demonstration that the observation is consistent with the claim being false",
+  "would_raise": "independent replication of the same probe"
+ },
  "dense_rematerialization": {
   "policy": {
    "bounded_native_loader.dense_rematerialization": "forbidden",
@@ -2148,6 +2163,7 @@
    }
   ]
  },
+ "direct_observation": "seven_all_met=False; states=[complete_byte_ledger=NOT_MET, self_contained_dependencies=NOT_MET, accepted_generation=NOT_MET, capability=NOT_MET, reproducibility=NOT_MET, protected_performance=NOT_MET, no_forbidden_fallback=NOT_MET]",
  "evidence_roots": [
   "/Users/scammermike/Downloads/hawking"
  ],
@@ -2189,6 +2205,7 @@
    "status": "SEALED_METADATA_ONLY_NOT_FOR_PROMOTION"
   }
  ],
+ "falsifier": "an independent probe of the same object the status names, not a reread of the status",
  "frontier_vs_disk": {
   "added_since_frontier_wording": [
    "flash-device-mhc-state",
@@ -2224,7 +2241,8 @@
   "designed-vs-built runtime audit for loader, kernel, catalog, and consumer",
   "verification-vs-production dense rematerialization split"
  ],
- "head": "0e4e9a93b3a196ba5c4472bf6d1998be6ae2dc75",
+ "head": "7f3f1ffc5bce328d4fa3e2cdf84cb369d8033e39",
+ "interpretation": "seven_all_met is False because the scored requirement states on disk are as listed; this is a receipt-field conjunction, not a hardware measurement",
  "meta_measurement_state": {
   "capability": "NOT_MEASURED",
   "complete_token": "NOT_MEASURED",
@@ -2348,6 +2366,8 @@
    "written_to_disk": false
   }
  },
+ "probe_kind": "receipt_field",
+ "probe_performed": "seven_from_disk(docs): read the seven NX completeness requirement states from cited NR/NX/ledger/meta/token receipts on disk; seven_all_met = all(state == 'MET')",
  "purpose": "Static completeness audit of the path from Flash NR V2 to a promotable source-independent NX, and the queue fan-out that collapses onto that NX.",
  "recovered_implementation": {
   "existing_receipts": {
@@ -2827,7 +2847,7 @@
   }
  ],
  "schema": "hawking.future.flash_nx_audit.v1",
- "seal_sha256": "f6417fbc8eff695e2ba25938d6dd5537241f66b171ed99703e525f878a7abbbd",
+ "seal_sha256": "9c4e844c8ce64152f78479e316e32a2d2824f5ba99c7303cb8f98c73b2c56468",
  "seven_all_met": false,
  "seven_requirements": [
   {

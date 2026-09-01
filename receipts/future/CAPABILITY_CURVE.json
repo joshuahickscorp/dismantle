@@ -14,7 +14,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T02:18:21Z",
+  "recorded_at": "2026-09-01T05:17:51Z",
   "recorded_by": "tools/future/capability_curve.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -37,7 +37,7 @@
  },
  "question": "Where is the cliff, found without a human typing 10/20/30/40?",
  "schema": "hawking.future.capability_curve.v1",
- "seal_sha256": "718e936b2e9062adcb52ea8ecc3485adf25185e90b42f2112e0689887cdf4334",
+ "seal_sha256": "ce34f2d5263fcbf27727a814d53fdbb89dc10ef6f6ce7784da80b3200d8ea145",
  "synthetic_proofs": {
   "budget": {
    "budget": 7,

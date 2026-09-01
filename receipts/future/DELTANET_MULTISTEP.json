@@ -66,7 +66,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T04:17:03Z",
+  "recorded_at": "2026-09-01T05:23:03Z",
   "recorded_by": "tools/future/deltanet_multistep.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2444,7 +2444,7 @@
   "n_judged_on_trajectory": 2
  },
  "schema": "hawking.future.deltanet_multistep.v1",
- "seal_sha256": "ba652ba2a1b23dfd336247cffa15bbcde0f7adc1cde702fc37e2e3e8f95ac88f",
+ "seal_sha256": "5058a77a91457b89c434d4f30fd316f00f4c60ae3967fcbf17caaf14c3f7d225",
  "version": 1,
  "what_this_does_not_prove": [
   "capability or generate identity of any candidate",

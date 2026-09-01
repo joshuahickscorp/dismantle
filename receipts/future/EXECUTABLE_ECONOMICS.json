@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T03:49:20Z",
+  "recorded_at": "2026-09-01T05:26:33Z",
   "recorded_by": "tools/future/executable_economics.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -4497,7 +4497,7 @@
   "verbatim": "a candidate deserves substantial work if it plausibly removes >= 1% of complete token time, or creates a reusable representation family, or provides a high-information falsifier"
  },
  "schema": "hawking.future.executable_economics.v2",
- "seal_sha256": "0685c15ba6f625b3054d512c824819917890f802a4d542a7bfbca229232f0914",
+ "seal_sha256": "a861995063d6a7472b1e30f84111d1cba438e3d82f06acf7c193bf9425d7e33b",
  "sources": [
   "receipts/future/MLP_AUXILIARY_INFORMATION.json",
   "receipts/future/MLP_CODE_INFORMATION.json",

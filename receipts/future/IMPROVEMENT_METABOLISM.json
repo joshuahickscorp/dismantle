@@ -28,7 +28,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T04:17:03Z",
+  "recorded_at": "2026-09-01T05:30:20Z",
   "recorded_by": "tools/future/improvement_metabolism.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1967,7 +1967,7 @@
   "unbalanced": false
  },
  "schema": "hawking.future.improvement_metabolism.v1",
- "seal_sha256": "4798b3e3a7d387decb04b931e96873f59d334968a86fb1a7b7f3318f41012f11",
+ "seal_sha256": "a611a00e07bee4fef2fead22e13016c2ee8ec17769566e0f62250f6e4ea18de8",
  "sources": {
   "receipts/future/DELTANET_GENERATED_TRANSITION.json": "disk:/Users/scammermike/Downloads/hawking/receipts/future/DELTANET_GENERATED_TRANSITION.json",
   "receipts/future/DELTANET_MULTISTEP.json": "disk:/Users/scammermike/Downloads/hawking/receipts/future/DELTANET_MULTISTEP.json",

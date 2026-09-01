@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T23:33:53Z",
+  "recorded_at": "2026-09-01T05:22:51Z",
   "recorded_by": "tools/future/succession.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -300,7 +300,7 @@
   "REFUSE_INSUFFICIENT_EVIDENCE as the honest default; PROMOTE unreachable without executed GPU authority"
  ],
  "gpu_authority": false,
- "head": "2dd9fc8c0a0113e389e25842bc832c1c1c7accb5",
+ "head": "7f3f1ffc5bce328d4fa3e2cdf84cb369d8033e39",
  "ladder": {
   "default_run": {
    "candidate_id": "child.adapter.incumbent.synthetic.v0",
@@ -901,7 +901,7 @@
   "workunit": "one CPU_ANALYSIS unit; independent judge over a shadowed candidate; PROMOTE unreachable from SELF_MEASURED_DIRTY"
  },
  "schema": "hawking.future.succession.v1",
- "seal_sha256": "b6b832a294b839efdc66107706bd0971d13cec45fe97ac53c4e7ed278955f4ad",
+ "seal_sha256": "42d50892c68fb072bfa5218fd93bf68270bec05984b3072b2f315337bf951674",
  "shadow": {
   "allowed": [
    "classify_receipt_static_only",

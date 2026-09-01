@@ -4,7 +4,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-30T15:46:21Z",
+  "recorded_at": "2026-08-31T17:37:09Z",
   "recorded_by": "tools/future/phase_listeners.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -605,7 +605,7 @@
  },
  "rule": "once Phase I emits a law, Phase II may transfer it and Phase III may attack it. There is no global barrier between II and III.",
  "schema": "hawking.future.phase_listeners.v1",
- "seal_sha256": "59d99b0e1496eab98431db33341fbbf135179e353743a4e39db827dfc1f8ab95",
+ "seal_sha256": "fb10fd8d0ff4c38c0e99fc3ec64827175cff650a650d25fb89b5b89e07a78bd4",
  "underspecified_for_attack": [
   "LAW-DEVICE-ROOFS",
   "LAW-FITTED-AFFINE-BEATS-RTN",

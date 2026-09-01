@@ -25,7 +25,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T04:14:45Z",
+  "recorded_at": "2026-09-01T05:33:45Z",
   "recorded_by": "tools/future/mlp_sparse_residual.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -13645,7 +13645,7 @@
   "every sweep point scored by executable_economics",
   "train-set figure cannot be reported as held-out (loud exception)"
  ],
- "git_head": "81eb1cd1b4ec5a0f0bdf51a69f44840e57099537",
+ "git_head": "d6d14e9fd7255571ac832936c3d638d89df90074",
  "gpu_authority": false,
  "index": {
   "cousins_not_this_object": [
@@ -13789,7 +13789,7 @@
   "status": "RESIDUAL_RESCUE_CLOSED",
   "why": "Some concentration exists, but even an oracle residual at the 5% MLP-byte MATERIAL bar cannot push held-out relative L2 below 0.25. A residual large enough to carry F is no longer sparse."
  },
- "seal_sha256": "33b62a9745f4fe9f60151f50a98b488ce00643338bf1bdfcd1cb4198744fa1c6",
+ "seal_sha256": "9cf7e75855a9c5ee4543d98f911477ae0a80184b64857dd903946f27588f83c5",
  "selftest": {
   "dense_fixture_gini": 0.401721,
   "held_out_leak_codes": [

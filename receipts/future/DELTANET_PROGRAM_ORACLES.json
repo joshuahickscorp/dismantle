@@ -25,7 +25,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T04:11:02Z",
+  "recorded_at": "2026-09-01T05:23:37Z",
   "recorded_by": "tools/future/deltanet_program_oracles.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2408,7 +2408,7 @@
  },
  "purpose": "Oracle-first bounds for generated_coefficients, learned_recurrence and conditional_recurrence. If an unfair oracle cannot make the economics work, do not build the real version.",
  "schema": "hawking.future.deltanet_program_oracles.v1",
- "seal_sha256": "1061dfae97e8883a908d8eb6dce5c44f0e26006b6003fe5bd094b2498e2dd848",
+ "seal_sha256": "c374a2d08dce90bb6630efae2cae801190f79b2af85175dee73e3392a812869b",
  "version": 1,
  "what_this_does_not_prove": [
   "Capability. Every family's capability is UNMEASURED.",

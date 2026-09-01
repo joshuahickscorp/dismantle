@@ -1286,7 +1286,25 @@ def _architecture_inspect(context: ToolContext, args: Dict[str, Any]) -> Dict[st
     from .architecture import ArchitectureRecognizer
 
     path = context.resolve_read_path(args.get("path"))
-    return ArchitectureRecognizer(max_tensors=int(args.get("max_tensors") or 250000)).inspect(path)
+    architecture_atlas = None
+    atlas_path = context.repo_root / "receipts" / "headless" / "ACCELERATOR_ARCHITECTURE_ATLAS.json"
+    try:
+        candidate = json.loads(atlas_path.read_text(encoding="utf-8"))
+        if isinstance(candidate, Mapping):
+            from tools.accelerator.architecture_atlas import validate_atlas
+
+            validate_atlas(candidate)
+            architecture_atlas = candidate
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        # Metadata inspection remains useful when the optional planning atlas
+        # is absent or stale; it simply returns the historical plan shape.
+        architecture_atlas = None
+    backend = str(args.get("backend") or "").strip() or None
+    return ArchitectureRecognizer(max_tensors=int(args.get("max_tensors") or 250000)).inspect(
+        path,
+        architecture_atlas=architecture_atlas,
+        backend=backend,
+    )
 
 
 def _doctor_query(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
@@ -1538,8 +1556,8 @@ def default_tool_registry(
         mutation=READ_ONLY, deterministic=False, resources=("filesystem",), handler=_vmcp_query,
     ))
     registry.register(ToolSpec(
-        "architecture.inspect", "Recognize generic model organs/topology from config and tensor-index metadata only.",
-        {"type": "object", "required": ["path"], "additionalProperties": False, "properties": {"path": {"type": "string"}, "max_tensors": {"type": "integer"}}},
+        "architecture.inspect", "Recognize generic model organs/topology and project the canonical accelerator atlas as planning-only hypotheses.",
+        {"type": "object", "required": ["path"], "additionalProperties": False, "properties": {"path": {"type": "string"}, "max_tensors": {"type": "integer"}, "backend": {"type": "string"}}},
         mutation=READ_ONLY, deterministic=True, resources=("filesystem",), handler=_architecture_inspect,
     ))
     registry.register(ToolSpec(

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T02:18:40Z",
+  "recorded_at": "2026-09-01T05:22:08Z",
   "recorded_by": "tools/future/complete_ebpw.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -156,7 +156,7 @@
   "weight_codes_ms_per_gb": 0.547282
  },
  "schema": "hawking.future.complete_ebpw.v1",
- "seal_sha256": "aa3f2af22f67b57c71630798f3ad5d098ba75af8b096b129a38fae674d43c432",
+ "seal_sha256": "b06a171c88caad2c6b08ab1c2a11b69e679fb6b2c3ff397442fdbb9fc3903ed0",
  "selftest": {
   "aux_only_cut_bytes_saved": 58176,
   "aux_only_cut_ms_saved": 0.0,

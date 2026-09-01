@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T02:19:40Z",
+  "recorded_at": "2026-09-01T05:36:38Z",
   "recorded_by": "tools/future/modellake_events.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1027,7 +1027,7 @@
    ]
   },
   {
-   "claimed_complete_in_log_tail": true,
+   "claimed_complete_in_log_tail": false,
    "detection": "lake_manifest",
    "lifecycle": "FINGERPRINTED",
    "model_type": "mistral3",
@@ -1669,8 +1669,8 @@
    "tencent--HunyuanVideo@6204ad6aea1a"
   ],
   "n_claims_without_seal": 35,
-  "n_completion_claims": 37,
-  "n_parseable_events": 374
+  "n_completion_claims": 36,
+  "n_parseable_events": 407
  },
  "n_emitted_specimens": 8,
  "n_emitted_units": 48,
@@ -1679,7 +1679,7 @@
  "obligation": "G101",
  "question": "When a model seals, does anything happen without a human noticing?",
  "schema": "hawking.future.modellake_events.v1",
- "seal_sha256": "e1b9efe4c1473a2b435937f6c2fb982b5f04d27d56472a04286cb193a85c8a89",
+ "seal_sha256": "8ec441f2a3e720e966e587bef3d93a78cdc6dd4e0f21529a6fd39bef07ac14c4",
  "seal_triggers": [
   "fingerprint",
   "role evaluation",

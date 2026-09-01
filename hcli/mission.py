@@ -15,7 +15,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
 
 from .dag_store import atomic_write_json
 from .executors import dispatch_workunit
@@ -214,6 +214,9 @@ class Mission:
         self._compiled: Optional[Dict[str, Any]] = None
         self._stop_reason: Optional[str] = None
         self._last_contexts: Dict[str, Dict[str, Any]] = {}
+        # Compact, durable evidence is the bridge from one bounded mission
+        # slice to the next. It never stores an unbounded model transcript.
+        self._evidence: List[Dict[str, Any]] = []
         self._steering = None
         self._signals_installed = False
         self._sigint_count = 0
@@ -392,6 +395,12 @@ class Mission:
             mission._compiled = ir
         else:
             mission._maybe_compile()
+        persisted_evidence = data.get("evidence")
+        if isinstance(persisted_evidence, list):
+            mission._evidence = [
+                item for item in persisted_evidence[-64:]
+                if isinstance(item, dict)
+            ]
         mission._adopted_unit_ids = set(adopted_ids)
         for uid in adopted_ids:
             wu = sched.units.get(uid)
@@ -586,6 +595,7 @@ class Mission:
                 uid: wu.to_dict() for uid, wu in self.scheduler.units.items()
             },
             "compiled": compiled_ir_to_jsonable(self._compiled),
+            "evidence": list(self._evidence[-64:]),
         }
         atomic_write_json(path, payload)
         self.last_checkpoint = stamp
@@ -707,6 +717,7 @@ class Mission:
             "accepted": self.accepted_count,
             "failed_units": failed,
             "no_progress_warning": self.no_progress_warning,
+            "evidence": list(self._evidence[-64:]),
         }
 
     def _loop(self) -> None:
@@ -950,6 +961,50 @@ class Mission:
             return False
         return validation.get("ok") is True
 
+    def _record_evidence(
+        self,
+        wu: WorkUnit,
+        validation: Any,
+        raw: Any,
+    ) -> None:
+        """Persist bounded evidence needed for evidence-derived refill."""
+        if not isinstance(raw, Mapping):
+            proposed: Any = []
+        else:
+            proposed = raw.get("child_workunits")
+            if proposed is None:
+                proposed = raw.get("next_workunits")
+        candidates = proposed if isinstance(proposed, list) else []
+        allowed = {
+            "id",
+            "role",
+            "description",
+            "dependencies",
+            "verifier",
+            "resource_class",
+            "preferred_backend",
+            "provider",
+        }
+        compact_children: List[Dict[str, Any]] = []
+        for candidate in candidates[:8]:
+            if not isinstance(candidate, Mapping):
+                continue
+            item = {key: candidate[key] for key in allowed if key in candidate}
+            if isinstance(item.get("description"), str):
+                item["description"] = item["description"][:4000]
+            compact_children.append(item)
+        compact_validation = dict(validation) if isinstance(validation, Mapping) else {}
+        self._evidence.append(
+            {
+                "unit_id": wu.id,
+                "accepted": compact_validation.get("ok") is True,
+                "validation": compact_validation,
+                "child_workunits": compact_children,
+                "at": time.time(),
+            }
+        )
+        self._evidence = self._evidence[-64:]
+
     def _integrate(self, item: Dict[str, Any]) -> None:
         uid = item.get("id")
         if not uid:
@@ -979,6 +1034,7 @@ class Mission:
             self._fail_unit(wu, {"reason": "cancelled"}, emit_repair=False)
             return
         validation = result.get("validation")
+        self._record_evidence(wu, validation, result.get("raw"))
         if not self._accepted(validation, result.get("raw")):
             context = {
                 "validation": validation,

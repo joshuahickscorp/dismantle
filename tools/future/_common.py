@@ -78,6 +78,48 @@ def seal(doc: dict[str, Any]) -> dict[str, Any]:
     return doc
 
 
+class ReceiptPathCollision(ValueError):
+    """Two producers, one path. The later writer would destroy the earlier one."""
+
+
+def _refuse_foreign_overwrite(out: Path, doc: dict[str, Any], recorded_by: str) -> None:
+    """A receipt path belongs to ONE producer.
+
+    tps_budget.py and causal_budget_71.py both wrote
+    RESIDENT_71TPS_CAUSAL_BUDGET.json with different schemas. The later writer
+    won and silently destroyed every citation resolving against `ladder[]` and
+    `measured_now` - four rows of the roof-anchor audit stopped resolving, and
+    the audit honestly reported "field is not a resolvable path in this receipt"
+    about a field that HAD been resolvable the day it was written. Nothing
+    raised. The overwrite is a WRITE, and writes succeed.
+
+    An overwrite by the same producer, or a schema-compatible one, is normal
+    regeneration and is allowed. A DIFFERENT producer writing a DIFFERENT schema
+    over an existing receipt is the collision, and it raises.
+    """
+    if not out.is_file():
+        return
+    try:
+        prior = json.loads(out.read_text())
+    except (ValueError, OSError):
+        return  # unreadable prior is not evidence of ownership
+    if not isinstance(prior, dict):
+        return
+    prior_by = prior.get("recorded_by") or (prior.get("bench") or {}).get("recorded_by")
+    if not prior_by or prior_by == recorded_by:
+        return
+    prior_schema = prior.get("schema")
+    new_schema = doc.get("schema")
+    if prior_schema is None or new_schema is None or prior_schema == new_schema:
+        return
+    raise ReceiptPathCollision(
+        f"{out.name} was written by {prior_by} with schema {prior_schema!r}; "
+        f"{recorded_by} would overwrite it with schema {new_schema!r}. A receipt "
+        "path belongs to one producer - give this one its own name rather than "
+        "destroying the other's citations."
+    )
+
+
 def write_receipt(name: str, doc: dict[str, Any], recorded_by: str) -> Path:
     """Validate, seal and write a sidecar receipt. Returns its path."""
     doc.setdefault("bench", bench_block(recorded_by))
@@ -86,6 +128,7 @@ def write_receipt(name: str, doc: dict[str, Any], recorded_by: str) -> Path:
     seal(doc)
     RECEIPTS.mkdir(parents=True, exist_ok=True)
     out = RECEIPTS / name
+    _refuse_foreign_overwrite(out, doc, recorded_by)
     out.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
     return out
 

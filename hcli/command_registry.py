@@ -70,6 +70,13 @@ COMMANDS: Tuple[Command, ...] = (
         "read_only",
         "/receipts 5",
     ),
+    Command(
+        "/processes",
+        "what every live Hawking process is, and which are safe to stop",
+        False,
+        "read_only",
+        "/processes",
+    ),
     Command("/goal", "set active goal", True, "workspace_write", "/goal ship X"),
     Command(
         "/ultragoal",

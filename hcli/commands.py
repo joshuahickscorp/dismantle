@@ -1357,6 +1357,18 @@ class CommandHandler:
         self.last_value = usage
         return usage
 
+    def _cmd_processes(self, arg: str) -> str:
+        """Role, RSS and stop-safety for every live Hawking process.
+
+        The operator complaint this answers is that Activity Monitor shows
+        several entries called `Python` and nothing distinguishes the resident
+        supervisor from a model download. Classification is by argv because the
+        executable name is identical across all of them.
+        """
+        from .processes import render
+
+        return render(width=STATUS_LINE_CHARS)
+
     def _cmd_receipts(self, arg: str) -> str:
         """Durable run receipts, newest first. hcli.engine writes one per goal."""
         limit = 10

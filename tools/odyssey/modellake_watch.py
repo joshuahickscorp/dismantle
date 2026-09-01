@@ -57,7 +57,20 @@ MAX_DOWNLOAD_JOBS = 4
 # deliberately large, sharded artefacts and this host has a 10 GbE uplink, so
 # use a high but bounded fan-out per pinned transfer.  This is persisted in
 # the launch watcher, not dependent on an interactive terminal.
-MAX_WORKERS = 16
+#
+# MEASURED COST, 2026-09-01: one `hf download` child at MAX_WORKERS=16 was
+# observed holding 20.70 GB RSS (pid 17132, Qwen3-Coder-30B-A3B), against a
+# resident body of 1.18 GB.  With MAX_DOWNLOAD_JOBS=4 the worst case is 64
+# buffering file workers, and on this host that is what drove free RAM to
+# 8.5 GB and pushed the resident into WAITING_FOR_MEMORY against its 14.4 GB
+# reserve -- an acquisition starving the science it is acquiring for.
+#
+# The number is NOT lowered here, because no one has measured throughput
+# against worker count on this uplink and a guess would just trade a measured
+# memory cost for an unmeasured time cost.  It is made overridable so the
+# operator, or HCLI itself, can bound it without editing source, and so the
+# next transfer picks up the change without disturbing a live one.
+MAX_WORKERS = max(1, int(os.environ.get("HAWKING_MODELLAKE_MAX_WORKERS", "16")))
 POLL_SECONDS = 0.10
 NETWORK_SAMPLE_EMIT_SECONDS = 1.0
 STATE_SAMPLE_EMIT_SECONDS = 10.0

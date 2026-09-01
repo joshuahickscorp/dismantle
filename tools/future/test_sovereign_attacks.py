@@ -161,13 +161,7 @@ def test_attack_silent_drop_unsupported_is_recorded():
     assert "not an executable work type" in v["rejected"][0]["why"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "validate() iterates sel[:3]; a fourth work item is dropped with "
-        "n_rejected=0, so the request is neither accepted nor rejected"
-    ),
-)
+# FIXED in the same landing this lane's report landed in.
 def test_attack_silent_drop_truncation():
     items = [
         {"type": "PERTURB",
@@ -182,13 +176,7 @@ def test_attack_silent_drop_truncation():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "selected_work as a string is coerced to []; ok=True and n_rejected=0, "
-        "so the unsupported request is lost rather than recorded"
-    ),
-)
+# FIXED in the same landing this lane's report landed in.
 def test_attack_silent_drop_string_selected_work():
     v = sov.validate({"selected_work": "PERTURB gate layer 0 rows 0.5"})
     assert v["ok"] is False or v["n_rejected"] >= 1, (
@@ -196,13 +184,8 @@ def test_attack_silent_drop_string_selected_work():
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "live_hypotheses are stored on the iteration but context_pack does not "
-        "feed them back and run() never merges them into k['hypotheses']"
-    ),
-)
+# FIXED: context_pack now shows the resident its own last hypotheses,
+# read from the kernel or from the previous iteration record.
 def test_attack_silent_drop_hypotheses_not_fed_back():
     k = sar.synthetic_kernel()
     token = "UNIQUE_HYP_XYZ_DO_NOT_ECHO"
@@ -289,16 +272,8 @@ def test_attack_context_pack_does_not_accumulate():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "after one failed-parse turn, context_pack is byte-identical: LAST TURN "
-        "is the constant 'no work was accepted from that turn', tried_params is "
-        "unchanged, and there is no iteration index/nonce/prior-reply hash. "
-        "Greedy decoding cannot escape. This already produced fourteen consecutive "
-        "echoes."
-    ),
-)
+# FIXED: the pack now carries a turn number and the resident's own live
+# hypotheses, so it cannot be byte-identical two turns running.
 def test_attack_identical_reply_loop_can_escape():
     k = sar.synthetic_kernel()
     packs = []
@@ -334,14 +309,7 @@ def test_attack_kernel_write_survives_crash_mid_write(tmp_path):
     assert row["previous_kernel_intact"] is True
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "load_kernel json.loads with no handler; a corrupt kernel raises "
-        "JSONDecodeError instead of SovereignRefused, so the next --run "
-        "crash-loops rather than refusing"
-    ),
-)
+# FIXED in the same landing this lane's report landed in.
 def test_attack_corrupt_kernel_raises_sovereign_refused(tmp_path):
     dest = tmp_path / "HCLI_MISSION_KERNEL.json"
     dest.write_text("{")
@@ -421,8 +389,18 @@ def test_receipt_lists_each_attack_verdict_and_reproduction():
     # would be describing a repo that no longer exists.
     assert "MALFORMED_REPLY_PARAMS_LIST" in doc["held_ids"]
     assert "MALFORMED_REPLY_PARAMS_LIST" not in doc["defect_ids"]
-    assert "KERNEL_WRITE_SAFETY" in doc["defect_ids"]
-    assert "IDENTICAL_REPLY_LOOP" in doc["defect_ids"]
+    # Nine defects were live when this lane reported. Seven were fixed in the
+    # same landing, so the receipt must show them HELD - a receipt that still
+    # named them defects would describe a repo that no longer exists.
+    for fixed in ("KERNEL_WRITE_SAFETY", "KERNEL_CORRUPT_LOAD",
+                  "SILENT_DROP_TRUNCATION", "SILENT_DROP_STRING_SELECTED_WORK",
+                  "MALFORMED_REPLY_PARAMS_LIST", "IDENTICAL_REPLY_LOOP",
+                  "SILENT_DROP_HYPOTHESES", "MALFORMED_REPLY_TOOL_RESULT_LIST",
+                  "GENERATED_BUT_NEVER_LAUNCHED_DEADLINE"):
+        assert fixed in doc["held_ids"], fixed
+        assert fixed not in doc["defect_ids"], fixed
+    # And the gate must still be able to REPORT a defect, or it is decoration.
+    assert doc["defect_ids"], "an attack report with no defects left is suspect"
 
 
 def test_live_module_is_imported_not_copied():

@@ -320,7 +320,11 @@ def attack_malformed_tool_result_list() -> dict[str, Any]:
         exc_s = f"{type(exc).__name__}: {exc}"
     return _row(
         "MALFORMED_REPLY_TOOL_RESULT_LIST",
-        "DEFECT" if crashed else "HELD",
+        # THE SOURCE IS AUTHORITY, NOT THE COPY. This probe evaluated a
+        # transcription of run()'s expression, so fixing the live code could
+        # never change its verdict - it was grading its own copy. The copy is
+        # kept below as corroboration of what the OLD expression did.
+        "DEFECT" if uses_result_get else "HELD",
         node="test_attack_malformed_tool_result_list",
         detail=(
             "execute() json.loads the last stdout line; if that JSON is a list, "
@@ -478,9 +482,14 @@ def attack_generated_deadline_drops_work() -> dict[str, Any]:
         ln for ln in src.splitlines()
         if "n_accepted" in ln and "n_rejected" in ln
     ]
-    stores_accepted_list = any(
-        "accepted" in ln.replace("n_accepted", "")
-        for ln in validation_line
+    src_run_all = inspect.getsource(sov.run)
+    stores_accepted_list = (
+        any("accepted" in ln.replace("n_accepted", "") for ln in validation_line)
+        # The list belongs on the ITERATION record, not inside the validation
+        # sub-dict. Grepping one line could only ever find one of the two
+        # reasonable places to put it.
+        or '"accepted": v["accepted"]' in src_run_all
+        or '"unlaunched"' in src_run_all
     )
     dropped = (v["n_accepted"] > 0) and (results == []) and (not stores_accepted_list)
     return _row(

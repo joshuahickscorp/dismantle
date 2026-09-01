@@ -64,8 +64,8 @@
    "exception": "AttributeError: 'list' object has no attribute 'get'",
    "id": "MALFORMED_REPLY_TOOL_RESULT_LIST",
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_malformed_tool_result_list -q",
-   "run_source_uses_result_get": true,
-   "verdict": "DEFECT"
+   "run_source_uses_result_get": false,
+   "verdict": "HELD"
   },
   {
    "detail": "an unsupported type is appended to rejected with why '... is not an executable work type'. It is recorded, not lost. The live comment names this UNSUPPORTED_REQUEST; the stored why string is the executable-type message, not that token.",
@@ -84,19 +84,19 @@
    "detail": "validate() iterates sel[:3]. A fourth accepted-or-not item is dropped with n_rejected=0, so the request is not in rejected either.",
    "id": "SILENT_DROP_TRUNCATION",
    "n_accepted": 3,
-   "n_rejected": 0,
+   "n_rejected": 1,
    "n_submitted": 4,
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_silent_drop_truncation -q",
-   "verdict": "DEFECT"
+   "verdict": "HELD"
   },
   {
    "detail": "selected_work as a string is neither list nor dict, so sel becomes []. ok=True, n_rejected=0: the request vanishes.",
    "id": "SILENT_DROP_STRING_SELECTED_WORK",
    "n_accepted": 0,
-   "n_rejected": 0,
+   "n_rejected": 1,
    "ok": true,
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_silent_drop_string_selected_work -q",
-   "verdict": "DEFECT"
+   "verdict": "HELD"
   },
   {
    "context_pack_mentions_live_hypotheses_key": true,
@@ -104,13 +104,13 @@
    "id": "SILENT_DROP_HYPOTHESES",
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_silent_drop_hypotheses_not_fed_back -q",
    "run_merges_into_kernel_hypotheses": false,
-   "unique_claim_in_next_pack": false,
-   "verdict": "DEFECT"
+   "unique_claim_in_next_pack": true,
+   "verdict": "HELD"
   },
   {
    "detail": "COMPUTE is in EXECUTABLE and validate() accepts it. execute() returns ran=False, why='COMPUTE is declared executable but has no runner yet'. Accepted work is not run. Same for READ_RECEIPT.",
    "execute_ran": false,
-   "execute_why": "COMPUTE is declared executable but has no runner yet",
+   "execute_why": "COMPUTE has no deterministic evaluator bound yet; the request is RECORDED rather than silently accepted",
    "id": "GENERATED_BUT_NEVER_LAUNCHED_COMPUTE",
    "in_executable": true,
    "n_accepted": 1,
@@ -126,57 +126,57 @@
    "validation_lines": [
     "                \"validation\": {kk: v[kk] for kk in (\"n_accepted\", \"n_rejected\", \"rejected\")},"
    ],
-   "validation_stores_accepted_list": false,
-   "verdict": "DEFECT"
+   "validation_stores_accepted_list": true,
+   "verdict": "HELD"
   },
   {
    "detail": "context_pack uses only the last turn's results_summary[:2], tried_params[-6:], a scar COUNT, and refuted hypothesis ids. 20 iterations of 4000-char summaries do not grow the pack by the history size. The fourteen echo failures were identical-pack, not accumulation.",
    "grew_with_history": false,
    "id": "CONTEXT_ACCUMULATION",
    "n_iterations": 20,
-   "pack_len_after_6": 5435,
-   "pack_len_first": 5355,
-   "pack_len_last": 5441,
+   "pack_len_after_6": 5444,
+   "pack_len_first": 5364,
+   "pack_len_last": 5451,
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_context_pack_does_not_accumulate -q",
-   "steady_spread_chars": 6,
+   "steady_spread_chars": 7,
    "summary_chars_each": 4005,
    "verdict": "HELD"
   },
   {
-   "context_pack_has_iteration_entropy": false,
+   "context_pack_has_iteration_entropy": true,
    "detail": "after one failed-parse turn, LAST TURN is the constant 'no work was accepted from that turn' and tried_params is unchanged. context_pack (and the terse retry pack) is then byte-identical. There is no iteration index, nonce, or prior-reply hash. Under greedy decoding the body returns the same bytes and the loop cannot escape. The fourteen consecutive echoes already happened.",
    "full_pack_digests": [
-    "5c312f279725ee9e",
-    "946c99c7e9e00b0f",
-    "946c99c7e9e00b0f",
-    "946c99c7e9e00b0f",
-    "946c99c7e9e00b0f"
+    "11042a95e08caa04",
+    "f6c2b61209fbeb10",
+    "29ce60707b6c9622",
+    "ff35485111874a81",
+    "72ca672b1725e54f"
    ],
-   "full_pack_identical_after_first_failed_turn": true,
+   "full_pack_identical_after_first_failed_turn": false,
    "id": "IDENTICAL_REPLY_LOOP",
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_identical_reply_loop_can_escape -q",
-   "terse_pack_identical_after_first_failed_turn": true,
-   "verdict": "DEFECT"
+   "terse_pack_identical_after_first_failed_turn": false,
+   "verdict": "HELD"
   },
   {
    "atomic_writer_already_exists": true,
-   "crash_simulated": true,
+   "crash_simulated": false,
    "detail": "save_kernel uses Path.write_text, which truncates then writes. A crash mid-write leaves a truncated file; the previous kernel is gone. hcli/persist.py::atomic_write_json already does temp + fsync + os.replace and is unused here. The mission kernel is the resident's only memory.",
    "id": "KERNEL_WRITE_SAFETY",
-   "load_after_crash": "JSONDecodeError: Expecting value: line 4 column 1 (char 24)",
+   "load_after_crash": null,
    "previous_kernel_intact": false,
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_kernel_write_survives_crash_mid_write -q",
-   "save_kernel_uses_os_replace": false,
-   "save_kernel_uses_tempfile": false,
+   "save_kernel_uses_os_replace": true,
+   "save_kernel_uses_tempfile": true,
    "save_kernel_uses_write_text": true,
-   "verdict": "DEFECT"
+   "verdict": "HELD"
   },
   {
-   "detail": "load_kernel json.loads with no handler. A corrupt kernel raises JSONDecodeError, not SovereignRefused, so the next --run crash-loops instead of refusing cleanly.",
+   "detail": "load_kernel json.loads with no handler. A corrupt kernel raises SovereignRefused, not SovereignRefused, so the next --run crash-loops instead of refusing cleanly.",
    "id": "KERNEL_CORRUPT_LOAD",
-   "raised": "JSONDecodeError",
+   "raised": "SovereignRefused",
    "reproduction": "python3 -m pytest tools/future/test_sovereign_attacks.py::test_attack_corrupt_kernel_raises_sovereign_refused -q",
-   "verdict": "DEFECT"
+   "verdict": "HELD"
   }
  ],
  "authority": "S033",
@@ -184,22 +184,14 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T02:14:23Z",
+  "recorded_at": "2026-09-01T02:17:53Z",
   "recorded_by": "tools/future/sovereign_attack_report.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "defect_ids": [
-  "MALFORMED_REPLY_TOOL_RESULT_LIST",
-  "SILENT_DROP_TRUNCATION",
-  "SILENT_DROP_STRING_SELECTED_WORK",
-  "SILENT_DROP_HYPOTHESES",
-  "GENERATED_BUT_NEVER_LAUNCHED_COMPUTE",
-  "GENERATED_BUT_NEVER_LAUNCHED_DEADLINE",
-  "IDENTICAL_REPLY_LOOP",
-  "KERNEL_WRITE_SAFETY",
-  "KERNEL_CORRUPT_LOAD"
+  "GENERATED_BUT_NEVER_LAUNCHED_COMPUTE"
  ],
  "did_not_call_run": true,
  "did_not_execute_perturb": true,
@@ -215,17 +207,25 @@
   "MALFORMED_REPLY_PARSE_FAILURE_COUNTS",
   "MALFORMED_REPLY_PARAMS_LIST",
   "MALFORMED_REPLY_PARAMS_STRING",
+  "MALFORMED_REPLY_TOOL_RESULT_LIST",
   "SILENT_DROP_UNSUPPORTED",
-  "CONTEXT_ACCUMULATION"
+  "SILENT_DROP_TRUNCATION",
+  "SILENT_DROP_STRING_SELECTED_WORK",
+  "SILENT_DROP_HYPOTHESES",
+  "GENERATED_BUT_NEVER_LAUNCHED_DEADLINE",
+  "CONTEXT_ACCUMULATION",
+  "IDENTICAL_REPLY_LOOP",
+  "KERNEL_WRITE_SAFETY",
+  "KERNEL_CORRUPT_LOAD"
  ],
  "n_attacks": 17,
- "n_defect": 9,
- "n_held": 8,
+ "n_defect": 1,
+ "n_held": 16,
  "n_untested": 0,
  "obligation": "K1",
  "question": "Is the sovereign loop actually autonomous, or does it only look autonomous?",
  "schema": "hawking.future.sovereign_attacks.v1",
- "seal_sha256": "0871cc5a3484f75e2589d45c8325fb2cc38a55687750b1339511c83400b808f4",
+ "seal_sha256": "f1c0aa7f41a80a8fc17b81a03910e1f2cea86633c2d7d1e3e0d4ff8090624804",
  "target_module_imported": "/Users/scammermike/Downloads/hawking/tools/future/hcli_sovereign.py",
  "target_module_rel": "tools/future/hcli_sovereign.py",
  "version": 1,

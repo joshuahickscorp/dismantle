@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -49,6 +50,7 @@ MAX_NEW_TOKENS = 800
 # The deterministic layer executes exactly these. Anything else the resident
 # asks for is recorded as UNSUPPORTED_REQUEST - which is signal about what the
 # harness is missing, not a failure of the resident.
+MAX_WORK_PER_TURN = 3
 EXECUTABLE = {
     "PERTURB": "tools/future/perturbation_workunit.py",
     "COMPUTE": "deterministic arithmetic over existing receipts",
@@ -76,12 +78,36 @@ def load_kernel() -> dict[str, Any]:
             "memory; without it a reasoning call would be a fresh chatbot turn "
             "rather than a continuing mission. Run --init."
         )
-    return json.loads(p.read_text())
+    try:
+        return json.loads(p.read_text())
+    except json.JSONDecodeError as exc:
+        # A corrupt kernel used to raise JSONDecodeError out of --run, so the
+        # loop crash-looped instead of refusing once and saying what to do.
+        raise SovereignRefused(
+            f"{KERNEL_REL} is on disk but is not valid JSON ({exc}). The mission "
+            "kernel IS the resident's memory - refusing rather than continuing "
+            "with none. Restore it, or --init a fresh one, which will lose "
+            "every hypothesis verdict and scar it held."
+        ) from exc
 
 
 def save_kernel(k: dict[str, Any]) -> None:
+    """Atomic. The mission kernel is the resident's ONLY memory.
+
+    write_text truncates and then writes, so a crash mid-write left a truncated
+    file and the previous kernel was gone. hcli/persist.py has done temp +
+    fsync + os.replace since long before this module existed and was simply not
+    used here.
+    """
     k["updated_unix"] = time.time()
-    kernel_path().write_text(json.dumps(k, indent=1, sort_keys=True) + "\n")
+    p = kernel_path()
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    body = json.dumps(k, indent=1, sort_keys=True) + "\n"
+    with tmp.open("w") as f:
+        f.write(body)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, p)
 
 
 def _receipt(rel: str) -> dict[str, Any] | None:
@@ -214,6 +240,23 @@ def context_pack(k: dict[str, Any], *, terse: bool = False) -> str:
     tried = k.get("tried_params") or []
     avoid = ("ALREADY RUN (pick different params): "
              + "; ".join(tried[-6:])) if tried else ""
+    # The resident's OWN last hypotheses were recorded on the iteration and
+    # never shown back to it. A scientist that cannot see what it proposed last
+    # turn cannot carry an investigation across turns - it can only restart one.
+    mine = ""
+    live = [h for h in (k.get("live_hypotheses") or []) if isinstance(h, dict)]
+    if not live and k.get("iterations"):
+        prev = (k["iterations"][-1] or {}).get("live_hypotheses")
+        live = [h for h in (prev or []) if isinstance(h, dict)]
+    if live:
+        mine = ("YOUR LAST HYPOTHESES (advance or kill them): "
+                + "; ".join(f"{h.get('id')}: {h.get('claim')}" for h in live[-2:]))
+    # IDENTICAL_REPLY_LOOP: under greedy decoding a byte-identical pack returns
+    # a byte-identical reply. After one failed-parse turn LAST TURN froze to a
+    # constant and tried_params stopped changing, so the pack never moved and
+    # the body repeated itself for fourteen turns. The turn number is one token
+    # and makes repetition impossible to reach by construction.
+    turn = f"TURN {len(k.get('iterations') or []) + 1}."
 
     schema = (
         'Reply with ONLY this JSON, no prose:\n'
@@ -230,7 +273,8 @@ def context_pack(k: dict[str, Any], *, terse: bool = False) -> str:
             + "\n\nYou choose the next experiment. PERTURB damages part of an "
               "MLP tensor and measures the effect two layers later.\n"
             + (avoid + "\n" if avoid else "")
-            + "\nOutput the JSON now."
+            + (mine + "\n" if mine else "")
+            + f"\n{turn} Output the JSON now."
         )
     return f"""{schema}
 
@@ -244,6 +288,8 @@ EVIDENCE: {obs}
 SCARS: {len(k['scars'])} recorded; entropy coding and larger groups are spent.
 {last}
 {avoid}
+{mine}
+{turn}
 
 PERTURB damages part of an MLP tensor (gate|up|down, layer 0-63, rows|cols, fraction 0.01-0.95) and measures the hidden state two layers later.
 
@@ -266,8 +312,22 @@ def validate(obj: dict[str, Any] | None) -> dict[str, Any]:
     if isinstance(sel, dict):
         sel = [sel]
     elif not isinstance(sel, list):
+        # A string here used to become [] and the request VANISHED with
+        # ok=True, n_rejected=0. Silence is worse than rejection: the resident
+        # cannot correct what it is never told about.
+        if sel not in (None, ""):
+            rejected.append({"work": sel,
+                             "why": f"selected_work is {type(sel).__name__}, "
+                                    "not a list of work objects"})
         sel = []
-    for w in sel[:3]:
+    if len(sel) > MAX_WORK_PER_TURN:
+        # sel[:3] used to drop the rest with n_rejected unchanged. Same silence.
+        for w in sel[MAX_WORK_PER_TURN:]:
+            rejected.append({"work": w,
+                             "why": f"more than {MAX_WORK_PER_TURN} work items "
+                                    "in one turn; not run"})
+        sel = sel[:MAX_WORK_PER_TURN]
+    for w in sel:
         if not isinstance(w, dict):
             rejected.append({"work": w, "why": "not an object"})
             continue
@@ -311,8 +371,28 @@ def validate(obj: dict[str, Any] | None) -> dict[str, Any]:
 def execute(work: dict[str, Any]) -> dict[str, Any]:
     """Run one accepted work item. Only PERTURB actually touches the model."""
     t = work["type"]
+    if t == "READ_RECEIPT":
+        # Declared executable since the first version and never implemented, so
+        # every READ_RECEIPT the resident chose was accepted and silently not
+        # run. Reading a receipt is the cheapest thing in this repo.
+        rel = str((work.get("params") or {}).get("receipt") or "")
+        if not rel.startswith("receipts/") or ".." in rel:
+            return {"type": t, "ran": False, "params": work.get("params"),
+                    "why": f"receipt path {rel!r} is not under receipts/"}
+        doc = _receipt(rel)
+        return {"type": t, "ran": doc is not None, "params": work.get("params"),
+                "result": {"keys": sorted(doc)[:40]} if doc else {},
+                "why": None if doc else f"{rel} is not on disk or is not JSON"}
+    if t == "COMPUTE":
+        # S030 §22: models do not establish numeric truth. This runs the
+        # deterministic calculator, it does not ask the body to do arithmetic.
+        expr = str((work.get("params") or {}).get("expression") or "")
+        return {"type": t, "ran": False, "params": work.get("params"),
+                "why": "COMPUTE has no deterministic evaluator bound yet; the "
+                       "request is RECORDED rather than silently accepted",
+                "requested_expression": expr}
     if t != "PERTURB":
-        return {"type": t, "ran": False,
+        return {"type": t, "ran": False, "params": work.get("params"),
                 "why": f"{t} is declared executable but has no runner yet"}
     p = work["params"]
     cmd = [sys.executable, str(REPO / "tools/future/perturbation_workunit.py"),
@@ -326,6 +406,12 @@ def execute(work: dict[str, Any]) -> dict[str, Any]:
             out = json.loads(r.stdout.strip().splitlines()[-1])
         except (json.JSONDecodeError, IndexError):
             out = {"stdout_tail": r.stdout[-400:]}
+        if not isinstance(out, dict):
+            # A tool that prints a JSON LIST used to reach results_summary,
+            # which does result.get('damage'). Same coerce-never-assume rule as
+            # selected_work and params, now applied at the TOOL boundary too.
+            out = {"non_object_result": out,
+                   "why": f"runner printed {type(out).__name__}, not an object"}
     return {"type": t, "ran": r.returncode == 0, "params": p,
             "seconds": round(time.time() - t0, 1), "result": out,
             "stderr_tail": r.stderr[-300:] if r.returncode else None}
@@ -411,8 +497,13 @@ def run(minutes: float) -> dict[str, Any]:
                 obj = parse(rp.degenerate_prefix(reply2)) or parse(reply2)
             v = validate(obj)
             results = []
-            for w in v["accepted"]:
+            unlaunched = []
+            for i, w in enumerate(v["accepted"]):
                 if time.time() >= deadline:
+                    # The loop used to just break, and validation stored only
+                    # the COUNTS. Work the resident chose and the harness
+                    # accepted then vanished with no record that it existed.
+                    unlaunched = v["accepted"][i:]
                     break
                 results.append(execute(w))
             it = {
@@ -429,16 +520,27 @@ def run(minutes: float) -> dict[str, Any]:
                 "belief_update": (obj or {}).get("belief_update"),
                 "live_hypotheses": (obj or {}).get("live_hypotheses"),
                 "validation": {kk: v[kk] for kk in ("n_accepted", "n_rejected", "rejected")},
+                "accepted": v["accepted"],
+                "unlaunched": unlaunched,
+                "n_unlaunched": len(unlaunched),
                 "results": results,
                 "results_summary": [
                     f"{r['type']} {r.get('params',{})} -> "
-                    f"{'damage ' + str(r['result'].get('damage')) if r.get('ran') else 'DID NOT RUN'}"
+                    f"{'damage ' + str((r.get('result') or {}).get('damage')) if r.get('ran') else 'DID NOT RUN'}"
                     for r in results
-                ] or ["no work was accepted from that turn"],
+                ] + ([f"{len(unlaunched)} accepted item(s) NOT LAUNCHED: "
+                      "the window closed first"] if unlaunched else [])
+                or ["no work was accepted from that turn"],
             }
+            # Persist the resident's OWN hypotheses onto the kernel so the next
+            # pack can show them back. They were recorded on the iteration and
+            # never read, so every turn started the investigation over.
+            lh = (obj or {}).get("live_hypotheses")
+            if isinstance(lh, list) and lh:
+                k["live_hypotheses"] = [h for h in lh if isinstance(h, dict)][-4:]
             for r in results:
                 pp = r.get("params") or {}
-                if pp:
+                if isinstance(pp, dict) and pp:
                     k.setdefault("tried_params", []).append(
                         f"{pp.get('tensor')}/L{pp.get('layer')}/"
                         f"{pp.get('side')}/{pp.get('fraction')}")

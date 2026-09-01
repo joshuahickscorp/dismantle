@@ -1899,6 +1899,9 @@ def run_torture(
     tape.emit("work_refilled", {"unit_ids": list(queued), "source": "initial_live_catalog"}, cites=list(queued))
     decision_points: list[dict[str, Any]] = []
     launched_ids: list[str] = []
+    # How many times each unit has been SHOWN in the prompt window without being
+    # chosen. Sinks stale options so the question changes as the run proceeds.
+    shown_unchosen: dict[str, int] = {}
     killed_scars: set[str] = set()
     in_flight: list[dict[str, Any]] = []
     seen_calls: set[int] = set()
@@ -1982,7 +1985,30 @@ def run_torture(
                 tape.emit("work_refilled", {"unit_ids": list(queued)}, cites=list(queued))
 
             # Interpret / choose.
+            #
+            # THE WINDOW HAS TO MOVE OR THE QUESTION NEVER CHANGES. interpret()
+            # shows the model only the first PROMPT_ENTRY_CAP rows, so a catalog
+            # that is deep but statically ordered still asks ONE question: the
+            # 2026-09-01 run put 26 live units on the menu and the model was
+            # handed a BYTE-IDENTICAL prompt 23 times out of 29. A deterministic
+            # body re-asked an identical question answers it identically by
+            # construction, so those asks measured nothing.
+            #
+            # Units the model has already SEEN AND NOT CHOSEN sink; gain still
+            # ranks within a shown-count tier. This is not decoration - the set
+            # is unchanged and the policy reads the same rotated list, so
+            # divergence stays a fair comparison. It is the same rule the
+            # sovereign pack uses when it lists ALREADY RUN params.
             live_rows = [r for r in remaining if r["id"] in queued] or list(remaining)
+            live_rows = sorted(
+                live_rows,
+                key=lambda c: (shown_unchosen.get(str(c.get("id")), 0),
+                               -int(c.get("expected_information_gain") or 0),
+                               str(c.get("id"))),
+            )
+            for _r in live_rows[:mb.PROMPT_ENTRY_CAP]:
+                shown_unchosen[str(_r.get("id"))] = \
+                    shown_unchosen.get(str(_r.get("id")), 0) + 1
             policy = mb.fixed_policy_choose(live_rows, scar_pool=None)
             # Overlay local landed scars so policy skips closed families when index misses them.
             policy_dead = []
@@ -2157,6 +2183,7 @@ def run_torture(
                     if handle:
                         launched = uid
                         launched_ids.append(uid)
+                        shown_unchosen.pop(uid, None)
                         in_flight.append(handle)
                         tape.emit(
                             "workunit_launched",

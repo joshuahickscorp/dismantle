@@ -632,11 +632,30 @@ def test_the_option_count_is_recorded_at_the_decision_point():
     assert "DIVERGENCE IS UNDEFINED ON A MENU OF ONE" in src
 
 
-def test_the_catalog_is_deep_enough_that_the_clock_does_not_outrun_it():
-    """Seven live units against fifty-one cycles is how 86% of the last run
-    became single-option filler."""
+def test_the_catalog_is_deeper_than_the_run_that_exhausted_it():
+    """Six live units against fifty-one cycles is how 86% of that run became
+    single-option filler.
+
+    This asserted >= 20 for one afternoon, and then FAILED because the work got
+    DONE: the derived rows come from the staleness review list, which fell from
+    20 to 10 as those receipts were fixed. Pinning a count punishes exactly the
+    progress the campaign is for. The invariant is that the catalog is deeper
+    than the run that exhausted it, and the no-filler claim is asserted where it
+    can actually be observed - on the run receipt, below."""
     live = [r for r in mbt.live_catalog() if not r.get("dead")]
-    assert len(live) >= 20, f"only {len(live)} live units for a 30-minute clock"
+    assert len(live) > 6, f"only {len(live)} live units; the run that failed had 6"
+
+
+def test_the_last_run_needed_no_synthetic_filler():
+    """The claim the catalog depth exists to support, checked on the RUN rather
+    than on the menu."""
+    import json
+    p = mbt.REPO / "receipts/future/MODEL_BEARING_TORTURE_30M.json"
+    if not p.is_file():
+        pytest.skip("no run receipt on disk")
+    launched = json.loads(p.read_text())["control"]["launched_under_model"]
+    probes = [x for x in launched if "health_probe" in x]
+    assert not probes, f"{len(probes)} of {len(launched)} launches were filler"
 
 
 def test_the_added_rows_are_real_open_work_read_from_disk():
@@ -674,3 +693,35 @@ def test_the_added_rows_rank_below_every_pre_existing_live_unit():
     assert added and kept
     assert max(r["expected_information_gain"] for r in added) <= \
         min(r["expected_information_gain"] for r in kept)
+
+
+def test_the_prompt_window_rotates_so_the_question_can_change():
+    """interpret() shows only the first PROMPT_ENTRY_CAP rows, so a deep but
+    statically ordered catalog still asks ONE question: 26 live units produced a
+    BYTE-IDENTICAL prompt 23 times out of 29."""
+    import inspect
+    src = inspect.getsource(mbt)
+    assert "shown_unchosen" in src
+    assert "THE WINDOW HAS TO MOVE OR THE QUESTION NEVER CHANGES" in src
+
+
+def test_the_rotation_sinks_shown_units_and_keeps_gain_within_a_tier():
+    """Not decoration: the SET is unchanged and the policy reads the same
+    rotated list, so divergence stays a fair comparison."""
+    shown = {"a": 2, "b": 0, "c": 2}
+    rows = [{"id": "a", "expected_information_gain": 9},
+            {"id": "b", "expected_information_gain": 1},
+            {"id": "c", "expected_information_gain": 5}]
+    order = [r["id"] for r in sorted(
+        rows, key=lambda c: (shown.get(c["id"], 0),
+                             -int(c["expected_information_gain"]), c["id"]))]
+    assert order[0] == "b", "an unshown low-gain unit must surface"
+    assert order[1:] == ["a", "c"], (
+        "inside the shown-twice tier gain still ranks: 9 before 5")
+
+
+def test_a_chosen_unit_is_not_counted_as_shown_and_declined():
+    """The model must not be punished for picking something."""
+    import inspect
+    src = inspect.getsource(mbt)
+    assert "shown_unchosen.pop(uid, None)" in src

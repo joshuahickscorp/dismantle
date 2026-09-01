@@ -478,6 +478,13 @@ def _log(rec: dict[str, Any]) -> None:
         f.write(json.dumps(rec) + "\n")
 
 
+# Shorten the pack after this many unproductive turns, then give up after this
+# many. Terse first because the failure is length-driven and cheap to test;
+# stopping second because a loop that cannot produce must not pretend to.
+UNPRODUCTIVE_TERSE_AFTER = 3
+UNPRODUCTIVE_STOP_AFTER = 8
+
+
 def run(minutes: float) -> dict[str, Any]:
     sys.path.insert(0, str(REPO))
     from tools.future import resident_provider as rp
@@ -490,10 +497,24 @@ def run(minutes: float) -> dict[str, Any]:
     deadline = t0 + minutes * 60
     n_iter = 0
     interventions = 0
+    # Consecutive iterations that produced NOTHING. The loop already computed
+    # `degenerated` every turn and did nothing with it: a real run spent 330
+    # iterations and 4.4 hours emitting a byte-identical 1667-char reply every
+    # 48 seconds, accepting zero work, with degenerated=True on every one.
+    #
+    # The spiral is self-reinforcing and that is why it never escapes on its
+    # own: no work accepted -> the kernel does not change -> context_pack()
+    # rebuilds byte-identically -> greedy decoding returns the same reply ->
+    # no work accepted. Nothing in that cycle can perturb itself.
+    unproductive = 0
     try:
         while time.time() < deadline:
             n_iter += 1
-            pack = context_pack(k)
+            # Break the identity BEFORE asking, not after. The terse pack is
+            # shorter, and this body is known to degenerate with length -- the
+            # pack that worked was under 1600 chars (see context_pack).
+            forced_terse = unproductive >= UNPRODUCTIVE_TERSE_AFTER
+            pack = context_pack(k, terse=forced_terse)
             ta = time.time()
             try:
                 raw = prov.ask(f"sov_{n_iter}_{_digest(pack)}", pack,
@@ -624,13 +645,52 @@ def run(minutes: float) -> dict[str, Any]:
                     k.setdefault("tried_params", []).append(
                         f"{pp.get('tensor')}/L{pp.get('layer')}/"
                         f"{pp.get('side')}/{pp.get('fraction')}")
+            # Productive means work was ACCEPTED, not that a reply parsed. A
+            # parsed reply that accepts nothing is exactly the stuck state.
+            if int(v.get("n_accepted") or 0) > 0:
+                unproductive = 0
+            else:
+                unproductive += 1
+            it["unproductive_streak"] = unproductive
+            it["forced_terse"] = forced_terse
+
             k["iterations"].append(it)
             save_kernel(k)
             _log(it)
             print(json.dumps({kk: it[kk] for kk in
                               ("n", "t_s", "parsed", "degenerated",
+                               "unproductive_streak", "forced_terse",
                                "belief_update", "results_summary")}, indent=1))
             sys.stdout.flush()
+
+            if unproductive >= UNPRODUCTIVE_STOP_AFTER:
+                # STOP. A loop that cannot produce work must say so, not spin.
+                # Burning a GPU for hours on a reply it already knows is
+                # degenerate is the low-information busy loop the productive-
+                # autonomy law forbids, and it is worse than idling because it
+                # looks like progress in every process listing.
+                stop = {
+                    "event": "unproductive_stop",
+                    "n": n_iter,
+                    "streak": unproductive,
+                    "terse_already_tried": forced_terse,
+                    "reply_chars": it.get("reply_chars"),
+                    "reason": (
+                        "no work accepted for "
+                        f"{unproductive} consecutive iterations; the shortened "
+                        "pack did not break the identity either"
+                    ),
+                    "wake_condition": (
+                        "a kernel change from outside this loop: a landed "
+                        "receipt, a new scar, or an operator-set frontier"
+                    ),
+                }
+                k.setdefault("stops", []).append(stop)
+                save_kernel(k)
+                _log(stop)
+                print(json.dumps(stop, indent=1))
+                sys.stdout.flush()
+                break
     finally:
         try:
             prov.stop()

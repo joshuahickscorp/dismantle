@@ -45,6 +45,12 @@ def test_pressure_label_reads_the_free_percentage():
     assert machine._pressure_label(None) == "unknown"
 
 
+# Pin the ceiling rather than inherit HCLI_SWAP_CEILING_GIB from whatever ran
+# first: these two cases are about which NUMBER admission reads, so they must not
+# also depend on ambient environment.
+CEILING = 2 * 1024**3
+
+
 def test_idle_host_with_a_grown_swapfile_admits():
     """The exact live snapshot that refused admission must now admit."""
     decision = memory_decision(
@@ -53,7 +59,8 @@ def test_idle_host_with_a_grown_swapfile_admits():
             "free_bytes": 42_600_464_384,
             "swap_used_bytes": 0,  # flat swapouts, not the 12.9 GB high-water
             "pressure": "normal",
-        }
+        },
+        swap_ceiling_bytes=CEILING,
     )
     assert decision["safe"] is True, decision["reasons"]
 
@@ -65,7 +72,8 @@ def test_a_genuinely_thrashing_host_still_refuses():
             "free_bytes": 42_600_464_384,
             "swap_used_bytes": 3 * 1024**3,
             "pressure": "normal",
-        }
+        },
+        swap_ceiling_bytes=CEILING,
     )
     assert decision["safe"] is False
     assert "swap" in decision["reasons"][0]

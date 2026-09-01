@@ -375,7 +375,7 @@ def _partition(sites: Sequence[Site]) -> tuple[list[Site], list[Site]]:
         seen.add(key)
         uniq.append(s)
     uniq.sort(key=lambda s: (s.file, s.line))
-    prod = [s for s in uniq]  # ADVERSARIAL_MUTATION_MARKER
+    prod = [s for s in uniq if not is_test_path(Path(s.file))]
     test = [s for s in uniq if is_test_path(Path(s.file))]
     return prod, test
 

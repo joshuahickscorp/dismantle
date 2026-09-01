@@ -299,16 +299,25 @@ def probe_processes() -> Dict[str, Any]:
 
 
 def probe_new_verbs() -> Dict[str, Any]:
-    """Odyssey and the ANE lab: importable and resident-callable, or not."""
+    """Odyssey and the ANE lab: REGISTERED, not merely importable.
+
+    The first version of this probe checked `__import__(mod)` and reported
+    "importable", which a verifier correctly called out: importability is a much
+    weaker property than callability, and conflating them let this receipt
+    assert "resident-callable" while its own 45-tool listing contained no
+    odyssey entry at all. A resident reaches a capability exactly one way -
+    WorkUnit.tool -> _run_tool -> ToolRegistry.invoke - so registration in the
+    registry is the property that decides, and it is what is checked here."""
     return _run([PY, "-c",
-        "import json;out={};"
-        "\nfor mod in ('hcli.odyssey','hcli.forbidden_fruit','hcli.landing','hcli.escalation'):\n"
-        "    try:\n        __import__(mod); out[mod]='importable'\n"
-        "    except Exception as exc: out[mod]=f'{type(exc).__name__}: {exc}'\n"
+        "import json;"
         "from hcli.tool_registry import default_tool_registry as d;"
-        "r=d(%r, repo_root=%r);"
-        "out['tools']=sorted(t['name'] for t in r.discover());"
-        "print(json.dumps(out))" % (str(REPO), str(REPO))
+        "names=sorted(t['name'] for t in d(%r, repo_root=%r).discover());"
+        "want={'odyssey':'odyssey.','forbidden_fruit':'forbidden_fruit.',"
+        "'landing':'git.land.','escalation':'frontier.','swarm':'grok.swarm.'};"
+        "reg={k:[n for n in names if n.startswith(v)] for k,v in want.items()};"
+        "print(json.dumps({'registered':reg,"
+        "'unregistered':[k for k,v in reg.items() if not v],"
+        "'tool_count':len(names),'tools':names}))" % (str(REPO), str(REPO))
     ], timeout=90)
 
 

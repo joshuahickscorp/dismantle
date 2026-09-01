@@ -87,7 +87,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T06:08:32Z",
+  "recorded_at": "2026-09-01T08:29:02Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1824,7 +1824,7 @@
   "note": "Identity is not invented. A missing this-wave receipt stays unbound. Bound only when RESIDENT_SANDBOX.json pins identity_sha256 and reentry_same_identity. HCLI prior gates are not this identity.",
   "path_taken": "worktree",
   "pins": {
-   "identity_sha256": "62912632605e63479f4d67855621cd0b1727b6a6d6d5fa4b9b7bfbf7eed72468",
+   "identity_sha256": "466e1394eafb65240a50835efce001a8e7373d22a81452009f2b538404e27cd6",
    "reentry_same_identity": true,
    "sandbox_id": "resident"
   },
@@ -1838,7 +1838,7 @@
   "unbound_reason": null
  },
  "schema": "hawking.future.odyssey_i_launch.v1",
- "seal_sha256": "897eed0f9c2c7ccacfb0d7c0b8ce4ddaea45545640016a8a76e507829adc8d0d",
+ "seal_sha256": "41595bf725a9876209a10d81f1f14c61810358aa05e4102d574eb0436a0973fe",
  "verdict": {
   "allowed": true,
   "met": [

@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T06:08:32Z",
+  "recorded_at": "2026-09-01T08:29:02Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1971,16 +1971,16 @@
     "would_lower": "a demonstration that the observation is consistent with the claim being false",
     "would_raise": "independent replication of the same probe"
    },
-   "direct_observation": "dir_present=True n_json=305 path=/Users/scammermike/Downloads/hawking/receipts/future flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
+   "direct_observation": "dir_present=True n_json=315 path=/Users/scammermike/Downloads/hawking/receipts/future flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
-     "n_json": 305,
+     "n_json": 315,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
    "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "receipts",
-   "interpretation": "receipts/future is present with n_json=305 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields",
+   "interpretation": "receipts/future is present with n_json=315 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -2001,7 +2001,7 @@
    },
    "probe_kind": "measured_flags",
    "probe_performed": "Path.is_dir() and glob('*.json') on receipts/future; write_receipt seals STATIC_ONLY and raises on hardware fields",
-   "reason": "receipts/future is present with n_json=305 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=315 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2752,7 +2752,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "0a844ee1a34f9be97a1c0b2a49beeaadfedb2b5b",
+ "head": "ac160c5a35ef5472a3550bf272c2879dc017c728",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -4586,7 +4586,7 @@
    "note": "Identity is not invented. A missing this-wave receipt stays unbound. Bound only when RESIDENT_SANDBOX.json pins identity_sha256 and reentry_same_identity. HCLI prior gates are not this identity.",
    "path_taken": "worktree",
    "pins": {
-    "identity_sha256": "62912632605e63479f4d67855621cd0b1727b6a6d6d5fa4b9b7bfbf7eed72468",
+    "identity_sha256": "466e1394eafb65240a50835efce001a8e7373d22a81452009f2b538404e27cd6",
     "reentry_same_identity": true,
     "sandbox_id": "resident"
    },
@@ -4967,7 +4967,7 @@
   "unmet_not_from_this_rewire": []
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "606336368e93ba76a016a8442f379388be88f8b6d7cfe0659dd8397507b9c0d5",
+ "seal_sha256": "b0d56b4530989528b794ebce7e79240093a665c4198c42b7ef4d56d5b22a326f",
  "sleeping_workunits": [
   {
    "assigned_backend": null,

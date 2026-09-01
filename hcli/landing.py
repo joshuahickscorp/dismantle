@@ -44,7 +44,24 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 # change that weakens the very check meant to constrain it.
 _ALWAYS_REFUSED_PREFIXES: Tuple[str, ...] = (
     ".git/",
+    # Every file that can WEAKEN THE CHECK, not just the file that performs it.
+    # Listing only landing.py was a real, reproduced bypass: a verifier built a
+    # scratch repo, proposed `allowed_paths=["hcli/tool_registry.py"]` with a
+    # passing test command, and it LANDED. tool_registry.py defines every tool's
+    # mutation class, the default permission set, the unconditional
+    # git.checkout-safe/git.revert-safe refusals, and the git.land.propose
+    # handler itself -- so a resident could land a brand-new unguarded tool that
+    # shells straight to `git commit`, and every later proposal would then be
+    # governed by rules the resident had just written for itself.
     "hcli/landing.py",
+    "hcli/tool_registry.py",
+    # command_is_admissible is what stops `["true"]` from passing as a test.
+    # A resident that can edit it can make tautologies admissible again and
+    # then land anything.
+    "hcli/verifier_pipeline.py",
+    # _run_tool is the only route from a WorkUnit to the permission contract.
+    # Edit it and the contract stops being consulted at all.
+    "hcli/executors.py",
 )
 
 REFUSAL_REASONS = frozenset({

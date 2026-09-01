@@ -1412,6 +1412,42 @@ def _git_land_propose(context: ToolContext, args: Dict[str, Any]) -> Dict[str, A
     )
 
 
+def _odyssey_read(name: str):
+    """Read-only Odyssey state. The driver is already running a live mission -
+    O003 sealed, O010-O013 queued - so these observe it, never restart it."""
+
+    def handler(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+        from . import odyssey
+
+        return getattr(odyssey, name)()
+
+    return handler
+
+
+def _odyssey_cycle(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    """One Odyssey cycle. Mutating and expensive, so it is gated the way every
+    other costly verb here is: an explicit confirm, refused by default."""
+    from . import odyssey
+
+    if args.get("confirm") is not True:
+        raise PermissionError("odyssey.cycle mutates Odyssey state and requires confirm=True")
+    return odyssey.cycle(confirm=True, max_lanes=args.get("max_lanes"))
+
+
+def _forbidden_fruit_lab(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Run the ANE probe lab and report OBSERVED placement.
+
+    No ANE placement has ever been demonstrated on this host; the fixture has
+    landed on CPU in every compute plan. This reports MLComputePlan.deviceUsage
+    as observed, never the requested compute units, so a CPU result reads as CPU.
+    """
+    from . import forbidden_fruit
+
+    return forbidden_fruit.run_forbidden_fruit_lab(
+        sdk=args.get("sdk"), timeout_s=args.get("timeout_s"),
+    )
+
+
 def _grok_swarm_propose(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     del context
     from .escalation import propose_swarm
@@ -1609,6 +1645,42 @@ def default_tool_registry(
             {"type": "object", "additionalProperties": False, "properties": {"path": {"type": "string"}}},
             handler=_target_receipt(name),
         ))
+    # Odyssey and the ANE lab were built as modules and never registered, so
+    # nothing a resident drives could reach them: WorkUnit.tool -> _run_tool ->
+    # ToolRegistry.invoke is the only path, and a module absent from this
+    # registry is absent from that path. A capability nothing calls does not
+    # exist, which is the law this whole wave enforces.
+    for name, description in (
+        ("odyssey.status", "Read live Odyssey state: queue, patient, compiler rules, research."),
+        ("odyssey.queue", "Read the Odyssey specimen queue."),
+        ("odyssey.value", "Read the Odyssey value/economics ranking."),
+        ("odyssey.economics", "Read Odyssey acquisition economics."),
+    ):
+        registry.register(ToolSpec(
+            name, description,
+            {"type": "object", "additionalProperties": False, "properties": {}},
+            handler=_odyssey_read(name.split(".", 1)[1]),
+        ))
+    registry.register(ToolSpec(
+        "odyssey.cycle",
+        "Advance the LIVE Odyssey by one cycle. Mutating; requires confirm=True.",
+        {"type": "object", "additionalProperties": False,
+         "required": ["confirm"],
+         "properties": {"confirm": {"type": "boolean"}, "max_lanes": {"type": "integer"}}},
+        mutation=COSTLY, deterministic=False, resources=("cpu",),
+        handler=_odyssey_cycle,
+    ))
+    registry.register(ToolSpec(
+        "forbidden_fruit.lab",
+        "Probe CPU/GPU/ANE, run the compiled fixture, report OBSERVED placement and timing.",
+        {"type": "object", "additionalProperties": False,
+         "properties": {"sdk": {"type": "string"}, "timeout_s": {"type": "number"}}},
+        mutation=REVERSIBLE_RUNTIME, deterministic=False, resources=("cpu",),
+        verifier_expectations=(
+            "placement is MLComputePlan.deviceUsage as observed, never the requested compute units",
+        ),
+        handler=_forbidden_fruit_lab,
+    ))
     registry.register(ToolSpec(
         "tests.list", "Discover deterministic test files without executing them.",
         {"type": "object", "additionalProperties": False, "properties": {"root": {"type": "string"}}},

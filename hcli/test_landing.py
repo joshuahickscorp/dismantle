@@ -363,3 +363,43 @@ def test_a_real_test_command_is_still_admitted(tmp_path):
     assert "TEST_COMMAND_INADMISSIBLE" not in str(
         result.value if result.ok else result.to_dict()
     )
+
+
+def test_every_file_that_can_weaken_the_check_is_refused(tmp_path):
+    """Not just the file that performs the check.
+
+    Listing only landing.py was a real, reproduced bypass: a proposal naming
+    hcli/tool_registry.py LANDED, and that file defines every tool's mutation
+    class, the default permission set, the git.checkout-safe/revert-safe
+    refusals, and the git.land.propose handler itself. A resident could have
+    landed a new unguarded tool shelling straight to `git commit`, after which
+    every proposal is governed by rules it wrote for itself.
+    """
+    from hcli.landing import _ALWAYS_REFUSED_PREFIXES, IntegrationVerifier
+
+    for target in (
+        "hcli/landing.py",
+        "hcli/tool_registry.py",
+        "hcli/verifier_pipeline.py",
+        "hcli/executors.py",
+    ):
+        assert target in _ALWAYS_REFUSED_PREFIXES, target
+        repo = _repo(_sub(tmp_path, target.replace("/", "_")))
+        (repo / "hcli").mkdir(exist_ok=True)
+        (repo / target).write_text("weakened\n", encoding="utf-8")
+        report = IntegrationVerifier().check(
+            _landing_proposal(repo, allowed_paths=(target,))
+        )
+        assert report.admissible is False, target
+        assert report.reason == "PATH_TOUCHES_GOVERNANCE_SOURCE", (target, report.reason)
+
+
+def _landing_proposal(repo: Path, **overrides):
+    from hcli.landing import LandingProposal
+
+    args = {
+        "repo_root": repo, "branch": "main", "allowed_paths": ("feature.txt",),
+        "test_command": tuple(PASS_CMD), "message": "m",
+    }
+    args.update(overrides)
+    return LandingProposal(**args)

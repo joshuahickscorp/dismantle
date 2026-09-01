@@ -1,14 +1,14 @@
 {
  "arms": {
   "after": {
-   "distinct_belief_updates": 21,
+   "distinct_belief_updates": 29,
    "distinct_result_summaries": 9,
-   "execute_rate": 0.7857,
+   "execute_rate": 0.8,
    "label": "run5_post_fix",
-   "n_executed": 22,
-   "n_iterations": 28,
-   "n_parsed": 22,
-   "parse_rate": 0.7857
+   "n_executed": 32,
+   "n_iterations": 40,
+   "n_parsed": 32,
+   "parse_rate": 0.8
   },
   "before": {
    "distinct_belief_updates": 12,
@@ -25,7 +25,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T03:03:05Z",
+  "recorded_at": "2026-09-01T03:16:18Z",
   "recorded_by": "tools/future/sovereign_trial.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -33,14 +33,14 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "evidence_class": "DERIVED_FROM_THE_LOOPS_OWN_LOG",
  "improvement": {
-  "executed_after": 22,
+  "executed_after": 32,
   "executed_before": 11,
-  "executed_per_iteration_after": 0.7857,
+  "executed_per_iteration_after": 0.8,
   "executed_per_iteration_before": 0.1571,
-  "parse_rate_after": 0.7857,
+  "parse_rate_after": 0.8,
   "parse_rate_before": 0.1571,
-  "parse_rate_ratio": 5.001,
-  "reading": "11 experiments in 70 turns became 22 in 28. The loop was not slow; it was repeating itself."
+  "parse_rate_ratio": 5.092,
+  "reading": "11 experiments in 70 turns became 32 in 40. The loop was not slow; it was repeating itself."
  },
  "inputs": [
   "receipts/future/_G135_SOVEREIGN_TRIAL_log.jsonl",
@@ -48,7 +48,7 @@
  ],
  "obligation": "G135",
  "question": "did the eight sovereign-loop fixes change the resident's behaviour?",
- "seal_sha256": "8775c378f916661fca74b713a25b9390c514439c5b976cabe3fbba3ed2fdbf99",
+ "seal_sha256": "70433d59705024ef9d1cc7f9da926bc841974374cb9b658e2bcedcdea51a24ca",
  "verdict": "PARSE_AND_EXECUTE_RATE_16_TO_78_PERCENT",
  "what_changed": {
   "defects_fixed_in_the_landing": [

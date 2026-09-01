@@ -9132,6 +9132,307 @@
    "salvaged_chars": 701,
    "t_s": 4681.4,
    "terse_retry_used": true,
+   "unix": 1788251945.781146,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "truncated",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 55.0,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in the 'up' tensor at L1 suggests a non-linear or spatially distributed dependency on the hidden state, but the 3.139301 BPW indicates that this is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and",
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": [],
+   "n": 65,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "narrow",
+   "reply_chars": 3092,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 701,
+   "t_s": 4736.4,
+   "terse_retry_used": true,
+   "unix": 1788252000.823481,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "truncated",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 46.6,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in the 'up' tensor at L1 suggests a non-linear or spatially distributed dependency on the hidden state, but the 3.139301 BPW indicates that this is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and",
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": [],
+   "n": 66,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "narrow",
+   "reply_chars": 3092,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 701,
+   "t_s": 4783.1,
+   "terse_retry_used": true,
+   "unix": 1788252047.465247,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "truncated",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 46.7,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in the 'up' tensor at L1 suggests a non-linear or spatially distributed dependency on the hidden state, but the 3.139301 BPW indicates that this is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and",
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": [],
+   "n": 67,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "narrow",
+   "reply_chars": 3092,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 701,
+   "t_s": 4829.8,
+   "terse_retry_used": true,
+   "unix": 1788252094.199769,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "truncated",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 46.6,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in the 'up' tensor at L1 suggests a non-linear or spatially distributed dependency on the hidden state, but the 3.139301 BPW indicates that this is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and",
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": [],
+   "n": 68,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "narrow",
+   "reply_chars": 3092,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 701,
+   "t_s": 4876.4,
+   "terse_retry_used": true,
+   "unix": 1788252140.847965,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "truncated",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 46.6,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in the 'up' tensor at L1 suggests a non-linear or spatially distributed dependency on the hidden state, but the 3.139301 BPW indicates that this is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and",
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": [],
+   "n": 69,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "narrow",
+   "reply_chars": 3092,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 701,
+   "t_s": 4923.0,
+   "terse_retry_used": true,
+   "unix": 1788252187.444063,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "truncated",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 46.4,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in the 'up' tensor at L1 suggests a non-linear or spatially distributed dependency on the hidden state, but the 3.139301 BPW indicates that this is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and",
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": [],
+   "n": 70,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "narrow",
+   "reply_chars": 3092,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 701,
+   "t_s": 4969.5,
+   "terse_retry_used": true,
+   "unix": 1788252233.857527,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "truncated",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 46.5,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in the 'up' tensor at L1 suggests a non-linear or spatially distributed dependency on the hidden state, but the 3.139301 BPW indicates that this is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and the 7 recorded scars suggest that the 0.00590 cosine shift is not a simple linear or spatial dependency, and",
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": [],
+   "n": 71,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "narrow",
+   "reply_chars": 3092,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 701,
+   "t_s": 5016.0,
+   "terse_retry_used": true,
    "unlaunched": [],
    "validation": {
     "n_accepted": 0,
@@ -9270,5 +9571,5 @@
   "up/L1/rows/0.5",
   "gate/L1/rows/0.5"
  ],
- "updated_unix": 1788251945.775866
+ "updated_unix": 1788252280.35612
 }

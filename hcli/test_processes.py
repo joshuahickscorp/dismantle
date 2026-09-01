@@ -8,7 +8,7 @@ replace.
 """
 from __future__ import annotations
 
-from hcli.processes import _body_of, _classify, render, summary
+from hcli.processes import _body_of, _classify, live_processes, render, summary
 
 RESIDENT_BODY = (
     "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/"
@@ -89,6 +89,67 @@ def test_summary_and_render_survive_a_host_with_nothing_running():
 def test_render_never_exceeds_its_width():
     text = render(width=60)
     assert all(len(line) <= 60 for line in text.splitlines()), text
+
+
+
+
+def test_memory_comes_from_footprint_not_rss():
+    """RSS is not Activity Monitor's Memory column, and here it is not close.
+
+    Measured on this host: the resident body reported rss=1.19 GB against a
+    phys_footprint of 12 GB, and two `hf download` children reported 2.93 and
+    1.73 GB against 29.84 GB each in Activity Monitor. RSS counts resident pages
+    and ignores what the compressor holds for the process; with tens of GB
+    compressed system-wide that is most of the footprint. Reporting RSS made a
+    box under real memory pressure look idle, which is the one thing this view
+    exists to prevent.
+    """
+    import os
+
+    from hcli.processes import _footprint_bytes
+
+    procs = live_processes()
+    if not procs:
+        return  # nothing running is a valid host state, not a failure
+
+    # THE ASSERTION THAT BITES. An earlier version of this test accepted either
+    # source, so reverting the fix to `measured = None` left it green while the
+    # view silently went back to under-reporting by ~10x. Where the platform CAN
+    # give a footprint, the view MUST use it; hosts without the tool still skip.
+    available = _footprint_bytes(os.getpid())
+    if available is not None:
+        assert any(p.memory_source == "phys_footprint" for p in procs), (
+            "footprint is available on this host but every process fell back to "
+            "rss, which under-reports memory by roughly ten-fold"
+        )
+    sources = {p.memory_source for p in procs}
+    assert sources <= {"phys_footprint", "rss"}, sources
+    # Every process must SAY which metric it used, so a silent fallback to the
+    # under-reporting one can be seen rather than believed.
+    for proc in procs:
+        assert proc.memory_source in ("phys_footprint", "rss")
+        assert proc.to_dict()["memory_source"] == proc.memory_source
+
+
+def test_the_fallback_is_labelled_in_the_rendered_view():
+    """An rss fallback must announce itself; a quiet one is the old bug back."""
+    from hcli.processes import Process
+
+    fell_back = [Process(
+        pid=1, ppid=0, rss_bytes=1234567, cpu_percent=0.0, elapsed="1:00",
+        role="resident-body", process_class="ESSENTIAL_PERSISTENT",
+        safe_to_stop=False, purpose="p", command="c", memory_source="rss",
+    )]
+    text = render(fell_back, width=200)
+    assert "rss fallback" in text and "under-reports" in text, text
+
+    measured = [Process(
+        pid=1, ppid=0, rss_bytes=1234567, cpu_percent=0.0, elapsed="1:00",
+        role="resident-body", process_class="ESSENTIAL_PERSISTENT",
+        safe_to_stop=False, purpose="p", command="c",
+        memory_source="phys_footprint",
+    )]
+    assert "rss fallback" not in render(measured, width=200)
 
 
 if __name__ == "__main__":

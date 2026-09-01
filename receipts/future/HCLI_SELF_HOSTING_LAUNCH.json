@@ -1,0 +1,257 @@
+{
+  "note": "Every field below is the observed result of a command run at write time. Nothing here is a declared capability. A probe that failed records how it failed rather than reporting false.",
+  "observations": {
+    "cli_launch": {
+      "help_probe": {
+        "argv": [
+          "/Users/scammermike/.venvs/hawking-aider/bin/python3",
+          "-m",
+          "hcli"
+        ],
+        "elapsed_s": 0.123,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "\u250c HCLI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 hawking  qwen3.8 ?B unknown  1 runtime(s)                                    \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 (no activity yet)                                                            \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 idle                                                                         \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n> \n[hcli] exiting\n"
+      },
+      "interactive_exit": {
+        "argv": [
+          "/Users/scammermike/.venvs/hawking-aider/bin/python3",
+          "-c",
+          "import subprocess,sys,os;e=dict(os.environ); e['PYTHONPATH']='/Users/scammermike/Downloads/hawking';p=subprocess.run(['/Users/scammermike/.venvs/hawking-aider/bin/python3','-m','hcli'],input='/exit\\n',capture_output=True,text=True,timeout=80,env=e,cwd='/Users/scammermike/Downloads/hawking');print('EXIT',p.returncode);print(p.stdout[-1200:])"
+        ],
+        "elapsed_s": 0.123,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "EXIT 0\n\u250c HCLI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 hawking  qwen3.8 ?B unknown  1 runtime(s)                                    \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 (no activity yet)                                                            \u2502\n\u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n\u2502 idle                                                                         \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n> \n"
+      }
+    },
+    "git_identity": {
+      "branch": {
+        "argv": [
+          "git",
+          "rev-parse",
+          "--abbrev-ref",
+          "HEAD"
+        ],
+        "elapsed_s": 0.017,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "odyssey-i\n"
+      },
+      "dirty_paths": {
+        "argv": [
+          "git",
+          "status",
+          "--porcelain"
+        ],
+        "elapsed_s": 0.2,
+        "exit": 0,
+        "stderr": "",
+        "stdout": " M receipts/future/DIRTY_MEASUREMENT.json\n M receipts/future/DOCTOR_SEAL_DRIVEN.json\n M receipts/future/EVIDENCE_DAG.json\n M receipts/future/EVIDENCE_SNAPSHOT.json\n M receipts/future/EXPERIMENT_TURNAROUND.json\n M receipts/future/FLASH_NX_COMPLETENESS_AUDIT.json\n M receipts/future/HCLI_AUTONOMY_BUILD.json\n M receipts/future/HCLI_COMPACTOR.json\n M receipts/future/HCLI_FUTURE_WORKUNITS.json\n M receipts/future/INTEGRATION_GATE.json\n M receipts/future/MODELLAKE_EVENTS.json\n M receipts/future/MODEL_BEARING_TIMELINE.json\n M receipts/future/MODEL_BEARING_TORTURE_30M.json\n M receipts/future/ODYSSEY2_LAW_STORE.json\n M receipts/future/ODYSSEY_I_LAUNCH.json\n M receipts/future/ODYSSEY_LAUNCH_GATE.json\n M receipts/future/ODYSSEY_LAUNCH_SPRINT_PROFILE.json\n M receipts/future/ODYSSEY_TOOL_DRIVER.json\n M receipts/future/ORCHESTRATION_BINDINGS.json\n M receipts/future/P6_PRIMITIVE_PROJECTION.json\n M receipts/future/PHASE_LISTENERS.json\n M receipts/future/PHYSICAL_PRIMITIVES.json\n M receipts/future/POWER_TORTURE_30M.json\n M receipts/future/POWER_TORTURE_TIMELINE.json\n M receipts/future/PROTECTED_SCHEDULER.json\n M receipts/future/PROTECTED_WINDOW_PLAN.json\n M receipts/future/QUALIFICATION_PIPELINE.json\n M receipts/future/QWEN27_ACCELERATOR_PROFILE_SCHEMA.json\n M receipts/future/RECEIPT_WAKEUP.json\n M receipts/future/REPRESENTATION_DECODE_FUSION.json\n M receipts/future/REPRO_SCIENCE.json\n M receipts/future/RESIDENT_71TPS_BUDGET_STATIC.json\n M receipts/future/RESIDENT_API_AUDIT.json\n M receipts/future/RESIDENT_CODE_TOOLS.json\n M receipts/future/RESIDENT_HEALTH.json\n M receipts/future/RESIDENT_IDENTITY.json\n M receipts/future/RESIDENT_INSTALL_CONTRACT.json\n M receipts/future/RESIDENT_OPTIMIZER.json\n M receipts/future/RESIDENT_OUTPUT_CONTRACT.json\n M receipts/future/RESIDENT_PROVIDER.json\n M receipts/future/RESIDENT_SANDBOX.json\n M receipts/future/RESIDENT_SUPERVISOR.json\n M receipts/future/RESTART_SUPERVISOR.json\n M receipts/future/RIVAL_CODEC_SCREEN.json\n M receipts/future/ROOF_ANCHOR.json\n M receipts/future/ROUTER_SENSITIVE_ALLOCATION.json\n M receipts/future/SCAR_REEVALUATOR.json\n M receipts/future/SCAR_SCHEDULING.json\n M receipts/future/SLEEPING_SPECIMENS.json\n M receipts/future/SOVEREIGN_ATTACKS.json\n M receipts/future/SPECIMEN_CURRICULUM.json\n M receipts/future/SPECIMEN_EVENTS.json\n M receipts/future/STATIC_KERNEL_PREFLIGHT.json\n M receipts/future/STATIC_SKELETON.json\n M receipts/future/STATUS_CAUSALITY_CHALLENGE.json\n M receipts/future/STATUS_CAUSALITY_COVERAGE.json\n M receipts/future/SUCCESSION.json\n M receipts/future/SUCCESSION_TRIAL.json\n M receipts/future/SUPER_RESIDENT_FLOOR.json\n M receipts/future/TABULA_FLOOR.json\n M receipts/future/TEACHER_CORPUS_CONTRACT.json\n M receipts/future/TEACHER_CORPUS_EXPANSION.json\n M receipts/future/TOURNAMENT_READINESS.json\n M receipts/future/TPS_GAP.json\n M receipts/future/TRIAL_WORKLOAD.json\n M receipts/future/WORKGRAPH_STATE.json\n M receipts/future/WORK_EVENT_CONTRACT.json\n M receipts/future/workgraph_workspace/workgraph.json\n?? receipts/future/G015_HARVEST.json\n?? receipts/future/HCLI_SELF_HOSTING_LAUNCH.json\n?? receipts/future/RESIDENT_TPS_RECON.json\n"
+      },
+      "head": {
+        "argv": [
+          "git",
+          "rev-parse",
+          "HEAD"
+        ],
+        "elapsed_s": 0.016,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "58156d43516afa7d08a97b67dcd4252aab7f70f5\n"
+      }
+    },
+    "memory_admission": {
+      "argv": [
+        "/Users/scammermike/.venvs/hawking-aider/bin/python3",
+        "-c",
+        "import json,time;from hcli.machine import host_snapshot;from hcli.agentos.resident import memory_decision;host_snapshot();time.sleep(2);s=host_snapshot();d=memory_decision(s);print(json.dumps({'pressure':s['pressure'],'free_bytes':s['free_bytes'],'swap_used_bytes':s['swap_used_bytes'],'swap_highwater_bytes':s.get('swap_highwater_bytes'),'safe':d['safe'],'reasons':d['reasons']}))"
+      ],
+      "elapsed_s": 2.157,
+      "exit": 0,
+      "stderr": "",
+      "stdout": "{\"pressure\": \"normal\", \"free_bytes\": 24759058432, \"swap_used_bytes\": 0, \"swap_highwater_bytes\": 7093679554, \"safe\": true, \"reasons\": []}\n"
+    },
+    "modellake": {
+      "download_processes": {
+        "argv": [
+          "/bin/sh",
+          "-c",
+          "pgrep -f 'hf download' | wc -l"
+        ],
+        "elapsed_s": 0.026,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "       2\n"
+      },
+      "watcher_processes": {
+        "argv": [
+          "pgrep",
+          "-fl",
+          "modellake_watch"
+        ],
+        "elapsed_s": 0.02,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "82743 /Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermike/Downloads/hawking/tools/odyssey/modellake_watch.py --poll-secs 0.10\n"
+      }
+    },
+    "neutral_cwd_discovery": {
+      "shim": "/Users/scammermike/.local/bin/hcli",
+      "status_from_neutral_cwd": {
+        "argv": [
+          "/Users/scammermike/.local/bin/hcli",
+          "agentos",
+          "status"
+        ],
+        "elapsed_s": 0.146,
+        "exit": 0,
+        "stderr": "[hcli] STALE: running the 20260901-060654 snapshot of /Users/scammermike/Downloads/hawking/hcli, which has changed since. Fix: cd /Users/scammermike/Downloads/hawking && PYTHONPATH=. /Users/scammermike/.venvs/hawking-aider/bin/python3 -m hcli install-shims\n",
+        "stdout": "_s\": 30.0,\n      \"verifier_expectations\": [\n        \"verified is true only for exit code zero\"\n      ]\n    },\n    {\n      \"description\": \"Read the latest VMCP capability census.\",\n      \"deterministic\": true,\n      \"input_schema\": {\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"path\": {\n            \"type\": \"string\"\n          }\n        },\n        \"type\": \"object\"\n      },\n      \"mutation\": \"read_only\",\n      \"name\": \"vmcp.capabilities\",\n      \"output_schema\": {\n        \"type\": \"object\"\n      },\n      \"provenance\": \"hcli.tool_registry\",\n      \"resources\": [],\n      \"roles\": [],\n      \"schema\": \"hcli.agentos.tool.v1\",\n      \"timeout_s\": 30.0,\n      \"verifier_expectations\": []\n    },\n    {\n      \"description\": \"Inspect the discovered VisionMCP public API and profile/tool surface without starting a worker.\",\n      \"deterministic\": true,\n      \"input_schema\": {\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"profile\": {\n            \"type\": \"string\"\n          }\n        },\n        \"type\": \"object\"\n      },\n      \"mutation\": \"read_only\",\n      \"name\": \"vmcp.inspect\",\n      \"output_schema\": {\n        \"type\": \"object\"\n      },\n      \"provenance\": \"hcli.tool_registry\",\n      \"resources\": [\n        \"filesystem\"\n      ],\n      \"roles\": [],\n      \"schema\": \"hcli.agentos.tool.v1\",\n      \"timeout_s\": 30.0,\n      \"verifier_expectations\": []\n    },\n    {\n      \"description\": \"Call one allowlisted read/evidence tool on the discovered VisionMCP core surface.\",\n      \"deterministic\": false,\n      \"input_schema\": {\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"arguments\": {\n            \"type\": \"object\"\n          },\n          \"profile\": {\n            \"type\": \"string\"\n          },\n          \"tool\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"tool\"\n        ],\n        \"type\": \"object\"\n      },\n      \"mutation\": \"read_only\",\n      \"name\": \"vmcp.query\",\n      \"output_schema\": {\n        \"type\": \"object\"\n      },\n      \"provenance\": \"hcli.tool_registry\",\n      \"resources\": [\n        \"filesystem\"\n      ],\n      \"roles\": [],\n      \"schema\": \"hcli.agentos.tool.v1\",\n      \"timeout_s\": 30.0,\n      \"verifier_expectations\": []\n    },\n    {\n      \"description\": \"Fetch bounded public HTTPS evidence with no credentials.\",\n      \"deterministic\": false,\n      \"input_schema\": {\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"max_bytes\": {\n            \"type\": \"integer\"\n          },\n          \"timeout_s\": {\n            \"type\": \"number\"\n          },\n          \"url\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\n          \"url\"\n        ],\n        \"type\": \"object\"\n      },\n      \"mutation\": \"research\",\n      \"name\": \"web.fetch\",\n      \"output_schema\": {\n        \"type\": \"object\"\n      },\n      \"provenance\": \"hcli.tool_registry\",\n      \"resources\": [],\n      \"roles\": [],\n      \"schema\": \"hcli.agentos.tool.v1\",\n      \"timeout_s\": 30.0,\n      \"verifier_expectations\": []\n    },\n    {\n      \"description\": \"Search the public web through a bounded, credential-free provider.\",\n      \"deterministic\": false,\n      \"input_schema\": {\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"max_results\": {\n            \"type\": \"integer\"\n          },\n          \"query\": {\n            \"type\": \"string\"\n          },\n          \"timeout_s\": {\n            \"type\": \"number\"\n          }\n        },\n        \"required\": [\n          \"query\"\n        ],\n        \"type\": \"object\"\n      },\n      \"mutation\": \"research\",\n      \"name\": \"web.search\",\n      \"output_schema\": {\n        \"type\": \"object\"\n      },\n      \"provenance\": \"hcli.tool_registry\",\n      \"resources\": [\n        \"network\"\n      ],\n      \"roles\": [],\n      \"schema\": \"hcli.agentos.tool.v1\",\n      \"timeout_s\": 30.0,\n      \"verifier_expectations\": [\n        \"source URL and retrieval timestamp are required\"\n      ]\n    }\n  ],\n  \"workspace\": \"/private/tmp\"\n}\n"
+      }
+    },
+    "paste_cache": {
+      "argv": [
+        "/Users/scammermike/.venvs/hawking-aider/bin/python3",
+        "-c",
+        "import json,tempfile,hashlib;from hcli.paste_cache import PasteCache;d=tempfile.mkdtemp();c=PasteCache(d);blob=('x'*79+chr(10))*2600;r=c.store(blob);back=c.get(r.id);print(json.dumps({'size':r.size,'lines':r.lines,'kind':r.kind,'byte_identical':back==blob,'context_ref':r.context_ref(),'context_ref_len':len(r.context_ref()),'listed':len(c.list())}))"
+      ],
+      "elapsed_s": 0.049,
+      "exit": 0,
+      "stderr": "",
+      "stdout": "{\"size\": 208000, \"lines\": 2600, \"kind\": \"text\", \"byte_identical\": true, \"context_ref\": \"[PASTE paste_20260901_031711_89595fe5 203KB 2600 lines text | xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\u2026]\", \"context_ref_len\": 118, \"listed\": 1}\n"
+    },
+    "resident": {
+      "status": {
+        "argv": [
+          "/Users/scammermike/.venvs/hawking-aider/bin/python3",
+          "-m",
+          "hcli",
+          "agentos",
+          "resident",
+          "status"
+        ],
+        "elapsed_s": 0.101,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "{\n  \"body\": {\n    \"body_id\": \"body-108e1119-7c17-4a11-ac61-d1204c4fbab6\",\n    \"load_started_at\": 1788243943.1588,\n    \"loaded\": false,\n    \"model\": null,\n    \"runtime_count\": 1,\n    \"schema\": \"hcli.agentos.resident_body.v1\",\n    \"status\": \"CONFIGURED\",\n    \"unload_reason\": \"supervisor_stopped\",\n    \"unloaded_at\": 1788243983.090636,\n    \"updated_at\": 1788244023.637303,\n    \"worker_pid\": null\n  },\n  \"children\": [],\n  \"clean_room_reason\": null,\n  \"clean_room_requested\": false,\n  \"config\": {\n    \"auto_restart\": true,\n    \"evacuation_grace_s\": 10.0,\n    \"exit_when_orphaned\": true,\n    \"goal\": \"launch smoke: prove admission passes and the supervisor reaches a real state\",\n    \"interval_s\": 30.0,\n    \"max_restarts\": 3,\n    \"model\": null,\n    \"repo_root\": null,\n    \"reserve_bytes\": null,\n    \"runtime_count\": 1,\n    \"swap_ceiling_bytes\": null,\n    \"workspace\": \"/Users/scammermike/Downloads/hawking\"\n  },\n  \"cycles\": 0,\n  \"failure_streak\": 0,\n  \"generation\": 2,\n  \"inbox_count\": 0,\n  \"knowledge_path\": \"/Users/scammermike/Downloads/hawking/.hcli/resident/knowledge.json\",\n  \"last_event\": \"probe_cleanup_after_measurement\",\n  \"logical_session\": null,\n  \"mission_id\": \"fbce992e-cfaf-4b27-b87e-7f117da643c3\",\n  \"resident_id\": \"resident-74d3a4d8-2326-4b44-b467-f73ad1717a77\",\n  \"restart_count\": 0,\n  \"schema\": \"hcli.agentos.resident_daemon.v1\",\n  \"state\": \"STOPPED\",\n  \"state_path\": \"/Users/scammermike/Downloads/hawking/.hcli/resident/state.json\",\n  \"stop_reason\": null,\n  \"stop_requested\": false,\n  \"supervisor_launch_ppid\": 1,\n  \"supervisor_live\": false,\n  \"supervisor_pid\": null,\n  \"supervisor_start_token\": \"1788244023.637926\",\n  \"updated_at\": 1788244061.050314,\n  \"worker_live\": false,\n  \"worker_pid\": null,\n  \"worker_start_token\": null,\n  \"workspace\": \"/Users/scammermike/Downloads/hawking\"\n}\n"
+      }
+    },
+    "roadmap": {
+      "active_era": "I",
+      "active_odyssey": {
+        "id": "I-E_ODYSSEY_I",
+        "status": "ADVERSARIALLY_VERIFIED"
+      },
+      "next_work_gates": [
+        "Qwen3.8-Flash-Next complete exact layer -> first complete native token",
+        "CLAUDE_HCLI_DELEGATION (G064)",
+        "G023 Noetic compiler pipeline -- the one BLOCKED obligation in Era I",
+        "real weights execute (G048)",
+        "C2M T3 -- project-level runtime/compiler coverage over real CUDA sources"
+      ],
+      "obligation_status_counts": {
+        "BLOCKED": 1,
+        "IN_PROGRESS": 20,
+        "NOT_STARTED": 2,
+        "OPEN": 3,
+        "PENDING": 5,
+        "VERIFIED": 52
+      },
+      "obligations_total": 83
+    },
+    "test_suite": {
+      "elapsed_s": 163.4,
+      "exit": 0,
+      "summary": "979 passed, 3 skipped in 163.03s (0:02:43)"
+    },
+    "typed_tools": {
+      "count": 44,
+      "names": [
+        "accelerator.benchmark",
+        "accelerator.inspect",
+        "architecture.inspect",
+        "benchmark.inspect",
+        "benchmark.run",
+        "doctor.inspect",
+        "doctor.query",
+        "filesystem.read",
+        "filesystem.search",
+        "filesystem.write",
+        "frontier.escalate",
+        "fs.read",
+        "fs.search",
+        "git.checkout-safe",
+        "git.checkout/revert-safe",
+        "git.diff",
+        "git.log",
+        "git.revert-safe",
+        "git.status",
+        "github.fetch",
+        "github.search",
+        "gravity.experiment",
+        "gravity.inspect",
+        "grok.swarm.launch",
+        "grok.swarm.propose",
+        "huggingface.download",
+        "huggingface.fetch_file",
+        "huggingface.history",
+        "huggingface.manifest",
+        "huggingface.resolve",
+        "modellake.status",
+        "receipt.inspect",
+        "receipt.read",
+        "roadmap.inspect",
+        "roadmap.read",
+        "shell.exec",
+        "shell.readonly",
+        "tests.list",
+        "tests.run",
+        "vmcp.capabilities",
+        "vmcp.inspect",
+        "vmcp.query",
+        "web.fetch",
+        "web.search"
+      ],
+      "probe": {
+        "argv": [
+          "/Users/scammermike/.venvs/hawking-aider/bin/python3",
+          "-c",
+          "import json;from hcli.tool_registry import default_tool_registry;r=default_tool_registry('/Users/scammermike/Downloads/hawking', repo_root='/Users/scammermike/Downloads/hawking');print(json.dumps(sorted(str(t.get('name')) for t in r.discover())))"
+        ],
+        "elapsed_s": 0.056,
+        "exit": 0,
+        "stderr": "",
+        "stdout": "[\"accelerator.benchmark\", \"accelerator.inspect\", \"architecture.inspect\", \"benchmark.inspect\", \"benchmark.run\", \"doctor.inspect\", \"doctor.query\", \"filesystem.read\", \"filesystem.search\", \"filesystem.write\", \"frontier.escalate\", \"fs.read\", \"fs.search\", \"git.checkout-safe\", \"git.checkout/revert-safe\", \"git.diff\", \"git.log\", \"git.revert-safe\", \"git.status\", \"github.fetch\", \"github.search\", \"gravity.experiment\", \"gravity.inspect\", \"grok.swarm.launch\", \"grok.swarm.propose\", \"huggingface.download\", \"huggingface.fetch_file\", \"huggingface.history\", \"huggingface.manifest\", \"huggingface.resolve\", \"modellake.status\", \"receipt.inspect\", \"receipt.read\", \"roadmap.inspect\", \"roadmap.read\", \"shell.exec\", \"shell.readonly\", \"tests.list\", \"tests.run\", \"vmcp.capabilities\", \"vmcp.inspect\", \"vmcp.query\", \"web.fetch\", \"web.search\"]\n"
+      },
+      "reachable_from_workunit": {
+        "any_call_site": true,
+        "per_file": {
+          "hcli/agentos/resident.py": {
+            "ToolRegistry": 0,
+            "invoke_calls": 0
+          },
+          "hcli/engine.py": {
+            "ToolRegistry": 0,
+            "invoke_calls": 0
+          },
+          "hcli/executors.py": {
+            "ToolRegistry": 2,
+            "invoke_calls": 1
+          },
+          "hcli/mission.py": {
+            "ToolRegistry": 0,
+            "invoke_calls": 0
+          }
+        }
+      }
+    }
+  },
+  "probes_errored": [],
+  "probes_run": 10,
+  "python": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
+  "recorded_at": "2026-09-01T07:17:13+00:00",
+  "recorded_by": "tools/future/hcli_self_hosting_launch.py",
+  "repo": "/Users/scammermike/Downloads/hawking",
+  "schema": "hawking.hcli.self_hosting_launch.v1"
+}

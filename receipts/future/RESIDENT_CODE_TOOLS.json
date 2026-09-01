@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:41:45Z",
+  "recorded_at": "2026-09-01T06:10:41Z",
   "recorded_by": "tools/future/resident_code_tools.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -12,7 +12,7 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement. The hermetic proof is a real git worktree of a fixture repo, not of live Hawking and not a mock of git.",
  "does_not_choose_science": true,
  "gpu_authority": false,
- "head": "b087a0606c9a5f45b0468f91c017aed36a53931c",
+ "head": "0a844ee1a34f9be97a1c0b2a49beeaadfedb2b5b",
  "hermetic_proof": {
   "create": {
    "not_sibling": true,
@@ -110,7 +110,7 @@
   "ROLLBACK RAISE rather than git worktree remove a dirty tree"
  ],
  "schema": "hawking.future.resident_code_tools.v1",
- "seal_sha256": "ed9e6fe0bd10f40e1d5188bfdce4d31698375b2b4fcfad05975649be3a2fbd8d",
+ "seal_sha256": "412971278fc982219fbc517aa59c5a8121fd6c5bd6d8ed23cc21d7b54fa5fcb9",
  "uniform_result": "every operation returns {ok, op, status, error, ...}; a failed build or test is a result, not an exception",
  "version": 1,
  "wraps": {

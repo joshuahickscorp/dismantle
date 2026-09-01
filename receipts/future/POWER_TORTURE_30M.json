@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:40:27Z",
+  "recorded_at": "2026-09-01T06:09:08Z",
   "recorded_by": "tools/future/power_torture.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -280,7 +280,7 @@
   "verdict": "PASS"
  },
  "duration_s_budget": 1800,
- "elapsed_s": 4.1230669021606445,
+ "elapsed_s": 4.1986870765686035,
  "evidence_class": "STATIC_ONLY",
  "exercised": [
   "NO_WAIT",
@@ -314,12 +314,12 @@
  "integration_ok": true,
  "judge": {
   "append_only": true,
-  "claimed_sha256": "3ac02f383b8220c7dce645a8e0717b8c8bc255c6f5f88832e5e02b0dcdfdcd4d",
+  "claimed_sha256": "4e9a74088568d9a3a63777ef97f9f67004ebf976a1a2d94e91a123c19c8d34ad",
   "correct_refusal_counts_as_exercised": true,
   "correct_refusals": [
    "CONCURRENCY"
   ],
-  "events_sha256": "3ac02f383b8220c7dce645a8e0717b8c8bc255c6f5f88832e5e02b0dcdfdcd4d",
+  "events_sha256": "4e9a74088568d9a3a63777ef97f9f67004ebf976a1a2d94e91a123c19c8d34ad",
   "evidence_class": "STATIC_ONLY",
   "exercised": [
    "NO_WAIT",
@@ -399,7 +399,7 @@
     "power": "NO_WAIT",
     "seq": 5,
     "status": "EXERCISED",
-    "why": "detached pid 75519 stayed open while WU.TORTURE.NO_WAIT.ind started, progressed and ingested; idle_runnable was not a wait"
+    "why": "detached pid 18250 stayed open while WU.TORTURE.NO_WAIT.ind started, progressed and ingested; idle_runnable was not a wait"
    },
    "PROTECTED_PARKING": {
     "correct_refusal": false,
@@ -609,18 +609,18 @@
    "counts_toward_pass": true,
    "evidence": {
     "detector_verdict": "NO_WAIT_OK",
-    "fast_finished_at": 1788241224.536639,
+    "fast_finished_at": 1788242945.523886,
     "fast_ingest": "ingested",
-    "pid": 75519,
+    "pid": 18250,
     "runnable_while_open": "RUNNABLE",
-    "slow_launched_at": 1788241224.204287
+    "slow_launched_at": 1788242945.1812632
    },
    "exercised": true,
    "failed": false,
    "power": "NO_WAIT",
    "skipped": false,
    "status": "EXERCISED",
-   "why": "detached pid 75519 stayed open while WU.TORTURE.NO_WAIT.ind started, progressed and ingested; idle_runnable was not a wait"
+   "why": "detached pid 18250 stayed open while WU.TORTURE.NO_WAIT.ind started, progressed and ingested; idle_runnable was not a wait"
   },
   "PROTECTED_PARKING": {
    "correct_refusal": false,
@@ -658,7 +658,7 @@
     "cites": [
      "receipts/future/STATUS_CAUSALITY_CHALLENGE.json",
      "receipts/future/DETACHED_WORK_TRIAL.json",
-     "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-2223/power_torture_run0/nowait/results/fast.json"
+     "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-2217/power_torture_run0/nowait/results/fast.json"
     ]
    },
    "exercised": true,
@@ -767,7 +767,7 @@
  "purpose": "30-minute power torture on a frozen build. Judged independently from the sealed timeline against a substrate verified unchanged.",
  "resident_model_attached": false,
  "schema": "hawking.future.power_torture.v2",
- "seal_sha256": "a752ed93921ab04debdc5ef352b671706c1e7ca9d4a5f5018e2d1c776902d13f",
+ "seal_sha256": "00632bb9865ded9762971203c541038f87ee02cfea9272bef64214cc41d645c1",
  "skipped": [],
  "skipped_do_not_count_toward_pass": true,
  "substrate": {
@@ -1193,8 +1193,8 @@
  },
  "timeline": {
   "append_only": true,
-  "elapsed_s": 4.122555,
-  "events_sha256": "3ac02f383b8220c7dce645a8e0717b8c8bc255c6f5f88832e5e02b0dcdfdcd4d",
+  "elapsed_s": 4.198165,
+  "events_sha256": "4e9a74088568d9a3a63777ef97f9f67004ebf976a1a2d94e91a123c19c8d34ad",
   "n_events": 27,
   "path": "receipts/future/POWER_TORTURE_TIMELINE.json",
   "receipt": "receipts/future/POWER_TORTURE_TIMELINE.json",

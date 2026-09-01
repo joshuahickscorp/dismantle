@@ -4,7 +4,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:57:46Z",
+  "recorded_at": "2026-09-01T06:27:04Z",
   "recorded_by": "tools/future/sprint_profile.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -290,7 +290,7 @@
   "workunit": "one CPU_ANALYSIS unit; recover 1h timeline history, invoke autonomy_trial.verify, subtract invalidated timestamps, cite scars"
  },
  "schema": "hawking.future.sprint_profile.v1",
- "seal_sha256": "0961cf2e115fc751219f1bced5c258135e9da8c047e85918c05657ccdda60518",
+ "seal_sha256": "a14517bdd376909bc511d10f737fd7d1bc8a89ee4e71847e74716b7a5f9c76c8",
  "sprint": {
   "elapsed_derivation": "unknown",
   "elapsed_s": null,

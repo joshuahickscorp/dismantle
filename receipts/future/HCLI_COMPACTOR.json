@@ -6,7 +6,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T06:53:10Z",
+  "recorded_at": "2026-09-01T07:12:39Z",
   "recorded_by": "tools/future/hcli_compactor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2051,6 +2051,6 @@
  },
  "question": "Can mission state be compacted without the resident losing what it knows?",
  "schema": "hawking.future.hcli_compactor.v1",
- "seal_sha256": "0684ccce2447057658860904af393d9346feb28eb0213c218973f25b5a481f40",
+ "seal_sha256": "0661f49eba6412a6f53e10fad41875f690dabf7131737f1abe773c68b23777a8",
  "what_this_module_does_not_do": "choose the next hypothesis, representation, or experiment. The resident owns those. Compaction copies load-bearing state and discards repeated prose, obsolete deliberation, and degenerate tails."
 }

@@ -184,7 +184,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:56:47Z",
+  "recorded_at": "2026-09-01T06:26:02Z",
   "recorded_by": "tools/future/sovereign_attack_report.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -225,7 +225,7 @@
  "obligation": "K1",
  "question": "Is the sovereign loop actually autonomous, or does it only look autonomous?",
  "schema": "hawking.future.sovereign_attacks.v1",
- "seal_sha256": "4b90d2bc452e8994ca7e3fe18c4312cd801f27e914ad076efdcf91fb9d64f731",
+ "seal_sha256": "bfb0e4942374079a997f64c466e5056e68c46bbdf585ca9b9e6db52cb0c4e2d0",
  "target_module_imported": "/Users/scammermike/Downloads/hawking/tools/future/hcli_sovereign.py",
  "target_module_rel": "tools/future/hcli_sovereign.py",
  "version": 1,

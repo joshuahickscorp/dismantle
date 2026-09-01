@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:41:53Z",
+  "recorded_at": "2026-09-01T06:10:48Z",
   "recorded_by": "tools/future/resident_identity.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -3751,7 +3751,7 @@
   }
  },
  "schema": "hawking.future.resident_identity.v1",
- "seal_sha256": "d2c298266db7af22d6d920a81d48563f52f90fd6b21e9a544726191d317ed0e2",
+ "seal_sha256": "980f4e918e87ad093d1ec85da46de65fad559c9ece8aa6b3cace22e553f619a0",
  "status": "ACCEPTED",
  "version": 1,
  "work_unit": {

@@ -393,3 +393,48 @@ def test_result_keys_are_frozen():
     b = _admit(VALID)
     c = _admit("{")
     assert tuple(a) == tuple(b) == tuple(c) == roc.RESULT_KEYS
+
+
+# --- G115: one doubled quote discarded a complete option tree -----------------
+
+def _S():
+    return {"id": "t.v1", "type": "object", "required": ["a"],
+            "additionalProperties": False,
+            "properties": {"a": {"type": "string", "nonempty": True}}}
+
+
+def test_a_doubled_key_quote_is_repaired():
+    """The resident produced a complete four-route tree and `""evidence_status":`
+    made all 1662 characters unparseable."""
+    r = roc.admit('{"a": "x", ""b": "y"}', _S())
+    assert r["parse"]["recovered"] is True
+    assert r["value"]["a"] == "x"
+
+
+def test_the_repair_does_not_touch_json_that_already_parses():
+    for good in ('{"a": "x"}', '{"a": ""}', '{"a": "he said \\"hi\\""}'):
+        r = roc.admit(good, _S())
+        assert r["parse"]["kind"] != "repaired_doubled_quote", good
+
+
+def test_an_empty_string_VALUE_is_never_mistaken_for_a_stray_quote():
+    """`{"a": ""}` is valid and means empty. The pattern requires the doubled
+    quote to be followed by a key and a colon, so it cannot match here."""
+    assert not roc._DOUBLED_KEY_QUOTE.search('{"a": ""}')
+    assert not roc._DOUBLED_KEY_QUOTE.search('{"a": "", "b": 1}')
+    assert roc._DOUBLED_KEY_QUOTE.search('{"a": 1, ""b": 2}')
+
+
+def test_the_repair_is_last_resort_not_first_choice():
+    """It runs only after strict parse, raw_decode and truncation salvage have
+    all failed, so it can never pre-empt a correct reading."""
+    import inspect
+    src = inspect.getsource(roc._loads_value)
+    assert src.index("_close_truncated") < src.index("_repair_doubled_key_quote")
+    assert src.index("json.loads") < src.index("_repair_doubled_key_quote")
+
+
+def test_an_unrepairable_reply_still_returns_the_uniform_shape():
+    r = roc.admit('{"a": ""b": nonsense nonsense', _S())
+    assert set(r) == set(roc.admit("{}", _S()))
+    assert r["ok"] is False

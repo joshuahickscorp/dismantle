@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 import random
 import sys
 from pathlib import Path
@@ -385,6 +386,31 @@ def _kind_of(value: Any) -> str:
     return "json_scalar"
 
 
+# ONE character. The resident produced a complete, correct four-route option
+# tree for EXAM A and a single doubled quote before a key - `""evidence_status":`
+# - made the whole 1662-character reply unparseable, so every route was
+# discarded. This repair is deliberately narrow: a doubled quote IMMEDIATELY
+# before a key that is followed by a colon cannot be valid JSON under any
+# reading, so collapsing it cannot change the meaning of a document that would
+# otherwise have parsed. It is applied only AFTER strict parse, raw_decode and
+# truncation salvage have all failed.
+_DOUBLED_KEY_QUOTE = re.compile(r'(?<=[,{\s])""(?=[A-Za-z_][^"]*"\s*:)')
+
+
+def _repair_doubled_key_quote(blob: str) -> Any | None:
+    fixed, n = _DOUBLED_KEY_QUOTE.subn('"', blob)
+    if not n:
+        return None
+    try:
+        return json.loads(fixed)
+    except (json.JSONDecodeError, RecursionError, ValueError, MemoryError):
+        try:
+            value, _end = json.JSONDecoder().raw_decode(fixed)
+        except Exception:
+            return None
+        return value
+
+
 def _loads_value(blob: str) -> tuple[Any, str, bool] | None:
     try:
         value = json.loads(blob)
@@ -407,6 +433,9 @@ def _loads_value(blob: str) -> tuple[Any, str, bool] | None:
     salvaged = _close_truncated(blob)
     if salvaged is not None:
         return salvaged, "truncated", True
+    repaired = _repair_doubled_key_quote(blob)
+    if repaired is not None:
+        return repaired, "repaired_doubled_quote", True
     try:
         value = ast.literal_eval(blob)
     except (SyntaxError, ValueError, MemoryError, RecursionError, TypeError):

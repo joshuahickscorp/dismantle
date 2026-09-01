@@ -179,6 +179,7 @@ class Mission:
         before_dispatch: Optional[Callable[["Mission"], None]] = None,
         providers: Optional[Dict[str, Any]] = None,
         stop_runtime_pool: bool = True,
+        tool_registry: Any = None,
     ) -> None:
         self.workspace = _as_workspace(workspace)
         self.engine = engine
@@ -194,6 +195,10 @@ class Mission:
         self.install_signals = bool(install_signals)
         self.before_dispatch = before_dispatch
         self.providers = dict(providers or {})
+        # Kept so _run_unit can hand the executor AgentOS's own registry
+        # and repo root instead of the executor building its own.
+        self.tool_registry = tool_registry
+        self.repo_root = Path(repo_root) if repo_root else None
         # A Mission may be given a pool it owns, or a pool owned by the
         # long-lived Controller/AgentOS facade.  The latter must survive a
         # completed mission so the next durable mission can use the same
@@ -830,6 +835,12 @@ class Mission:
                 self.workspace,
                 engine=self.engine,
                 providers=self.providers,
+                # AgentOS already owns a registry with the mission's permission
+                # set and its tool-receipt path. Hand that one down rather than
+                # letting the executor mint a second: two registries can differ
+                # on what is permitted, and only AgentOS's persists receipts.
+                tool_registry=self.tool_registry,
+                repo_root=self.repo_root,
             )
             provider_instance = self.providers.get(backend)
             if provider_instance is not None:

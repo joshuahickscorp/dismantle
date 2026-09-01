@@ -111,6 +111,34 @@ def test_tool_backend_without_a_named_tool_keeps_the_old_command_path(tmp_path):
     assert "tool_result" not in result
 
 
+
+
+def test_mission_hands_down_agentos_registry_rather_than_minting_one():
+    """One registry, not two.
+
+    AgentOS already owns a registry carrying the mission's permission set and
+    the path tool receipts are persisted to. If Mission let the executor build
+    its own, the two could disagree about what is permitted and only one of
+    them would write receipts.
+    """
+    from hcli.mission import Mission
+
+    sentinel = object()
+    mission = Mission("/tmp", tool_registry=sentinel, repo_root=str(REPO))
+    assert mission.tool_registry is sentinel
+
+    executor = WorkUnitExecutor("/tmp", tool_registry=sentinel)
+    assert executor.tool_registry() is sentinel, "a supplied registry must be used as-is"
+
+
+def test_executor_still_builds_one_when_none_is_supplied():
+    """Standalone use (tests, one-off units) must not require a registry."""
+    executor = WorkUnitExecutor(str(REPO), repo_root=str(REPO))
+    registry = executor.tool_registry()
+    assert registry is not None
+    assert executor.tool_registry() is registry, "built once, then cached"
+
+
 if __name__ == "__main__":
     import tempfile
 

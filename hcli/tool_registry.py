@@ -1396,6 +1396,22 @@ def _frontier_escalate(context: ToolContext, args: Dict[str, Any]) -> Dict[str, 
     )
 
 
+def _git_land_propose(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    """The resident's only path to a commit. Builds nothing itself -- it just
+    forwards the typed proposal into ``landing.propose_landing``, which is
+    governed by a deterministic verifier the resident cannot see or skip."""
+    from .landing import propose_landing
+
+    return propose_landing(
+        context.repo_root,
+        branch=args.get("branch"),
+        allowed_paths=args.get("allowed_paths") or [],
+        test_command=args.get("test_command") or [],
+        message=args.get("message"),
+        timeout_s=args.get("timeout_s"),
+    )
+
+
 def _grok_swarm_propose(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     del context
     from .escalation import propose_swarm
@@ -1508,6 +1524,32 @@ def default_tool_registry(
             deterministic=True,
             handler=_git_safe_revert_refusal,
         ))
+    registry.register(ToolSpec(
+        "git.land.propose",
+        "Propose one landing candidate: a declared branch, an allowlist of "
+        "changed paths, a test command, and a message. Admissibility is "
+        "decided by a deterministic verifier that re-runs the test command "
+        "itself and re-checks the tree; a commit happens only if every named "
+        "condition holds. This is the only path from the resident to a git "
+        "commit -- it never pushes.",
+        {"type": "object", "required": ["branch", "allowed_paths", "test_command", "message"],
+         "additionalProperties": False,
+         "properties": {
+             "branch": {"type": "string"},
+             "allowed_paths": {"type": "array", "items": {"type": "string"}},
+             "test_command": {"type": "array", "items": {"type": "string"}},
+             "message": {"type": "string"},
+             "timeout_s": {"type": "number"},
+         }},
+        mutation=REVERSIBLE_REPO,
+        deterministic=False,
+        resources=("filesystem", "git"),
+        verifier_expectations=(
+            "landed is true only when the verifier re-ran test_command itself, on this "
+            "tree state, and it exited zero; a proposal cannot assert its own tests passed",
+        ),
+        handler=_git_land_propose,
+    ))
     research_schema = {"type": "object", "required": ["url"], "additionalProperties": False, "properties": {"url": {"type": "string"}, "max_bytes": {"type": "integer"}, "timeout_s": {"type": "number"}}}
     registry.register(ToolSpec("web.fetch", "Fetch bounded public HTTPS evidence with no credentials.", research_schema, mutation=RESEARCH, deterministic=False, handler=lambda c, a: _fetch(c, a)))
     registry.register(ToolSpec("github.fetch", "Fetch bounded public GitHub HTTPS evidence with no credentials.", research_schema, mutation=RESEARCH, deterministic=False, handler=lambda c, a: _fetch(c, a, allowed_hosts=("github.com", "api.github.com", "raw.githubusercontent.com"))))

@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import REPO, git, write_receipt  # noqa: E402
+from _common import HARDWARE_FIELDS, REPO, git, write_receipt  # noqa: E402
 
 RECORDED_BY = "tools/future/hcli_compactor.py"
 RECEIPT_NAME = "HCLI_COMPACTOR.json"
@@ -770,7 +770,7 @@ def build() -> dict[str, Any]:
             "n_wake_conditions": len(compacted.get("wake_conditions") or []),
             "n_unsupported_requests": len(compacted.get("unsupported_requests") or []),
         },
-        "compacted_kernel": compacted,
+        "compacted_kernel": _cite_hardware(compacted),
         "what_this_module_does_not_do": (
             "choose the next hypothesis, representation, or experiment. "
             "The resident owns those. Compaction copies load-bearing state "
@@ -779,6 +779,38 @@ def build() -> dict[str, Any]:
         ),
         "grade_is_not": "textual similarity",
     }
+
+
+def _cite_hardware(node: Any) -> Any:
+    """Copy the kernel, but CITE its hardware numbers instead of restating them.
+
+    The kernel legitimately carries measured_state.tps and token_ms: that is
+    what the context pack tells the resident about the body it is reasoning
+    over, and a stale one is how it spent hours believing 36.644 when the
+    promotion measured 45.566. But this module is a SIDECAR with no GPU
+    authority, so `write_receipt` refuses any receipt that states a hardware
+    number as its own -- and it was right to refuse this one.
+
+    Both laws hold at once by keeping the value where the resident reads it
+    (the live kernel, untouched) and replacing it here with a pointer to the
+    receipt that does have the authority. Continuity is unaffected: the
+    continuity grade compares the in-memory compacted kernel against the
+    authoritative one, not this rendering.
+    """
+    if isinstance(node, dict):
+        out: dict[str, Any] = {}
+        for key, value in node.items():
+            if key in HARDWARE_FIELDS and isinstance(value, (int, float)):
+                out[key] = None
+                out[f"{key}_cited_from"] = node.get("refreshed_from") or node.get(
+                    "source"
+                ) or "unattributed: kernel carried no refreshed_from"
+            else:
+                out[key] = _cite_hardware(value)
+        return out
+    if isinstance(node, list):
+        return [_cite_hardware(v) for v in node]
+    return node
 
 
 def main(argv: list[str] | None = None) -> int:

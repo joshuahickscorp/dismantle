@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T04:18:11Z",
+  "recorded_at": "2026-09-01T04:19:26Z",
   "recorded_by": "tools/future/baseline_staleness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -28,6 +28,7 @@
    "CITES_BUT_READS_CURRENT": [
     "BASELINE_STALENESS.json",
     "GAP_LEDGER_60.json",
+    "GEOMETRY_TABLE.json",
     "MAX_RESIDENT_PHYSICAL_ROOF.json"
    ],
    "HISTORICAL_OWNER": [
@@ -37,7 +38,6 @@
    "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE": [
     "ACCELERATOR_WORKUNITS.json",
     "FOLD_ADDQX_AB.json",
-    "GEOMETRY_TABLE.json",
     "HARNESS_RECONCILIATION.json",
     "HCLI_COMPACTOR.json",
     "MLP_DECODE_CHEAPEN.json",
@@ -53,12 +53,11 @@
    ]
   },
   "clean": false,
-  "n_needing_review": 12,
+  "n_needing_review": 11,
   "n_receipts_citing_a_superseded_value": 18,
   "needing_review": [
    "ACCELERATOR_WORKUNITS.json",
    "FOLD_ADDQX_AB.json",
-   "GEOMETRY_TABLE.json",
    "HARNESS_RECONCILIATION.json",
    "HCLI_COMPACTOR.json",
    "MLP_DECODE_CHEAPEN.json",
@@ -69,7 +68,7 @@
    "RESIDENT_API_AUDIT.json",
    "RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
   ],
-  "reading": "18 receipts mention a superseded value and 12 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
+  "reading": "18 receipts mention a superseded value and 11 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
   "this_is_a_REVIEW_LIST_not_a_DEFECT_LIST": "the verdict is a FACT - this receipt carries a superseded value somewhere that is not obviously historical, and its producer does not read the current baseline. Some of these are correct as they are: a receipt that IS the old measurement legitimately records it, and HARNESS_RECONCILIATION exists precisely to hold both numbers side by side. Calling them all defects would be the same over-claiming this module is meant to catch."
  },
  "rows": [
@@ -109,8 +108,8 @@
      ".rows[1].superseded_values_present[0]",
      ".rows[3].superseded_values_present[0]",
      ".rows[5].superseded_values_present[0]",
-     ".rows[10].superseded_values_present[0]",
-     ".rows[11].superseded_values_present[0]"
+     ".rows[9].superseded_values_present[0]",
+     ".rows[10].superseded_values_present[0]"
     ],
     "36.644": [
      ".rows[1].superseded_values_present[2]",
@@ -199,12 +198,12 @@
     ]
    },
    "producer": "tools/future/geometry_table.py",
-   "producer_reads_current_baseline": false,
+   "producer_reads_current_baseline": true,
    "receipt": "GEOMETRY_TABLE.json",
    "superseded_values_present": [
     "28.722"
    ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
+   "verdict": "CITES_BUT_READS_CURRENT"
   },
   {
    "carried_as_history": [],
@@ -447,7 +446,7 @@
    "verdict": "PRODUCER_UNKNOWN"
   }
  ],
- "seal_sha256": "aa528c586afaeb6cc7029777cd1ddab9fc57af8fc78e6816e9e6660f5c16f2b4",
+ "seal_sha256": "1ff9155583b1e3bf4d2254d73de095e4031f12202b4d0fb23b72c2b962d4f843",
  "superseded": [
   {
    "now": "21.9464 GPU ms (G131)",

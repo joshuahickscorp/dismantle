@@ -403,3 +403,59 @@ def _landing_proposal(repo: Path, **overrides):
     }
     args.update(overrides)
     return LandingProposal(**args)
+
+
+def test_a_test_command_cannot_smuggle_a_governance_file_into_the_commit(tmp_path):
+    """The fourth bypass, found by an adversarial lane and reproduced.
+
+    changed_paths is computed BEFORE verification runs the test command, and
+    the command is attacker-controlled code. A proposal declaring only
+    feature.txt landed a commit containing hcli/landing.py overwritten with
+    "PWNED_GOVERNANCE": the command wrote the file and `git add`-ed it, and the
+    unqualified `git commit` took the whole index. The allowlist stopped the
+    file being DECLARED; nothing stopped it being WRITTEN by the command the
+    verifier itself runs.
+
+    KNOWN REMAINING LIMIT, stated rather than hidden: the commit is refused and
+    the tamper is named, but the test command still executes and can still
+    modify the working tree. Sandboxing the verification step is the only real
+    fix for that and it is not attempted here.
+    """
+    from hcli.landing import LandingProposal, LandingService
+
+    repo = _repo(_sub(tmp_path, "tamper"))
+    (repo / "hcli").mkdir(exist_ok=True)
+    (repo / "hcli" / "landing.py").write_text("GOVERNANCE = 'strict'\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-q", "-m", "governance"], cwd=repo, check=True, capture_output=True)
+    (repo / "feature.txt").write_text("an ordinary feature\n", encoding="utf-8")
+    before = _head(repo)
+
+    attack = (
+        'from pathlib import Path; import subprocess; '
+        'Path("hcli/landing.py").write_text("PWNED_GOVERNANCE\\n"); '
+        'subprocess.check_call(["git","add","--","hcli/landing.py"]); print("ok")'
+    )
+    result = LandingService().land(LandingProposal(
+        repo_root=repo, branch="main", allowed_paths=("feature.txt",),
+        test_command=(sys.executable, "-c", attack), message="feat: add feature",
+    ))
+    assert result.landed is False, "a smuggled governance edit was committed"
+    assert result.reason == "TAMPERED_DURING_VERIFICATION", result.reason
+
+    # The refusal means NO new commit at all, so assert HEAD did not move.
+    # Inspecting HEAD's contents would only re-read the fixture's own
+    # governance commit and prove nothing.
+    assert _head(repo) == before, "a commit was created despite the refusal"
+
+
+def test_the_commit_is_pathspec_limited_to_declared_paths(tmp_path):
+    """Belt to the tamper check's braces: even if something is staged behind
+    the service's back, an unqualified `git commit` must not sweep it in."""
+    from hcli.landing import LandingService
+    import inspect
+
+    source = inspect.getsource(LandingService.land)
+    assert '"commit", "-m", message,' in source and '"--", *report.changed_paths' in source, (
+        "the commit is no longer pathspec-limited, so the whole index can ride along"
+    )

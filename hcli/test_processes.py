@@ -158,3 +158,36 @@ if __name__ == "__main__":
             fn()
             print(f"ok  {name}")
     print("all green")
+
+
+def test_acquisition_disk_check_binds_to_where_bytes_actually_land():
+    """Three answers, two of them wrong, before this was right.
+
+    The storage check first read the REPO's filesystem (reported 278 GiB for a
+    download destined elsewhere), then HF_HUB_CACHE (reported 406 GiB on the
+    internal SSD). Both are overridden in practice: the ModelLake watcher
+    launches every acquisition with --local-dir pointing at the external volume,
+    so that is where the bytes go and that is the only mount whose free space
+    can authorize a 200 GiB acquisition.
+    """
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT := __import__("pathlib").Path(
+        __file__).resolve().parents[1]))
+    from hcli import acquisition
+
+    disk = (acquisition.propose() or {}).get("disk") or {}
+    destination = str(disk.get("destination") or "")
+    if not destination:
+        return  # a host without the lake mounted is not a failure here
+    mount = str(disk.get("mount") or disk.get("filesystem") or "")
+    assert "hawking-modellake" in destination, (
+        f"acquisition resolved {destination!r}, which is not where the watcher's "
+        f"--local-dir sends the bytes"
+    )
+    # The decisive assertion: the mount must not be the boot volume when the
+    # lake lives on an external drive.
+    assert not mount.startswith("/System/Volumes/Data"), (
+        f"storage check bound to the boot volume ({mount}) for a download that "
+        f"lands on {destination}"
+    )

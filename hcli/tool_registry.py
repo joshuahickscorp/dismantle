@@ -1448,6 +1448,64 @@ def _forbidden_fruit_lab(context: ToolContext, args: Dict[str, Any]) -> Dict[str
     )
 
 
+def _frontier_decide(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Which frontier should run next, and why not the others.
+
+    This is the other half of the sovereign stall guard. The loop can park
+    itself; without a caller here, nothing picks up the next frontier and a
+    parked frontier means an idle machine.
+    """
+    from . import frontier_scheduler
+
+    return frontier_scheduler.decide().to_dict()
+
+
+def _specimens_registry(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Every sealed specimen, enumerated from disk. SEALED != LOAD NOW."""
+    from . import specimens
+
+    name = str(args.get("name") or "").strip()
+    if name:
+        found = specimens.get(name)
+        return {"name": name, "specimen": found, "found": found is not None}
+    return specimens.registry()
+
+
+def _acquisition_propose(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Rank what to acquire next. Proposes and explains; never starts a
+    download - that stays behind explicit confirmation elsewhere."""
+    from . import acquisition
+
+    return acquisition.propose()
+
+
+def _odyssey_read_verb(name: str):
+    def handler(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+        from . import odyssey
+
+        return getattr(odyssey, name)()
+
+    return handler
+
+
+def _odyssey_mutating(name: str, required: Sequence[str]):
+    """Odyssey verbs that change campaign state. Gated exactly like
+    odyssey.cycle: refused without an explicit confirm."""
+
+    def handler(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+        from . import odyssey
+
+        if args.get("confirm") is not True:
+            raise PermissionError(f"odyssey.{name} changes Odyssey state and requires confirm=True")
+        kwargs = {k: args[k] for k in required if k in args}
+        for extra in ("note", "reason", "evidence", "source_oxx", "attack", "description"):
+            if extra in args:
+                kwargs[extra] = args[extra]
+        return getattr(odyssey, name)(confirm=True, **kwargs)
+
+    return handler
+
+
 def _grok_swarm_propose(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     del context
     from .escalation import propose_swarm
@@ -1681,6 +1739,56 @@ def default_tool_registry(
         ),
         handler=_forbidden_fruit_lab,
     ))
+    # WIRED HERE ON PURPOSE. Four modules were built in separate lanes, each
+    # scoped to its own file, which structurally prevented any of them from
+    # registering. Four verifiers then correctly refused them all on the same
+    # ground: a capability nothing can call does not exist. Registration is
+    # cross-cutting, so it belongs in one place rather than fragmented.
+    registry.register(ToolSpec(
+        "frontier.decide",
+        "Which frontier should run next and why the others are waiting or parked.",
+        {"type": "object", "additionalProperties": False, "properties": {}},
+        handler=_frontier_decide,
+    ))
+    registry.register(ToolSpec(
+        "specimens.registry",
+        "Every sealed specimen enumerated from disk. Sealed does not mean loadable.",
+        {"type": "object", "additionalProperties": False,
+         "properties": {"name": {"type": "string"}}},
+        handler=_specimens_registry,
+    ))
+    registry.register(ToolSpec(
+        "acquisition.propose",
+        "Rank what to acquire next, with destination-filesystem headroom. Never starts a download.",
+        {"type": "object", "additionalProperties": False, "properties": {}},
+        handler=_acquisition_propose,
+    ))
+    registry.register(ToolSpec(
+        "odyssey.ingest",
+        "Read the live mid-flight Odyssey state so HCLI can take it over without restarting it.",
+        {"type": "object", "additionalProperties": False, "properties": {}},
+        handler=_odyssey_read_verb("ingest"),
+    ))
+    for verb, required in (
+        ("add_to_eligibility", ("oxx",)),
+        ("park_specimen", ("oxx",)),
+        ("record_law", ("text",)),
+        ("record_scar", ("law_id",)),
+        ("create_transfer_probe", ("law_id", "target_oxx")),
+        ("create_adversarial_probe", ("law_id",)),
+    ):
+        props = {"confirm": {"type": "boolean"}}
+        for field in ("oxx", "text", "law_id", "target_oxx", "note", "reason",
+                      "evidence", "source_oxx", "attack", "description"):
+            props[field] = {"type": "string"}
+        registry.register(ToolSpec(
+            "odyssey." + verb,
+            "Odyssey campaign mutation: " + verb.replace("_", " ") + ". Requires confirm=True.",
+            {"type": "object", "additionalProperties": False,
+             "required": ["confirm"] + list(required), "properties": props},
+            mutation=COSTLY, deterministic=False,
+            handler=_odyssey_mutating(verb, required),
+        ))
     registry.register(ToolSpec(
         "tests.list", "Discover deterministic test files without executing them.",
         {"type": "object", "additionalProperties": False, "properties": {"root": {"type": "string"}}},

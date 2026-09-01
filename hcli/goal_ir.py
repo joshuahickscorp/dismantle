@@ -251,6 +251,13 @@ def verify_source_refs(
                 raise SourceIntegrityError(
                     f"{node.id}: paste {sref.ref!r} no longer exists"
                 ) from exc
+            except ValueError as exc:
+                # PasteCache.get() itself refuses a paste whose stored bytes
+                # no longer match its own sidecar's sha256 -- still a
+                # tampered/corrupt source from this node's point of view.
+                raise SourceIntegrityError(
+                    f"{node.id}: paste {sref.ref!r} sha256 mismatch: {exc}"
+                ) from exc
             actual = hashlib.sha256(text.encode("utf-8")).hexdigest()
             if sref.sha256 and actual != sref.sha256:
                 raise SourceIntegrityError(

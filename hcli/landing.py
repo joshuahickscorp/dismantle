@@ -77,6 +77,7 @@ REFUSAL_REASONS = frozenset({
     "TEST_COMMAND_UNRUNNABLE",
     "TESTS_FAILED",
     "TESTS_TIMEOUT",
+    "TAMPERED_DURING_VERIFICATION",
     "MESSAGE_REQUIRED",
     "GIT_ADD_FAILED",
     "GIT_COMMIT_FAILED",
@@ -318,6 +319,13 @@ class LandingService:
         self._verifier = verifier or IntegrationVerifier(git_argv)
         self._git = tuple(git_argv)
 
+    def _run_status(self, repo_root: Path) -> str:
+        out = subprocess.run(
+            [*self._git, "-C", str(repo_root), "status", "--porcelain"],
+            capture_output=True, text=True, timeout=30.0, check=False,
+        )
+        return out.stdout if out.returncode == 0 else ""
+
     def land(self, proposal: LandingProposal) -> LandingResult:
         report = self._verifier.check(proposal)
         if not report.admissible:
@@ -331,9 +339,32 @@ class LandingService:
         if add.returncode != 0:
             return LandingResult(landed=False, commit_sha=None, reason="GIT_ADD_FAILED", detail=add.stderr.strip(), report=report)
 
+        # RE-VERIFY AFTER THE TEST COMMAND RAN. changed_paths was computed
+        # BEFORE verification executed attacker-controlled code. A proposal
+        # declaring only feature.txt was landed with hcli/landing.py overwritten
+        # to "PWNED_GOVERNANCE", because its test command wrote that file and
+        # `git add`-ed it, and the unqualified `git commit` below took the whole
+        # index. The path allowlist stopped the file being DECLARED; nothing
+        # stopped it being WRITTEN by the command the verifier itself runs.
+        after = self._verifier._parse_status(
+            self._run_status(repo_root)
+        )
+        allowed = set(report.changed_paths)
+        tampered = sorted(p for p in after if p not in allowed)
+        if tampered:
+            return LandingResult(
+                landed=False, commit_sha=None, reason="TAMPERED_DURING_VERIFICATION",
+                detail="paths changed while the test command ran: " + ", ".join(tampered[:5]),
+                report=report,
+            )
+
         message = f"{proposal.message.strip()}\n\n{AUTHORSHIP_TRAILER}"
+        # PATHSPEC-LIMITED COMMIT. `git commit -m` without one commits the whole
+        # index, so anything staged behind the service's back rides along. This
+        # is the hard barrier; the tamper check above is the detector.
         commit = subprocess.run(
-            [*self._git, "-C", str(repo_root), "commit", "-m", message],
+            [*self._git, "-C", str(repo_root), "commit", "-m", message,
+             "--", *report.changed_paths],
             capture_output=True, text=True, timeout=30.0, check=False,
         )
         if commit.returncode != 0:

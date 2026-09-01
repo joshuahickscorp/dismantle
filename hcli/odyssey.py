@@ -25,18 +25,42 @@ Two capability classes:
   PermissionError(...)``). A ``dry_run=True`` path (the default, where the
   driver has one) needs no confirm because the driver itself launches
   nothing in that mode.
+
+* **own** -- ``ingest``, ``add_to_eligibility``, ``park_specimen``,
+  ``record_law``, ``record_scar``, ``create_transfer_probe``,
+  ``create_adversarial_probe``. These give HCLI a campaign of its own
+  instead of a read-only peek at ``tools/odyssey_ctl.py``'s. They do not
+  encode a curriculum or choose which specimen matters -- they are the
+  verbs HCLI calls once it has decided that for itself. All writes land in
+  ``HCLI_LEDGER.json``, a file this module owns exclusively, alongside but
+  never inside the driver's own ``ODYSSEY_STATE.json`` -- so nothing here
+  can race the driver's own cycle/harvest/retire writers. ``ingest`` reads
+  both (real on-disk state, never a fixture or a re-run) and is read-only;
+  the other six mutate the ledger and gate on ``confirm=True`` like every
+  verb in the *continue* class above, checked before the ledger is even
+  loaded so a refusal touches no file. Odyssey II (transfer) and III
+  (adversarial) probes require a law already recorded via ``record_law``
+  -- that is the only ordering enforced, so I/II/III can overlap the
+  moment a law is claimed, per the campaign's no-phase-barrier rule.
 """
 from __future__ import annotations
 
 import json
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from .persist import atomic_write_json
+
 REPO = Path(__file__).resolve().parent.parent
 ODYSSEY_CTL = REPO / "tools" / "odyssey_ctl.py"
-PATIENTS_DIR = REPO / "workspace" / "campaign" / "odyssey" / "patients"
+ODYSSEY_DIR = REPO / "workspace" / "campaign" / "odyssey"
+PATIENTS_DIR = ODYSSEY_DIR / "patients"
+STATE_PATH = ODYSSEY_DIR / "ODYSSEY_STATE.json"  # driver-owned; read-only from here
+LEDGER_PATH = ODYSSEY_DIR / "HCLI_LEDGER.json"  # HCLI-owned; this module is the only writer
+_LEDGER_LISTS = ("eligible", "parked", "laws", "scars", "transfer_probes", "adversarial_probes")
 
 
 def _run(args: list[str], timeout_s: float = 60.0) -> dict[str, Any]:
@@ -165,3 +189,181 @@ def acquire_next(confirm: bool = False, dry_run: bool = True) -> dict:
         return _run(["acquire-next", "--dry-run"])
     _require_confirm(confirm, "acquire-next --go (starts a Hugging Face download)")
     return _run(["acquire-next", "--go"])
+
+
+# --------------------------------------------------------------------------
+# own -- HCLI's own ledger on top of the driver's real state. ingest() reads
+# both; everything else writes only HCLI_LEDGER.json and gates on confirm.
+# --------------------------------------------------------------------------
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _real_specimens() -> dict[str, dict]:
+    """oxx -> patient, read straight off the driver's own on-disk state.
+
+    Read-only, no fixture, no re-run: if ``ODYSSEY_STATE.json`` is absent or
+    unparseable this returns ``{}`` rather than inventing specimens.
+    """
+    if not STATE_PATH.is_file():
+        return {}
+    try:
+        state = json.loads(STATE_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {p["oxx"]: p for p in (state.get("patients") or []) if p.get("oxx")}
+
+
+def _require_known_oxx(oxx: str) -> None:
+    """Refuse to record a specimen HCLI invented. Skipped only when the
+    driver's state file itself is missing -- nothing real to check against."""
+    specimens = _real_specimens()
+    if specimens and oxx not in specimens:
+        raise ValueError(f"{oxx} is not a specimen in {STATE_PATH}")
+
+
+def _empty_ledger() -> dict:
+    return {"schema": "hcli.odyssey.ledger.v1", **{k: [] for k in _LEDGER_LISTS}}
+
+
+def _load_ledger() -> dict:
+    if not LEDGER_PATH.is_file():
+        return _empty_ledger()
+    try:
+        data = json.loads(LEDGER_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return _empty_ledger()
+    ledger = _empty_ledger()
+    for key in _LEDGER_LISTS:
+        if isinstance(data.get(key), list):
+            ledger[key] = data[key]
+    return ledger
+
+
+def _save_ledger(ledger: dict) -> None:
+    atomic_write_json(LEDGER_PATH, ledger)
+
+
+def ingest() -> dict:
+    """The real, mid-flight Odyssey state plus HCLI's own ledger, in one
+    shape HCLI can reason over. Read-only: never seeds, re-runs, or touches
+    a sealed patient -- O003 stays exactly as sealed as it was found."""
+    specimens = _real_specimens()
+    ledger = _load_ledger()
+    return {
+        "schema": "hcli.odyssey.ingest.v1",
+        "state_path": str(STATE_PATH),
+        "ledger_path": str(LEDGER_PATH),
+        "specimen_count": len(specimens),
+        "specimens": [
+            {
+                "oxx": oxx,
+                "state": p.get("state"),
+                "ledger": p.get("ledger"),
+                "on_disk": bool(p.get("on_disk")),
+                "class": p.get("class"),
+            }
+            for oxx, p in sorted(specimens.items())
+        ],
+        **{key: ledger[key] for key in _LEDGER_LISTS},
+    }
+
+
+def add_to_eligibility(oxx: str, note: str = "", confirm: bool = False) -> dict:
+    """Mark a real specimen eligible for HCLI-driven work. HCLI decides what
+    eligibility means and when to act on it; this only records the intent.
+    Re-adding an already-eligible oxx updates its note rather than duplicating it.
+    """
+    _require_confirm(confirm, f"add {oxx} to eligibility")
+    _require_known_oxx(oxx)
+    ledger = _load_ledger()
+    ledger["eligible"] = [e for e in ledger["eligible"] if e.get("oxx") != oxx]
+    entry = {"oxx": oxx, "note": note, "recorded_at": _now()}
+    ledger["eligible"].append(entry)
+    _save_ledger(ledger)
+    return {"schema": "hcli.odyssey.ledger.v1", "list": "eligible", "entry": entry}
+
+
+def park_specimen(oxx: str, reason: str, confirm: bool = False) -> dict:
+    """Set a specimen aside without deleting anything it already earned.
+    Re-parking replaces the prior reason rather than piling up duplicates."""
+    _require_confirm(confirm, f"park {oxx}")
+    if not reason:
+        raise ValueError("park_specimen requires a reason")
+    _require_known_oxx(oxx)
+    ledger = _load_ledger()
+    ledger["parked"] = [e for e in ledger["parked"] if e.get("oxx") != oxx]
+    entry = {"oxx": oxx, "reason": reason, "recorded_at": _now()}
+    ledger["parked"].append(entry)
+    _save_ledger(ledger)
+    return {"schema": "hcli.odyssey.ledger.v1", "list": "parked", "entry": entry}
+
+
+def record_law(text: str, evidence: str = "", source_oxx: Optional[str] = None, confirm: bool = False) -> dict:
+    """Record a claimed compiler/architecture law. HCLI decides what counts
+    as a law worth claiming; this only appends it so a transfer probe (II)
+    or an adversarial probe (III) has something to target -- immediately,
+    with no phase barrier."""
+    _require_confirm(confirm, "record a law")
+    if not text:
+        raise ValueError("record_law requires text")
+    if source_oxx:
+        _require_known_oxx(source_oxx)
+    ledger = _load_ledger()
+    law_id = f"LAW{len(ledger['laws']) + 1:03d}"
+    entry = {"id": law_id, "text": text, "evidence": evidence, "source_oxx": source_oxx, "recorded_at": _now()}
+    ledger["laws"].append(entry)
+    _save_ledger(ledger)
+    return {"schema": "hcli.odyssey.ledger.v1", "list": "laws", "entry": entry}
+
+
+def record_scar(law_id: str, description: str, confirm: bool = False) -> dict:
+    """Record that a claimed law took damage -- a failed transfer, a
+    successful attack. Does not delete the law: a scar is evidence against
+    it, not a retraction of it."""
+    _require_confirm(confirm, f"record a scar on {law_id}")
+    if not description:
+        raise ValueError("record_scar requires a description")
+    ledger = _load_ledger()
+    if not any(law["id"] == law_id for law in ledger["laws"]):
+        raise ValueError(f"{law_id} is not a recorded law")
+    entry = {"law_id": law_id, "description": description, "recorded_at": _now()}
+    ledger["scars"].append(entry)
+    _save_ledger(ledger)
+    return {"schema": "hcli.odyssey.ledger.v1", "list": "scars", "entry": entry}
+
+
+def create_transfer_probe(law_id: str, target_oxx: str, confirm: bool = False) -> dict:
+    """Odyssey II: propose testing whether ``law_id`` transfers to
+    ``target_oxx``. Requires only that the law has been claimed -- may run
+    the moment I produces a plausible law, per the campaign's overlap rule.
+    Records the proposal; running the probe is a separate, real job."""
+    _require_confirm(confirm, f"create transfer probe {law_id} -> {target_oxx}")
+    ledger = _load_ledger()
+    if not any(law["id"] == law_id for law in ledger["laws"]):
+        raise ValueError(f"{law_id} is not a recorded law")
+    _require_known_oxx(target_oxx)
+    probe_id = f"TP{len(ledger['transfer_probes']) + 1:03d}"
+    entry = {"id": probe_id, "law_id": law_id, "target_oxx": target_oxx, "status": "PROPOSED", "recorded_at": _now()}
+    ledger["transfer_probes"].append(entry)
+    _save_ledger(ledger)
+    return {"schema": "hcli.odyssey.ledger.v1", "list": "transfer_probes", "entry": entry}
+
+
+def create_adversarial_probe(law_id: str, attack: str, confirm: bool = False) -> dict:
+    """Odyssey III: propose an attack against a claimed law. Requires only
+    that the law has been claimed -- may run the moment it is, per the
+    campaign's overlap rule. Records the proposal; running the attack is a
+    separate, real job."""
+    _require_confirm(confirm, f"create adversarial probe against {law_id}")
+    if not attack:
+        raise ValueError("create_adversarial_probe requires an attack description")
+    ledger = _load_ledger()
+    if not any(law["id"] == law_id for law in ledger["laws"]):
+        raise ValueError(f"{law_id} is not a recorded law")
+    probe_id = f"AP{len(ledger['adversarial_probes']) + 1:03d}"
+    entry = {"id": probe_id, "law_id": law_id, "attack": attack, "status": "PROPOSED", "recorded_at": _now()}
+    ledger["adversarial_probes"].append(entry)
+    _save_ledger(ledger)
+    return {"schema": "hcli.odyssey.ledger.v1", "list": "adversarial_probes", "entry": entry}

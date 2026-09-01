@@ -5725,6 +5725,11 @@ def hf_cache_snapshot(repo: str) -> Path | None:
     return None
 
 
+# Where the watcher's --local-dir actually points. Kept beside the resolver so
+# the two cannot drift apart silently.
+MODELLAKE_PARTIAL_ROOT = Path("/Volumes/corpdrive/hawking-modellake/partial")
+
+
 def modellake_destination() -> Path:
     """Directory `hf download` actually writes into.
 
@@ -5735,6 +5740,16 @@ def modellake_destination() -> Path:
     on a different mounted volume — e.g. an external drive — is the normal
     case this exists to handle correctly.
     """
+    # --local-dir WINS. The ModelLake watcher launches every acquisition with
+    # `--local-dir /Volumes/corpdrive/hawking-modellake/partial/<tag>`, and that
+    # flag overrides HF_HUB_CACHE entirely -- the bytes land on the external
+    # volume no matter what the hub cache resolves to. Reading HF_HUB_CACHE here
+    # was the same defect as reading REPO's filesystem, one step less wrong:
+    # it reported 406 GB free on the internal SSD for a download that actually
+    # consumes the 1.2 TiB external drive. Check where the bytes GO.
+    partial = MODELLAKE_PARTIAL_ROOT
+    if partial.parent.is_dir():
+        return partial
     try:
         from huggingface_hub.constants import HF_HUB_CACHE
         return Path(HF_HUB_CACHE)

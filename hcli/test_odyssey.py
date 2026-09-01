@@ -11,6 +11,12 @@ is the connector. This locks down two things:
    hcli/tool_registry.py already uses for benchmark.run/accelerator.benchmark
    -- and it refuses *before* touching the driver at all (no subprocess is
    spawned to reach the refusal).
+3. the "own" verbs (ingest/add_to_eligibility/park_specimen/record_law/
+   record_scar/create_transfer_probe/create_adversarial_probe) write only to
+   a ledger this module owns, gate on confirm=True the same way, refuse
+   *before* the ledger file is touched, refuse a specimen HCLI invented, and
+   let a transfer/adversarial probe follow a law with no other ordering --
+   proving the campaign's I/II/III overlap has no barrier beyond that.
 
 Runnable two ways:
 
@@ -20,6 +26,7 @@ Runnable two ways:
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 
 import pytest
@@ -103,6 +110,102 @@ def test_mutating_verbs_refuse_without_confirm(call, monkeypatch):
     monkeypatch.setattr(subprocess, "run", _boom)
     with pytest.raises(PermissionError):
         call()
+
+
+# --------------------------------------------------------------------------
+# own -- ledger verbs (ingest/eligibility/park/law/scar/probes)
+# --------------------------------------------------------------------------
+
+@pytest.fixture
+def isolated_ledger(monkeypatch, tmp_path):
+    """Point the ledger at a scratch file so tests never touch the real one."""
+    path = tmp_path / "HCLI_LEDGER.json"
+    monkeypatch.setattr(odyssey, "LEDGER_PATH", path)
+    return path
+
+
+def test_ingest_reflects_real_mid_flight_specimens(isolated_ledger):
+    """No fixture: O003/O006 must show up exactly as they sit on disk."""
+    result = odyssey.ingest()
+    assert result["specimen_count"] >= 14, result["specimen_count"]
+    by_oxx = {s["oxx"]: s for s in result["specimens"]}
+    assert by_oxx["O003"]["on_disk"] is True, by_oxx["O003"]
+    assert by_oxx["O006"]["on_disk"] is True, by_oxx["O006"]
+    assert result["eligible"] == [] and result["laws"] == []
+
+
+def test_own_verbs_refuse_without_confirm_before_touching_the_ledger(isolated_ledger, monkeypatch):
+    """Refusal must happen before HCLI_LEDGER.json is ever written."""
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("mutating verb wrote the ledger without confirm=True")
+
+    monkeypatch.setattr(odyssey, "atomic_write_json", _boom)
+    calls = [
+        lambda: odyssey.add_to_eligibility("O003"),
+        lambda: odyssey.park_specimen("O003", "superseded"),
+        lambda: odyssey.record_law("MLP density floor ~2.25 bpw"),
+        lambda: odyssey.record_scar("LAW001", "attack found a gap"),
+        lambda: odyssey.create_transfer_probe("LAW001", "O006"),
+        lambda: odyssey.create_adversarial_probe("LAW001", "zero the gate proj"),
+    ]
+    for call in calls:
+        with pytest.raises(PermissionError):
+            call()
+    assert not isolated_ledger.exists()
+
+
+def test_add_to_eligibility_refuses_a_specimen_hcli_invented(isolated_ledger):
+    with pytest.raises(ValueError):
+        odyssey.add_to_eligibility("O999", confirm=True)
+    assert not isolated_ledger.exists()
+
+
+def test_add_to_eligibility_is_idempotent_by_oxx(isolated_ledger):
+    first = odyssey.add_to_eligibility("O003", note="cheap-lab", confirm=True)
+    assert first["entry"]["oxx"] == "O003"
+    second = odyssey.add_to_eligibility("O003", note="re-noted", confirm=True)
+    assert second["entry"]["note"] == "re-noted"
+    ledger = json.loads(isolated_ledger.read_text())
+    assert len(ledger["eligible"]) == 1, ledger["eligible"]
+    ingested = odyssey.ingest()
+    assert ingested["eligible"] == ledger["eligible"]
+
+
+def test_park_specimen_requires_a_reason(isolated_ledger):
+    with pytest.raises(ValueError):
+        odyssey.park_specimen("O003", "", confirm=True)
+    assert not isolated_ledger.exists()
+
+
+def test_probes_require_a_law_already_recorded(isolated_ledger):
+    """No global phase barrier, but a probe still needs a real target: it
+    cannot attack or transfer-test a law nobody has claimed yet."""
+    with pytest.raises(ValueError):
+        odyssey.create_transfer_probe("LAW001", "O006", confirm=True)
+    with pytest.raises(ValueError):
+        odyssey.create_adversarial_probe("LAW001", "zero the gate proj", confirm=True)
+    with pytest.raises(ValueError):
+        odyssey.record_scar("LAW001", "gap found", confirm=True)
+
+
+def test_law_then_transfer_and_adversarial_probes_overlap_immediately(isolated_ledger):
+    """As soon as a law is claimed, both II and III may act on it -- same turn,
+    no waiting on each other."""
+    law = odyssey.record_law("MLP density floor ~2.25 bpw", evidence="q2f", source_oxx="O003", confirm=True)
+    law_id = law["entry"]["id"]
+
+    transfer = odyssey.create_transfer_probe(law_id, "O006", confirm=True)
+    assert transfer["entry"]["status"] == "PROPOSED"
+    adversarial = odyssey.create_adversarial_probe(law_id, "zero the gate proj", confirm=True)
+    assert adversarial["entry"]["status"] == "PROPOSED"
+
+    scar = odyssey.record_scar(law_id, "adversarial probe found a gap", confirm=True)
+    ledger = json.loads(isolated_ledger.read_text())
+    assert ledger["laws"][0]["id"] == law_id
+    assert ledger["transfer_probes"][0]["law_id"] == law_id
+    assert ledger["adversarial_probes"][0]["law_id"] == law_id
+    assert ledger["scars"][0] == scar["entry"]
 
 
 if __name__ == "__main__":

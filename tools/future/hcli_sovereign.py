@@ -140,8 +140,12 @@ def init_kernel() -> dict[str, Any]:
         "measured_state": {
             "complete_bpw": (floor.get("floor") or {}).get("incumbent_bpw"),
             "payload_bytes": (floor.get("floor") or {}).get("incumbent_bytes"),
-            "wall_ms_per_token": live.get("ms_per_token"),
-            "wall_tps": live.get("tps"),
+            # The ledger's basis is GPU now (G132), so calling these "wall"
+            # would tell the resident the wrong thing about what it is looking
+            # at. The basis travels with the numbers.
+            "token_ms": live.get("ms_per_token"),
+            "tps": live.get("tps"),
+            "basis": live.get("basis"),
             "conventional_floor_bpw_if_every_untested_move_worked":
                 (floor.get("floor") or {}).get("if_every_untested_move_worked_bpw"),
             "source": [
@@ -218,6 +222,34 @@ def init_kernel() -> dict[str, Any]:
         k["measured_state"]["storage_bpw"] = mix.get("storage_bpw")
     save_kernel(k)
     return k
+
+
+def refresh_measured_state(k: dict[str, Any]) -> dict[str, Any]:
+    """Re-read the body's numbers into a LIVING kernel, changing nothing else.
+
+    The kernel is durable state - hypotheses, scars, iterations - so --init is
+    not the way to pick up a new baseline: it would discard everything the
+    resident has learned. But leaving it stale is worse than either, because
+    measured_state is what the context pack tells the resident about the body it
+    is reasoning over, and it said 27.2896 ms / 36.644 TPS for hours after the
+    promotion measured 21.9464 / 45.566.
+    """
+    from tools.future import gap_ledger_60 as gl
+    live = gl.live()
+    ms = k.setdefault("measured_state", {})
+    before = {kk: ms.get(kk) for kk in
+              ("token_ms", "tps", "basis", "wall_ms_per_token", "wall_tps")}
+    ms["token_ms"] = live.get("ms_per_token")
+    ms["tps"] = live.get("tps")
+    ms["basis"] = live.get("basis")
+    # The old field names are REMOVED, not left beside the new ones. Two names
+    # for one quantity is how a reader picks the stale one.
+    ms.pop("wall_ms_per_token", None)
+    ms.pop("wall_tps", None)
+    ms["refreshed_unix"] = time.time()
+    ms["refreshed_from"] = live.get("source")
+    return {"before": before,
+            "after": {kk: ms.get(kk) for kk in ("token_ms", "tps", "basis")}}
 
 
 def context_pack(k: dict[str, Any], *, terse: bool = False) -> str:

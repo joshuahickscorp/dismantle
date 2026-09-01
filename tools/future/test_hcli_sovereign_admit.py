@@ -226,3 +226,40 @@ def test_the_iteration_record_says_how_much_ran_concurrently():
     src = Path(sov.__file__).read_text()
     assert '"n_launched_concurrently"' in src
     assert '"concurrent_window_s"' in src
+
+
+def test_the_kernel_tells_the_resident_the_CURRENT_body():
+    """measured_state is what the context pack says about the body the resident
+    is reasoning over. It read 27.2896 ms / 36.644 TPS for hours after the
+    promotion measured 21.9464 / 45.566."""
+    import json
+    k = json.loads((sov.REPO / sov.KERNEL_REL).read_text())
+    ms = k["measured_state"]
+    absolute = json.loads(
+        (sov.REPO / "receipts/future/SEALED_DEFAULT_ABSOLUTE.json").read_text()
+    )["measured"]
+    assert ms["token_ms"] == absolute["gpu_ms_per_token"]
+    assert ms["tps"] == absolute["gpu_tps"]
+    assert ms["basis"] == "GPU"
+
+
+def test_the_old_field_names_are_removed_not_left_beside_the_new_ones():
+    """Two names for one quantity is how a reader picks the stale one."""
+    import json
+    ms = json.loads((sov.REPO / sov.KERNEL_REL).read_text())["measured_state"]
+    assert "wall_ms_per_token" not in ms
+    assert "wall_tps" not in ms
+
+
+def test_refresh_changes_only_the_measured_state():
+    """The kernel is durable: hypotheses, scars and iterations must survive a
+    refresh, or --init would be the only way to pick up a baseline and that
+    would discard everything the resident has learned."""
+    import json
+    k = json.loads((sov.REPO / sov.KERNEL_REL).read_text())
+    keep = {kk: json.dumps(k[kk], sort_keys=True) for kk in k
+            if kk != "measured_state"}
+    sov.refresh_measured_state(k)
+    after = {kk: json.dumps(k[kk], sort_keys=True) for kk in k
+             if kk != "measured_state"}
+    assert after == keep

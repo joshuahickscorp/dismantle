@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T03:52:33Z",
+  "recorded_at": "2026-09-01T04:18:11Z",
   "recorded_by": "tools/future/baseline_staleness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -36,20 +36,12 @@
    ],
    "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE": [
     "ACCELERATOR_WORKUNITS.json",
-    "AUX_CAPABILITY_SCREEN.json",
-    "AUX_U8_LUT.json",
-    "AUX_U8_NATIVE.json",
-    "DELTANET_GENERATED_TRANSITION.json",
-    "DELTANET_MULTISTEP.json",
     "FOLD_ADDQX_AB.json",
     "GEOMETRY_TABLE.json",
     "HARNESS_RECONCILIATION.json",
     "HCLI_COMPACTOR.json",
-    "HCLI_FAST_THOUGHT.json",
-    "IMPROVEMENT_METABOLISM.json",
     "MLP_DECODE_CHEAPEN.json",
     "MLP_ISSUE_RATE_LADDER.json",
-    "MLP_SPARSE_RESIDUAL.json",
     "MLP_STREAM_COUNT.json",
     "PROTECTED_BITCAST_ABSOLUTE.json",
     "RESIDENT_71TPS_CAUSAL_BUDGET.json",
@@ -57,36 +49,27 @@
     "RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
    ],
    "PRODUCER_UNKNOWN": [
-    "HCLI_MISSION_KERNEL.json",
     "TPS_ESCALATION_CLOCK_START.json"
    ]
   },
   "clean": false,
-  "n_needing_review": 20,
-  "n_receipts_citing_a_superseded_value": 27,
+  "n_needing_review": 12,
+  "n_receipts_citing_a_superseded_value": 18,
   "needing_review": [
    "ACCELERATOR_WORKUNITS.json",
-   "AUX_CAPABILITY_SCREEN.json",
-   "AUX_U8_LUT.json",
-   "AUX_U8_NATIVE.json",
-   "DELTANET_GENERATED_TRANSITION.json",
-   "DELTANET_MULTISTEP.json",
    "FOLD_ADDQX_AB.json",
    "GEOMETRY_TABLE.json",
    "HARNESS_RECONCILIATION.json",
    "HCLI_COMPACTOR.json",
-   "HCLI_FAST_THOUGHT.json",
-   "IMPROVEMENT_METABOLISM.json",
    "MLP_DECODE_CHEAPEN.json",
    "MLP_ISSUE_RATE_LADDER.json",
-   "MLP_SPARSE_RESIDUAL.json",
    "MLP_STREAM_COUNT.json",
    "PROTECTED_BITCAST_ABSOLUTE.json",
    "RESIDENT_71TPS_CAUSAL_BUDGET.json",
    "RESIDENT_API_AUDIT.json",
    "RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
   ],
-  "reading": "27 receipts mention a superseded value and 20 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
+  "reading": "18 receipts mention a superseded value and 12 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
   "this_is_a_REVIEW_LIST_not_a_DEFECT_LIST": "the verdict is a FACT - this receipt carries a superseded value somewhere that is not obviously historical, and its producer does not read the current baseline. Some of these are correct as they are: a receipt that IS the old measurement legitimately records it, and HARNESS_RECONCILIATION exists precisely to hold both numbers side by side. Calling them all defects would be the same over-claiming this module is meant to catch."
  },
  "rows": [
@@ -113,89 +96,29 @@
   {
    "carried_as_history": [],
    "occurrence_paths": {
-    "28.722": [
-     ".levers[0].economics.predicted_token_ms",
-     ".levers[0].economics.predicted_token_ms_range[0]",
-     ".levers[0].economics.predicted_token_ms_range[1]",
-     ".levers[1].economics.predicted_token_ms",
-     ".levers[1].economics.predicted_token_ms_range[0]",
-     ".levers[1].economics.predicted_token_ms_range[1]"
-    ]
-   },
-   "producer": "tools/future/aux_capability_screen.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "AUX_CAPABILITY_SCREEN.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "28.722": [
-     ".economics.bytes_only.assumptions.cited_token_ms",
-     ".economics.bytes_only.predicted_token_ms",
-     ".economics.bytes_only.predicted_token_ms_range[0]",
-     ".economics.bytes_only.predicted_token_ms_range[1]",
-     ".economics.exp_variant_with_aux_decode_fma.assumptions.cited_token_ms",
-     ".economics.exp_variant_with_aux_decode_fma.predicted_token_ms_range[0]"
-    ]
-   },
-   "producer": "tools/future/aux_u8_lut.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "AUX_U8_LUT.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "28.722": [
-     ".economics.bytes_only_screen_style.assumptions.cited_token_ms",
-     ".economics.bytes_only_screen_style.predicted_token_ms",
-     ".economics.bytes_only_screen_style.predicted_token_ms_range[0]",
-     ".economics.bytes_only_screen_style.predicted_token_ms_range[1]",
-     ".economics.with_aux_decode_fma.assumptions.cited_token_ms",
-     ".economics.with_aux_decode_fma.predicted_token_ms_range[0]"
-    ]
-   },
-   "producer": "tools/future/aux_u8_native.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "AUX_U8_NATIVE.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
     "27.2896": [
-     ".rows[4].superseded_values_present[1]",
-     ".rows[5].carried_as_history[0]",
-     ".rows[5].superseded_values_present[0]",
-     ".rows[11].superseded_values_present[0]",
-     ".rows[12].superseded_values_present[0]",
-     ".rows[14].superseded_values_present[0]"
+     ".rows[1].superseded_values_present[1]",
+     ".rows[2].carried_as_history[0]",
+     ".rows[2].superseded_values_present[0]",
+     ".rows[6].superseded_values_present[0]",
+     ".rows[7].superseded_values_present[0]",
+     ".rows[8].superseded_values_present[0]"
     ],
     "28.722": [
      ".rows[0].superseded_values_present[0]",
      ".rows[1].superseded_values_present[0]",
-     ".rows[2].superseded_values_present[0]",
      ".rows[3].superseded_values_present[0]",
-     ".rows[4].superseded_values_present[0]",
-     ".rows[6].superseded_values_present[0]"
+     ".rows[5].superseded_values_present[0]",
+     ".rows[10].superseded_values_present[0]",
+     ".rows[11].superseded_values_present[0]"
     ],
     "36.644": [
-     ".rows[4].superseded_values_present[2]",
-     ".rows[5].carried_as_history[1]",
-     ".rows[5].superseded_values_present[1]",
-     ".rows[9].superseded_values_present[0]",
-     ".rows[11].superseded_values_present[1]",
-     ".rows[12].superseded_values_present[1]"
+     ".rows[1].superseded_values_present[2]",
+     ".rows[2].carried_as_history[1]",
+     ".rows[2].superseded_values_present[1]",
+     ".rows[4].superseded_values_present[0]",
+     ".rows[6].superseded_values_present[1]",
+     ".rows[7].superseded_values_present[1]"
     ]
    },
    "producer": "tools/future/baseline_staleness.py",
@@ -229,45 +152,6 @@
     "36.644"
    ],
    "verdict": "HISTORICAL_OWNER"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "28.722": [
-     ".dense_rematerialization.emit_w_score.assumptions.cited_token_ms",
-     ".dense_rematerialization.emit_w_score.predicted_token_ms",
-     ".dense_rematerialization.emit_w_score.predicted_token_ms_range[0]",
-     ".dense_rematerialization.emit_w_score.predicted_token_ms_range[1]",
-     ".economics.assumptions.cited_token_ms"
-    ]
-   },
-   "producer": "tools/future/deltanet_generated_transition.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "DELTANET_GENERATED_TRANSITION.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "28.722": [
-     ".cited.cited_token_ms",
-     ".controls[0].economics.assumptions.cited_token_ms",
-     ".controls[0].economics.lane_material.bar",
-     ".controls[0].economics.predicted_token_ms",
-     ".controls[0].economics.predicted_token_ms_range[0]",
-     ".controls[0].economics.predicted_token_ms_range[1]"
-    ]
-   },
-   "producer": "tools/future/deltanet_multistep.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "DELTANET_MULTISTEP.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
   },
   {
    "carried_as_history": [],
@@ -363,55 +247,6 @@
   {
    "carried_as_history": [],
    "occurrence_paths": {
-    "36.644": [
-     ".decision_compression.live_tps"
-    ]
-   },
-   "producer": "tools/future/fast_thought.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "HCLI_FAST_THOUGHT.json",
-   "superseded_values_present": [
-    "36.644"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "27.2896": [
-     ".measured_state.wall_ms_per_token"
-    ],
-    "36.644": [
-     ".measured_state.wall_tps"
-    ]
-   },
-   "producer": null,
-   "producer_reads_current_baseline": null,
-   "receipt": "HCLI_MISSION_KERNEL.json",
-   "superseded_values_present": [
-    "27.2896",
-    "36.644"
-   ],
-   "verdict": "PRODUCER_UNKNOWN"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "28.722": [
-     ".cited.path_to_71.cited_token_ms"
-    ]
-   },
-   "producer": "tools/future/improvement_metabolism.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "IMPROVEMENT_METABOLISM.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
     "27.2896": [
      ".causal_residual.baseline_moved.current_body_ms",
      ".citations_resolved.current_body_wall_ms",
@@ -467,21 +302,6 @@
    "producer": "tools/future/mlp_issue_rate_ladder.py",
    "producer_reads_current_baseline": false,
    "receipt": "MLP_ISSUE_RATE_LADDER.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "28.722": [
-     ".token_ms_cited"
-    ]
-   },
-   "producer": "tools/future/mlp_sparse_residual.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "MLP_SPARSE_RESIDUAL.json",
    "superseded_values_present": [
     "28.722"
    ],
@@ -627,7 +447,7 @@
    "verdict": "PRODUCER_UNKNOWN"
   }
  ],
- "seal_sha256": "f8c09a9043cf316cac9b93fff4313278674c51527018885d22e7a13282e3823a",
+ "seal_sha256": "aa528c586afaeb6cc7029777cd1ddab9fc57af8fc78e6816e9e6660f5c16f2b4",
  "superseded": [
   {
    "now": "21.9464 GPU ms (G131)",

@@ -762,6 +762,22 @@ def cut_at_stop(text: str) -> tuple[str, str | None]:
     return text[:idx], reason
 
 
+# Fraction of 5-word shingles that must be distinct. Measured on the sealed
+# body's own replies: looping answers score 0.38-0.54, an answer whose only
+# repetition is stylistic enumeration scores 0.67, and ordinary repository prose
+# scores above 0.9. 0.55 separates them.
+SHINGLE_NOVELTY_FLOOR = 0.55
+
+
+def _looks_structured(text: str) -> bool:
+    """JSON or source, where repetition is syntax rather than collapse."""
+    n = len(text)
+    if n < 40:
+        return False
+    punct = sum(text.count(c) for c in '{}[]()=:;"')
+    return (punct / n) > 0.045
+
+
 def is_degenerate(text: str) -> bool:
     """True when a short fragment repeats. Empty is a different condition."""
     if not isinstance(text, str) or not text:
@@ -779,10 +795,38 @@ def is_degenerate(text: str) -> bool:
                 return True
         else:
             run = 1
+    # Long-line repetition. The line check above caps at 80 chars, so a
+    # paragraph repeated verbatim slipped through it. Observed on the sealed
+    # body: four of four answers ended in a loop and every one returned False.
+    long_lines = [ln for ln in lines if len(ln) > 80]
+    if len(long_lines) >= 3 and len(set(long_lines)) * 2 <= len(long_lines):
+        return True
+
+    # Word-shingle novelty. The two checks above are positional - they need the
+    # repeat to be contiguous or line-aligned. The sealed body also loops by
+    # cycling a few phrases with small substitutions ("the up projection ...",
+    # "the down projection ...", "the attention layers ..."), which is neither.
+    # A text whose 8-word shingles are mostly duplicates is looping regardless
+    # of where the repeats sit.
+    # PROSE ONLY. Structured text repeats by design - JSON repeats its keys and
+    # source repeats its syntax - and S030 asks the resident for JSON replies, so
+    # a shingle check that fired on them would reject exactly the output shape we
+    # want. Measured: op_class_ablation.py scores under the floor and is not
+    # degenerate.
+    if not _looks_structured(text):
+        words = re.findall(r"\S+", text)
+        if len(words) >= 120:
+            shingles = [" ".join(words[i : i + 5]) for i in range(len(words) - 4)]
+            if shingles and len(set(shingles)) / len(shingles) < SHINGLE_NOVELTY_FLOOR:
+                return True
+
     compact = re.sub(r"\s+", "", text)
     n = len(compact)
     if n >= 8:
-        for size in range(1, 17):
+        # Sizes up to 64, not 16. The real failure repeats a whole phrase -
+        # 'The "sparsity" is the "key.' is 27 characters compact - which the
+        # 16-char ceiling could never see.
+        for size in range(1, 65):
             need = size * 4
             if need > n:
                 break
@@ -792,6 +836,26 @@ def is_degenerate(text: str) -> bool:
                 if chunk and compact[i : i + need] == chunk * 4:
                     return True
     return False
+
+
+def degenerate_prefix(text: str) -> str:
+    """The longest leading slice that is NOT degenerate.
+
+    The sealed body produces real content and THEN loops, so discarding the
+    whole reply throws away the science. This keeps what came before the loop.
+    """
+    if not isinstance(text, str) or not text:
+        return ""
+    if not is_degenerate(text):
+        return text
+    lo, hi = 0, len(text)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if is_degenerate(text[:mid]):
+            hi = mid - 1
+        else:
+            lo = mid
+    return text[:lo]
 
 
 def observe_thinking(raw: str) -> str:

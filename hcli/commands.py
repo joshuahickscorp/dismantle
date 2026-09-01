@@ -137,7 +137,14 @@ def format_machine_status(
         return _machine_status_one_line(snap)
     lines: List[str] = []
     resident = snap.get("resident")
-    if isinstance(resident, dict):
+    if isinstance(resident, dict) and resident.get("ambiguous"):
+        # Two live records disagree; picking one and hiding the other would
+        # be the silent guess this line exists to refuse.
+        lines.append(
+            f"Resident ambiguous: {_fmt_unknown(resident.get('root_count'))} "
+            "workspaces report state, see --workspace"
+        )
+    elif isinstance(resident, dict):
         head = (
             f"Resident {_fmt_unknown(resident.get('state'))} "
             f"supervisor={_fmt_unknown(resident.get('supervisor'))} "
@@ -155,7 +162,12 @@ def format_machine_status(
             + tail
         )
     modellake = snap.get("modellake")
-    if isinstance(modellake, dict):
+    if isinstance(modellake, dict) and modellake.get("ambiguous"):
+        lines.append(
+            f"ModelLake ambiguous: {_fmt_unknown(modellake.get('root_count'))} "
+            "workspaces report state, see --workspace"
+        )
+    elif isinstance(modellake, dict):
         lines.append(
             f"ModelLake watcher={_fmt_unknown(modellake.get('watcher'))} "
             f"jobs={_fmt_unknown(modellake.get('jobs'))} "
@@ -164,8 +176,12 @@ def format_machine_status(
         )
     if not lines:
         # Say it rather than printing nothing. "this host is quiet" and
-        # "/status cannot see this host" are different facts.
-        lines.append("Machine resident=absent modellake=absent")
+        # "/status cannot see this host" are different facts -- and only the
+        # latter means zero workspaces looked real enough to search.
+        if snap.get("workspace_roots_seen") == 0:
+            lines.append("Machine: no Hawking workspace visible, see --workspace")
+        else:
+            lines.append("Machine resident=absent modellake=absent")
     return lines
 
 
@@ -179,15 +195,21 @@ def _machine_status_one_line(snap: Dict[str, Any]) -> List[str]:
     resident = snap.get("resident")
     modellake = snap.get("modellake")
     if not isinstance(resident, dict) and not isinstance(modellake, dict):
+        if snap.get("workspace_roots_seen") == 0:
+            return ["Machine: no Hawking workspace visible, see --workspace"]
         return ["Machine resident=absent modellake=absent"]
-    if isinstance(resident, dict):
+    if isinstance(resident, dict) and resident.get("ambiguous"):
+        left = f"Machine resident=ambiguous({_fmt_unknown(resident.get('root_count'))})"
+    elif isinstance(resident, dict):
         left = (
             f"Machine resident={_fmt_unknown(resident.get('state'))} "
             f"cycles={_fmt_unknown(resident.get('cycles'))}"
         )
     else:
         left = "Machine resident=absent"
-    if isinstance(modellake, dict):
+    if isinstance(modellake, dict) and modellake.get("ambiguous"):
+        right = f" modellake=ambiguous({_fmt_unknown(modellake.get('root_count'))})"
+    elif isinstance(modellake, dict):
         right = (
             f" modellake={_fmt_unknown(modellake.get('watcher'))} "
             f"jobs={_fmt_unknown(modellake.get('jobs'))} "
@@ -202,7 +224,9 @@ def _machine_status_one_line(snap: Dict[str, Any]) -> List[str]:
     budget = STATUS_LINE_CHARS - len(left) - len(right) - len(" event=")
     event = (
         _truncate(resident.get("last_event"), min(EVENT_DISPLAY_CHARS, budget))
-        if isinstance(resident, dict) and budget >= 8
+        if isinstance(resident, dict)
+        and not resident.get("ambiguous")
+        and budget >= 8
         else ""
     )
     return [left + (f" event={event}" if event else "") + right]
@@ -259,29 +283,28 @@ def format_status(snapshot: Dict[str, Any]) -> str:
         if health and health != "ok":
             queued = provider_status.get("queued")
             queued_s = str(queued) if queued is not None else "unknown"
-            qwen_line = (
-                f"{provider_label} health=down resident=0 active=0 "
-                f"queued={queued_s} n_ctx=unknown prompt=unknown tps=unknown"
-            )
-        elif health == "ok":
-            qwen_line = (
-                f"{provider_label} health=ok resident={_fmt_unknown(provider_status.get('resident'))} "
-                f"active={_fmt_unknown(provider_status.get('active_decode'))} "
-                f"queued={_fmt_unknown(provider_status.get('queued'))} "
-                f"n_ctx={_fmt_unknown(provider_status.get('n_ctx'))} "
-                f"prompt={_fmt_unknown(provider_status.get('prompt_tokens'))} "
-                f"tps={_fmt_unknown(provider_status.get('tps'))}"
-            )
+            head = f"{provider_label} health=down resident=0 active=0 "
+            tail = f"queued={queued_s} n_ctx=unknown prompt=unknown tps=unknown"
         else:
-            qwen_line = (
-                f"{provider_label} health=unknown "
+            health_s = "ok" if health == "ok" else "unknown"
+            head = (
+                f"{provider_label} health={health_s} "
                 f"resident={_fmt_unknown(provider_status.get('resident'))} "
                 f"active={_fmt_unknown(provider_status.get('active_decode'))} "
                 f"queued={_fmt_unknown(provider_status.get('queued'))} "
+            )
+            tail = (
                 f"n_ctx={_fmt_unknown(provider_status.get('n_ctx'))} "
                 f"prompt={_fmt_unknown(provider_status.get('prompt_tokens'))} "
                 f"tps={_fmt_unknown(provider_status.get('tps'))}"
             )
+        # n_ctx/prompt_tokens carry real token counts (up to 7 digits on a
+        # long-context model) with no natural width cap, unlike the small
+        # bounded counters in `head`. Same head/tail budget technique as
+        # the resident line below: one flexible chunk truncated to fit,
+        # rather than letting the frame wrap.
+        budget = max(8, STATUS_LINE_CHARS - len(head))
+        qwen_line = head + _truncate(tail, budget)
 
     if not grok:
         grok_line = "Grok unknown"
@@ -398,16 +421,99 @@ MODELLAKE_LOG_REL = (
 MODELLAKE_TAIL_BYTES = 128 * 1024
 
 
-def _status_roots(controller: Any) -> List[Path]:
-    """Where host state may live: this session's workspace, then the repo.
+def _status_roots(
+    controller: Any, *, repo_root: Optional[Path] = None
+) -> List[Path]:
+    """Where host state may live: session workspace, resolved workspace, repo.
 
-    A session opened in a scratch directory must still see the machine.
+    A session opened in a scratch directory must still see the machine, so
+    this also tries `resolve_workspace()` -- the existing HCLI_WORKSPACE /
+    `.hcli`-`.haider` ancestor walk-up, already built for exactly this and
+    already wired into mission commands, but never into /status until now.
+    ``repo_root`` overrides the live `find_repo_root()` call; production
+    never passes it, tests use it to exercise the stamped-install fallback
+    (which always resolves to *this* checkout when the test itself runs from
+    inside it) without faking `__file__`.
     """
+    from .runtime import resolve_workspace
+
     roots: List[Path] = []
-    for candidate in (_workspace_root(controller), find_repo_root()):
+    for candidate in (
+        _workspace_root(controller),
+        resolve_workspace(),
+        repo_root if repo_root is not None else find_repo_root(),
+    ):
         if candidate is not None and candidate not in roots:
             roots.append(candidate)
     return roots
+
+
+# The state roots SUPERWAVE_STATE.md documents for this repo, plus `.git` for
+# a fresh checkout that has not written any of them yet. Not a registry --
+# the same on-disk evidence `_resident_status`/`_modellake_status` already
+# read from -- just checked before trusting a guessed root at all.
+# Evidence that is actually DISTINCTIVE to Hawking. The first list accepted a
+# bare `.git`, so every git repository on the machine read as a Hawking
+# workspace, and `resolve_workspace()` walks up to the filesystem root, so one
+# stray `.hcli` left in the system tmp dir did too. On any developer box that
+# made `workspace_roots_seen` non-zero with zero real roots present, which fell
+# straight back to the misleading "absent" line the search exists to replace.
+#
+# The roadmap is unmistakable on its own. Runtime state plus receipts together
+# is the other honest signature: a scratch dir has neither, a stamped install
+# snapshot has no receipts, and a stray `.hcli` has no receipts beside it.
+_DECISIVE_MARKERS = (Path("civilization") / "ROADMAP_STATE.json",)
+_CORROBORATING_MARKERS = (Path("receipts"), Path(".hcli"))
+
+
+def _looks_like_hawking_root(path: Optional[Path]) -> bool:
+    """Cheap evidence *path* is a real Hawking workspace, not a guess.
+
+    A stamped install snapshot (no vcs metadata, no state dirs) or a plain
+    scratch directory fails this. "This host is quiet" and "/status cannot
+    see this host" are different facts; this is what tells them apart.
+    """
+    if path is None:
+        return False
+    try:
+        if any((path / marker).exists() for marker in _DECISIVE_MARKERS):
+            return True
+        return all((path / marker).is_dir() for marker in _CORROBORATING_MARKERS)
+    except OSError:
+        return False
+
+
+def _visible_status_roots(
+    controller: Any, *, repo_root: Optional[Path] = None
+) -> List[Path]:
+    """``_status_roots``, filtered to candidates that look like a real host."""
+    return [
+        root
+        for root in _status_roots(controller, repo_root=repo_root)
+        if _looks_like_hawking_root(root)
+    ]
+
+
+def _multiple_hits(roots: List[Path], rel: tuple) -> bool:
+    """True when more than one visible root independently has this file.
+
+    Used to tell a defined search order (this root, then that one) apart
+    from an actual conflict -- two live records that disagree -- which must
+    not be resolved by silently picking the first and dropping the rest.
+    """
+    return sum(1 for root in roots if root.joinpath(*rel).is_file()) > 1
+
+
+def _multiple_modellake_hits(roots: List[Path]) -> bool:
+    return (
+        sum(
+            1
+            for root in roots
+            if root.joinpath(*MODELLAKE_LOCK_REL).is_file()
+            or root.joinpath(*MODELLAKE_LOG_REL).is_file()
+        )
+        > 1
+    )
 
 
 def _pid_liveness(pid: Any, token: Any) -> str:
@@ -750,10 +856,21 @@ def enrich_status_snapshot(controller: Any, snap: Dict[str, Any]) -> Dict[str, A
         snap.setdefault("watchdog", None)
 
     # Machine scope. Measured here rather than defaulted, because the whole
-    # point is that these outlive this session's controller.
-    roots = _status_roots(controller)
-    snap["resident"] = _resident_status(roots)
-    snap["modellake"] = _modellake_status(roots)
+    # point is that these outlive this session's controller. Only roots that
+    # look like a real Hawking workspace count -- `workspace_roots_seen`
+    # lets the formatter tell "zero visible" apart from "visible but quiet".
+    roots = _visible_status_roots(controller)
+    snap["workspace_roots_seen"] = len(roots)
+
+    resident = _resident_status(roots)
+    if resident is not None and _multiple_hits(roots, RESIDENT_STATE_REL):
+        resident = dict(resident, ambiguous=True, root_count=len(roots))
+    snap["resident"] = resident
+
+    modellake = _modellake_status(roots)
+    if modellake is not None and _multiple_modellake_hits(roots):
+        modellake = dict(modellake, ambiguous=True, root_count=len(roots))
+    snap["modellake"] = modellake
 
     return snap
 

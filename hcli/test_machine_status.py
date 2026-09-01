@@ -27,13 +27,17 @@ from pathlib import Path
 
 from hcli.commands import (
     MODELLAKE_TAIL_BYTES,
+    RESIDENT_STATE_REL,
     STATUS_LINE_CHARS,
     STATUS_MAX_LINES,
     _last_watcher_sample,
+    _looks_like_hawking_root,
     _modellake_status,
+    _multiple_hits,
     _pid_liveness,
     _resident_status,
     _status_roots,
+    _visible_status_roots,
     format_machine_status,
     format_status,
 )
@@ -302,6 +306,156 @@ def test_status_roots_fall_back_to_the_repo():
     assert (roots[1] / "hcli" / "commands.py").is_file(), roots
 
 
+def test_status_roots_also_try_resolve_workspace():
+    """`resolve_workspace()` (HCLI_WORKSPACE / .hcli ancestor walk-up) is an
+    existing convention built for exactly this and was never wired in."""
+    old = os.environ.pop("HCLI_WORKSPACE", None)
+    marked = fresh()
+    (marked / ".hcli").mkdir()
+    try:
+        os.environ["HCLI_WORKSPACE"] = str(marked)
+
+        class NoWorkspace:
+            pass
+
+        roots = _status_roots(NoWorkspace())
+        # `resolve_workspace()` resolves symlinks (e.g. /tmp -> /private/tmp
+        # on macOS); compare on resolved identity, not raw path equality.
+        assert marked.resolve() in [r.resolve() for r in roots], roots
+    finally:
+        if old is None:
+            os.environ.pop("HCLI_WORKSPACE", None)
+        else:
+            os.environ["HCLI_WORKSPACE"] = old
+
+
+# -- workspace visibility: "quiet" vs "cannot see this host" ----------------
+
+
+def test_a_real_workspace_with_no_state_yet_is_quiet_not_invisible():
+    """A real checkout that just hasn't written resident/modellake state is
+    the ordinary 'this host is quiet' case, not 'cannot see this host'."""
+    real_root = fresh()
+    # A CHECKOUT, not just a directory that happens to hold runtime state.
+    # `.hcli` alone was the old marker and it is the exact shape of a stray
+    # leftover in the system tmp dir, so it can no longer stand for "real".
+    (real_root / ".hcli").mkdir()
+    (real_root / "receipts").mkdir()
+
+    class Ctrl:
+        workspace_root = str(real_root)
+
+    roots = _visible_status_roots(Ctrl(), repo_root=fresh())
+    assert real_root in roots
+    snap = {"resident": None, "modellake": None, "workspace_roots_seen": len(roots)}
+    assert format_machine_status(snap) == ["Machine resident=absent modellake=absent"]
+
+
+def test_a_neutral_cwd_with_nothing_real_says_so_not_absent():
+    """The actual defect: a stamped-install/scratch cwd must not print the
+    same word ('absent') that means 'this host has nothing running'."""
+    bare_workspace = fresh()  # no .hcli/receipts/civilization/.git in it
+    bare_repo = fresh()  # stands in for a stamped install with no vcs metadata
+    old = os.environ.pop("HCLI_WORKSPACE", None)
+    try:
+        os.environ["HCLI_WORKSPACE"] = str(bare_workspace)
+
+        class Ctrl:
+            workspace_root = str(bare_workspace)
+
+        roots = _visible_status_roots(Ctrl(), repo_root=bare_repo)
+        assert roots == [], roots
+        for max_lines in (2, 1):
+            snap = {
+                "resident": None,
+                "modellake": None,
+                "workspace_roots_seen": len(roots),
+            }
+            line = format_machine_status(snap, max_lines=max_lines)[0]
+            assert "absent" not in line, line
+            assert "no Hawking workspace" in line, line
+            assert len(line) <= STATUS_LINE_CHARS
+    finally:
+        if old is None:
+            os.environ.pop("HCLI_WORKSPACE", None)
+        else:
+            os.environ["HCLI_WORKSPACE"] = old
+
+
+def test_a_stamped_install_container_does_not_look_like_a_workspace():
+    assert not _looks_like_hawking_root(fresh())
+
+
+def test_the_repo_checkout_looks_like_a_workspace():
+    assert _looks_like_hawking_root(Path(__file__).resolve().parent.parent)
+
+
+# -- several real candidates: expose the choice, never guess ----------------
+
+
+def test_two_real_workspaces_with_their_own_resident_are_flagged_not_guessed():
+    root_a = fresh()
+    root_b = fresh()
+    write_resident(root_a, state="RUNNING")
+    write_resident(root_b, state="IDLE")
+    roots = [root_a, root_b]
+    assert _multiple_hits(roots, RESIDENT_STATE_REL)
+    # Simulate what enrich_status_snapshot does once it detects the conflict.
+    ambiguous = dict(_resident_status(roots), ambiguous=True, root_count=2)
+    line = format_machine_status({"resident": ambiguous, "modellake": None})[0]
+    assert "ambiguous" in line
+    assert "RUNNING" not in line and "IDLE" not in line, "must not silently pick one"
+    assert len(line) <= STATUS_LINE_CHARS
+    one_line = format_machine_status({"resident": ambiguous}, max_lines=1)[0]
+    assert "ambiguous" in one_line
+    assert len(one_line) <= STATUS_LINE_CHARS
+
+
+def test_a_single_real_workspace_is_never_flagged_ambiguous():
+    root = fresh()
+    write_resident(root)
+    assert not _multiple_hits([root], RESIDENT_STATE_REL)
+
+
+# -- Runtime health line width -----------------------------------------------
+
+
+def test_runtime_health_line_never_exceeds_the_frame():
+    """A long-context model's n_ctx/prompt_tokens used to push this line past
+    STATUS_LINE_CHARS and wrap in the frame."""
+    for n_ctx, prompt, tps in (
+        (131072, 131072, 123.4),
+        (1048576, 999999, 71.2),
+        (1048576, 1048576, 999.9),
+    ):
+        snap = {
+            "runtime": {
+                "health": "ok",
+                "resident": 1,
+                "active_decode": 1,
+                "queued": 0,
+                "n_ctx": n_ctx,
+                "prompt_tokens": prompt,
+                "tps": tps,
+            }
+        }
+        text = format_status(snap)
+        runtime_lines = [l for l in text.splitlines() if l.startswith("Runtime ")]
+        assert runtime_lines
+        for line in runtime_lines:
+            assert len(line) <= STATUS_LINE_CHARS, (len(line), line)
+
+
+def test_runtime_health_down_and_unknown_also_fit():
+    for health in ("down", None):
+        snap = {"runtime": {"health": health, "queued": 999999999}}
+        text = format_status(snap)
+        runtime_lines = [l for l in text.splitlines() if l.startswith("Runtime ")]
+        assert runtime_lines
+        for line in runtime_lines:
+            assert len(line) <= STATUS_LINE_CHARS, (len(line), line)
+
+
 if __name__ == "__main__":
     for name, fn in sorted(dict(globals()).items()):
         if name.startswith("test_") and callable(fn):
@@ -362,3 +516,57 @@ def test_without_a_warning_both_machine_lines_are_kept():
     lines = format_status(snap).splitlines()
     assert len(lines) <= STATUS_MAX_LINES, lines
     assert sum(1 for l in lines if l.startswith(("Resident ", "ModelLake "))) == 2
+
+
+# --- the failure path the HCLI_WORKSPACE-based test bypassed ---------------
+# `_looks_like_hawking_root` accepted a bare `.git`, and `resolve_workspace()`
+# walks up to the filesystem root looking for `.hcli`. A verifier reproduced
+# both live: a stray `.hcli` in the system tmp dir and a freshly `git init`-ed
+# unrelated repo each read as a visible Hawking workspace. On a developer box
+# that is the normal case, so `workspace_roots_seen` came back non-zero with
+# zero real roots and /status fell back to the misleading "absent" line.
+
+
+def test_a_bare_git_repo_is_not_a_hawking_workspace(tmp_path):
+    from hcli.commands import _looks_like_hawking_root
+
+    (tmp_path / ".git").mkdir()
+    assert _looks_like_hawking_root(tmp_path) is False
+
+
+def test_a_stray_hcli_directory_alone_is_not_a_hawking_workspace(tmp_path):
+    """The exact leftover the verifier found sitting in the system tmp root."""
+    from hcli.commands import _looks_like_hawking_root
+
+    (tmp_path / ".hcli").mkdir()
+    assert _looks_like_hawking_root(tmp_path) is False
+
+
+def test_an_empty_scratch_directory_is_not_a_hawking_workspace(tmp_path):
+    from hcli.commands import _looks_like_hawking_root
+
+    assert _looks_like_hawking_root(tmp_path) is False
+
+
+def test_runtime_state_beside_receipts_is_a_hawking_workspace(tmp_path):
+    from hcli.commands import _looks_like_hawking_root
+
+    (tmp_path / ".hcli").mkdir()
+    (tmp_path / "receipts").mkdir()
+    assert _looks_like_hawking_root(tmp_path) is True
+
+
+def test_the_roadmap_alone_is_decisive(tmp_path):
+    """A checkout with no runtime state yet is still unmistakably Hawking."""
+    from hcli.commands import _looks_like_hawking_root
+
+    (tmp_path / "civilization").mkdir()
+    (tmp_path / "civilization" / "ROADMAP_STATE.json").write_text("{}", encoding="utf-8")
+    assert _looks_like_hawking_root(tmp_path) is True
+
+
+def test_the_live_repo_is_still_recognised():
+    from hcli.commands import _looks_like_hawking_root
+    from hcli.paths import find_repo_root
+
+    assert _looks_like_hawking_root(find_repo_root(Path(__file__))) is True

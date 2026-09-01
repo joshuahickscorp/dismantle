@@ -249,8 +249,15 @@ def context_pack(k: dict[str, Any], *, terse: bool = False) -> str:
         prev = (k["iterations"][-1] or {}).get("live_hypotheses")
         live = [h for h in (prev or []) if isinstance(h, dict)]
     if live:
+        # BOUNDED. Feeding hypotheses back is what lets an investigation cross
+        # turns, but an unbounded feed grows the pack every turn and this body
+        # degenerates with length - the pack that worked was under 1600 chars.
+        # Two hypotheses, each claim clipped, is the feed; the full text lives
+        # on the iteration record where nothing has to re-read it.
         mine = ("YOUR LAST HYPOTHESES (advance or kill them): "
-                + "; ".join(f"{h.get('id')}: {h.get('claim')}" for h in live[-2:]))
+                + "; ".join(f"{str(h.get('id'))[:40]}: "
+                            f"{str(h.get('claim'))[:110]}"
+                            for h in live[-2:]))
     # IDENTICAL_REPLY_LOOP: under greedy decoding a byte-identical pack returns
     # a byte-identical reply. After one failed-parse turn LAST TURN froze to a
     # constant and tried_params stopped changing, so the pack never moved and
@@ -261,7 +268,14 @@ def context_pack(k: dict[str, Any], *, terse: bool = False) -> str:
     schema = (
         'Reply with ONLY this JSON, no prose:\n'
         '{"belief_update":"one sentence",'
-        '"live_hypotheses":[{"id":"x","claim":"one sentence",'
+        # The placeholder used to be "x" and the body COPIED IT VERBATIM: 16 of
+        # 26 recorded hypothesis ids were literally "x", plus 2 of "y". An id
+        # that is not distinct makes the whole hypothesis register unjoinable -
+        # you cannot tell which turn advanced which claim. A placeholder that
+        # reads as an instruction is harder to copy than one that reads as a
+        # value.
+        '"live_hypotheses":[{"id":"NAME_THIS_CLAIM",'
+        '"claim":"one sentence",'
         '"cheapest_falsifier":"one sentence"}],'
         '"selected_work":[{"type":"PERTURB","params":'
         '{"tensor":"gate|up|down","layer":0,"side":"rows|cols","fraction":0.5},'

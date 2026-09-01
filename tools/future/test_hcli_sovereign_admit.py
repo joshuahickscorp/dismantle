@@ -168,3 +168,38 @@ def test_params_absent_is_still_a_plain_rejection_not_a_crash():
     v = sov.validate({"selected_work": [{"type": "PERTURB"}]})
     assert v["n_rejected"] == 1
     assert "params is" not in v["rejected"][0]["why"]
+
+
+def test_the_context_pack_stays_bounded_as_state_accumulates():
+    """The pack that worked was under ~1600 chars and this body degenerates with
+    length. Both growing inputs - the hypothesis feed and the tried-params list -
+    are capped, so a long campaign cannot inflate the pack without bound."""
+    import json
+    k = json.loads((sov.REPO / sov.KERNEL_REL).read_text())
+    lean = len(sov.context_pack(k))
+    fat = dict(k)
+    fat["live_hypotheses"] = [{"id": "I" * 200, "claim": "c" * 4000}
+                              for _ in range(50)]
+    fat["tried_params"] = [f"up/L{i}/rows/0.5" for i in range(500)]
+    grown = len(sov.context_pack(fat))
+    assert grown - lean < 400, (
+        f"pack grew {grown - lean} chars on 50 hypotheses and 500 tried params; "
+        "an unbounded feed is how the pack outgrows the body"
+    )
+    assert grown < 2400
+
+
+def test_the_terse_pack_is_much_shorter_than_the_full_one():
+    import json
+    k = json.loads((sov.REPO / sov.KERNEL_REL).read_text())
+    assert len(sov.context_pack(k, terse=True)) < len(sov.context_pack(k)) / 1.5
+
+
+def test_the_schema_placeholder_is_not_copyable_as_a_value():
+    """16 of 26 recorded hypothesis ids were literally "x" - the schema's own
+    placeholder. An id that is not distinct makes the register unjoinable."""
+    import json
+    k = json.loads((sov.REPO / sov.KERNEL_REL).read_text())
+    p = sov.context_pack(k)
+    assert '"id":"x"' not in p
+    assert "NAME_THIS_CLAIM" in p

@@ -1562,12 +1562,18 @@ def participation_report(
     mb_report: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     n_choose = len(chooses)
+    # A cycle with fewer than two options cannot show divergence. Counting it as
+    # agreement inflates the denominator with cycles that had no choice in them.
+    choosable = [c for c in chooses if (c.get("n_options") or 0) >= 2]
+    unchoosable = [c for c in chooses if (c.get("n_options") or 0) < 2]
     diverged = [c for c in chooses if c.get("diverged")]
     agreed = [c for c in chooses if not c.get("diverged") and c.get("model_id")]
     n_calls = len(calls)
     prompt_tokens = sum(int(c["prompt_tokens"]) for c in calls if isinstance(c.get("prompt_tokens"), int))
     gen_tokens = sum(int(c["generated_tokens"]) for c in calls if isinstance(c.get("generated_tokens"), int))
     frac = (len(diverged) / n_choose) if n_choose else 0.0
+    div_choosable = [c for c in choosable if c.get("diverged")]
+    frac_choosable = (len(div_choosable) / len(choosable)) if choosable else None
     model_ids = [c.get("model_id") for c in chooses if c.get("model_id")]
     policy_ids = [c.get("policy_id") for c in chooses if c.get("policy_id")]
     same_seq = model_ids == policy_ids and bool(model_ids)
@@ -1577,6 +1583,19 @@ def participation_report(
         "n_diverged_from_policy": len(diverged),
         "n_agreed_with_policy": len(agreed),
         "fraction_model_over_policy": round(frac, 4),
+        "n_cycles_with_a_real_choice": len(choosable),
+        "n_cycles_with_one_or_no_option": len(unchoosable),
+        "n_diverged_where_a_choice_existed": len(div_choosable),
+        "fraction_model_over_policy_where_a_choice_existed": (
+            round(frac_choosable, 4) if frac_choosable is not None else None),
+        "why_two_fractions": (
+            "divergence is UNDEFINED on a menu of one. The clock outran the real "
+            "catalog, so most cycles offered a single auto-generated probe and "
+            "counting them as agreement scores a choice nobody was given. The "
+            "second fraction is over cycles where two or more options existed; "
+            "null means there were none, which is a statement about the "
+            "FRONTIER, not about the resident."
+        ),
         "prompt_tokens": prompt_tokens,
         "generated_tokens": gen_tokens,
         "token_count_authority": "native-resident protocol fields; not a throughput claim",
@@ -2293,6 +2312,12 @@ def run_torture(
                     "policy_dead": bool(policy_dead and policy_id is None),
                     "reason": reason,
                     "verbatim": verbatim_choose,
+                    # DIVERGENCE IS UNDEFINED ON A MENU OF ONE. The 30-minute
+                    # clock outran the real catalog 6x: 7 real work units, then
+                    # 44 auto-generated health probes, so 86% of cycles offered
+                    # a single option. Scoring "the model never diverged" on
+                    # those is scoring a choice nobody was given.
+                    "n_options": len(remaining),
                 }
             )
             tape.emit(

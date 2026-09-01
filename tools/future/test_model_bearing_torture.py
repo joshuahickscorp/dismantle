@@ -583,3 +583,50 @@ def test_live_receipts_if_present_are_sealed_and_hardware_free():
             assert row.get("found") is True, key
         assert doc["sealed"]["pin"]["sealed"] is True
         assert doc["degeneracy"]["verdict"] != "FAIL"
+
+
+# --- divergence is undefined on a menu of one --------------------------------
+
+def _choose(n_options, diverged=False, model_id="m", policy_id="p"):
+    return {"n_options": n_options, "diverged": diverged,
+            "model_id": model_id, "policy_id": policy_id if not diverged else "q"}
+
+
+def test_single_option_cycles_are_excluded_from_the_choice_fraction():
+    """7 real work units, 44 auto-generated probes: 86% of cycles offered ONE
+    option. Counting those as agreement scores a choice nobody was given."""
+    chooses = [_choose(5), _choose(4, diverged=True)] + [_choose(1)] * 44
+    r = mbt.participation_report(chooses=chooses, calls=[], mb_report=None)
+    assert r["n_choose"] == 46
+    assert r["n_cycles_with_a_real_choice"] == 2
+    assert r["n_cycles_with_one_or_no_option"] == 44
+    assert r["n_diverged_where_a_choice_existed"] == 1
+    assert r["fraction_model_over_policy_where_a_choice_existed"] == 0.5
+    # The unscoped fraction is diluted by 44 cycles with nothing to choose.
+    assert r["fraction_model_over_policy"] < 0.05
+
+
+def test_a_frontier_with_no_real_choice_reports_null_not_zero():
+    """Null means the FRONTIER offered nothing, which is not a statement about
+    the resident. Zero would read as a verdict on the model."""
+    r = mbt.participation_report(chooses=[_choose(1)] * 30, calls=[],
+                                 mb_report=None)
+    assert r["n_cycles_with_a_real_choice"] == 0
+    assert r["fraction_model_over_policy_where_a_choice_existed"] is None
+    assert "not about the resident" in r["why_two_fractions"]
+
+
+def test_both_fractions_are_reported_never_just_the_flattering_one():
+    chooses = [_choose(3, diverged=True)] + [_choose(1)] * 9
+    r = mbt.participation_report(chooses=chooses, calls=[], mb_report=None)
+    assert r["fraction_model_over_policy"] == 0.1
+    assert r["fraction_model_over_policy_where_a_choice_existed"] == 1.0
+    assert r["fraction_model_over_policy"] != \
+        r["fraction_model_over_policy_where_a_choice_existed"]
+
+
+def test_the_option_count_is_recorded_at_the_decision_point():
+    import inspect
+    src = inspect.getsource(mbt)
+    assert '"n_options": len(remaining)' in src
+    assert "DIVERGENCE IS UNDEFINED ON A MENU OF ONE" in src

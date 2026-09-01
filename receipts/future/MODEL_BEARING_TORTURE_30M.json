@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-08-31T16:29:52Z",
+  "recorded_at": "2026-09-01T04:02:54Z",
   "recorded_by": "tools/future/model_bearing_torture.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -474,7 +474,7 @@
   "degenerate_axes": [
    "refills"
   ],
-  "elapsed_s": 1821.877,
+  "elapsed_s": 1817.967,
   "identical_model_outputs": {
    "axis": "identical_model_outputs",
    "degenerate": false,
@@ -490,7 +490,7 @@
   "verdict": "FAIL"
  },
  "duration_requested_s": 1800.0,
- "elapsed_s": 1821.877,
+ "elapsed_s": 1817.967,
  "eras": [
   "I Genesis of the Laboratory",
   "II Compounding Civilization",
@@ -507,14 +507,14 @@
    "/tmp/hawking-gpu-lane.lock",
    "/Users/scammermike/Downloads/hawking/.hcli/locks/protected-accelerator-bench.lock"
   ],
-  "pid": 37762,
+  "pid": 66896,
   "waited_for": [],
-  "waited_s": 0.022,
+  "waited_s": 0.026,
   "widens_hcli_authority": false
  },
  "hcli_invoked_not_edited": true,
  "model_behavior_summary": {
-  "generated_tokens": 31516,
+  "generated_tokens": 31489,
   "gpu_authority": false,
   "greedy_policy_following": "scripted policy after 6fc77f169 is WU.HAWKING.resident_identity_pin; refuse_if_dead keys the eight closed families. If the model still never launches live work, the previous excuse is gone.",
   "n_launches": 51,
@@ -532,7 +532,7 @@
  ],
  "participation": {
   "fraction_model_over_policy": 0.0,
-  "generated_tokens": 31516,
+  "generated_tokens": 31489,
   "gpu_authority": false,
   "materially_participated": {
    "changed_what_ran_next_count": 0,
@@ -540,17 +540,18 @@
    "different_hypothesis_count": 1,
    "divergence_count": 0,
    "divergence_scope": {
-    "divergence_denominator": "distinct asks, not total asks",
+    "divergence_denominator": "distinct QUESTION KINDS, not distinct prompts and not total asks",
     "n_choose_asks": 51,
     "n_distinct_choose_asks": 51,
+    "n_distinct_question_kinds": 8,
     "n_repeated_choose_asks": 0,
-    "why": "a deterministic body re-asked a byte-identical question answers it identically by construction; counting that as agreement inflates the denominator and reports a property of the frontier as a property of the model"
+    "why": "a deterministic body re-asked a byte-identical question answers it identically by construction, so total asks is the wrong denominator. So is distinct PROMPTS: a frontier that refills itself with indexed probes produces fifty distinct prompts and seven distinct questions. The scope of any divergence claim is the question-kind count"
    },
    "model_proposes_tools_decide": true,
    "n_decisions": 155,
    "no_reason_count": 0,
    "participated": false,
-   "publishable_finding": "model choices never diverged from the fixed policy across 51 DISTINCT choose asks (51 total, 0 of them byte-identical repeats). That is a finding about this resident on this frontier, not a decorated timeline - and the scope is the distinct count, because a deterministic body cannot disagree with itself on the same question",
+   "publishable_finding": "model choices never diverged from the fixed policy across 8 DISTINCT QUESTION KINDS (51 distinct prompts, 51 asks, 0 byte-identical repeats). That is a finding about this resident on this frontier, not a decorated timeline - and the scope is the KIND count, because a deterministic body cannot disagree with itself on the same question and an indexed probe series is one question asked many times",
    "reasoned_decision_count": 155,
    "why": "no choose() diverged from the fixed policy; no model decision changed what ran next"
   },
@@ -643,7 +644,7 @@
  "required_events": {
   "hawking_self_workunit": {
    "found": true,
-   "t_s": 33.363,
+   "t_s": 34.84,
    "unit_id": "WU.HAWKING.resident_identity_pin",
    "verbatim": "```json\n{\n\"choice_id\": \"WU.HAWKING.resident_identity_pin\",\n\"reason\": \"The candidate has the highest gain (5) and is on the HCLI_SELF frontier, matching the scripted policy's preference for high-value self-identity verification over lower-gain fusion or execution checks.\",\n\"mechanism\": \"pin\",\n\"surface\": \"resident identity\",\n\"hypothesis_family\": \"resident_identity_pin\"\n}\n```",
    "why": "WorkUnit targets Hawking (the machine), not a specimen organ"
@@ -653,7 +654,7 @@
    "from": "model_call",
    "scar_id": "MLP_FUNCTION_REPLACEMENT_CLOSED",
    "source": "receipts/future/MLP_STRUCTURED_OPERATOR.json",
-   "t_s": 33.363,
+   "t_s": 34.84,
    "verbatim": "```json\n{\n\"reading\": \"The primary focus is the HCLI_SELF frontier, specifically the 'no_wait_scheduler' and 'fusion_env_applied' tasks. The 'no_wait_scheduler' task (gain 3) is the immediate operational constraint: it mandates that the agent must continue reasoning and processing other tasks while the 'resident_identity_pin' (gain 5) is in flight. This implies a parallel execution or non-blocking state where the 'pin' task is running in the background. The 'fusion_env_applied' (gain 4) is the next critical HCLI_SELF task to address, likely requiring verification of the environment state once the 'pin' is resolved or concurrently. The 'fold_addqx_ab_status' (gain 4) in MODEL_EXECUTION is a secondary priority, likely a check for a specific token status in a sibling process. The 'decode_arith_cost' (gain 2) and 'receipt_wait_probe' (gain 1) are lower priority, with the latter being a bounded child task that may be relevant to the 'no_wait_scheduler' context but is less critical than the main HCLI tasks.\",\n\"avoid\": [\n\"MLP_FUNCTION_REPLACEMENT_CLOSED\",\n\"MLP_FUNCTION_REPLACEMENT\",\n\"MONARCH\",\n\"BUTTERFLY\",\n\"FACTORIZE_THE_FACTORS\",\n\"PRODUCT_DICTIONARY\",\n\"CONDITIONAL_PROGRAM\",\n\"GENERATED_BLOCK\",\n\"NONLINEAR_GENERATOR\",\n\"COMPOSITE_MLP_SIMPLE_LINEAR_LOW_RANK_REFUTED\",\n\"RESIDUAL_RESCUE_CLOSED\",\n\"AUX_U8_DECODE_ARITHMETIC_WALL_NEGATIVE\"\n],\n\"why\": \"The 'no_wait_scheduler' task explicitly states 'keep reasoning while a child waits on a receipt', which directly aligns with the 'receipt_wait_probe'"
   },
   "second_hypothesis": {
@@ -670,7 +671,7 @@
     "surface_b": "encode",
     "why": "surface 'decode' -> 'encode'; family 'decode_arithmetic_dominates_byte_save' -> 'encode_arithmetic_dominates_byte_save'"
    },
-   "explain_verbatim": "```json\n{\n\"why\": \"The unit failed because the decode arithmetic overhead (0.070764) exceeded the byte-save performance (0.000000) on this specific CPU probe, mir the aux_u8 failure.\",\n\"mechanism\": \"The performance metric calculation for the 'decode arithmetic' component resulted in a value that, when compared against the 'byte-save' component's value of 0.000000, triggered a failure condition (likely a 'less than' or 'equal to' check) due to the non-zero arithmetic cost outweighing the zero storage benefit, consistent with the aux_u8 pattern.\",\n\"status_claim\": \"failed\"\n}\n```",
+   "explain_verbatim": "```json\n{\n\"why\": \"The unit failed because the decode arithmetic operations took significantly longer than the byte-save operations on this CPU probe, as indicated by the metrics.\",\n\"mechanism\": \"The performance metrics show that arithmetic operations (arith_s=0.074344) dominated the byte-save operations (store_s=0.000001) in the decode process, resulting in a 74344x slower ratio for arithmetic versus store, which is the same pattern observed in aux_u8.\",\n\"status_claim\": \"failed\"\n}\n```",
    "found": true,
    "hypothesis_a": {
     "hypothesis_family": "decode_arithmetic_dominates_byte_save",
@@ -688,8 +689,8 @@
     "text": "process telemetry via GPU; expected to pass the cheap-byte hypothesis"
    },
    "hypothesis_b_verbatim": "process telemetry via GPU; expected to pass the cheap-byte hypothesis",
-   "t_s_explain": 269.292,
-   "t_s_hypothesis_b": 269.292,
+   "t_s_explain": 271.084,
+   "t_s_hypothesis_b": 271.084,
    "why_not_restatement": "surface 'decode' -> 'encode'; family 'decode_arithmetic_dominates_byte_save' -> 'encode_arithmetic_dominates_byte_save'"
   },
   "wait_reason_receipt_replan": {
@@ -711,10 +712,10 @@
     "WU.SUBAGENT.receipt_wait_probe"
    ],
    "reason_verbatim": "```json\n{\n\"reading\": \"The primary focus is the HCLI_SELF frontier, specifically the 'no_wait_scheduler' and 'fusion_env_applied' tasks. The 'no_wait_scheduler' task (gain 3) is the immediate operational constraint: it mandates that the agent must continue reasoning and processing other tasks while the 'resident_identity_pin' (gain 5) is in flight. This implies a parallel execution or non-blocking state where the 'pin' task is running in the background. The 'fusion_env_applied' (gain 4) is the next critical HCLI_SELF task to address, likely requiring verification of the environment state once the 'pin' is resolved or concurrently. The 'fold_addqx_ab_status' (gain 4) in MODEL_EXECUTION is a secondary priority, likely a check for a specific token status in a sibling process. The 'decode_arith_cost' (gain 2) and 'receipt_wait_probe' (gain 1) are lower priority, with the latter being a bounded child task that may be relevant to the 'no_wait_scheduler' context but is less critical than the main HCLI tasks.\",\n\"avoid\": [\n\"MLP_FUNCTION_REPLACEMENT_CLOSED\",\n\"MLP_FUNCTION_REPLACEMENT\",\n\"MONARCH\",\n\"BUTTERFLY\",\n\"FACTORIZE_THE_FACTORS\",\n\"PRODUCT_DICTIONARY\",\n\"CONDITIONAL_PROGRAM\",\n\"GENERATED_BLOCK\",\n\"NONLINEAR_GENERATOR\",\n\"COMPOSITE_MLP_SIMPLE_LINEAR_LOW_RANK_REFUTED\",\n\"RESIDUAL_RESCUE_CLOSED\",\n\"AUX_U8_DECODE_ARITHMETIC_WALL_NEGATIVE\"\n],\n\"why\": \"The 'no_wait_scheduler' task explicitly states 'keep reasoning while a child waits on a receipt', which directly aligns with the 'receipt_wait_probe'",
-   "t_s_reason": 61.059,
-   "t_s_receipt": 64.207,
-   "t_s_replan": 64.207,
-   "t_s_wait_start": 33.363,
+   "t_s_reason": 62.911,
+   "t_s_receipt": 66.101,
+   "t_s_replan": 66.101,
+   "t_s_wait_start": 34.84,
    "wait_unit": "WU.HAWKING.resident_identity_pin"
   }
  },
@@ -741,14 +742,14 @@
   ],
   "restore_path_n_steps": 12
  },
- "run_dir": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/mbt-run-a3argp4y",
+ "run_dir": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/mbt-run-jt983son",
  "schema": "hawking.future.model_bearing_torture.v1",
- "seal_sha256": "868c3cfa51ad13a6d4a7cc1a5d9215ed1cefd7150bde28e59f29c9e7431d512c",
+ "seal_sha256": "2b5ee525ef44a13d0766bd04069f3482469795c2f677e098c47203d8b1cfa58a",
  "sealed": {
   "binary_hash": {
-   "disk_sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+   "disk_sha256": "9f79d8a26540b86091296ddbc5829cf372bd75e789b9b0551a76d6ce2446fc37",
    "gpu_authority": false,
-   "live_sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+   "live_sha256": "9f79d8a26540b86091296ddbc5829cf372bd75e789b9b0551a76d6ce2446fc37",
    "match": true,
    "running_executable": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
    "why": null
@@ -777,11 +778,11 @@
     "HAWKING_QWEN38_FUSE_MLP": true
    },
    "gpu_authority": false,
-   "how": "ps eww -p 37791",
+   "how": "ps eww -p 66990",
    "missing": [],
    "ok": true,
-   "pid": 37791,
-   "ps_text_chars": 3771,
+   "pid": 66990,
+   "ps_text_chars": 3804,
    "require_fusion_env": true,
    "running_executable": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
    "spawn_env": {
@@ -806,7 +807,7 @@
    "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
    "backend": "hawking_native",
    "binary": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-   "binary_sha256_16": "2d5fd0f157fb7987",
+   "binary_sha256_16": "9f79d8a26540b860",
    "capabilities": {},
    "compiler": {
     "language": "rust",
@@ -846,7 +847,7 @@
    "model_id": "qwen3.8-27b-sealed-3.14",
    "param_class": "?B",
    "physical_ebpw": 3.1393,
-   "pid": 37791,
+   "pid": 66990,
    "profile_schema": "hcli.provider.profile.v1",
    "prompt_contract": {
     "fallback_template": "qwen_closed_think",
@@ -869,7 +870,7 @@
    "require_fusion_env": true,
    "resident_health": {
     "model_open_count": 1,
-    "pid": 37791,
+    "pid": 66990,
     "protocol": "hawking.qwen38.resident.v1",
     "ready": true,
     "resident_identity": "sealed-3.14",
@@ -887,7 +888,7 @@
    "artifact_root": "/Users/scammermike/noetic/NOETIC_PARENT_A",
    "artifact_root_present": true,
    "binary_present": true,
-   "binary_sha256": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8",
+   "binary_sha256": "9f79d8a26540b86091296ddbc5829cf372bd75e789b9b0551a76d6ce2446fc37",
    "family": "qwen3.8",
    "fusion_env": {
     "HAWKING_QWEN38_FUSE_ADD_RMSNORM": "1",
@@ -918,7 +919,7 @@
  "timeline_receipt": "MODEL_BEARING_TIMELINE.json",
  "verdict": "FAIL",
  "version": 1,
- "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/mbt-resident-ws-4v4wpoe6",
+ "workspace": "/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/mbt-resident-ws-r95m363n",
  "would_timeline_look_the_same_without_the_model": {
   "answer": true,
   "launched_under_model": [

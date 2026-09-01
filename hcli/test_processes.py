@@ -191,3 +191,57 @@ def test_acquisition_disk_check_binds_to_where_bytes_actually_land():
         f"storage check bound to the boot volume ({mount}) for a download that "
         f"lands on {destination}"
     )
+
+
+def test_a_claimed_body_is_never_reaped():
+    """ppid==1 alone is NOT evidence of abandonment, and reaping on it is fatal.
+
+    The resident supervisor DAEMONISES its body deliberately, so a perfectly
+    healthy in-use 11 GB model also sits at ppid 1. If the reaper keyed on ppid
+    alone it would kill the live resident every time a new hcli process started
+    -- turning a memory-leak fix into an outage. Only a body no live resident
+    state file claims may be reaped.
+    """
+    from hcli import processes as P
+    from hcli.processes import Process
+
+    fake = Process(
+        pid=999999, ppid=1, rss_bytes=11 * 1024 ** 3, cpu_percent=1.0,
+        elapsed="1:00", role="resident-body", process_class="ESSENTIAL_PERSISTENT",
+        safe_to_stop=False, purpose="p", command=RESIDENT_BODY,
+    )
+    real_live, real_claimed = P.live_processes, P._claimed_worker_pids
+    try:
+        P.live_processes = lambda **kw: [fake]
+
+        # Claimed by a live resident -> invisible to the reaper.
+        P._claimed_worker_pids = lambda: {999999}
+        assert P.orphaned_resident_bodies() == [], (
+            "reaper offered to kill a body the resident state file claims"
+        )
+        assert P.reap_orphaned_bodies(dry_run=True)["found"] == []
+
+        # THE MUTATION THIS TEST EXISTS FOR: drop the claim check and the same
+        # live body becomes a reap target. If this half passes while the half
+        # above also passes, the guard is load-bearing.
+        P._claimed_worker_pids = lambda: set()
+        assert [p.pid for p in P.orphaned_resident_bodies()] == [999999]
+    finally:
+        P.live_processes, P._claimed_worker_pids = real_live, real_claimed
+
+
+def test_reaping_never_blocks_a_runtime_from_starting():
+    """Reclaiming memory must never be the reason hcli fails to boot.
+
+    A NameError in the reporting line escaped the guard during development and
+    killed the caller. The guard now covers the report too.
+    """
+    from hcli import processes as P
+    from hcli.runtime import _reap_orphans_once
+
+    real = P.reap_orphaned_bodies
+    try:
+        P.reap_orphaned_bodies = lambda **kw: (_ for _ in ()).throw(RuntimeError("boom"))
+        _reap_orphans_once()  # must not raise
+    finally:
+        P.reap_orphaned_bodies = real

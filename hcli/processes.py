@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -228,6 +229,74 @@ def render(procs: Optional[List[Process]] = None, width: int = 80) -> str:
     note = f"  ({fallback} via rss fallback, under-reports)" if fallback else ""
     lines.append(f"{len(procs)} processes, {total:.2f}G footprint total{note}")
     return "\n".join(line[:width] for line in lines)
+
+
+def orphaned_resident_bodies() -> List[Process]:
+    """Resident bodies with no owner: reparented to pid 1 and claimed by nobody.
+
+    `atexit` cleans up a clean exit and it works - a normal `hcli` invocation
+    leaks nothing. But atexit CANNOT run on SIGKILL, and a daemon meets SIGKILL
+    routinely: an OOM kill, a crash, a `kill -9`, a power loss. Measured here,
+    SIGKILLing the CLI left an 11 GB model body at ppid=1 running forever.
+
+    A body owned by the resident SUPERVISOR is also reparented to pid 1 (it is
+    deliberately daemonised), so pid 1 alone is not evidence of abandonment.
+    A body is only orphaned if no live resident state file claims its pid.
+    """
+    claimed = _claimed_worker_pids()
+    return [
+        proc for proc in live_processes(footprint=False)
+        if proc.role == "resident-body"
+        and proc.ppid == 1
+        and proc.pid not in claimed
+    ]
+
+
+def _claimed_worker_pids() -> set:
+    """Pids any live resident state file says it owns. Never reap these."""
+    import json
+
+    pids = set()
+    for root in (Path.cwd(), Path(__file__).resolve().parents[1]):
+        state = root / ".hcli" / "resident" / "state.json"
+        try:
+            data = json.loads(state.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for key in ("worker_pid", "supervisor_pid", "body_pid"):
+            value = data.get(key)
+            if isinstance(value, int):
+                pids.add(value)
+    return pids
+
+
+def reap_orphaned_bodies(*, dry_run: bool = False) -> Dict[str, Any]:
+    """Terminate unowned resident bodies. Safe to call at startup.
+
+    Self-healing on startup rather than trusting the exit path, the same shape
+    the ModelLake reconciliation pass uses and for the same reason: the failure
+    happens precisely when the process that should have cleaned up is gone.
+    """
+    import os
+    import signal as _signal
+
+    found = orphaned_resident_bodies()
+    reaped, failed = [], []
+    for proc in found:
+        if dry_run:
+            continue
+        try:
+            os.kill(proc.pid, _signal.SIGTERM)
+            reaped.append(proc.pid)
+        except OSError as exc:
+            failed.append({"pid": proc.pid, "error": str(exc)})
+    return {
+        "found": [p.pid for p in found],
+        "bytes_held": sum(p.rss_bytes for p in found),
+        "reaped": reaped,
+        "failed": failed,
+        "dry_run": dry_run,
+    }
 
 
 if __name__ == "__main__":

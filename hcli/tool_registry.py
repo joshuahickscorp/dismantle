@@ -509,6 +509,43 @@ def _search_files(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     return {"root": str(root), "pattern": needle, "matches": matches, "truncated": False, "files_seen": files_seen}
 
 
+def _list_files(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    """List files under a read root. The verb 61 tools did not have.
+
+    `fs.search` requires a content `pattern`, so a caller that wanted to SEE
+    what is in a directory could not express it and forced search into a
+    listing role instead -- the model spent an entire tool budget calling
+    fs.search without `pattern`, reading the failure, and guessing again. That
+    was a missing capability, not a confused caller.
+    """
+    root = context.resolve_read_path(args.get("path") or ".")
+    if not root.is_dir():
+        raise NotADirectoryError(root)
+    glob = str(args.get("glob") or "*")
+    limit = max(1, min(2000, int(args.get("max_results") or 500)))
+    recursive = bool(args.get("recursive", True))
+    entries: List[Dict[str, Any]] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(
+            name for name in dirnames
+            if name not in {".git", ".venv", "__pycache__", "node_modules"}
+        )
+        for filename in sorted(filenames):
+            if not Path(filename).match(glob):
+                continue
+            path = Path(dirpath) / filename
+            try:
+                size = path.stat().st_size
+            except OSError:
+                continue
+            entries.append({"path": str(path.relative_to(root)), "bytes": size})
+            if len(entries) >= limit:
+                return {"root": str(root), "glob": glob, "files": entries, "truncated": True}
+        if not recursive:
+            break
+    return {"root": str(root), "glob": glob, "files": entries, "truncated": False}
+
+
 def _git_dir(context: ToolContext, raw: Any = None) -> Path:
     path = context.resolve_read_path(raw or str(context.repo_root))
     return path if path.is_dir() else path.parent
@@ -1571,6 +1608,21 @@ def default_tool_registry(
         {"type": "object", "required": ["pattern"], "additionalProperties": False,
          "properties": {"pattern": {"type": "string"}, "root": {"type": "string"}, "glob": {"type": "string"}, "max_results": {"type": "integer"}}},
         handler=_search_files,
+    ))
+    list_schema = {
+        "type": "object", "required": ["path"], "additionalProperties": False,
+        "properties": {
+            "path": {"type": "string"}, "glob": {"type": "string"},
+            "recursive": {"type": "boolean"}, "max_results": {"type": "integer"},
+        },
+    }
+    registry.register(ToolSpec(
+        "fs.list", "List files under a read root, optionally filtered by glob.",
+        list_schema, handler=_list_files,
+    ))
+    registry.register(ToolSpec(
+        "filesystem.list", "List files under a read root, optionally filtered by glob.",
+        list_schema, handler=_list_files,
     ))
     registry.register(ToolSpec(
         "filesystem.write", "Atomically write a workspace/repository file under reversible permission.",

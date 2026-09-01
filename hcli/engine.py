@@ -59,7 +59,7 @@ _REASONING_KEYS = {
 HCLI_RESULT_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {
-        "kind": {"type": "string", "enum": ["answer", "mutation"]},
+        "kind": {"type": "string", "enum": ["answer", "mutation", "tool_use"]},
         "content": {"type": "string"},
         "operations": {
             "type": "array",
@@ -87,8 +87,46 @@ HCLI_RESULT_SCHEMA: Dict[str, Any] = {
             },
         },
         "tests": {"type": "array", "items": {"type": "string"}},
+        # The field a tool call can occupy. Before this existed the schema was
+        # edit-only: `operations` are file edits, so a model that wanted to LOOK
+        # at something had nowhere to say so and answered from whatever the
+        # retriever happened to pick. 61 registered tools were unreachable from
+        # this path by schema construction -- not unimplemented, impossible.
+        #
+        # Arguments are flat name/value STRING pairs -- not a nested object and
+        # not JSON-encoded-in-a-string. Strict mode cannot express a free-form
+        # object, and the JSON-in-a-string version was tried and measurably
+        # failed: the local model could not escape quotes inside quotes and blew
+        # all three structured-output attempts on "Expecting ',' delimiter".
+        # Pairs have nothing to escape. Values are typed back against each
+        # tool's own input schema at invoke time, which is where the real
+        # contract lives anyway.
+        "tool_calls": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "tool": {"type": "string"},
+                    "arguments": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "value": {"type": "string"},
+                            },
+                            "required": ["name", "value"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["tool", "arguments"],
+                "additionalProperties": False,
+            },
+        },
     },
-    "required": ["kind", "content", "operations", "tests"],
+    "required": ["kind", "content", "operations", "tests", "tool_calls"],
     "additionalProperties": False,
 }
 
@@ -128,7 +166,24 @@ For a requested code/file change:
   "tests": ["optional safe workspace-relative Python test paths"]
 }
 
+To LOOK at something before answering (read a file, search, run a read-only
+command, inspect git):
+{
+  "kind": "tool_use",
+  "content": "why these calls",
+  "operations": [],
+  "tests": [],
+  "tool_calls": [
+    {"tool": "fs.read", "arguments": [{"name": "path", "value": "hcli/engine.py"}]}
+  ]
+}
+Results come back as OBSERVATIONS and you are asked again. Prefer looking over
+guessing: an answer that says evidence is missing when a tool could have
+fetched it is a wrong answer.
+
 Rules:
+- tool_calls is [] unless kind is "tool_use"
+- every argument value is a plain string; never nest JSON inside a string
 - maximum 20 operations
 - paths are workspace-relative
 - never modify .git/**
@@ -466,6 +521,177 @@ class Engine:
             raise EngineError("plain-text cognition returned a non-text result")
         return value
 
+    MAX_TOOL_ROUNDS = 6
+
+    def _tool_registry(self):
+        """The one already built for the executor. Not a second registry."""
+        registry = getattr(self, "_tools_cached", None)
+        if registry is None:
+            from .tool_registry import default_tool_registry
+
+            workspace = getattr(self, "workspace", None)
+            # self.workspace is a Workspace object here, not a path; the git
+            # root is the right repo_root when the workspace sits inside one.
+            root = Path(getattr(workspace, "root", None) or workspace or ".")
+            repo_root = Path(getattr(workspace, "git_root", None) or root)
+            registry = default_tool_registry(root, repo_root=repo_root)
+            self._tools_cached = registry
+        return registry
+
+    def _run_tool_calls(
+        self,
+        calls: List[Dict[str, Any]],
+        goal_id: str,
+    ) -> List[Dict[str, Any]]:
+        """Execute what the model asked to look at. A failure is an observation.
+
+        A tool that errors must come back as text the model can read and react
+        to, never as an exception that ends the goal -- "that path does not
+        exist" is information, and a daemon that dies on a bad argument is not
+        unattended.
+        """
+        registry = self._tool_registry()
+        out: List[Dict[str, Any]] = []
+        for call in calls[: self.MAX_TOOL_ROUNDS]:
+            name = str((call or {}).get("tool") or "").strip()
+            args = self._typed_arguments(registry, name, (call or {}).get("arguments"))
+            try:
+                result = registry.invoke(name, args)
+                ok = bool(getattr(result, "ok", False))
+                payload = getattr(result, "value", None) if ok else getattr(result, "error", None)
+                text = payload if isinstance(payload, str) else json.dumps(
+                    payload, default=str, ensure_ascii=False
+                )
+            except Exception as exc:  # a tool must never end the goal
+                ok, text = False, f"{type(exc).__name__}: {exc}"
+            if not ok:
+                # The signature travels WITH the error. An error that says
+                # "missing required property 'pattern'" three rounds away from
+                # the catalog is an error the model answers by guessing.
+                spec = registry.get(name)
+                schema = getattr(spec, "input_schema", None) or {}
+                if schema:
+                    text = (
+                        f"{text}\n"
+                        f"signature: {name}("
+                        + ", ".join(
+                            f"{key}{'*' if key in set(schema.get('required') or []) else ''}"
+                            f":{(schema.get('properties', {}).get(key) or {}).get('type', 'string')}"
+                            for key in sorted(schema.get("properties") or {})
+                        )
+                        + ")  (* = required)"
+                    )
+            out.append({
+                "tool": name,
+                "ok": ok,
+                "text": text[: self.MAX_EVIDENCE_CHARS_PER_FILE],
+            })
+            self._emit("tool_invoked", {
+                "goal_id": goal_id, "tool": name, "ok": ok,
+            })
+        return out
+
+    @staticmethod
+    def _tool_catalog(registry) -> str:
+        """Names AND arguments. A bare name list makes the model guess.
+
+        Measured: with names only, the model spent its whole tool budget calling
+        fs.search without `pattern`, reading the failure, and guessing again. It
+        never got to the answer. Required arguments are marked with *.
+        """
+        try:
+            specs = registry.discover()
+        except Exception:
+            return ""
+        lines = []
+        for spec in sorted(specs, key=lambda s: s.get("name", "")):
+            schema = spec.get("input_schema") or {}
+            props = schema.get("properties") or {}
+            required = set(schema.get("required") or [])
+            args = ", ".join(
+                f"{key}{'*' if key in required else ''}:"
+                f"{(props[key] or {}).get('type', 'string')}"
+                for key in sorted(props)
+            )
+            lines.append(f"{spec.get('name')}({args})")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _typed_arguments(registry, name: str, pairs: Any) -> Dict[str, Any]:
+        """Flat string pairs back into the types each tool's schema declares.
+
+        The model can only emit strings (nesting is what it could not escape),
+        but a tool that wants `limit: 5` or `recursive: true` gets INVALID
+        ARGUMENTS from a `"5"`. So coerce per the tool's own input schema and
+        leave anything unrecognised alone -- the registry still validates, so a
+        bad coercion surfaces as a readable tool error, not a wrong call.
+        """
+        args: Dict[str, Any] = {}
+        if not isinstance(pairs, list):
+            return args
+        spec = registry.get(name)
+        schema = getattr(spec, "input_schema", None) or {}
+        props = schema.get("properties") if isinstance(schema, dict) else {}
+        props = props if isinstance(props, dict) else {}
+        for pair in pairs:
+            if not isinstance(pair, dict):
+                continue
+            key = str(pair.get("name") or "").strip()
+            if not key:
+                continue
+            value: Any = pair.get("value")
+            declared = props.get(key) or {}
+            want = declared.get("type") if isinstance(declared, dict) else None
+            want = want[0] if isinstance(want, list) and want else want
+            text = "" if value is None else str(value)
+            try:
+                if want in ("integer", "number"):
+                    value = int(text) if want == "integer" else float(text)
+                elif want == "boolean":
+                    value = text.strip().lower() in ("true", "1", "yes", "on")
+                elif want in ("array", "object"):
+                    value = json.loads(text)
+                else:
+                    value = text
+            except (ValueError, TypeError):
+                value = text  # let the registry reject it with a readable error
+            args[key] = value
+        return args
+
+    def _prompt_with_observations(
+        self,
+        prompt: str,
+        observations: List[Dict[str, Any]],
+        *,
+        final: bool = False,
+    ) -> str:
+        """Tool output rides beside the goal, NOT inside `evidence`.
+
+        Evidence items are file snapshots: hashed, size/mtime stamped, and
+        re-read when they change under us. Tool output is none of those things.
+        Putting it in the same list would let unhashed, model-directed content
+        pose as deterministic evidence and quietly weaken the freshness gate.
+        """
+        registry = self._tool_registry()
+        catalog = self._tool_catalog(registry)
+        parts = [prompt]
+        if catalog:
+            parts.append(
+                "AVAILABLE TOOLS (name(arg:type), * means required):\n" + catalog
+            )
+        if observations:
+            rendered = "\n\n".join(
+                f"----- {o['tool']} [{'ok' if o['ok'] else 'FAILED'}] -----\n{o['text']}"
+                for o in observations
+            )
+            parts.append(f"OBSERVATIONS (tool results, this goal):\n{rendered}")
+        if final:
+            parts.append(
+                "TOOL BUDGET EXHAUSTED. Answer from the observations above. "
+                "Do not request more tools."
+            )
+        return "\n\n".join(parts)
+
     def execute(
         self,
         prompt: str,
@@ -536,15 +762,43 @@ class Engine:
             if self._cancelled:
                 return self._cancel_result(goal_id, evidence)
 
-            raw = self._call_model(
-                prompt,
-                evidence,
-                compiled,
-            )
-
-            result = self._sanitize_result(
-                raw
-            )
+            # The agentic loop. Everything above gathers evidence DETERMINISTICALLY
+            # and then asks once; a model that needed one more file could only
+            # answer "no evidence provided". Now a tool_use reply is executed and
+            # fed back, bounded, until the model answers or the budget runs out.
+            observations: List[Dict[str, Any]] = []
+            for _ in range(self.MAX_TOOL_ROUNDS):
+                raw = self._call_model(
+                    self._prompt_with_observations(prompt, observations),
+                    evidence,
+                    compiled,
+                )
+                result = self._sanitize_result(raw)
+                if result.get("kind") != "tool_use":
+                    break
+                calls = result.get("tool_calls") or []
+                if not calls:
+                    # Asked to look and named nothing. Treat as an answer rather
+                    # than spinning: an empty tool_use is not progress.
+                    result["kind"] = "answer"
+                    break
+                if self._cancelled:
+                    return self._cancel_result(goal_id, evidence)
+                observations.extend(self._run_tool_calls(calls, goal_id))
+            else:
+                # Budget exhausted still asking to look. Answer from what was
+                # actually observed rather than reporting nothing.
+                result = self._sanitize_result(
+                    self._call_model(
+                        self._prompt_with_observations(
+                            prompt, observations, final=True
+                        ),
+                        evidence,
+                        compiled,
+                    )
+                )
+                if result.get("kind") == "tool_use":
+                    result["kind"] = "answer"
 
             if self._cancelled:
                 return self._cancel_result(goal_id, evidence)
@@ -2513,9 +2767,10 @@ class Engine:
         if kind not in {
             "answer",
             "mutation",
+            "tool_use",
         }:
             raise EngineError(
-                "Model result kind must be answer or mutation"
+                "Model result kind must be answer, mutation or tool_use"
             )
 
         content = str(
@@ -2541,9 +2796,20 @@ class Engine:
         if not isinstance(tests, list):
             tests = []
 
+        raw_calls = result.get("tool_calls", [])
+        tool_calls = [
+            {
+                "tool": str(call.get("tool") or ""),
+                "arguments": call.get("arguments") or [],
+            }
+            for call in (raw_calls if isinstance(raw_calls, list) else [])
+            if isinstance(call, dict) and str(call.get("tool") or "").strip()
+        ]
+
         return {
             "kind": kind,
             "content": content,
+            "tool_calls": tool_calls,
             "operations": operations,
             "tests": [
                 str(item)

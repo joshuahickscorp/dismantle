@@ -630,3 +630,47 @@ def test_the_option_count_is_recorded_at_the_decision_point():
     src = inspect.getsource(mbt)
     assert '"n_options": len(remaining)' in src
     assert "DIVERGENCE IS UNDEFINED ON A MENU OF ONE" in src
+
+
+def test_the_catalog_is_deep_enough_that_the_clock_does_not_outrun_it():
+    """Seven live units against fifty-one cycles is how 86% of the last run
+    became single-option filler."""
+    live = [r for r in mbt.live_catalog() if not r.get("dead")]
+    assert len(live) >= 20, f"only {len(live)} live units for a 30-minute clock"
+
+
+def test_the_added_rows_are_real_open_work_read_from_disk():
+    import json as _j
+    rows = mbt._staleness_frontier_rows()
+    doc = _j.loads(
+        (mbt.REPO / "receipts/future/BASELINE_STALENESS.json").read_text())
+    assert len(rows) == len(doc["report"]["needing_review"])
+    for r in rows:
+        assert r["frontier"] == "RECEIPT_INTEGRITY"
+        assert r["dead"] is False
+        assert "SEALED_DEFAULT_ABSOLUTE" in r["description"]
+
+
+def test_a_missing_source_returns_nothing_rather_than_fabricating_work(monkeypatch):
+    """A padded catalog is the same defect as a padded timeline."""
+    real = mbt.REPO
+    monkeypatch.setattr(mbt, "REPO", real / "no-such-dir")
+    assert mbt._staleness_frontier_rows() == []
+
+
+def test_the_first_eight_rows_are_unchanged_so_required_events_still_fire():
+    """interpret() sees the first eight rows. The added tier must sit below the
+    units that produce the scar avoidance and the Hawking-self work unit."""
+    ids = [r["id"] for r in mbt.live_catalog()[:8]]
+    assert "WU.HAWKING.resident_identity_pin" in ids
+    assert any(i.startswith("WU.DEAD.") for i in ids)
+    assert not any(i.startswith("WU.STALE.") for i in ids)
+
+
+def test_the_added_rows_rank_below_every_pre_existing_live_unit():
+    live = [r for r in mbt.live_catalog() if not r.get("dead")]
+    added = [r for r in live if r["id"].startswith("WU.STALE.")]
+    kept = [r for r in live if not r["id"].startswith("WU.STALE.")]
+    assert added and kept
+    assert max(r["expected_information_gain"] for r in added) <= \
+        min(r["expected_information_gain"] for r in kept)

@@ -1095,7 +1095,57 @@ def live_catalog() -> list[dict[str, Any]]:
             "dead": False,
         },
     ]
+    rows.extend(_staleness_frontier_rows())
     return rows
+
+
+def _staleness_frontier_rows() -> list[dict[str, Any]]:
+    """Real open work, read from disk, so the 30-minute clock has choices in it.
+
+    The last run exhausted the live menu in SEVEN cycles and then offered one
+    auto-generated health probe for the remaining forty-four. Divergence is
+    undefined on a menu of one, so 86% of the trial scored a choice nobody was
+    given.
+
+    These rows are not invented to pad the menu. BASELINE_STALENESS lists
+    receipts whose producer does not read the current baseline, and each is a
+    genuine open question - three checked by hand were all genuinely stale and
+    each moved a strategic number. If that receipt is absent, this returns
+    NOTHING rather than fabricating work: a padded catalog would be the same
+    defect as a padded timeline.
+    """
+    p = REPO / "receipts/future/BASELINE_STALENESS.json"
+    if not p.is_file():
+        return []
+    try:
+        doc = json.loads(p.read_text())
+        names = list(doc["report"]["needing_review"])
+    except (ValueError, OSError, KeyError, TypeError):
+        return []
+    out: list[dict[str, Any]] = []
+    for name in names:
+        stem = name[:-5] if name.endswith(".json") else name
+        short = stem.lower()[:34]
+        out.append({
+            "id": f"WU.STALE.{short}",
+            # Below every live row already in the catalog, so the first eight
+            # rows interpret() sees are unchanged and the required events still
+            # fire from the same units as before.
+            "expected_information_gain": 1,
+            "title": f"does {stem[:38]} still price against a dead baseline",
+            "description": (
+                f"BASELINE_STALENESS flagged {name}: its producer does not read "
+                "receipts/future/SEALED_DEFAULT_ABSOLUTE.json. Decide whether it "
+                "is a live consumer or a historical record."
+            ),
+            "frontier": "RECEIPT_INTEGRITY",
+            "hypothesis_family": "baseline_staleness",
+            "surface": "receipts",
+            "organ": "hawking",
+            "hawking_self": True,
+            "dead": False,
+        })
+    return out
 
 
 def scar_lookup() -> dict[str, dict[str, str]]:

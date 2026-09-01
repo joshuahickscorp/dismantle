@@ -50,15 +50,15 @@ def _manifest(tag: str) -> Optional[Dict[str, Any]]:
     return doc
 
 
-def verify(tag: str) -> Tuple[bool, str, Dict[str, Any]]:
-    """Exact per-file size check. Returns (complete, reason, detail).
+def _verify_dir(root: Path, tag: str) -> Tuple[bool, str, Dict[str, Any]]:
+    """Exact per-file size check against an arbitrary directory.
 
-    Deliberately the same rule modellake_watch.complete() applies rather than a
-    looser one: a second opinion about completeness is how a half-downloaded
-    model becomes a sealed specimen.
+    Shared by verify() (checks the partial source) and promote()'s replay
+    path (checks an already-promoted destination), so both apply the exact
+    same rule modellake_watch.complete() does: a second opinion about
+    completeness is how a half-downloaded model becomes a sealed specimen.
     """
-    source = PARTIAL_ROOT / tag
-    if not source.is_dir():
+    if not root.is_dir():
         return False, "NO_PARTIAL_DIR", {}
     doc = _manifest(tag)
     if doc is None:
@@ -68,7 +68,7 @@ def verify(tag: str) -> Tuple[bool, str, Dict[str, Any]]:
     missing, wrong = [], []
     total = 0
     for name in files:
-        path = source / name
+        path = root / name
         try:
             observed = path.stat().st_size
         except (FileNotFoundError, OSError):
@@ -86,14 +86,35 @@ def verify(tag: str) -> Tuple[bool, str, Dict[str, Any]]:
     return True, "", detail
 
 
+def verify(tag: str) -> Tuple[bool, str, Dict[str, Any]]:
+    """Exact per-file size check of the partial source. Returns
+    (complete, reason, detail)."""
+    return _verify_dir(PARTIAL_ROOT / tag, tag)
+
+
 def promote(tag: str, *, go: bool = False) -> Dict[str, Any]:
-    complete, reason, detail = verify(tag)
     source = PARTIAL_ROOT / tag
     destination = SPECIMEN_ROOT / tag
-    result: Dict[str, Any] = {
-        "tag": tag, "complete": complete, "detail": detail,
-        "source": str(source), "destination": str(destination),
-    }
+    result: Dict[str, Any] = {"tag": tag, "source": str(source), "destination": str(destination)}
+
+    if not source.is_dir():
+        if not destination.is_dir():
+            result.update(complete=False, detail={}, action="REFUSED", reason="NO_PARTIAL_DIR")
+            return result
+        # A replayed event over an already-correct specimen -- the partial
+        # is gone because a prior run already moved it. Must be a NOOP, never
+        # a REFUSED that hides a promotion that already succeeded.
+        complete, reason, detail = _verify_dir(destination, tag)
+        result.update(complete=complete, detail=detail)
+        if complete:
+            result["action"] = "ALREADY_PROMOTED"
+        else:
+            result["action"] = "REFUSED"
+            result["reason"] = f"DESTINATION_INCOMPLETE:{reason}"
+        return result
+
+    complete, reason, detail = verify(tag)
+    result.update(complete=complete, detail=detail)
     if not complete:
         result["action"] = "REFUSED"
         result["reason"] = reason

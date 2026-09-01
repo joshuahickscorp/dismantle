@@ -22,11 +22,22 @@ import signal
 import subprocess
 import sys
 import time
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+# Absolute package import, not a bare sibling import: this file is imported
+# both as a standalone script (sys.path[0] == this directory) and as
+# tools.odyssey.modellake_watch (tests, PYTHONPATH=.). A bare `import
+# modellake_promote` would load a second, distinct module object under the
+# script-path sys.modules key -- a test that patches
+# tools.odyssey.modellake_promote.PARTIAL_ROOT would silently not affect the
+# copy this file actually calls. One canonical import identity either way.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from tools.odyssey import modellake_promote  # noqa: E402
 ODYSSEY = REPO_ROOT / "workspace" / "campaign" / "odyssey"
 DOWNLOAD_DIR = ODYSSEY / "downloads"
 # Keep watcher control metadata on the internal workspace. Writing it on the
@@ -47,6 +58,14 @@ SSD_XET_IMAGE = ODYSSEY / "ssd-xet-cache-large.sparseimage"
 SSD_XET_CACHE = ODYSSEY / "ssd-xet-cache-large"
 SSD_XET_IMAGE_CAPACITY_BYTES = 410_000_000_000
 SSD_XET_CHUNK_CACHE_TARGET_BYTES = 400_000_000_000
+# Pre-existing gap fixed in passing: these two were referenced in emit() calls
+# below (watcher_started, watcher_sample) without ever being defined, which
+# means main() raised NameError at the first watcher_started emit -- before
+# the loop this file's promotion wiring runs inside ever started. Derived,
+# not hardcoded: the image's hard capacity, and the slack between that
+# capacity and the target the cache tries to stay under.
+SSD_XET_CACHE_LIMIT_BYTES = SSD_XET_IMAGE_CAPACITY_BYTES
+SSD_XET_CACHE_HEADROOM_BYTES = SSD_XET_IMAGE_CAPACITY_BYTES - SSD_XET_CHUNK_CACHE_TARGET_BYTES
 SSD_FREE_FLOOR_BYTES = 50_000_000_000
 SSD_FREE_GUARD_BYTES = 5_000_000_000
 
@@ -82,6 +101,17 @@ AUTH_CHECK_SECONDS = 10 * 60
 # the download-health polling above so the consumer's disk reads never
 # compete with the two live transfers this watcher is admitting.
 MODELLAKE_EVENTS_INTERVAL_SECONDS = 5 * 60
+# G168: complete(item, ...) returning True used to just mean "skip launching
+# a redundant download" -- nothing acted on it, and SPECIMEN_ROOT was never
+# written by this module. A model could sit finished in partial/ forever if
+# the exact poll tick that noticed completion was missed (process restart,
+# a manifest resolved late) because nothing ever looked again. This is that
+# second look: a low-frequency, tag-agnostic sweep of partial/, specimens/
+# and watch-manifests/ that promotes anything complete-but-unpromoted and
+# reports what it cannot safely fix itself. Coarser than the poll loop for
+# the same reason MODELLAKE_EVENTS_INTERVAL_SECONDS is: a directory walk
+# should not compete with the two live transfers' I/O.
+RECONCILE_INTERVAL_SECONDS = 30 * 60
 KNOWN_TEMP_BYTES = 20_000_000_000
 # A transient interface dip is not evidence that a pinned downloader is bad.
 # Transfer rate is telemetry, not sufficient evidence to terminate a live
@@ -492,6 +522,182 @@ def complete(item: dict[str, object], files: list[str], sizes: dict[str, int]) -
     return False
 
 
+def promote_if_needed(tag: str, destination: str) -> dict[str, object] | None:
+    """Move a verified-complete partial payload into specimens/.
+
+    Returns modellake_promote.promote()'s outcome dict, or None when there is
+    no partial payload left to move -- the common, steady-state case once a
+    tag has already been promoted. The one is_dir() check keeps a 100ms poll
+    tick from re-stat-ing every file of an already-promoted specimen forever.
+    modellake_promote.promote() re-verifies completeness itself before moving
+    anything, is idempotent, and never overwrites an existing destination.
+    """
+    if not Path(destination).is_dir():
+        return None
+    return modellake_promote.promote(tag, go=True)
+
+
+def _promote_and_report(tag: str, destination: str, expected: int) -> None:
+    """Promote a tag complete() just found, and report the outcome.
+
+    Shared by the P0 recovery loop and the QUEUE admission loop -- both hit
+    this exact state (complete() is True), and a promotion refusal is
+    precisely the kind of thing this watcher exists to surface rather than
+    silently `continue` past, which is what both call sites did before.
+    """
+    outcome = promote_if_needed(tag, destination)
+    action = outcome["action"] if outcome is not None else "ALREADY_PROMOTED"
+    emit("already_complete", job=tag, expected_bytes=expected, promotion=action)
+    if action == "PROMOTED":
+        notify(f"Promoted completed specimen out of partial/: {tag}", "modellake")
+    elif action != "ALREADY_PROMOTED":
+        notify(f"ModelLake promotion needs attention ({action}): {tag}", "modellake")
+
+
+def _has_live_writer(destination: Path, rows: list[tuple[int, str]]) -> bool:
+    """True if any process command line references this destination path.
+
+    Broader than matching_pids(): reconciliation also walks legacy partial
+    directories with no P0/QUEUE entry any more (no repo/revision to match
+    against), and must never promote (move) a directory a live process is
+    still writing into.
+    """
+    needle = str(destination)
+    return any(needle in command for _pid, command in rows)
+
+
+def _tail_json_lines(path: Path, max_lines: int) -> list[dict[str, object]]:
+    """Return up to the last max_lines JSON objects from an append-only
+    JSONL log.
+
+    ponytail: reads every line to find the tail (O(n) in log length);
+    acceptable at RECONCILE_INTERVAL_SECONDS frequency. Upgrade to a
+    reverse/seek read if the log ever grows large enough to make that cost
+    matter at this call rate.
+    """
+    if not path.is_file():
+        return []
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            tail = deque(handle, maxlen=max_lines)
+    except OSError:
+        return []
+    out = []
+    for line in tail:
+        try:
+            out.append(json.loads(line))
+        except ValueError:
+            continue
+    return out
+
+
+def _download_history(max_lines: int = 20_000) -> tuple[dict[str, int], set[str]]:
+    """What this watcher's own JSONL log remembers about each job: the most
+    recent exit code per tag, and which tags a download was ever actually
+    started for.
+
+    The exit code is returned for one purpose only -- flagging disagreement
+    with the manifest-verified truth in reconcile(). It is diagnostic, never
+    authority: Qwen2.5-72B recorded exit_code=1, acquired=false,
+    bytes_on_disk=0 in a downloader's own bookkeeping while 47/47 files were
+    present and correct on disk. The started-tags set exists only so
+    reconcile() can tell "never admitted yet" (most of QUEUE, at any given
+    moment -- not an anomaly) from "started, and now there is no partial
+    directory and no specimen either" (a genuinely vanished payload).
+    """
+    last_exit: dict[str, int] = {}
+    started: set[str] = set()
+    for row in _tail_json_lines(LOG, max_lines):
+        job = row.get("job")
+        if job is None:
+            continue
+        event = row.get("event")
+        if event == "download_exit" and "returncode" in row:
+            last_exit[str(job)] = int(row["returncode"])
+        elif event == "download_started":
+            started.add(str(job))
+    return last_exit, started
+
+
+def reconcile() -> dict[str, object]:
+    """Self-healing sweep over partial/, specimens/ and watch-manifests/.
+
+    Real-time admission only notices completion at the instant it happens;
+    miss that tick (the watcher was down, a manifest resolved late) and
+    nothing ever looks again -- that is exactly how a model sat finished in
+    partial/ for seven days. This is the second look: it re-derives status
+    from the manifest and the two directories every time it runs, promotes
+    anything complete-but-unpromoted, and reports what it cannot safely fix
+    by itself instead of dropping it.
+    """
+    rows = modellake_promote.survey()
+    proc_rows = process_rows()
+    last_exit, started_tags = _download_history()
+
+    promoted: list[str] = []
+    refused: list[dict[str, object]] = []
+    anomalies: list[dict[str, object]] = []
+    seen_in_partial = {str(row["tag"]) for row in rows}
+
+    for row in rows:
+        tag = str(row["tag"])
+        if (SPECIMEN_ROOT / tag).is_dir():
+            # Two directories claiming one identity. promote() would already
+            # refuse this (never merge, never overwrite) -- name it as its
+            # own anomaly so it reads as a conflict needing a human, not an
+            # ordinary "still downloading" skip.
+            anomalies.append({"kind": "duplicate_source", "tag": tag})
+            continue
+        if not row["complete"]:
+            continue
+        destination = modellake_promote.PARTIAL_ROOT / tag
+        if _has_live_writer(destination, proc_rows):
+            continue
+        outcome = modellake_promote.promote(tag, go=True)
+        action = outcome["action"]
+        if action == "PROMOTED":
+            promoted.append(tag)
+        else:
+            refused.append({"tag": tag, "action": action, "reason": outcome.get("reason")})
+        code = last_exit.get(tag)
+        if code not in (None, 0):
+            anomalies.append({"kind": "stale_downloader_state", "tag": tag,
+                               "recorded_exit_code": code})
+
+    known_tags = {str(item["tag"]) for item in P0 + QUEUE}
+    manifest_tags = ({p.stem for p in MANIFEST_DIR.glob("*.json")}
+                     if MANIFEST_DIR.is_dir() else set())
+    for tag in sorted(manifest_tags):
+        has_specimen = (SPECIMEN_ROOT / tag).is_dir()
+        if tag in started_tags and tag not in seen_in_partial and not has_specimen:
+            anomalies.append({"kind": "registered_but_missing", "tag": tag})
+        if tag not in known_tags:
+            anomalies.append({"kind": "orphaned_manifest", "tag": tag})
+
+    result: dict[str, object] = {"surveyed": len(rows), "promoted": promoted,
+                                 "refused": refused, "anomalies": anomalies}
+    emit("reconciliation_pass", **result)
+    if anomalies:
+        notify(f"ModelLake reconciliation found {len(anomalies)} anomaly(ies)", "modellake")
+    return result
+
+
+def maybe_reconcile(loop_started: float, last_reconcile: float) -> float:
+    """Gate reconcile() to RECONCILE_INTERVAL_SECONDS, firing immediately on
+    the very first call -- the watcher's own startup is exactly the "look
+    again" moment a killed-and-restarted process needs. Never raises: the two
+    live transfers this watcher is admitting must not go down because a
+    reconciliation sweep hit a bad manifest or a permissions error.
+    """
+    if last_reconcile and loop_started - last_reconcile < RECONCILE_INTERVAL_SECONDS:
+        return last_reconcile
+    try:
+        reconcile()
+    except Exception as exc:
+        emit("reconciliation_error", error=redact(str(exc)))
+    return loop_started
+
+
 def durable_bytes(item: dict[str, object], files: list[str], sizes: dict[str, int]) -> int:
     """Return logical bytes visible in one pinned destination.
 
@@ -679,6 +885,7 @@ def main() -> int:
          ssd_xet_cache_limit_bytes=SSD_XET_CACHE_LIMIT_BYTES,
          ssd_xet_cache_headroom_bytes=SSD_XET_CACHE_HEADROOM_BYTES,
          ssd_xet_chunk_cache_target_bytes=SSD_XET_CHUNK_CACHE_TARGET_BYTES,
+         reconcile_interval_seconds=RECONCILE_INTERVAL_SECONDS,
          reconstruct_write_sequentially=True)
     children: dict[str, subprocess.Popen[str]] = {}
     manifest_cache: dict[str, tuple[list[str], int, dict[str, int]]] = {}
@@ -693,6 +900,7 @@ def main() -> int:
     last_network_emit = 0.0
     last_state_emit = 0.0
     last_events_emit = 0.0
+    last_reconcile = 0.0
     last_ssd_cache_bytes = None
     last_ssd_cache_mounted = False
     notified_ssd_cache_limit = False
@@ -833,7 +1041,10 @@ def main() -> int:
                 continue
             files, expected, sizes = manifest
             item["expected"] = expected
-            if complete(item, files, sizes) or loop_started < retry_after.get(tag, 0):
+            if complete(item, files, sizes):
+                _promote_and_report(tag, str(item["destination"]), expected)
+                continue
+            if loop_started < retry_after.get(tag, 0):
                 continue
             log_path = DOWNLOAD_DIR / f"watch-{tag}-{datetime.now().strftime('%Y%m%dT%H%M%S%z')}.log"
             children[tag] = launch(item, files, log_path)
@@ -870,7 +1081,7 @@ def main() -> int:
                 # File-by-file exactness prevents partial bytes from being
                 # mistaken for a complete specimen.
                 if complete(item, files, sizes):
-                    emit("already_complete", job=tag, expected_bytes=expected)
+                    _promote_and_report(tag, str(item["destination"]), expected)
                     continue
                 # A queued job may have an old partial destination. Reserve
                 # the full selected manifest until an exact post-exit check
@@ -1054,6 +1265,7 @@ def main() -> int:
             last_state_emit = loop_started
 
         last_events_emit = maybe_emit_modellake_events(loop_started, last_events_emit)
+        last_reconcile = maybe_reconcile(loop_started, last_reconcile)
 
         if args.once:
             return 0

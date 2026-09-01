@@ -1941,7 +1941,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T08:37:57Z",
+  "recorded_at": "2026-09-01T19:50:17Z",
   "recorded_by": "tools/future/capability_reachability.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -6670,7 +6670,7 @@
     {
      "file": "tools/future/hcli_sovereign.py",
      "kind": "import",
-     "line": 237
+     "line": 238
     }
    ],
    "callable": true,
@@ -6967,6 +6967,11 @@
      "file": "tools/future/test_hcli_sovereign_admit.py",
      "kind": "import",
      "line": 18
+    },
+    {
+     "file": "tools/future/test_sovereign_unproductive_guard.py",
+     "kind": "import",
+     "line": 23
     }
    ],
    "tested": true
@@ -8189,7 +8194,7 @@
     {
      "file": "tools/odyssey/modellake_watch.py",
      "kind": "import",
-     "line": 625
+     "line": 831
     }
    ],
    "callable": true,
@@ -8212,7 +8217,7 @@
     {
      "file": "tools/odyssey/test_modellake_watch.py",
      "kind": "import",
-     "line": 36
+     "line": 43
     }
    ],
    "tested": true
@@ -8222,12 +8227,12 @@
     {
      "file": "tools/future/modellake_events.py",
      "kind": "call",
-     "line": 440
+     "line": 561
     },
     {
      "file": "tools/odyssey/modellake_watch.py",
      "kind": "call",
-     "line": 628
+     "line": 834
     }
    ],
    "callable": true,
@@ -8245,12 +8250,12 @@
     {
      "file": "tools/future/test_modellake_events.py",
      "kind": "call",
-     "line": 197
+     "line": 206
     },
     {
      "file": "tools/odyssey/test_modellake_watch.py",
      "kind": "call",
-     "line": 43
+     "line": 50
     }
    ],
    "tested": true
@@ -8598,6 +8603,11 @@
      "file": "tools/future/model_bearing_torture.py",
      "kind": "import",
      "line": 64
+    },
+    {
+     "file": "tools/future/modellake_events.py",
+     "kind": "import",
+     "line": 41
     },
     {
      "file": "tools/future/multi_model_trial.py",
@@ -10587,7 +10597,7 @@
     {
      "file": "tools/future/hcli_sovereign.py",
      "kind": "import",
-     "line": 485
+     "line": 669
     }
    ],
    "callable": true,
@@ -10630,7 +10640,7 @@
     {
      "file": "tools/future/hcli_sovereign.py",
      "kind": "import",
-     "line": 483
+     "line": 667
     },
     {
      "file": "tools/future/model_bearing.py",
@@ -10700,7 +10710,7 @@
     {
      "file": "tools/future/hcli_sovereign.py",
      "kind": "import",
-     "line": 484
+     "line": 668
     }
    ],
    "callable": true,
@@ -11213,7 +11223,7 @@
     {
      "file": "tools/future/modellake_events.py",
      "kind": "import",
-     "line": 41
+     "line": 42
     },
     {
      "file": "tools/future/specimen_scheduler.py",
@@ -11251,7 +11261,7 @@
     {
      "file": "tools/future/modellake_events.py",
      "kind": "import",
-     "line": 42
+     "line": 43
     },
     {
      "file": "tools/future/modellake_scheduler_view.py",
@@ -12785,6 +12795,6 @@
  ],
  "purpose": "Answer, per capability and from evidence only: who calls it. A definition count is not a capability.",
  "schema": "hawking.future.capability_reachability.v1",
- "seal_sha256": "cc14928e683245203a3ad2a251bc40f99adc586b0121c435512fee4442cc4887",
+ "seal_sha256": "d7fc2b851aea6a6c7fba57e0cf3df43d42463dd47893325be10764fd4bb35af7",
  "version": 1
 }

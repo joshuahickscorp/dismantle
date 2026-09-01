@@ -31,3 +31,4 @@
 {"at": "2026-08-25T10:27:02Z", "kind": "rollback", "previous_current": "6ab287447ba1e5bf3a3175ee2b44a686da3c28d7843b930a49b1931fd304023e", "restored": "5906145de51377b30f9d9375c3ab6f880925d416b3c3a04618786bff5a8cf359"}
 {"at": "2026-08-25T10:29:48Z", "kind": "rollback", "previous_current": "81903480b821394bb4c4732095029a9be59249d476409f7bef74728f58784aca", "restored": "821e041bdf692da5beda4b4706f0ef16b229df9dc3a332cc4fdc506f41832b5b"}
 {"at": "2026-08-26T09:35:06Z", "kind": "rollback", "previous_current": "bf619ba3c33a0944d8b3d4efcac2fc1882f626706c8958945734f1df021a7b58", "restored": "361bd806bf46f096f5fc70ce1d023e18ab00a86b2379472f8c82e30a75e33c55"}
+{"at": "2026-09-01T19:52:32Z", "kind": "rollback", "previous_current": "6434bff188f5e77acbbb133b86fccd5dceecc9168e5e74bf7f9a5d5a6b355549", "restored": "187b95ffdb535e85c439211ce1aea4efb880a61f1eef3e676f0ef35a299efcb4"}

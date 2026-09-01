@@ -418,6 +418,15 @@ def execute(work: dict[str, Any]) -> dict[str, Any]:
 
 
 def _log(rec: dict[str, Any]) -> None:
+    """Every entry carries an ABSOLUTE clock.
+
+    G114 asks for CLAUDE_INTERVENTIONS per frontier move AND PER HOUR. The 83
+    entries written before this line only had t_s - seconds since that run's
+    start - so nothing in the log could be placed on a wall clock, and the
+    per-hour half of the metric was unmeasurable from the resident's own stream.
+    A log that cannot be joined to any other event stream is a log about itself.
+    """
+    rec.setdefault("unix", time.time())
     with (REPO / LOG_REL).open("a") as f:
         f.write(json.dumps(rec) + "\n")
 

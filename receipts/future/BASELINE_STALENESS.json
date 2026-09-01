@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T03:44:18Z",
+  "recorded_at": "2026-09-01T03:49:20Z",
   "recorded_by": "tools/future/baseline_staleness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -26,6 +26,7 @@
  "report": {
   "by_verdict": {
    "CITES_BUT_READS_CURRENT": [
+    "BASELINE_STALENESS.json",
     "GAP_LEDGER_60.json"
    ],
    "HISTORICAL_OWNER": [
@@ -39,7 +40,6 @@
     "AUX_U8_NATIVE.json",
     "DELTANET_GENERATED_TRANSITION.json",
     "DELTANET_MULTISTEP.json",
-    "EXECUTABLE_ECONOMICS.json",
     "FOLD_ADDQX_AB.json",
     "GEOMETRY_TABLE.json",
     "HARNESS_RECONCILIATION.json",
@@ -62,7 +62,7 @@
    ]
   },
   "clean": false,
-  "n_needing_review": 22,
+  "n_needing_review": 21,
   "n_receipts_citing_a_superseded_value": 27,
   "needing_review": [
    "ACCELERATOR_WORKUNITS.json",
@@ -71,7 +71,6 @@
    "AUX_U8_NATIVE.json",
    "DELTANET_GENERATED_TRANSITION.json",
    "DELTANET_MULTISTEP.json",
-   "EXECUTABLE_ECONOMICS.json",
    "FOLD_ADDQX_AB.json",
    "GEOMETRY_TABLE.json",
    "HARNESS_RECONCILIATION.json",
@@ -88,7 +87,7 @@
    "RESIDENT_API_AUDIT.json",
    "RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
   ],
-  "reading": "27 receipts mention a superseded value and 22 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
+  "reading": "27 receipts mention a superseded value and 21 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
   "this_is_a_REVIEW_LIST_not_a_DEFECT_LIST": "the verdict is a FACT - this receipt carries a superseded value somewhere that is not obviously historical, and its producer does not read the current baseline. Some of these are correct as they are: a receipt that IS the old measurement legitimately records it, and HARNESS_RECONCILIATION exists precisely to hold both numbers side by side. Calling them all defects would be the same over-claiming this module is meant to catch."
  },
  "rows": [
@@ -173,6 +172,44 @@
    "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
   },
   {
+   "carried_as_history": [],
+   "occurrence_paths": {
+    "27.2896": [
+     ".rows[4].carried_as_history[0]",
+     ".rows[4].superseded_values_present[0]",
+     ".rows[11].superseded_values_present[0]",
+     ".rows[12].superseded_values_present[0]",
+     ".rows[14].superseded_values_present[0]",
+     ".rows[16].superseded_values_present[0]"
+    ],
+    "28.722": [
+     ".rows[0].superseded_values_present[0]",
+     ".rows[1].superseded_values_present[0]",
+     ".rows[2].superseded_values_present[0]",
+     ".rows[3].superseded_values_present[0]",
+     ".rows[5].superseded_values_present[0]",
+     ".rows[6].superseded_values_present[0]"
+    ],
+    "36.644": [
+     ".rows[4].carried_as_history[1]",
+     ".rows[4].superseded_values_present[1]",
+     ".rows[9].superseded_values_present[0]",
+     ".rows[11].superseded_values_present[1]",
+     ".rows[12].superseded_values_present[1]",
+     ".rows[13].superseded_values_present[0]"
+    ]
+   },
+   "producer": "tools/future/baseline_staleness.py",
+   "producer_reads_current_baseline": true,
+   "receipt": "BASELINE_STALENESS.json",
+   "superseded_values_present": [
+    "28.722",
+    "27.2896",
+    "36.644"
+   ],
+   "verdict": "CITES_BUT_READS_CURRENT"
+  },
+  {
    "carried_as_history": [
     "27.2896",
     "36.644"
@@ -228,26 +265,6 @@
    "producer": "tools/future/deltanet_multistep.py",
    "producer_reads_current_baseline": false,
    "receipt": "DELTANET_MULTISTEP.json",
-   "superseded_values_present": [
-    "28.722"
-   ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
-  },
-  {
-   "carried_as_history": [],
-   "occurrence_paths": {
-    "28.722": [
-     ".candidates_ranked[22].predicted_token_ms",
-     ".candidates_ranked[22].predicted_token_ms_range[0]",
-     ".candidates_ranked[22].predicted_token_ms_range[1]",
-     ".candidates_ranked[23].predicted_token_ms",
-     ".candidates_ranked[23].predicted_token_ms_range[0]",
-     ".candidates_ranked[23].predicted_token_ms_range[1]"
-    ]
-   },
-   "producer": "tools/future/executable_economics.py",
-   "producer_reads_current_baseline": false,
-   "receipt": "EXECUTABLE_ECONOMICS.json",
    "superseded_values_present": [
     "28.722"
    ],
@@ -612,7 +629,7 @@
    "verdict": "PRODUCER_UNKNOWN"
   }
  ],
- "seal_sha256": "c9e670d3979e530deba70e2d641778fe70f4e5134c30a0045d2dfd2841a1e839",
+ "seal_sha256": "56a86e82c5d49e5b8403708d24d562eacf90eaddba110ce5db82f1194834d039",
  "superseded": [
   {
    "now": "21.9464 GPU ms (G131)",

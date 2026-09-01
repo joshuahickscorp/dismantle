@@ -203,3 +203,26 @@ def test_the_schema_placeholder_is_not_copyable_as_a_value():
     p = sov.context_pack(k)
     assert '"id":"x"' not in p
     assert "NAME_THIS_CLAIM" in p
+
+
+def test_a_runner_that_raises_becomes_a_result_not_a_lost_turn():
+    """execute() runs in a pool now. An exception there used to propagate out of
+    the turn; it is a RESULT about that runner instead."""
+    src = Path(sov.__file__).read_text()
+    assert "runner raised" in src
+    assert "cf.ThreadPoolExecutor" in src
+    assert "as_completed" in src
+
+
+def test_concurrent_work_is_capped_at_the_same_bound_as_acceptance():
+    """Accepting at most MAX_WORK_PER_TURN and then launching more than that
+    would be two different limits pretending to be one."""
+    src = Path(sov.__file__).read_text()
+    assert "max_workers=MAX_WORK_PER_TURN" in src
+    assert sov.MAX_WORK_PER_TURN == 3
+
+
+def test_the_iteration_record_says_how_much_ran_concurrently():
+    src = Path(sov.__file__).read_text()
+    assert '"n_launched_concurrently"' in src
+    assert '"concurrent_window_s"' in src

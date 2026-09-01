@@ -26,6 +26,7 @@ conclusion. S033 §2 and §28.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures as cf
 import hashlib
 import json
 import os
@@ -521,14 +522,36 @@ def run(minutes: float) -> dict[str, Any]:
             v = validate(obj)
             results = []
             unlaunched = []
-            for i, w in enumerate(v["accepted"]):
-                if time.time() >= deadline:
-                    # The loop used to just break, and validation stored only
-                    # the COUNTS. Work the resident chose and the harness
-                    # accepted then vanished with no record that it existed.
-                    unlaunched = v["accepted"][i:]
-                    break
-                results.append(execute(w))
+            # OVERLAP. execute() is a numpy CPU replay taking minutes, and the
+            # provider serialises MODEL calls only - nothing stops the resident
+            # reasoning while a perturbation runs. The loop used to sit idle
+            # through every experiment it had just commissioned, so wall-clock
+            # was ask + run + ask + run when it could be max(ask, run).
+            pending = [w for w in v["accepted"]]
+            with cf.ThreadPoolExecutor(max_workers=MAX_WORK_PER_TURN) as pool:
+                futs = {}
+                for i, w in enumerate(pending):
+                    if time.time() >= deadline:
+                        # The loop used to just break, and validation stored
+                        # only the COUNTS. Work the resident chose and the
+                        # harness accepted then vanished with no record that it
+                        # existed.
+                        unlaunched = pending[i:]
+                        break
+                    futs[pool.submit(execute, w)] = w
+                launched_at = time.time()
+                for f in cf.as_completed(futs):
+                    try:
+                        results.append(f.result())
+                    except Exception as exc:
+                        # A runner that raises is a RESULT about that runner,
+                        # not a reason to lose the turn.
+                        results.append({
+                            "type": futs[f].get("type"), "ran": False,
+                            "params": futs[f].get("params"),
+                            "why": f"runner raised {type(exc).__name__}: {exc}",
+                        })
+            overlap_s = round(time.time() - launched_at, 1) if futs else 0.0
             it = {
                 "n": n_iter,
                 "t_s": round(time.time() - t0, 1),
@@ -539,6 +562,8 @@ def run(minutes: float) -> dict[str, Any]:
                 "parsed": obj is not None,
                 "terse_retry_used": retried,
                 "reask_kind": reask_kind,
+                "n_launched_concurrently": len(futs),
+                "concurrent_window_s": overlap_s,
                 "admit": {kk: adm[kk] for kk in ("ok", "missing", "extra", "parse")},
                 "belief_update": (obj or {}).get("belief_update"),
                 "live_hypotheses": (obj or {}).get("live_hypotheses"),

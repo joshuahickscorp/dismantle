@@ -78,6 +78,31 @@ def seal(doc: dict[str, Any]) -> dict[str, Any]:
     return doc
 
 
+# Fields every producer is free to restamp on every run without any new
+# evidence existing: a fresh write clock (bench.recorded_at, set by
+# bench_block() above) and whatever commit/branch happened to be checked out
+# (several producers embed "head"/"branch" via _common.git()). On a repo that
+# lands commits constantly, HEAD has moved by the next run even when nothing
+# the producer measured did. Diffing on these fields alone turns an unchanged
+# receipt into git noise every time its producer is re-run -- G151 hand-fixed
+# a batch of these once; this makes the fix permanent at the one place every
+# producer writes through.
+_BOOKKEEPING_KEYS = frozenset({"bench", "head", "branch", "seal_sha256"})
+
+
+def _same_but_for_bookkeeping(out: Path, doc: dict[str, Any]) -> bool:
+    if not out.is_file():
+        return False
+    try:
+        prior = json.loads(out.read_text())
+    except (ValueError, OSError):
+        return False
+    if not isinstance(prior, dict):
+        return False
+    strip = lambda d: {k: v for k, v in d.items() if k not in _BOOKKEEPING_KEYS}
+    return strip(prior) == strip(doc)
+
+
 class ReceiptPathCollision(ValueError):
     """Two producers, one path. The later writer would destroy the earlier one."""
 
@@ -125,10 +150,12 @@ def write_receipt(name: str, doc: dict[str, Any], recorded_by: str) -> Path:
     doc.setdefault("bench", bench_block(recorded_by))
     doc.setdefault("claim_boundary", "Static sidecar artifact. No hardware measurement.")
     _assert_no_hardware_claims(doc)
-    seal(doc)
     RECEIPTS.mkdir(parents=True, exist_ok=True)
     out = RECEIPTS / name
     _refuse_foreign_overwrite(out, doc, recorded_by)
+    if _same_but_for_bookkeeping(out, doc):
+        return out
+    seal(doc)
     out.write_text(json.dumps(doc, indent=1, sort_keys=True) + "\n")
     return out
 

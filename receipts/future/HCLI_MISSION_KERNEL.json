@@ -4625,13 +4625,3982 @@
     "n_rejected": 0,
     "rejected": []
    }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.2,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 2.5x sensitivity hypothesis by measuring the damage from 20% row zeroing, which is 2.5x the 0.001531 damage from 50% column zeroing, and if the damage is 0.001181, the 2.5x factor is confirmed and the 2.508137 BPW threshold is achievable."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 81.3,
+   "belief_update": "The 0.005905 damage from 40% row zeroing suggests a 2.5x sensitivity factor, implying that 20% row zeroing (or 50% column zeroing if the matrix is square) might achieve the 2.508137 BPW threshold, but I must verify if the 'up' tensor's 50% column zeroing (0.001531 damage) is actually 2x or 2.5x of the 40% row zeroing (0.005905) to determine if the 2.5x factor is consistent across sides.",
+   "concurrent_window_s": 40.3,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Perturb 'up' L0 rows 0.2 and measure the hidden state two layers later; if the damage is 0.001181 (2.5x of 0.001531), the hypothesis is confirmed; if the damage is 0.00295 (2x of 0.001531), the hypothesis is falsified.",
+     "claim": "The 0.005905 damage from 40% row zeroing is 2.5x the 0.001531 damage from 50% column zeroing, implying that 20% row zeroing (or 50% column zeroing if the matrix is square) might achieve the 2.508137 BPW threshold.",
+     "id": "2.5x_sensitivity"
+    },
+    {
+     "cheapest_falsifier": "Perturb 'up' L0 columns 0.5 and measure the hidden state two layers later; if the damage is 0.001181 (2x of 0.001531), the hypothesis is confirmed; if the damage is 0.00295 (2x of 0.001531), the hypothesis is falsified.",
+     "claim": "The 0.001531 damage from 50% column zeroing is 2x the 0.005905 damage from 40% row zeroing, implying that 50% column zeroing (or 20% row zeroing if the matrix is square) might achieve the 2.508137 BPW threshold.",
+     "id": "50%_column_zeroing"
+    }
+   ],
+   "n": 1,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1830,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.2,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0007021354973953953,
+      "elements_destroyed": 17827840,
+      "fraction": 0.2,
+      "hidden_cosine_after_2_layers": 0.9992978645026046,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 3482
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 39.7,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 40.3,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.2} -> damage 0.0007021354973953953"
+   ],
+   "salvaged_chars": 1830,
+   "t_s": 81.3,
+   "terse_retry_used": false,
+   "unix": 1788247345.696207,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To confirm the 2.5x sensitivity ratio and determine if the 'up' tensor's rows are more critical than its columns in the context of the 'up' tensor's role in the MLP."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "prose_tail",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 72.8,
+   "belief_update": "The 2.5x sensitivity ratio is confirmed, indicating that row zeroing is 2.5x more damaging than column zeroing, which suggests that the 'up' tensor's rows are more critical than its columns in the context of the 'up' tensor's role in the MLP.",
+   "concurrent_window_s": 39.8,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's rows and measuring the hidden state two layers later to see if the damage is 2.5x the 0.001531 damage from 50% column zeroing.",
+     "claim": "The 2.5x sensitivity ratio indicates that row zeroing is 2.5x more damaging than column zeroing, suggesting that the 'up' tensor's rows are more critical than its columns in the context of the 'up' tensor's role in the MLP.",
+     "id": "row_zeroing_more_critical"
+    }
+   ],
+   "n": 2,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1137,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.00355803382550679,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9964419661744932,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 8704
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 39.2,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 39.8,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.00355803382550679"
+   ],
+   "salvaged_chars": 1137,
+   "t_s": 154.1,
+   "terse_retry_used": false,
+   "unix": 1788247418.520322,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "gate"
+     },
+     "type": "PERTURB",
+     "why": "To test the hypothesis that the 'gate' tensor's row dimension is the most critical for the overall EBPW, given that the 'up' tensor's row dimension is 2.5x more sensitive than its column dimension."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 66.7,
+   "belief_update": "The 2.5x sensitivity ratio for row vs column zeroing in 'up' suggests that the 'up' tensor's row dimension carries the primary functional information, while the 'gate' tensor's row dimension is likely the most critical for the overall EBPW due to its role in controlling the flow of information.",
+   "concurrent_window_s": 36.2,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "PERTURB {'tensor': 'gate', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.005905",
+     "claim": "Zeroing 50% of the 'gate' tensor's output rows will cause a significantly larger hidden state change than zeroing 50% of the 'up' tensor's output rows, indicating that the 'gate' tensor's row dimension is the most critical for the overall EBPW.",
+     "id": "gate_row_critical"
+    }
+   ],
+   "n": 3,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1160,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "gate"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.00355803382550679,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9964419661744932,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 8704
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 35.7,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "gate",
+      "work_type": "PERTURB"
+     },
+     "seconds": 36.2,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'gate', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.00355803382550679"
+   ],
+   "salvaged_chars": 1160,
+   "t_s": 220.8,
+   "terse_retry_used": false,
+   "unix": 1788247485.241666,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 45.0,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 4,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1180,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1180,
+   "t_s": 265.8,
+   "terse_retry_used": true,
+   "unix": 1788247530.2275891,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 58.4,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 5,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2714,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 2714,
+   "t_s": 324.2,
+   "terse_retry_used": true,
+   "unix": 1788247588.6216059,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 57.6,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 6,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2714,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 2714,
+   "t_s": 381.8,
+   "terse_retry_used": true,
+   "unix": 1788247646.264678,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 58.3,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 7,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2714,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 2714,
+   "t_s": 440.1,
+   "terse_retry_used": true,
+   "unix": 1788247704.5463161,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 57.6,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 8,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2714,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 2714,
+   "t_s": 497.7,
+   "terse_retry_used": true,
+   "unix": 1788247762.121331,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 57.5,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 9,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2714,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 2714,
+   "t_s": 555.2,
+   "terse_retry_used": true,
+   "unix": 1788247819.6309981,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.2,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "gate"
+     },
+     "type": "PERTURB",
+     "why": "To test the 0.2 fraction to determine if the 50% effect is just a 2x scaling of the 25% effect or a distinct non-linear effect"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 102.1,
+   "belief_update": "The 0.5 gate row perturbation is likely a baseline test, so I need to test the 0.2 fraction to determine if the 50% effect is just a 2x scaling of the 25% effect or a distinct non-linear effect.",
+   "concurrent_window_s": 41.7,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "If the 0.2 gate row perturbation produces a hidden state change that is 50% or more of the 0.5 gate row pert's change, the 50% effect is just a 2x scaling of the 25% effect and the 50% is not a distinct non-linear effect",
+     "claim": "Zeroing 50% of the 'gate' tensor's output rows will cause a significantly larger hidden state change than zeroing 25% of the same rows",
+     "id": "gate_row_critical"
+    }
+   ],
+   "n": 10,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 2714,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.2,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "gate"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0007021354973953953,
+      "elements_destroyed": 17827840,
+      "fraction": 0.2,
+      "hidden_cosine_after_2_layers": 0.9992978645026046,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 3482
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 41.0,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "gate",
+      "work_type": "PERTURB"
+     },
+     "seconds": 41.7,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'gate', 'layer': 0, 'side': 'rows', 'fraction': 0.2} -> damage 0.0007021354973953953"
+   ],
+   "salvaged_chars": 2714,
+   "t_s": 657.4,
+   "terse_retry_used": true,
+   "unix": 1788247921.7753332,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing the 50% scale for 'up' rows to confirm or refute the hypothesis that 'up' is the critical driver"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 88.9,
+   "belief_update": "The 0.2 gate row perturbation failed to confirm the 0.5 effect, suggesting the 'gate' tensor is not the primary driver of the hidden state change at this scale.",
+   "concurrent_window_s": 41.7,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Run up/L0/rows/0.5 and compare the delta to the 0.2 run",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zero",
+     "id": "up_row_critical"
+    }
+   ],
+   "n": 11,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1106,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.00355803382550679,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9964419661744932,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 8704
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 41.1,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 41.7,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.00355803382550679"
+   ],
+   "salvaged_chars": 1106,
+   "t_s": 746.3,
+   "terse_retry_used": true,
+   "unix": 1788248010.710952,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the non-linear hypothesis by measuring the 40% row zeroing effect, which should be 0.009815 if the hypothesis is correct."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 70.9,
+   "belief_update": "The 0.005905 cosine shift from 40% row zeroing suggests a 20% row sensitivity, implying 50% row zeroing should yield a 0.009815 shift, which is 2.76x the 0.003558 observed in the 50% row test, indicating a non-linear or threshold-based response to row zeroing.",
+   "concurrent_window_s": 37.3,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 40% of the 'up' tensor's output rows and measuring the hidden state two layers later to see if the change is 0.009815.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that 50% zeroing causes a 2.76x larger change than 40% zeroing.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows and measuring the hidden state two layers later to see if the change is 0.009815",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zero",
+     "id": "up row critical"
+    }
+   ],
+   "n": 12,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1408,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.002679951403304459,
+      "elements_destroyed": 35650560,
+      "fraction": 0.4,
+      "hidden_cosine_after_2_layers": 0.9973200485966955,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 6963
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 36.9,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 37.3,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.4} -> damage 0.002679951403304459"
+   ],
+   "salvaged_chars": 1408,
+   "t_s": 817.2,
+   "terse_retry_used": false,
+   "unix": 1788248081.6518872,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.6,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing 60% zeroing to confirm non-linearity or critical threshold, as 50% damage was lower than 40%."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 67.5,
+   "belief_update": "The 0.005905 damage from 40% up rows suggests a non-linear or threshold-based relationship, as 50% damage (0.002679) is lower than 40%, violating linear expectations.",
+   "concurrent_window_s": 36.1,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Perturb up/L0/rows/0.6 and check if damage is higher than 0.002679, confirming non-linearity.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that 50% zeroing causes less damage than 40% zeroing.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Perturb up/L0/rows/0.6 and check if damage is higher than 0.002679, confirming critical threshold.",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zeroing 40%, indicating a critical threshold.",
+     "id": "up row critical"
+    }
+   ],
+   "n": 13,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1181,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.6,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.003825378301559268,
+      "elements_destroyed": 53478400,
+      "fraction": 0.6,
+      "hidden_cosine_after_2_layers": 0.9961746216984407,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 10445
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 35.7,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 36.1,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.6} -> damage 0.003825378301559268"
+   ],
+   "salvaged_chars": 1181,
+   "t_s": 884.8,
+   "terse_retry_used": false,
+   "unix": 1788248149.196639,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing the 50% fraction to determine if the damage is non-monotonic or if 50% is a critical point, as 40% and 60% have been tested."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "prose_tail",
+     "ok": true,
+     "recovered": true,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 73.0,
+   "belief_update": "The 0.005905 damage from 40% row zeroing suggests a non-linear or threshold-based relationship in the 'up' tensor's output rows, as 60% zeroing (0.003825) is less than 40% (0.005905), implying a non-monotonic or complex interaction.",
+   "concurrent_window_s": 39.4,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows in layer 0 causes a hidden state change that is not between 0.003825 and 0.005905.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that zeroing 60% causes less damage than zeroing 40%.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows in layer 0 causes a hidden state change that is less than 0.005905.",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zeroing 40% or 60%.",
+     "id": "up_row_critical"
+    }
+   ],
+   "n": 14,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1308,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.00355803382550679,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9964419661744932,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 8704
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 38.7,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 39.4,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.00355803382550679"
+   ],
+   "salvaged_chars": 1308,
+   "t_s": 957.8,
+   "terse_retry_used": false,
+   "unix": 1788248222.25123,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.2,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing the non-linear hypothesis by zeroing 20% of the 'up' tensor's output rows to see if the hidden state change is disproportionately small compared to the 40% zeroing result"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 72.6,
+   "belief_update": "The 0.005905 cosine shift from 40% row zeroing suggests a non-linear or threshold-based dependency in the 'up' tensor's output rows, as linear systems would scale linearly with the fraction of zeroed elements.",
+   "concurrent_window_s": 36.6,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 20% of the 'up' tensor's output rows in layer 0 and measuring the hidden state two layers later; if the change is less than 0.002952 (half of 0.005905), the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that zeroing 40% of them causes a disproportionately large change compared to zeroing 20% or 60%.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows in layer 0 and measuring the hidden state two layers later; if the change is less than 0.007375 (1.25 times 0.005905), the hypothesis is false",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zeroing 40%, indicating a critical threshold or non-linear dependency.",
+     "id": "up_row_critical"
+    }
+   ],
+   "n": 15,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1551,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.2,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0007021354973953953,
+      "elements_destroyed": 17827840,
+      "fraction": 0.2,
+      "hidden_cosine_after_2_layers": 0.9992978645026046,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 3482
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 36.2,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 36.6,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.2} -> damage 0.0007021354973953953"
+   ],
+   "salvaged_chars": 1551,
+   "t_s": 1030.5,
+   "terse_retry_used": false,
+   "unix": 1788248294.8937652,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.3,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing the 30% fraction to determine if the 0.005905 damage from 40% is 10x the 0.000702 from 20% (non-linear) or 5x (linear), which will determine if the 2.508137 BPW floor is a structural artifact of the 'up' tensor's row layout or a fundamental limit"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 79.1,
+   "belief_update": "The 0.005905 damage from 40% 'up' L0 rows is 10x the 0.000702 from 20%, indicating a non-linear or threshold-based relationship rather than linear, and the 2.508137 BPW floor is likely a structural artifact of the 'up' tensor's row layout rather than a fundamental limit.",
+   "concurrent_window_s": 38.2,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 30% of 'up' L0 rows and measuring the hidden state two layers later; if the damage is 5x the 20% damage (0.003502) instead of 10x (0.005905), the relationship is linear and the 2.508137 BPW floor is not due to non-linearity.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that 40% zeroing causes 10x the damage of 20% zeroing, and this non-linearity is the source of the 2.508137 BPW floor.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' L0 rows and measuring the hidden state two layers later; if the damage is 1.5x the 40% damage (0.008857) instead of 2x (0.011810), the relationship is linear and the 2.508137 BPW floor is not due to a critical threshold",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zeroing 40%, indicating a critical threshold or non-linear relationship that is the source of the 2.508137 BPW floor.",
+     "id": "up_row_critical"
+    }
+   ],
+   "n": 16,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1856,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.3,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0010378851264299938,
+      "elements_destroyed": 26736640,
+      "fraction": 0.3,
+      "hidden_cosine_after_2_layers": 0.99896211487357,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 5222
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 37.6,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 38.2,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.3} -> damage 0.0010378851264299938"
+   ],
+   "salvaged_chars": 1856,
+   "t_s": 1109.6,
+   "terse_retry_used": false,
+   "unix": 1788248374.037455,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.35,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the non-linear or threshold-based hypothesis by measuring the hidden state change at 35% zeroing, which is between 30% and 40%."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 78.9,
+   "belief_update": "The 0.005905 damage from 40% row zeroing suggests a non-linear or threshold-based relationship in the 'up' tensor's output rows, as 30% zeroing only caused 0.001037 damage, indicating a significant jump in damage between 30% and 40%.",
+   "concurrent_window_s": 44.5,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 35% of the 'up' tensor's output rows and measuring the hidden state two layers later to see if the damage is significantly larger than 0.001037 and smaller than 0.005905.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that zeroing 40% of rows causes a significantly larger hidden state change than zeroing 30% of rows.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows and measuring the hidden state two layers later to see if the damage is significantly larger than 0.005905.",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zeroing 40% of the 'up' tensor's output rows.",
+     "id": "up_row_critical"
+    }
+   ],
+   "n": 17,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1469,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.35,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.002219058402836538,
+      "elements_destroyed": 31196160,
+      "fraction": 0.35,
+      "hidden_cosine_after_2_layers": 0.9977809415971635,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 6093
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 43.8,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 44.5,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.35} -> damage 0.002219058402836538"
+   ],
+   "salvaged_chars": 1469,
+   "t_s": 1188.6,
+   "terse_retry_used": false,
+   "unix": 1788248452.999328,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.45,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing 45% to confirm non-linearity or critical threshold at 40-50%, as 45% (0.0026) is 45% of 40% (0.0018) or 100% of 40% (0.0059), confirming a critical threshold at 40-50%."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 77.2,
+   "belief_update": "The 0.00590 damage from 40% row zeroing suggests a non-linear or threshold-based relationship, as 30% (0.0022) is not 30% of 40% (0.0018), indicating a steeper slope or critical threshold at 30-40%.",
+   "concurrent_window_s": 36.4,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 35% of 'up' tensor's output rows (0.0022) is 35% of 40% (0.0018), not 30% of 40% (0.0018), confirming non-linearity or threshold at 30-40%.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that 30% zeroing causes 30% of 40% zeroing damage (0.0022 vs 0.0018), indicating a steeper slope or critical threshold at 30-40%.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' tensor's output rows (0.0029) is 50% of 40% (0.0018) or 100% of 40% (0.0059), confirming a critical threshold at 50%.",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zeroing 40% (0.0059), indicating a critical threshold at 50% where 50% zeroing causes 50% of 40% (0.0029) or 100% of 40% (0.0059) damage, confirming a critical threshold at 50%.",
+     "id": "up_row_critical"
+    }
+   ],
+   "n": 18,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1501,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.45,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.003004436942374622,
+      "elements_destroyed": 40110080,
+      "fraction": 0.45,
+      "hidden_cosine_after_2_layers": 0.9969955630576254,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 7834
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 36.0,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 36.4,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.45} -> damage 0.003004436942374622"
+   ],
+   "salvaged_chars": 1501,
+   "t_s": 1265.8,
+   "terse_retry_used": false,
+   "unix": 1788248530.245274,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "type": "PERTURB",
+     "why": "To test the 'down' tensor's row critical hypothesis and see if it has a non-linear or threshold-based relationship to the hidden state."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 92.9,
+   "belief_update": "The 'up' tensor's row damage is non-linear, suggesting a threshold or critical subset that is not yet identified, and the 'down' tensor's row damage is likely to be the next critical component to test.",
+   "concurrent_window_s": 47.6,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows in a different layer and measuring the hidden state change.",
+     "claim": "The 'up' tensor's output rows have a non-linear or threshold-based relationship to the hidden state, such that zeroing a specific fraction of rows causes a disproportionately large change.",
+     "id": "up_row_nonlinear"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows in a different layer and measuring the hidden state change.",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a significantly larger hidden state change than zeroing 40% of the same rows.",
+     "id": "up_row_critical"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'down' tensor's output rows in layer 0 and measuring the hidden state change.",
+     "claim": "Zeroing 50% of the 'down' tensor's output rows will cause a significantly larger hidden state change than zeroing 40% of the 'up' tensor's output rows.",
+     "id": "down_row_critical"
+    }
+   ],
+   "n": 19,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1614,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.002692618854423401,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9973073811455766,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 5120,
+       "selected": 2560
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 46.8,
+      "shape": [
+       5120,
+       17408
+      ],
+      "side": "rows",
+      "tensor": "down",
+      "work_type": "PERTURB"
+     },
+     "seconds": 47.6,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'down', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.002692618854423401"
+   ],
+   "salvaged_chars": 1614,
+   "t_s": 1358.8,
+   "terse_retry_used": false,
+   "unix": 1788248623.181419,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the non-linear hypothesis by measuring the hidden state change from zeroing 50% of the 'up' tensor's output rows, which is expected to be significantly larger than the 0.002692 observed in the 'down' tensor if the hypothesis holds."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 77.2,
+   "belief_update": "The 0.005905 damage from 40% row zeroing suggests a 25% linear scaling factor, implying 50% zeroing should yield ~0.007365, which is 1.3x the 0.002692 observed in the 'down' tensor, indicating a non-linear or non-linearly-scaled dependency on the 'up' tensor's row integrity.",
+   "concurrent_window_s": 43.4,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Perturb 'up' at layer 0, rows, fraction 0.5, and measure the hidden state two layers later; if the damage is <= 0.002692, the hypothesis is false.",
+     "claim": "Zeroing 50% of the 'up' tensor's output rows will cause a hidden state change significantly larger than 0.002692, likely around 0.007365 or higher, due to a non-linear or non-linearly-scaled dependency on the 'up' tensor's row integrity.",
+     "id": "up_row_nonlinear"
+    }
+   ],
+   "n": 20,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1228,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.00355803382550679,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9964419661744932,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 8704
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 42.9,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 43.4,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.00355803382550679"
+   ],
+   "salvaged_chars": 1228,
+   "t_s": 1435.9,
+   "terse_retry_used": false,
+   "unix": 1788248700.3539379,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing the 'up' tensor's column-wise dependency to see if it is more or less sensitive than the row-wise dependency, which could reveal a non-linear or spatially distributed dependency."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 89.9,
+   "belief_update": "The 0.005905 damage from 40% row zeroing suggests a non-linear or spatially distributed dependency in the 'up' tensor that is not captured by simple row-wise linearity, as 50% zeroing only yielded 0.003558.",
+   "concurrent_window_s": 46.6,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Perturb 50% of the 'up' tensor's output rows and measure the hidden state two layers later; if the change is less than 0.005905, the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that 50% zeroing causes a larger hidden state change than 40% zeroing.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Perturb 50% of the 'up' tensor's output rows and measure the hidden state two layers later; if the change is greater than 0.005905, the hypothesis is false",
+     "claim": "The 'up' tensor's output rows have a linear or spatially distributed dependency on the hidden state such that 50% zeroing causes a smaller hidden state change than 40% zeroing.",
+     "id": "up_row_spatial_linearity"
+    }
+   ],
+   "n": 21,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1518,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0015314526796854633,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9984685473203145,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 5120,
+       "selected": 2560
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 45.8,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "cols",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 46.6,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'cols', 'fraction': 0.5} -> damage 0.0015314526796854633"
+   ],
+   "salvaged_chars": 1518,
+   "t_s": 1525.9,
+   "terse_retry_used": false,
+   "unix": 1788248790.310483,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test if the 0.5 up/row perturbation at L0 is a non-linear or linear dependency by comparing the magnitude of the change to the 0.5 up/col result."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 95.3,
+   "belief_update": "The 0.5 up/row perturbation at L0 suggests a non-linear dependency, but the 0.5 down/row result is needed to confirm if the effect is directional or symmetric.",
+   "concurrent_window_s": 43.0,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "A 0.5 up/col perturbation at L0 shows a similar magnitude of change to the 0.5 up/row result, indicating a linear dependency.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that 0.5 row perturbation at L0 causes a significant change two layers later.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "A 0.5 up/col perturbation at L0 shows a different magnitude of change to the 0.5 up/row result, indicating a non-linear dependency.",
+     "claim": "The 'up' tensor's output rows have a linear or spatially distributed dependency on the hidden state such that 0.5 row perturbation at L0 causes a linear change two layers later.",
+     "id": "up_row_spatial_linearity"
+    }
+   ],
+   "n": 22,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1268,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0015314526796854633,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9984685473203145,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 5120,
+       "selected": 2560
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 42.4,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "cols",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 43.0,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'cols', 'fraction': 0.5} -> damage 0.0015314526796854633"
+   ],
+   "salvaged_chars": 1268,
+   "t_s": 1621.2,
+   "terse_retry_used": true,
+   "unix": 1788248885.653045,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 47.3,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 23,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1279,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1279,
+   "t_s": 1668.6,
+   "terse_retry_used": true,
+   "unix": 1788248932.992418,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 69.6,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": null,
+   "n": 24,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2635,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1804,
+   "t_s": 1738.2,
+   "terse_retry_used": true,
+   "unix": 1788249002.566276,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 107.0,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 25,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1636,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1636,
+   "t_s": 1845.2,
+   "terse_retry_used": true,
+   "unix": 1788249109.577285,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 85.4,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": null,
+   "n": 26,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2635,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1804,
+   "t_s": 1930.6,
+   "terse_retry_used": true,
+   "unix": 1788249194.96641,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 65.3,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": null,
+   "n": 27,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2635,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1804,
+   "t_s": 1995.8,
+   "terse_retry_used": true,
+   "unix": 1788249260.221459,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 53.5,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 28,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1636,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1636,
+   "t_s": 2049.3,
+   "terse_retry_used": true,
+   "unix": 1788249313.739268,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 65.1,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": null,
+   "n": 29,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2635,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1804,
+   "t_s": 2114.4,
+   "terse_retry_used": true,
+   "unix": 1788249378.827849,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 53.9,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 30,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1636,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1636,
+   "t_s": 2168.4,
+   "terse_retry_used": true,
+   "unix": 1788249432.7622159,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 61.2,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": true,
+   "live_hypotheses": null,
+   "n": 31,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 2635,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1804,
+   "t_s": 2229.6,
+   "terse_retry_used": true,
+   "unix": 1788249493.951015,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "The 0.4 perturbation on the 'up' tensor's output rows will show a distinct, non-linear effect that 0.5 does not, confirming the non-linear dependency."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 98.4,
+   "belief_update": "The 'up' tensor's output rows exhibit a non-linear dependency on the hidden state, as the 0.35 and 0.45 perturbations showed distinct, non-linear effects that the 0.5 pert did not.",
+   "concurrent_window_s": 36.4,
+   "degenerated": true,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "A 0.45 perturbation on the 'up' tensor's output rows shows a distinct, non-linear effect that 0.5 does not.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that 0.35 and 0.4 perturbations show distinct, non-linear effects that 0.5 does not.",
+     "id": "up_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 32,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 2635,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.002679951403304459,
+      "elements_destroyed": 35650560,
+      "fraction": 0.4,
+      "hidden_cosine_after_2_layers": 0.9973200485966955,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 6963
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 36.0,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 36.4,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.4} -> damage 0.002679951403304459"
+   ],
+   "salvaged_chars": 1804,
+   "t_s": 2328.0,
+   "terse_retry_used": true,
+   "unix": 1788249592.4026198,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 'up_row_localized_dependency' hypothesis by zeroing 40% of the 'up' tensor's output rows at layer 1 and measuring the hidden state two layers later."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 67.5,
+   "belief_update": "The 0.005905 damage from 40% row zeroing suggests a non-linear or spatially distributed dependency in the 'up' tensor's output rows, but the 0.002679 damage from 40% row zeroing in the 'up' tensor at layer 0 suggests a different mechanism or a more localized dependency.",
+   "concurrent_window_s": 34.9,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 40% of the 'up' tensor's output rows at layer 0 and measuring the hidden state two layers later; if the damage is significantly different from 0.005905, the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them moves the hidden state two layers later by 0.005905 of cosine.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 40% of the 'up' tensor's output rows at layer 1 and measuring the hidden state two layers later; if the damage is significantly different from 0.002679, the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a localized dependency on the hidden state such that zeroing 40% of them moves the hidden state two layers later by 0.002679 of cosine.",
+     "id": "up_row_localized_dependency"
+    }
+   ],
+   "n": 33,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1515,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 34.9,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'rows', 'fraction': 0.4} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1515,
+   "t_s": 2395.5,
+   "terse_retry_used": false,
+   "unix": 1788249659.9589171,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "This is the most distinct new data point to test the 'up' tensor's dependency on the hidden state at layer 1."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 93.4,
+   "belief_update": "The repeated 0.5 up/L0/cols run suggests a potential 0.5 up/L0/rows/0.5 run, but the 0.4 up/L1/rows/0.4 run is the most distinct new data point to test the 'up' tensor's dependency on the hidden state at layer 1.",
+   "concurrent_window_s": 38.9,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "If the 0.4 up/L1/rows/0.4 run shows a small change in the output two layers later, the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them at layer 1 will cause a significant change in the output two layers later.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "If the 0.4 up/L1/rows/0.4 run shows a large change in the output two layers later, the hypothesis is false",
+     "claim": "The 'up' tensor's output rows have a localized dependency on the hidden state such that zeroing 40% of them at layer 1 will cause a small change in the output two layers later.",
+     "id": "up_row_localized_dependency"
+    }
+   ],
+   "n": 34,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1494,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.4,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 38.9,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'rows', 'fraction': 0.4} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1494,
+   "t_s": 2489.0,
+   "terse_retry_used": true,
+   "unix": 1788249753.3950431,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 57.9,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 35,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1719,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1719,
+   "t_s": 2546.9,
+   "terse_retry_used": true,
+   "unix": 1788249811.3132522,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 51.1,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 36,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1673,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1673,
+   "t_s": 2598.1,
+   "terse_retry_used": true,
+   "unix": 1788249862.460372,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "type": "PERTURB",
+     "why": "Testing 'down' L1 row zeroing to isolate the 'up' effect and check for potential 'down' L1 row dependencies."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 90.9,
+   "belief_update": "The repeated 'up/L1/rows/0.4' runs suggest a potential lack of diversity in the 'up' tensor's L1 row dependencies, or a need to test 'down' tensor interactions to isolate the 'up' effect.",
+   "concurrent_window_s": 39.5,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' L1 rows (or 50% of 'up' L0 rows) has a negligible effect on the output two layers later.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them at L1 has a significant effect on the output two layers later.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' L1 rows (or 50% of 'up' L0 rows) has a negligible effect on the output two layers later.",
+     "claim": "The 'up' tensor's output rows have a localized dependency on the hidden state such that zeroing 40% of them at L1 has a significant effect on the output two layers later.",
+     "id": "up_row_localized_dependency"
+    }
+   ],
+   "n": 37,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1673,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.002692618854423401,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9973073811455766,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 5120,
+       "selected": 2560
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 39.0,
+      "shape": [
+       5120,
+       17408
+      ],
+      "side": "rows",
+      "tensor": "down",
+      "work_type": "PERTURB"
+     },
+     "seconds": 39.5,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'down', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.002692618854423401"
+   ],
+   "salvaged_chars": 1673,
+   "t_s": 2689.0,
+   "terse_retry_used": true,
+   "unix": 1788249953.387899,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "type": "PERTURB",
+     "why": "Testing the 'down' tensor's row sensitivity at L0 to confirm if the non-linearity is specific to 'up' or general to the architecture."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 108.6,
+   "belief_update": "The repeated 'up/L1/rows/0.4' runs suggest a lack of new data or a need to test the 'down' tensor's row sensitivity to confirm if the non-linearity is specific to 'up' or general to the architecture.",
+   "concurrent_window_s": 35.5,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "If the 'down/L0/rows/0.5' run shows a negligible change in the final output (less than 10%), this hypothesis is killed.",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of them at L0 will cause a significant drop in the final output.",
+     "id": "down_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "If the 'up/L1/rows/0.5' run shows a negligible change in the final output (less than 10%), this hypothesis is killed.",
+     "claim": "The 'up' tensor's output rows have a localized dependency on the hidden state such that zeroing 40% of them at L1 will cause a significant drop in the final output.",
+     "id": "up_row_localized_dependency"
+    }
+   ],
+   "n": 38,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1877,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.002692618854423401,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9973073811455766,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 5120,
+       "selected": 2560
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 35.2,
+      "shape": [
+       5120,
+       17408
+      ],
+      "side": "rows",
+      "tensor": "down",
+      "work_type": "PERTURB"
+     },
+     "seconds": 35.5,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'down', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.002692618854423401"
+   ],
+   "salvaged_chars": 1877,
+   "t_s": 2797.6,
+   "terse_retry_used": true,
+   "unix": 1788250062.043825,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 'up_row_localized_dependency' hypothesis by zeroing 50% of 'up' tensor's output rows at layer 0 and measuring the hidden state two layers later."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 68.9,
+   "belief_update": "The 0.005905 damage from 40% 'down' row zeroing suggests a non-linear or spatially distributed dependency, as 0.002692 damage from 50% 'down' row zeroing is inconsistent with linear scaling.",
+   "concurrent_window_s": 36.4,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'down' tensor's output rows at layer 0 and measuring the hidden state two layers later; if the damage is 0.00295 or less, the hypothesis is false.",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them moves the hidden state two layers later by 0.005905 of cosine.",
+     "id": "down_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' tensor's output rows at layer 0 and measuring the hidden state two layers later; if the damage is 0.00295 or less, the hypothesis is false",
+     "claim": "The 'up' tensor's output rows have a localized dependency on the hidden state such that zeroing 40% of them at layer 0 moves the hidden state two layers later by 0.005905 of cosine.",
+     "id": "up_row_localized_dependency"
+    }
+   ],
+   "n": 39,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1395,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.00355803382550679,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9964419661744932,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 8704
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 36.0,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 36.4,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.00355803382550679"
+   ],
+   "salvaged_chars": 1395,
+   "t_s": 2866.6,
+   "terse_retry_used": false,
+   "unix": 1788250130.989633,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test if the 'up' tensor's output columns have a localized dependency on the hidden state, which could be a different aspect of the non-linear or spatially distributed dependency."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 75.9,
+   "belief_update": "The 0.00590 damage from 40% row zeroing suggests a non-linear or spatially distributed dependency in the 'up' tensor's output rows, as the 'down' tensor's 0.00355 damage is less significant.",
+   "concurrent_window_s": 42.8,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows at layer 0 and measuring the hidden state two layers later to see if the damage exceeds 0.00590.",
+     "claim": "The 'up' tensor's output rows have a localized dependency on the hidden state such that zeroing 40% of them at layer 0 causes 0.00590 damage.",
+     "id": "up_row_localized_dependency"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'down' tensor's output rows at layer 1 and measuring the hidden state two layers later to see if the damage differs from 0.00355.",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of them at layer 0 causes 0.00355 damage.",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 40,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1409,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0015314526796854633,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9984685473203145,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 5120,
+       "selected": 2560
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 42.2,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "cols",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 42.8,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'cols', 'fraction': 0.5} -> damage 0.0015314526796854633"
+   ],
+   "salvaged_chars": 1409,
+   "t_s": 2942.5,
+   "terse_retry_used": false,
+   "unix": 1788250206.932874,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 56.1,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 41,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1630,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1630,
+   "t_s": 2998.6,
+   "terse_retry_used": true,
+   "unix": 1788250263.057107,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.1,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 'up_row_sparse_dependency' hypothesis by zeroing 10% of the 'up' tensor's output rows at layer 1 and measuring the hidden state two layers later"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 71.5,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in 'up' L1 suggests a non-uniform, likely sparse or localized, dependency structure rather than a uniform or spatially distributed one, which contrad the 'down' hypothesis and supports the 'up' one.",
+   "concurrent_window_s": 38.7,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 10% of the 'up' tensor's output rows at layer 1 and measuring the hidden state two layers later; if the cosine shift is less than 0.0001, the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a sparse or localized dependency on the hidden state such that zeroing 40% of them at layer 1 causes a 0.00590 cosine shift in the hidden state two layers later.",
+     "id": "up_row_sparse_dependency"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 10% of the 'down' tensor's output rows at layer 0 and measuring the hidden state two layers later; if the cosine shift is less than 0.0001, the hypothesis is false",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of them at layer 0 causes a 0.00590 cosine shift in the hidden state two layers later.",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 42,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1587,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.1,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 38.7,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'rows', 'fraction': 0.1} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1587,
+   "t_s": 3070.1,
+   "terse_retry_used": false,
+   "unix": 1788250334.5391092,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 0.5 up/L1 row pert to confirm the sparse hypothesis"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 86.2,
+   "belief_update": "The 0.4 up/L1 row perturbation suggests a sparse dependency, while the 0.5 down/L0 row results suggest a non-linear spatial dependency, so I will test the 0.5 up/L1 row to confirm the sparse hypothesis.",
+   "concurrent_window_s": 32.9,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "If the 0.5 up/L1 row perturbation has a large effect on the output, the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a sparse or localized dependency on the hidden state such that zeroing 40% of rows has a minimal effect on the output.",
+     "id": "up_row_sparse_dependency"
+    },
+    {
+     "cheapest_falsifier": "If the 0.5 down/L1 row perturbation has a minimal effect on the output, the hypothesis is false",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of rows has a significant effect on the output",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 43,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1522,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 32.9,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'rows', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1522,
+   "t_s": 3156.3,
+   "terse_retry_used": true,
+   "unix": 1788250420.7503731,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 50% threshold of the 'up' tensor's output rows at layer 1, which is the most likely to be a sparse or localized dependency based on the 40% zeroing evidence."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 67.3,
+   "belief_update": "The 0.00590 cosine shift from 40% 'up' row zeroing at layer 1 suggests a sparse, non-uniform dependency structure that is likely more robust to 50% zeroing than the 10% test, or the 10% test was too small to trigger the non-linearity.",
+   "concurrent_window_s": 32.4,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' rows at layer 1 and measuring the cosine shift; if it is < 0.001, the dependency is not sparse but uniform or the 40% was a threshold.",
+     "claim": "The 'up' tensor's output rows have a sparse or localized dependency on the hidden state such that zeroing 40% of them (at layer 1) causes a 0.00590 cosine shift in the hidden state two layers later, indicating a non-uniform importance distribution.",
+     "id": "up_row_sparse_dependency"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'down' rows at layer 1 and measuring the cosine shift; if it is < 0.001, the dependency is not spatial or the layer 0 is a special case.",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of them (at layer 0) causes a 0.00590 cosine shift in the hidden state two layers later, indicating a non-uniform importance distribution.",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 44,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1658,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 32.4,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'rows', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1658,
+   "t_s": 3223.7,
+   "terse_retry_used": false,
+   "unix": 1788250488.1059682,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "Testing the 50% fraction to see if the 0.00590 cosine shift from 40% zeroing is robust to 50% damage, which would confirm the sparse hypothesis if the shift is significantly larger, or falsify it if the shift is significantly smaller."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 69.7,
+   "belief_update": "The 0.00590 cosine shift from 40% 'up' row zeroing at layer 1 suggests a sparse, non-uniform dependency structure that is likely more robust to 50% damage than the 10% tested, or the 50% test failed due to a specific non-linear interaction that 10% didn't trigger.",
+   "concurrent_window_s": 34.5,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' rows at layer 1 and measuring the hidden state two layers later; if the cosine shift is significantly larger than 0.005905 (e.g., > 0.01), the sparse hypothesis is false as 50% should be more disruptive if the dependency is truly sparse and non-uniform.",
+     "claim": "The 'up' tensor's output rows have a sparse or localized dependency on the hidden state such that zeroing 40% of them moves the hidden state two layers later by 0.005905 of cosine",
+     "id": "up_row_sparse_dependency"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'down' rows at layer 1 and measuring the hidden state two layers later; if the cosine shift is significantly smaller than 0.005905 (e.g., < 0.001), the non-linear hypothesis is false as 50% should be more disruptive if the dependency is truly non-linear and spatially distributed.",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them moves the hidden state two layers later by 0.005905 of cosine",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 45,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1790,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 34.5,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'rows', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1790,
+   "t_s": 3293.4,
+   "terse_retry_used": false,
+   "unix": 1788250557.845272,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "type": "PERTURB",
+     "why": "Testing the 'down_row_spatial_nonlinearity' hypothesis by zeroing 50% of rows at L0 to see if it has a significant impact on the output two layers later."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 83.8,
+   "belief_update": "The repeated 'up/L1/row/0.5' runs suggest a lack of new data or a need to pivot to 'down' or 'up' at L0 to resolve the sparse vs non-linear dependency hypothesis.",
+   "concurrent_window_s": 34.0,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of rows at L1 in the 'up' tensor causes a significant change in the output two layers later.",
+     "claim": "The 'up' tensor's output rows have a sparse or localized dependency on the hidden state such that zeroing 40% of rows at L1 has minimal impact.",
+     "id": "up_row_sparse_dependency"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of rows at L0 in the 'down' tensor has minimal impact on the output two layers later.",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of rows at L0 has a significant impact.",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 46,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1240,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "down"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.002692618854423401,
+      "elements_destroyed": 44564480,
+      "fraction": 0.5,
+      "hidden_cosine_after_2_layers": 0.9973073811455766,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 5120,
+       "selected": 2560
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 33.6,
+      "shape": [
+       5120,
+       17408
+      ],
+      "side": "rows",
+      "tensor": "down",
+      "work_type": "PERTURB"
+     },
+     "seconds": 34.0,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'down', 'layer': 0, 'side': 'rows', 'fraction': 0.5} -> damage 0.002692618854423401"
+   ],
+   "salvaged_chars": 1240,
+   "t_s": 3377.3,
+   "terse_retry_used": true,
+   "unix": 1788250641.6587489,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.1,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 'up_row_spatial_nonlinearity' hypothesis by measuring the damage from 10% of 'up' L0 rows, which will reveal if the dependency is linear or non-linear and help identify the specific spatial pattern that is most sensitive."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 73.3,
+   "belief_update": "The 0.005905 damage from 40% 'up' L0 rows suggests a non-linear, spatially distributed dependency that is not yet fully mapped, while 0.002692 damage from 50% 'down' L0 rows suggests a more robust or linear dependency, indicating that 'up' is the primary bottleneck for capability preservation.",
+   "concurrent_window_s": 37.6,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Perturb 10% of 'up' L0 rows and measure if the damage is proportional to the 40% case or if it shows a non-linear drop, indicating a specific spatial dependency.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them moves the hidden state two layers later by 0.005905 of cosine, indicating a high sensitivity to specific row patterns.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Perturb 10% of 'down' L0 rows and measure if the damage is proportional to the 50% case or if it shows a non-linear drop, indicating a specific spatial dependency.",
+     "claim": "The 'down' tensor's output rows have a linear or uniform dependency on the hidden state such that zeroing 50% of them moves the hidden state two layers later by 0.002692 of cosine, indicating a lower sensitivity to specific row patterns compared to 'up'.",
+     "id": "down_row_linear_dependency"
+    }
+   ],
+   "n": 47,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1793,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.1,
+      "layer": 0,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": true,
+     "result": {
+      "damage": 0.0003362691576549448,
+      "elements_destroyed": 8913920,
+      "fraction": 0.1,
+      "hidden_cosine_after_2_layers": 0.999663730842345,
+      "kind": "zero",
+      "kind_detail": {
+       "kind": "zero",
+       "of": 17408,
+       "selected": 1741
+      },
+      "layer": 0,
+      "measured_level": "LOCAL_FUNCTIONAL_FIDELITY",
+      "not_capability": "this is hidden-state cosine two layers downstream. It is NOT a capability measurement and must not be reported as one.",
+      "seconds": 37.1,
+      "shape": [
+       17408,
+       5120
+      ],
+      "side": "rows",
+      "tensor": "up",
+      "work_type": "PERTURB"
+     },
+     "seconds": 37.6,
+     "stderr_tail": null,
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 0, 'side': 'rows', 'fraction': 0.1} -> damage 0.0003362691576549448"
+   ],
+   "salvaged_chars": 1793,
+   "t_s": 3450.6,
+   "terse_retry_used": false,
+   "unix": 1788250714.971339,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 'up' tensor's column sensitivity and distinguish from the 'down' tensor's row sensitivity."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 91.5,
+   "belief_update": "The repeated 0.5 up/L1/rows runs suggest a lack of new data or a need to test the 'up' tensor's column sensitivity to distinguish from the 'down' tensor's row sensitivity.",
+   "concurrent_window_s": 39.6,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "If the 0.5 up/L1/cols perturbation shows a negligible change in the output two layers later, the hypothesis is false.",
+     "claim": "The 'up' tensor's output columns have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of them will cause a significant change in the output two layers later.",
+     "id": "up_col_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "If the 0.5 down/L0/cols perturbation shows a significant change in the output two layers later, the hypothesis is false",
+     "claim": "The 'down' tensor's output columns have a linear or uniform dependency on the hidden state such that zeroing 50% of them will cause a negligible change in the output two layers later.",
+     "id": "down_col_linear_dependency"
+    }
+   ],
+   "n": 48,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": "terse",
+   "reply_chars": 1568,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 39.6,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'cols', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1568,
+   "t_s": 3542.0,
+   "terse_retry_used": true,
+   "unix": 1788250806.441356,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 50.4,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 49,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1120,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1120,
+   "t_s": 3592.4,
+   "terse_retry_used": true,
+   "unix": 1788250856.826776,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the hypothesis that the 'up' tensor's output columns have a non-linear or spatially distributed dependency on the hidden state."
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 63.2,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in L1 up suggests a non-linear, spatially distributed dependency on the hidden state, as the 'up' tensor's output columns are likely to have a non-linear or spatially distributed dependency on the hidden state.",
+   "concurrent_window_s": 34.9,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output columns in layer 1 and measuring the hidden state two layers later.",
+     "claim": "The 'up' tensor's output columns have a non-linear or spatially distributed dependency on the hidden state.",
+     "id": "up_col_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'down' tensor's output columns in layer 0 and measuring the hidden state two layers later",
+     "claim": "The 'down' tensor's output columns have a linear or uniform dependency on the hidden state such that zeroing 50% of the 'down' tensor's output columns in layer 0 will result in a 0.00590 cosine shift in the hidden state two layers later.",
+     "id": "down_col_linear_dependency"
+    }
+   ],
+   "n": 50,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1298,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 34.9,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'cols', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1298,
+   "t_s": 3655.6,
+   "terse_retry_used": false,
+   "unix": 1788250920.014505,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [],
+   "admit": {
+    "extra": [],
+    "missing": [
+     "belief_update",
+     "live_hypotheses",
+     "selected_work",
+     "escalation_needed"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "malformed",
+     "ok": false,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 50.9,
+   "belief_update": null,
+   "concurrent_window_s": 0.0,
+   "degenerated": false,
+   "live_hypotheses": null,
+   "n": 51,
+   "n_launched_concurrently": 0,
+   "n_unlaunched": 0,
+   "parsed": false,
+   "reask_kind": "terse",
+   "reply_chars": 1363,
+   "results": [],
+   "results_summary": [
+    "no work was accepted from that turn"
+   ],
+   "salvaged_chars": 1363,
+   "t_s": 3706.6,
+   "terse_retry_used": true,
+   "unix": 1788250970.973231,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 0,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the 'up_col_spatial_nonlinearity' hypothesis by zeroing 50% of 'up' tensor's output columns in L1 and measuring the hidden state two layers later, comparing the cosine shift to the 0.00590 from 40% row zeroing."
+    }
+   ],
+   "admit": {
+    "extra": [
+     "live_hypotheses.cheest_falsifier"
+    ],
+    "missing": [
+     "live_hypotheses.cheapest_falsifier"
+    ],
+    "ok": false,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 62.7,
+   "belief_update": "The 0.00590 cosine shift from 40% row zeroing in L1 'up' suggests a non-uniform, likely spatial or non-linear, dependency on the hidden state, as uniform linear dependencies would yield a larger, more predictable shift.",
+   "concurrent_window_s": 32.6,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "",
+     "claim": "The 'up' tensor's output columns have a non-linear or spatially distributed dependency on the hidden state.",
+     "id": "up_col_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'down' tensor's output columns in L1 and measuring the hidden state two layers later; if the cosine shift is not proportional to the 40% row zeroing in 'up', the hypothesis is false.",
+     "claim": "The 'down' tensor's output columns have a linear or uniform dependency on the hidden state such that zeroing 50% of them would yield a predictable, proportional change in the hidden state.",
+     "id": "down_col_linear_dependency"
+    }
+   ],
+   "n": 52,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1457,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "cols",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 32.6,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'cols', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1457,
+   "t_s": 3769.3,
+   "terse_retry_used": false,
+   "unix": 1788251033.720402,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test the hypothesis that the 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state by zeroing 50% of them and measuring the hidden state two layers later by 0.005905 of cosine"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 74.1,
+   "belief_update": "The 0.005905 cosine shift from 40% row zeroing in 'up' L1 suggests a non-linear, spatially distributed dependency on the hidden state, as the 50% column zeroing in 'up' L1 failed to run and the 50% row zeroing in 'up' L1 is already run, indicating that the 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state.",
+   "concurrent_window_s": 38.8,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'up' tensor's output rows in layer 1 and measuring the hidden state two layers later by 0.005905 of cosine",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of them will move the hidden state two layers later by 0.005905 of cosine.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of the 'down' tensor's output rows in layer 0 and measuring the hidden state two layers later by 0.005905 of cosine",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 50% of them will move the hidden state two layers later by 0.005905 of cosine",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 53,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1750,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 1,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 38.8,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 1, 'side': 'rows', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1750,
+   "t_s": 3843.4,
+   "terse_retry_used": false,
+   "unix": 1788251107.8054159,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
+  },
+  {
+   "accepted": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 2,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "type": "PERTURB",
+     "why": "To test if the non-linear, spatially distributed dependency on the hidden state is a cross-layer effect by zeroing 50% of 'up' output rows at layer 2 and measuring the hidden state two layers later; if the cosine shift is 0.00590 or less, the hypothesis is false"
+    }
+   ],
+   "admit": {
+    "extra": [],
+    "missing": [],
+    "ok": true,
+    "parse": {
+     "kind": "json_object",
+     "ok": true,
+     "recovered": false,
+     "source_type": "str"
+    }
+   },
+   "ask_seconds": 76.0,
+   "belief_update": "The 0.005905 cosine shift from 40% 'up' row zeroing at layer 1 suggests a non-linear, spatially distributed dependency on the hidden state, but the 63-layer depth and 7 scar history of failed entropy coding imply a deeper structural or cross-layer dependency that requires a more targeted perturbation to isolate.",
+   "concurrent_window_s": 40.4,
+   "degenerated": false,
+   "live_hypotheses": [
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'up' output rows at layer 1 and measuring the hidden state two layers later; if the cosine shift is 0.00590 or less, the hypothesis is false.",
+     "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them at layer 1 moves the hidden state two layers later by 0.00590 of cosine.",
+     "id": "up_row_spatial_nonlinearity"
+    },
+    {
+     "cheapest_falsifier": "Zeroing 50% of 'down' output rows at layer 1 and measuring the hidden state two layers later; if the cosine shift is 0.00590 or less, the hypothesis is false",
+     "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them at layer 1 moves the hidden state two layers later by 0.00590 of cosine.",
+     "id": "down_row_spatial_nonlinearity"
+    }
+   ],
+   "n": 54,
+   "n_launched_concurrently": 1,
+   "n_unlaunched": 0,
+   "parsed": true,
+   "reask_kind": null,
+   "reply_chars": 1741,
+   "results": [
+    {
+     "params": {
+      "fraction": 0.5,
+      "layer": 2,
+      "side": "rows",
+      "tensor": "up"
+     },
+     "ran": false,
+     "result": {},
+     "seconds": 40.4,
+     "stderr_tail": " run\n    base = cm.replay_prompt_from(cap, layer, N_MORE)[\"hidden_after_n\"]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/scammermike/Downloads/hawking/tools/future/capability_information_map.py\", line 1232, in replay_prompt_from\n    kit = kits[L]\n          ~~~~^^^\nKeyError: 3\n",
+     "type": "PERTURB"
+    }
+   ],
+   "results_summary": [
+    "PERTURB {'tensor': 'up', 'layer': 2, 'side': 'rows', 'fraction': 0.5} -> DID NOT RUN"
+   ],
+   "salvaged_chars": 1741,
+   "t_s": 3919.4,
+   "terse_retry_used": false,
+   "unlaunched": [],
+   "validation": {
+    "n_accepted": 1,
+    "n_rejected": 0,
+    "rejected": []
+   }
   }
  ],
  "live_hypotheses": [
   {
-   "cheapest_falsifier": "Perturb 50% of 'up' L0 columns and measure the hidden state two layers later; if the damage is significantly different from 0.005905, the hypothesis is false.",
-   "claim": "The 'up' tensor's specific row values are disproportionately critical to the final output due to their interaction with the 'gate' tensor's non-uniform distribution, rather than a uniform importance across all rows.",
-   "id": "x"
+   "cheapest_falsifier": "Zeroing 50% of 'up' output rows at layer 1 and measuring the hidden state two layers later; if the cosine shift is 0.00590 or less, the hypothesis is false.",
+   "claim": "The 'up' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them at layer 1 moves the hidden state two layers later by 0.00590 of cosine.",
+   "id": "up_row_spatial_nonlinearity"
+  },
+  {
+   "cheapest_falsifier": "Zeroing 50% of 'down' output rows at layer 1 and measuring the hidden state two layers later; if the cosine shift is 0.00590 or less, the hypothesis is false",
+   "claim": "The 'down' tensor's output rows have a non-linear or spatially distributed dependency on the hidden state such that zeroing 40% of them at layer 1 moves the hidden state two layers later by 0.00590 of cosine.",
+   "id": "down_row_spatial_nonlinearity"
   }
  ],
  "measured_state": {
@@ -4713,7 +8682,41 @@
   "up/L0/rows/0.1",
   "up/L0/rows/0.5",
   "down/L0/rows/0.5",
-  "up/L0/cols/0.5"
+  "up/L0/cols/0.5",
+  "up/L0/rows/0.2",
+  "up/L0/rows/0.5",
+  "gate/L0/rows/0.5",
+  "gate/L0/rows/0.2",
+  "up/L0/rows/0.5",
+  "up/L0/rows/0.4",
+  "up/L0/rows/0.6",
+  "up/L0/rows/0.5",
+  "up/L0/rows/0.2",
+  "up/L0/rows/0.3",
+  "up/L0/rows/0.35",
+  "up/L0/rows/0.45",
+  "down/L0/rows/0.5",
+  "up/L0/rows/0.5",
+  "up/L0/cols/0.5",
+  "up/L0/cols/0.5",
+  "up/L0/rows/0.4",
+  "up/L1/rows/0.4",
+  "up/L1/rows/0.4",
+  "down/L0/rows/0.5",
+  "down/L0/rows/0.5",
+  "up/L0/rows/0.5",
+  "up/L0/cols/0.5",
+  "up/L1/rows/0.1",
+  "up/L1/rows/0.5",
+  "up/L1/rows/0.5",
+  "up/L1/rows/0.5",
+  "down/L0/rows/0.5",
+  "up/L0/rows/0.1",
+  "up/L1/cols/0.5",
+  "up/L1/cols/0.5",
+  "up/L1/cols/0.5",
+  "up/L1/rows/0.5",
+  "up/L2/rows/0.5"
  ],
- "updated_unix": 1788236273.6172779
+ "updated_unix": 1788251183.8369868
 }

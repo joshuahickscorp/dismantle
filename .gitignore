@@ -218,6 +218,18 @@ workspace/campaign/odyssey/RUN_LOG.jsonl
 # Receipt archive tarballs: keep the extracted receipts, drop the archive.
 receipts/**/*.tar.xz
 
+# These two receipts sample the machine's live process/thermal/memory state
+# (pid, cpu%, rss, competing_workloads) as their entire subject - that is what
+# they are FOR, and their own test suites require the write to carry fresh
+# live data every time (test_dirty_measure.py::test_entry_point_runs_and_seals_receipt,
+# test_hcli_self_profile.py). Re-running the producer therefore never converges:
+# a rerun changes pid/cpu/rss even when nothing the tool measures did, which is
+# a live snapshot, not a fact that should be committed once and stay true.
+# `git rm --cached` them once (see the wave report) - the doctrine that
+# produces them stays in tools/future/*.py, tracked as source.
+/receipts/future/DIRTY_MEASUREMENT.json
+/receipts/future/HCLI_SELF_PROFILE.json
+
 # --- Accidental shell redirections and runtime scratch (launch hardening) ---
 # `none` is a multi-MB HF download log created by a stray `2>none`; `stdout` is
 # the same mistake with an empty result. Neither is a deliverable.

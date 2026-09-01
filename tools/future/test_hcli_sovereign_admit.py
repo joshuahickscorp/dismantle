@@ -34,6 +34,9 @@ REPLIES = [
     '{"selected_work": [null, 3, "x"]}',                # junk members
     '{"selected_work": [{"type": "DELETE_EVERYTHING"}]}',
     '{"selected_work": [{"type": "PERTURB", "params": {}}]}',
+    '{"selected_work": [{"type": "PERTURB", "params": ["up", 0, 0.5]}]}',
+    '{"selected_work": [{"type": "PERTURB", "params": "up/0/0.5"}]}',
+    '{"selected_work": [{"type": "PERTURB", "params": 7}]}',
     '{"selected_work": [{"type": "PERTURB", "params": '
     '{"tensor": "up", "layer": "NaN", "fraction": "half"}}]}',
     '{"selected_work": [{"type": "PERTURB", "params": '
@@ -140,3 +143,28 @@ def test_a_schema_incomplete_reply_that_carries_work_is_still_executed():
     assert sov.validate(adm["value"])["n_accepted"] == 1
     src = Path(sov.__file__).read_text()
     assert 'has_work = bool(adm["value"].get("selected_work"))' in src
+
+
+def test_params_as_a_list_is_rejected_not_a_crash():
+    """The FOURTH shape crash, found by the adversarial lane before the body
+    produced it. A list is truthy, so `or {}` never fired and .get raised."""
+    v = sov.validate({"selected_work": [
+        {"type": "PERTURB", "params": ["up", 0, 0.5]}]})
+    assert v["n_accepted"] == 0
+    assert v["n_rejected"] == 1
+    assert "params is list" in v["rejected"][0]["why"]
+
+
+def test_params_as_a_string_is_rejected_not_a_crash():
+    v = sov.validate({"selected_work": [
+        {"type": "PERTURB", "params": "up/0/0.5"}]})
+    assert v["n_rejected"] == 1
+    assert "params is str" in v["rejected"][0]["why"]
+
+
+def test_params_absent_is_still_a_plain_rejection_not_a_crash():
+    """Missing params must stay the ordinary path: rejected on its fields, not
+    on its type. Over-tightening the coercion would break the common case."""
+    v = sov.validate({"selected_work": [{"type": "PERTURB"}]})
+    assert v["n_rejected"] == 1
+    assert "params is" not in v["rejected"][0]["why"]

@@ -275,7 +275,16 @@ def validate(obj: dict[str, Any] | None) -> dict[str, Any]:
         if t not in EXECUTABLE:
             rejected.append({"work": w, "why": f"{t!r} is not an executable work type"})
             continue
-        p = w.get("params") or {}
+        # FOURTH SHAPE CRASH, found by the adversarial lane before the body
+        # produced it: params as a list or a string is truthy, so `or {}` does
+        # not fire and .get raises AttributeError. Coerce, never assume - the
+        # same rule that fixed selected_work-as-a-dict one level up.
+        p = w.get("params")
+        if not isinstance(p, dict):
+            if p not in (None, {}):
+                rejected.append({"work": w, "why": f"params is {type(p).__name__}, not an object"})
+                continue
+            p = {}
         if t == "PERTURB":
             tensor = str(p.get("tensor") or "")
             side = str(p.get("side") or "rows")

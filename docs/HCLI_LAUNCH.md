@@ -43,6 +43,13 @@ differ. Refresh it with:
 python3 -m hcli install-shims
 ```
 
+**One more wrinkle: your working directory decides.** The shim sets
+`PYTHONPATH`, but Python puts the current directory first, so `hcli` run *from
+inside the repo* imports the repo and `hcli` run from anywhere else imports the
+snapshot. That is also why the staleness line only appears outside the repo —
+inside it, there is nothing stale to warn about. If you want one answer
+regardless of where you stand, use the editable install.
+
 ## Where state lives
 
 | root | what it holds | safe to delete |

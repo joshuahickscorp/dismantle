@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:38:44Z",
+  "recorded_at": "2026-09-01T06:08:09Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2752,7 +2752,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "fb75f701192b009b9dc1a5255d0c2c3ec8bdf899",
+ "head": "17b5765ffb5ae187179a0796a149a4867cc658e0",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -4475,7 +4475,7 @@
     "executable_hash": {
      "by_role": {
       "binary": "d34044cffae8f32055cca40aae27ec62beb44f043df081293126da89e51b8e76",
-      "resident_binary": "2d5fd0f157fb7987f307782d3a12abf2efadd6a0e14a787740e51adb101ac3f8"
+      "resident_binary": "9f79d8a26540b86091296ddbc5829cf372bd75e789b9b0551a76d6ce2446fc37"
      },
      "seal_declared_sha256_16": "d34044cffae8f320",
      "seal_matching_role": "binary"
@@ -4586,7 +4586,7 @@
    "note": "Identity is not invented. A missing this-wave receipt stays unbound. Bound only when RESIDENT_SANDBOX.json pins identity_sha256 and reentry_same_identity. HCLI prior gates are not this identity.",
    "path_taken": "worktree",
    "pins": {
-    "identity_sha256": "0e07a1eecc5e4dbb8ef1ed2ebe0d6db738716ac235ab5ad3dcf4eca5c707fff6",
+    "identity_sha256": "62912632605e63479f4d67855621cd0b1727b6a6d6d5fa4b9b7bfbf7eed72468",
     "reentry_same_identity": true,
     "sandbox_id": "resident"
    },
@@ -4967,7 +4967,7 @@
   "unmet_not_from_this_rewire": []
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "abeebc1b7336f8d45b615d9c31cef172f17d187abe4bf650acfecd0882c50948",
+ "seal_sha256": "dead4e500043cc2f79179b89b74fc5ae2001a3b1ea24537936df7b0cf7587002",
  "sleeping_workunits": [
   {
    "assigned_backend": null,

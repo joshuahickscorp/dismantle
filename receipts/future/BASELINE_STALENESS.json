@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T03:49:20Z",
+  "recorded_at": "2026-09-01T03:52:33Z",
   "recorded_by": "tools/future/baseline_staleness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -27,7 +27,8 @@
   "by_verdict": {
    "CITES_BUT_READS_CURRENT": [
     "BASELINE_STALENESS.json",
-    "GAP_LEDGER_60.json"
+    "GAP_LEDGER_60.json",
+    "MAX_RESIDENT_PHYSICAL_ROOF.json"
    ],
    "HISTORICAL_OWNER": [
     "BITCAST_DEQUANT_AB.json",
@@ -46,7 +47,6 @@
     "HCLI_COMPACTOR.json",
     "HCLI_FAST_THOUGHT.json",
     "IMPROVEMENT_METABOLISM.json",
-    "MAX_RESIDENT_PHYSICAL_ROOF.json",
     "MLP_DECODE_CHEAPEN.json",
     "MLP_ISSUE_RATE_LADDER.json",
     "MLP_SPARSE_RESIDUAL.json",
@@ -62,7 +62,7 @@
    ]
   },
   "clean": false,
-  "n_needing_review": 21,
+  "n_needing_review": 20,
   "n_receipts_citing_a_superseded_value": 27,
   "needing_review": [
    "ACCELERATOR_WORKUNITS.json",
@@ -77,7 +77,6 @@
    "HCLI_COMPACTOR.json",
    "HCLI_FAST_THOUGHT.json",
    "IMPROVEMENT_METABOLISM.json",
-   "MAX_RESIDENT_PHYSICAL_ROOF.json",
    "MLP_DECODE_CHEAPEN.json",
    "MLP_ISSUE_RATE_LADDER.json",
    "MLP_SPARSE_RESIDUAL.json",
@@ -87,7 +86,7 @@
    "RESIDENT_API_AUDIT.json",
    "RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
   ],
-  "reading": "27 receipts mention a superseded value and 21 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
+  "reading": "27 receipts mention a superseded value and 20 need a human look: their producer does not read the current baseline. Three checked by hand were all genuinely stale and each moved a strategic number, so the base rate in this class is not low.",
   "this_is_a_REVIEW_LIST_not_a_DEFECT_LIST": "the verdict is a FACT - this receipt carries a superseded value somewhere that is not obviously historical, and its producer does not read the current baseline. Some of these are correct as they are: a receipt that IS the old measurement legitimately records it, and HARNESS_RECONCILIATION exists precisely to hold both numbers side by side. Calling them all defects would be the same over-claiming this module is meant to catch."
  },
  "rows": [
@@ -175,28 +174,28 @@
    "carried_as_history": [],
    "occurrence_paths": {
     "27.2896": [
-     ".rows[4].carried_as_history[0]",
-     ".rows[4].superseded_values_present[0]",
+     ".rows[4].superseded_values_present[1]",
+     ".rows[5].carried_as_history[0]",
+     ".rows[5].superseded_values_present[0]",
      ".rows[11].superseded_values_present[0]",
      ".rows[12].superseded_values_present[0]",
-     ".rows[14].superseded_values_present[0]",
-     ".rows[16].superseded_values_present[0]"
+     ".rows[14].superseded_values_present[0]"
     ],
     "28.722": [
      ".rows[0].superseded_values_present[0]",
      ".rows[1].superseded_values_present[0]",
      ".rows[2].superseded_values_present[0]",
      ".rows[3].superseded_values_present[0]",
-     ".rows[5].superseded_values_present[0]",
+     ".rows[4].superseded_values_present[0]",
      ".rows[6].superseded_values_present[0]"
     ],
     "36.644": [
-     ".rows[4].carried_as_history[1]",
-     ".rows[4].superseded_values_present[1]",
+     ".rows[4].superseded_values_present[2]",
+     ".rows[5].carried_as_history[1]",
+     ".rows[5].superseded_values_present[1]",
      ".rows[9].superseded_values_present[0]",
      ".rows[11].superseded_values_present[1]",
-     ".rows[12].superseded_values_present[1]",
-     ".rows[13].superseded_values_present[0]"
+     ".rows[12].superseded_values_present[1]"
     ]
    },
    "producer": "tools/future/baseline_staleness.py",
@@ -416,7 +415,6 @@
     "27.2896": [
      ".causal_residual.baseline_moved.current_body_ms",
      ".citations_resolved.current_body_wall_ms",
-     ".dominant_remaining_costs.token_wall_ms",
      ".prerequisites[2].value",
      ".target.current_body_ms",
      ".target.why_not_assumed"
@@ -426,13 +424,13 @@
     ]
    },
    "producer": "tools/future/terminal_speed_artifact.py",
-   "producer_reads_current_baseline": false,
+   "producer_reads_current_baseline": true,
    "receipt": "MAX_RESIDENT_PHYSICAL_ROOF.json",
    "superseded_values_present": [
     "27.2896",
     "36.644"
    ],
-   "verdict": "PRODUCER_DOES_NOT_READ_CURRENT_BASELINE"
+   "verdict": "CITES_BUT_READS_CURRENT"
   },
   {
    "carried_as_history": [],
@@ -629,7 +627,7 @@
    "verdict": "PRODUCER_UNKNOWN"
   }
  ],
- "seal_sha256": "56a86e82c5d49e5b8403708d24d562eacf90eaddba110ce5db82f1194834d039",
+ "seal_sha256": "f8c09a9043cf316cac9b93fff4313278674c51527018885d22e7a13282e3823a",
  "superseded": [
   {
    "now": "21.9464 GPU ms (G131)",

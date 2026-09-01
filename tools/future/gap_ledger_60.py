@@ -29,6 +29,11 @@ import causal_budget_71 as cb  # noqa: E402
 RECORDED_BY = "tools/future/gap_ledger_60.py"
 RECEIPT_NAME = "GAP_LEDGER_60.json"
 BUDGET_REL = "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json"
+# G131 rebased the baseline. The three levers are the SEALED DEFAULT now, so the
+# gap must be measured from what the resident actually costs with nothing set,
+# not from the pre-promotion budget - every rung below was arithmetic over a
+# number that is 5.3 ms stale.
+ABSOLUTE_REL = "receipts/future/SEALED_DEFAULT_ABSOLUTE.json"
 CLOCK_REL = "receipts/future/TPS_ESCALATION_CLOCK_START.json"
 
 CHECKPOINTS = (40.0, 50.0, 60.0, 71.0)
@@ -67,6 +72,36 @@ def _budget() -> dict[str, Any]:
 
 
 def live() -> dict[str, Any]:
+    """The baseline every rung is measured from.
+
+    ON GPU TIME, NOT WALL. G125 showed the two harnesses agree about GPU to
+    0.20% and disagree about host gap by 3.4x, and G131 saw that gap span 4.7x
+    across three windows while GPU moved under 0.3%. Wall is a joint claim about
+    the resident AND the machine's other tenants. Every lever in this ledger is
+    measured as GPU ms, so a gap denominated in wall was comparing two different
+    quantities. The wall figure is still reported, beside its host gap.
+    """
+    p = REPO / ABSOLUTE_REL
+    if p.is_file():
+        a = json.loads(p.read_text())
+        m = a["measured"]
+        ms = float(m["gpu_ms_per_token"])
+        return {
+            "ms_per_token": ms,
+            "tps": float(m["gpu_tps"]),
+            "basis": "GPU",
+            "gpu_ms_per_token": ms,
+            "wall_ms_per_token": float(m["wall_ms_per_token"]),
+            "wall_tps": float(m["wall_tps"]),
+            "host_gap_ms": float(m["host_gap_ms"]),
+            "wall_is_not_promoted": (
+                "wall = gpu + host and the host gap spans 4.7x across protected "
+                "windows; see receipts/future/HARNESS_RECONCILIATION.json"
+            ),
+            "levers_are_the_sealed_default": True,
+            "source": ABSOLUTE_REL,
+            "git_head": a.get("git_head"),
+        }
     d = _budget()
     ms = float(d["decode_wall_ms_per_token"])
     tps = float(d["decode_wall_tps"])
@@ -79,6 +114,7 @@ def live() -> dict[str, Any]:
     return {
         "ms_per_token": ms,
         "tps": tps,
+        "basis": "WALL_PRE_PROMOTION_FALLBACK",
         "gpu_ms_per_token": float(d["decode_gpu_ms_per_token"]),
         "source": BUDGET_REL,
         "git_head": d["organs"].get("git_head"),
@@ -100,10 +136,47 @@ def checkpoints() -> list[dict[str, Any]]:
     return out
 
 
+def organ_decomposition_is_stale() -> dict[str, Any]:
+    """The organ table is measured on a body that no longer runs.
+
+    G131 promoted three levers to sealed defaults and the resident now costs
+    21.9464 ms GPU. The organ rows still sum to 26.7013 - they were measured
+    before the promotion. Nothing in this ledger silently rescales them, and the
+    difference is named here as the next measurement rather than absorbed.
+    """
+    d = _budget()
+    rows_total = sum(float(r["gpu_ms"]) for r in d["organs"]["rows"])
+    lv = live()
+    delta = rows_total - lv["ms_per_token"]
+    return {
+        "organ_rows_sum_ms": round(rows_total, 4),
+        "live_baseline_ms": lv["ms_per_token"],
+        "stale_by_ms": round(delta, 4),
+        "stale_by_share": round(delta / rows_total, 4),
+        "source": BUDGET_REL,
+        "what_it_means": (
+            "the organ table prices wins against its OWN total, not against the "
+            "live baseline. Its ranking is still usable - the levers did not "
+            "reorder the organs - but no absolute TPS-at-a-win figure in that "
+            "table is current."
+        ),
+        "next_measurement": (
+            "re-run the organ decomposition under the sealed default so the "
+            "table and the baseline describe the same body"
+        ),
+    }
+
+
 def organ_win_table() -> list[dict[str, Any]]:
     """S026 §12: every organ priced in COMPLETE-TOKEN TPS, not in organ percent."""
     d = _budget()
-    cur = float(d["decode_wall_ms_per_token"])
+    # PRICED AGAINST ITS OWN BODY, NOT THE LIVE BASELINE. These organ times were
+    # measured before the three levers became the sealed default: they sum to
+    # 26.7013 ms against a live GPU baseline of 21.9464. Dividing a stale
+    # numerator by a live denominator would inflate every organ's share and
+    # every TPS-at-a-win figure. The decomposition is self-consistent within the
+    # body that produced it, so it is priced there and flagged as stale.
+    cur = sum(float(r["gpu_ms"]) for r in d["organs"]["rows"])
     rows = []
     for r in d["organs"]["rows"]:
         ms = float(r["gpu_ms"])
@@ -118,6 +191,15 @@ def organ_win_table() -> list[dict[str, Any]]:
             entry[f"tps_at_{pct}pct_win"] = round(1000.0 / (cur - saved), 3)
             entry[f"ms_at_{pct}pct_win"] = round(saved, 4)
         entry["perfect_removal_max_ms"] = round(ms, 4)
+        entry["priced_against"] = {
+            "source": BUDGET_REL,
+            "token_ms": round(cur, 4),
+            "basis": "the organ decomposition's own total, GPU ms",
+            "not_the_live_baseline_because": (
+                "these organs predate the sealed-default promotion; see "
+                "organ_decomposition_is_stale"
+            ),
+        }
         entry["material"] = ms >= MATERIAL_MS
         entry["why"] = (
             "perfect elimination is below the materiality threshold; do not "
@@ -441,6 +523,7 @@ def build() -> dict[str, Any]:
             "levers are not promoted and the resident still runs production."
         ),
         "material_open_experiments": material,
+        "organ_decomposition_is_stale": organ_decomposition_is_stale(),
         "sum_of_material_open_ms": round(
             sum(r["max_ms_removable"] for r in material), 4),
         "does_the_open_set_reach_60": (

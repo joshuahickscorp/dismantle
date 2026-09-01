@@ -12,15 +12,18 @@ import pytest
 from tools.future import gap_ledger_60 as g
 
 
-def test_the_gap_is_derived_from_the_live_budget_not_typed():
+def test_the_gap_is_derived_from_the_live_baseline_not_typed():
     lv = g.live()
-    d = json.loads((g.REPO / g.BUDGET_REL).read_text())
-    assert lv["ms_per_token"] == d["decode_wall_ms_per_token"]
+    a = json.loads((g.REPO / g.ABSOLUTE_REL).read_text())
+    assert lv["ms_per_token"] == a["measured"]["gpu_ms_per_token"]
     assert g.build()["gap_to_60_ms"] == pytest.approx(
         lv["ms_per_token"] - 1000.0 / 60.0, abs=1e-4)
 
 
 def test_a_self_inconsistent_budget_is_refused(monkeypatch):
+    """Still enforced on the fallback path, which is the one that reads a wall
+    figure and a wall TPS that could disagree."""
+    monkeypatch.setattr(g, "ABSOLUTE_REL", "receipts/future/NO_SUCH_ABS.json")
     d = json.loads((g.REPO / g.BUDGET_REL).read_text())
     monkeypatch.setattr(g, "_budget", lambda: {**d, "decode_wall_tps": 99.0})
     with pytest.raises(g.GapRefused, match="self-inconsistent"):
@@ -28,9 +31,33 @@ def test_a_self_inconsistent_budget_is_refused(monkeypatch):
 
 
 def test_a_missing_budget_refuses_rather_than_defaulting(monkeypatch):
+    """With both the promoted absolute and the pre-promotion budget gone, there
+    is no baseline and the ledger must refuse rather than invent one."""
+    monkeypatch.setattr(g, "ABSOLUTE_REL", "receipts/future/NO_SUCH_ABS.json")
     monkeypatch.setattr(g, "BUDGET_REL", "receipts/future/NO_SUCH.json")
     with pytest.raises(g.GapRefused, match="no live token budget"):
         g.live()
+
+
+def test_the_baseline_is_the_promoted_gpu_absolute_not_the_stale_wall():
+    """G131 rebased this. Every lever in the ledger is measured as GPU ms, so a
+    gap denominated in WALL was comparing two different quantities - and the
+    pre-promotion wall figure is 5.3 ms stale besides."""
+    lv = g.live()
+    assert lv["basis"] == "GPU"
+    assert lv["source"] == g.ABSOLUTE_REL
+    assert lv["levers_are_the_sealed_default"] is True
+    assert lv["ms_per_token"] == lv["gpu_ms_per_token"]
+    assert lv["wall_ms_per_token"] > lv["gpu_ms_per_token"]
+    assert lv["host_gap_ms"] == pytest.approx(
+        lv["wall_ms_per_token"] - lv["gpu_ms_per_token"], abs=5e-4)
+
+
+def test_it_falls_back_to_the_pre_promotion_budget_and_says_so(monkeypatch):
+    monkeypatch.setattr(g, "ABSOLUTE_REL", "receipts/future/NO_SUCH_ABS.json")
+    lv = g.live()
+    assert lv["basis"] == "WALL_PRE_PROMOTION_FALLBACK"
+    assert lv["source"] == g.BUDGET_REL
 
 
 def test_organs_are_priced_in_complete_token_tps_not_organ_percent():
@@ -38,10 +65,23 @@ def test_organs_are_priced_in_complete_token_tps_not_organ_percent():
     cur = g.live()["ms_per_token"]
     top = rows[0]
     assert top["organ"] == "mlp_gate_up", "the table must be ranked by cost"
+    # Priced against the organ decomposition's OWN total, not the live baseline:
+    # those organs were measured before the sealed-default promotion and a stale
+    # numerator over a live denominator would inflate every figure.
+    own = top["priced_against"]["token_ms"]
+    assert own != cur
     assert top["tps_at_20pct_win"] == pytest.approx(
-        1000.0 / (cur - top["current_ms"] * 0.2), abs=1e-3)
+        1000.0 / (own - top["current_ms"] * 0.2), abs=1e-3)
     # A 20% win on the largest organ is still well short of 60.
     assert top["tps_at_20pct_win"] < 60.0
+
+
+def test_the_stale_organ_decomposition_is_named_not_absorbed():
+    st = g.organ_decomposition_is_stale()
+    assert st["stale_by_ms"] > 4.0
+    assert st["organ_rows_sum_ms"] > st["live_baseline_ms"]
+    assert "re-run the organ decomposition" in st["next_measurement"]
+    assert g.build()["organ_decomposition_is_stale"] == st
 
 
 def test_immaterial_organs_are_named_as_not_worth_an_hour():
@@ -59,12 +99,23 @@ def test_the_three_dominant_kernels_do_not_reach_60_from_the_live_base():
         "S026's 60-from-20% arithmetic used a base that is not qualified"
 
 
-def test_the_open_set_does_not_reach_60_even_at_its_ceiling():
-    """The decisive fact this ledger exists to surface."""
+def test_the_open_sets_CEILING_now_exceeds_the_gap_to_60():
+    """This flipped when G131 rebased the baseline, and the flip is a statement
+    about OPPORTUNITY BOUNDS, not about reaching 60. sum_of_material_open_ms is
+    what the open set could remove under PERFECT success; the ledger's own
+    honest_reading says these are ceilings, not candidates."""
     b = g.build()
-    assert b["does_the_open_set_reach_60"] is False
-    assert b["sum_of_material_open_ms"] < b["gap_to_60_ms"]
+    assert b["does_the_open_set_reach_60"] is True
+    assert b["sum_of_material_open_ms"] > b["gap_to_60_ms"]
     assert "CEILINGS, not candidates" in b["honest_reading"]
+
+
+def test_perfect_arithmetic_removal_still_does_not_reach_60():
+    """The arithmetic school stays bounded below 60 at the new baseline too, so
+    the open set clears the gap only on its BANDWIDTH rungs."""
+    a = g.build()["arithmetic_ceiling"]
+    assert a["reaches_60"] is False
+    assert a["still_short_of_60_by_ms"] > 0
 
 
 def test_experiments_are_ranked_by_max_ms_removable():

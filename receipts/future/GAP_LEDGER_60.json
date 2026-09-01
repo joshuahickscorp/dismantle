@@ -55,10 +55,10 @@
     "token_identical": true
    }
   ],
-  "live_tps": 36.644,
-  "ms_if_promoted": 22.7519,
-  "still_short_of_60_by_ms": 6.0852,
-  "tps_if_promoted": 43.952,
+  "live_tps": 45.566,
+  "ms_if_promoted": 17.4087,
+  "still_short_of_60_by_ms": 0.742,
+  "tps_if_promoted": 57.443,
   "what_promotion_requires": "a protected reprofile with both levers set, replacing the resident token budget; then the default flips and this section empties",
   "why_not_promoted": "both are opt-in env levers and production default is unchanged. Promotion needs a protected absolute measurement to replace receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json, and every window so far has had ModelLake downloads running - twice after they were SIGSTOPped and the supervisor respawned them."
  },
@@ -73,56 +73,62 @@
  },
  "checkpoints": [
   {
-   "fraction_of_token_to_remove": 0.0839,
+   "fraction_of_token_to_remove": -0.1391,
    "ms_per_token_required": 25.0,
-   "ms_to_remove_from_live": 2.2896,
-   "reached": false,
+   "ms_to_remove_from_live": -3.0536,
+   "reached": true,
    "tps": 40.0
   },
   {
-   "fraction_of_token_to_remove": 0.2671,
+   "fraction_of_token_to_remove": 0.0887,
    "ms_per_token_required": 20.0,
-   "ms_to_remove_from_live": 7.2896,
+   "ms_to_remove_from_live": 1.9464,
    "reached": false,
    "tps": 50.0
   },
   {
-   "fraction_of_token_to_remove": 0.3893,
+   "fraction_of_token_to_remove": 0.2406,
    "ms_per_token_required": 16.6667,
-   "ms_to_remove_from_live": 10.6229,
+   "ms_to_remove_from_live": 5.2797,
    "reached": false,
    "tps": 60.0
   },
   {
-   "fraction_of_token_to_remove": 0.4839,
+   "fraction_of_token_to_remove": 0.3582,
    "ms_per_token_required": 14.0845,
-   "ms_to_remove_from_live": 13.2051,
+   "ms_to_remove_from_live": 7.8619,
    "reached": false,
    "tps": 71.0
   }
  ],
- "does_the_open_set_reach_60": false,
+ "does_the_open_set_reach_60": true,
  "escalation_clock": {
   "deprivilege_condition_would_fire": true,
-  "elapsed_hours": 1.138,
-  "hours_to_next_phase": 4.862,
+  "elapsed_hours": 4.916,
+  "hours_to_next_phase": 1.084,
   "next_phase": "SURVIVOR_OR_COLLAPSE",
   "not_an_abandonment": "the clock forbids complacency, not the incumbent. Passing a phase boundary licenses widening the search; it never requires dropping work that is producing evidence.",
   "phase": "DISCOVERY",
   "phase_licenses": "incumbent-kernel work is the privileged route",
   "started_at_tps": 36.644,
   "started_utc": "2026-08-31T21:31:32Z",
-  "tps_moved_since_start": 0.0
+  "tps_moved_since_start": 8.922
  },
- "gap_to_60_ms": 10.6229,
- "gap_to_71_ms": 13.2051,
+ "gap_to_60_ms": 5.2797,
+ "gap_to_71_ms": 7.8619,
  "honest_reading": "the material open experiments are bandwidth-recovery bounds - what each organ would cost if it ran at a rate already demonstrated elsewhere on this machine. They are CEILINGS, not candidates: no mechanism that reaches them is on record. Summing them and comparing to the gap says whether the gap is closable IN PRINCIPLE by the open set, not whether it is closable today.",
  "live": {
-  "git_head": "9c43a81b19b1a7dac59935a256defedd86c4f083",
-  "gpu_ms_per_token": 26.5943,
-  "ms_per_token": 27.2896,
-  "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
-  "tps": 36.644
+  "basis": "GPU",
+  "git_head": null,
+  "gpu_ms_per_token": 21.9464,
+  "host_gap_ms": 0.956,
+  "levers_are_the_sealed_default": true,
+  "ms_per_token": 21.9464,
+  "source": "receipts/future/SEALED_DEFAULT_ABSOLUTE.json",
+  "tps": 45.566,
+  "wall_is_not_promoted": "wall = gpu + host and the host gap spans 4.7x across protected windows; see receipts/future/HARNESS_RECONCILIATION.json",
+  "wall_ms_per_token": 22.9024,
+  "wall_tps": 43.664
  },
  "material_open_experiments": [
   {
@@ -144,13 +150,22 @@
   "absolutes_are_measured_under_load": true,
   "gpu_lane_lock_held": null,
   "lane": "derived",
-  "loadavg": "{ 5.45 5.78 6.37 }",
+  "loadavg": "{ 10.12 8.86 8.64 }",
   "measured_at": null,
   "measured_at_source": "RETROFIT_UNKNOWN",
-  "receipt_regenerated_at": "2026-08-31T22:39:49Z",
+  "receipt_regenerated_at": "2026-09-01T02:26:28Z",
   "why": "this receipt predates measurement provenance; the raw capture carries no timestamp, so the measurement time is genuinely unknown and is recorded as unknown rather than invented"
  },
  "obligation": "G095",
+ "organ_decomposition_is_stale": {
+  "live_baseline_ms": 21.9464,
+  "next_measurement": "re-run the organ decomposition under the sealed default so the table and the baseline describe the same body",
+  "organ_rows_sum_ms": 26.7013,
+  "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+  "stale_by_ms": 4.7549,
+  "stale_by_share": 0.1781,
+  "what_it_means": "the organ table prices wins against its OWN total, not against the live baseline. Its ranking is still usable - the levers did not reorder the organs - but no absolute TPS-at-a-win figure in that table is current."
+ },
  "organ_win_table": [
   {
    "current_ms": 9.9154,
@@ -162,12 +177,18 @@
    "ms_at_30pct_win": 2.9746,
    "organ": "mlp_gate_up",
    "perfect_removal_max_ms": 9.9154,
-   "share_of_token": 0.3633,
-   "tps_at_100pct_win": 57.557,
-   "tps_at_10pct_win": 38.026,
-   "tps_at_20pct_win": 39.516,
-   "tps_at_30pct_win": 41.127,
-   "why": "a 20% win here is 1.983 ms of the 27.29 ms token"
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
+   "share_of_token": 0.3713,
+   "tps_at_100pct_win": 59.574,
+   "tps_at_10pct_win": 38.896,
+   "tps_at_20pct_win": 40.456,
+   "tps_at_30pct_win": 42.147,
+   "why": "a 20% win here is 1.983 ms of the 26.701 ms token"
   },
   {
    "current_ms": 5.7319,
@@ -179,12 +200,18 @@
    "ms_at_30pct_win": 1.7196,
    "organ": "mlp_down",
    "perfect_removal_max_ms": 5.7319,
-   "share_of_token": 0.21,
-   "tps_at_100pct_win": 46.387,
-   "tps_at_10pct_win": 37.43,
-   "tps_at_20pct_win": 38.251,
-   "tps_at_30pct_win": 39.108,
-   "why": "a 20% win here is 1.146 ms of the 27.29 ms token"
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
+   "share_of_token": 0.2147,
+   "tps_at_100pct_win": 47.689,
+   "tps_at_10pct_win": 38.273,
+   "tps_at_20pct_win": 39.131,
+   "tps_at_30pct_win": 40.029,
+   "why": "a 20% win here is 1.146 ms of the 26.701 ms token"
   },
   {
    "current_ms": 5.5971,
@@ -196,12 +223,18 @@
    "ms_at_30pct_win": 1.6791,
    "organ": "deltanet",
    "perfect_removal_max_ms": 5.5971,
-   "share_of_token": 0.2051,
-   "tps_at_100pct_win": 46.099,
-   "tps_at_10pct_win": 37.411,
-   "tps_at_20pct_win": 38.211,
-   "tps_at_30pct_win": 39.047,
-   "why": "a 20% win here is 1.119 ms of the 27.29 ms token"
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
+   "share_of_token": 0.2096,
+   "tps_at_100pct_win": 47.384,
+   "tps_at_10pct_win": 38.253,
+   "tps_at_20pct_win": 39.09,
+   "tps_at_30pct_win": 39.965,
+   "why": "a 20% win here is 1.119 ms of the 26.701 ms token"
   },
   {
    "current_ms": 2.0596,
@@ -213,12 +246,18 @@
    "ms_at_30pct_win": 0.6179,
    "organ": "q4_remainder",
    "perfect_removal_max_ms": 2.0596,
-   "share_of_token": 0.0755,
-   "tps_at_100pct_win": 39.635,
-   "tps_at_10pct_win": 36.923,
-   "tps_at_20pct_win": 37.206,
-   "tps_at_30pct_win": 37.493,
-   "why": "a 20% win here is 0.412 ms of the 27.29 ms token"
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
+   "share_of_token": 0.0771,
+   "tps_at_100pct_win": 40.582,
+   "tps_at_10pct_win": 37.742,
+   "tps_at_20pct_win": 38.038,
+   "tps_at_30pct_win": 38.339,
+   "why": "a 20% win here is 0.412 ms of the 26.701 ms token"
   },
   {
    "current_ms": 2.0356,
@@ -230,12 +269,18 @@
    "ms_at_30pct_win": 0.6107,
    "organ": "gqa_attention",
    "perfect_removal_max_ms": 2.0356,
-   "share_of_token": 0.0746,
-   "tps_at_100pct_win": 39.598,
-   "tps_at_10pct_win": 36.919,
-   "tps_at_20pct_win": 37.199,
-   "tps_at_30pct_win": 37.483,
-   "why": "a 20% win here is 0.407 ms of the 27.29 ms token"
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
+   "share_of_token": 0.0762,
+   "tps_at_100pct_win": 40.542,
+   "tps_at_10pct_win": 37.739,
+   "tps_at_20pct_win": 38.031,
+   "tps_at_30pct_win": 38.328,
+   "why": "a 20% win here is 0.407 ms of the 26.701 ms token"
   },
   {
    "current_ms": 1.0204,
@@ -247,12 +292,18 @@
    "ms_at_30pct_win": 0.3061,
    "organ": "lm_head",
    "perfect_removal_max_ms": 1.0204,
-   "share_of_token": 0.0374,
-   "tps_at_100pct_win": 38.067,
-   "tps_at_10pct_win": 36.782,
-   "tps_at_20pct_win": 36.92,
-   "tps_at_30pct_win": 37.06,
-   "why": "a 20% win here is 0.204 ms of the 27.29 ms token"
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
+   "share_of_token": 0.0382,
+   "tps_at_100pct_win": 38.939,
+   "tps_at_10pct_win": 37.595,
+   "tps_at_20pct_win": 37.74,
+   "tps_at_30pct_win": 37.886,
+   "why": "a 20% win here is 0.204 ms of the 26.701 ms token"
   },
   {
    "current_ms": 0.334,
@@ -264,11 +315,17 @@
    "ms_at_30pct_win": 0.1002,
    "organ": "sampling",
    "perfect_removal_max_ms": 0.334,
-   "share_of_token": 0.0122,
-   "tps_at_100pct_win": 37.098,
-   "tps_at_10pct_win": 36.689,
-   "tps_at_20pct_win": 36.734,
-   "tps_at_30pct_win": 36.779,
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
+   "share_of_token": 0.0125,
+   "tps_at_100pct_win": 37.926,
+   "tps_at_10pct_win": 37.498,
+   "tps_at_20pct_win": 37.545,
+   "tps_at_30pct_win": 37.592,
    "why": "perfect elimination is below the materiality threshold; do not spend an hour here"
   },
   {
@@ -281,11 +338,17 @@
    "ms_at_30pct_win": 0.0022,
    "organ": "embedding",
    "perfect_removal_max_ms": 0.0073,
+   "priced_against": {
+    "basis": "the organ decomposition's own total, GPU ms",
+    "not_the_live_baseline_because": "these organs predate the sealed-default promotion; see organ_decomposition_is_stale",
+    "source": "receipts/future/RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
+    "token_ms": 26.7013
+   },
    "share_of_token": 0.0003,
-   "tps_at_100pct_win": 36.654,
-   "tps_at_10pct_win": 36.645,
-   "tps_at_20pct_win": 36.646,
-   "tps_at_30pct_win": 36.647,
+   "tps_at_100pct_win": 37.462,
+   "tps_at_10pct_win": 37.452,
+   "tps_at_20pct_win": 37.453,
+   "tps_at_30pct_win": 37.454,
    "why": "perfect elimination is below the materiality threshold; do not spend an hour here"
   }
  ],
@@ -349,7 +412,7 @@
  ],
  "ranked_experiments_are_gross_not_net": "the bandwidth-recovery ceilings above are computed against the PRODUCTION kernels. The built-not-promoted levers have already taken 4.5377 ms of that headroom, so the ranking overstates what remains. It is kept gross because the levers are not promoted and the resident still runs production.",
  "recorded_by": "tools/future/gap_ledger_60.py",
- "seal_sha256": "30e46be6253c2d6fe2170d03f325741826266cc1d6dc5755502a7ab8481a3b6f",
+ "seal_sha256": "7a4a6f7f8140f0fbfab71d28fcd7fc7b166fe1d63bbbb99cad290bc2f322ceac",
  "sum_of_material_open_ms": 7.063,
  "three_dominant_kernels": {
   "combined_ms": 21.2444,

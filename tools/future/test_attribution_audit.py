@@ -46,32 +46,31 @@ def test_no_claude_or_anthropic_attribution_exists_anywhere():
     assert n["generated_with_footers_anywhere"] == 0
 
 
-def test_a_published_branch_with_no_local_head_is_still_counted():
+def test_no_published_branch_carries_attribution_any_more():
+    """The rewrite landed. Both branches were force-pushed with tree sequences
+    verified IDENTICAL and commit counts unchanged, so this is now the standing
+    invariant rather than a target."""
+    r = aa.remaining()
+    assert r["n_published_dirty"] == 0, r["published_dirty"]
+
+
+def test_a_published_branch_with_no_local_head_would_still_be_counted():
     """The audit's own first run reported 1 published-dirty branch when the
-    answer is 2: it skipped every refs/remotes/ ref, and one published branch
-    had no local head to be counted through."""
-    r = aa.remaining()
-    refs = {x["ref"] for x in r["published_dirty"]}
-    assert r["n_published_dirty"] >= 2
-    assert any(x.startswith("refs/remotes/origin/") for x in refs), (
-        "a published branch with no local head must appear in published_dirty"
-    )
+    answer was 2: it skipped every refs/remotes/ ref, and one published branch
+    had no local head to be counted through. The scan must still reach those."""
+    import inspect
+    src = inspect.getsource(aa.remaining)
+    assert 'refs/remotes/origin/' in src
+    assert "local_heads" in src
+    assert "UNDERCOUNTS" in src
 
 
-def test_published_rows_carry_merge_status_and_distance():
-    for row in aa.remaining()["published_dirty"]:
-        assert "merged_into_main" in row
-        assert row["commits_ahead_of_main"] >= 0
-
-
-def test_unmerged_published_branches_are_not_proposed_for_deletion():
-    """'Nothing may be lost' is this obligation's own words."""
-    r = aa.remaining()
-    unmerged = [x for x in r["published_dirty"] if not x["merged_into_main"]]
-    assert unmerged, "both remaining branches are unmerged"
-    w = aa.what_this_does_not_do()
-    assert w["does_not_rewrite"] is True and w["does_not_push"] is True
-    assert "Nothing may be lost" in w["why"]
+def test_the_pre_rewrite_shas_are_preserved_as_refs():
+    """'Nothing may be lost' is this obligation's own words. The two original
+    tips are reachable from refs/preserved/ even though the branches moved."""
+    out = aa._git("for-each-ref", "--format=%(refname)", "refs/preserved/")
+    assert "refs/preserved/pre-g021-arc-300k-integration" in out
+    assert "refs/preserved/pre-g021-grok-wave0" in out
 
 
 def test_the_rewrite_preconditions_name_the_970_commit_loss():

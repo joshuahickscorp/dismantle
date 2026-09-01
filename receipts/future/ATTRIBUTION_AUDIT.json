@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T02:43:20Z",
+  "recorded_at": "2026-09-01T03:26:06Z",
   "recorded_by": "tools/future/attribution_audit.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -18,7 +18,7 @@
   },
   "main_is_pushed": true,
   "odyssey-i": {
-   "commits": 4113,
+   "commits": 4126,
    "generated_with_footers": 0,
    "tool_identities": 0,
    "trailers": 0
@@ -44,32 +44,13 @@
  "question": "what in this repository's history still carries agent attribution, and who can see it?",
  "remaining": {
   "n_local_only_dirty": 187,
-  "n_other_refs_dirty": 13,
-  "n_published_dirty": 2,
-  "published_dirty": [
-   {
-    "commits": 1990,
-    "commits_ahead_of_main": 232,
-    "generated_with_footers": 0,
-    "merged_into_main": false,
-    "ref": "refs/heads/arc/300k-integration",
-    "tool_identities": 8,
-    "trailers": 0
-   },
-   {
-    "commits": 1951,
-    "commits_ahead_of_main": 235,
-    "generated_with_footers": 0,
-    "merged_into_main": false,
-    "ref": "refs/remotes/origin/grok/wave0-integrate-20260814-210202",
-    "tool_identities": 8,
-    "trailers": 0
-   }
-  ],
-  "reading": "2 branches anyone else can read still carry agent attribution. The other 200 refs are unpublished local scratch."
+  "n_other_refs_dirty": 15,
+  "n_published_dirty": 0,
+  "published_dirty": [],
+  "reading": "0 branches anyone else can read still carry agent attribution. The other 202 refs are unpublished local scratch."
  },
- "seal_sha256": "5b1328ffe45f9dc1b8d1abcf1db9be5b6a638ce836befa8a8a09cecf2dfee088",
- "verdict": "CANONICAL_CLEAN_EXPOSURE_IS_2_PUBLISHED_BRANCHES",
+ "seal_sha256": "0759c0df73da801d77f9cd62c034560bf13d8add5cfc6a62a4c7ab740627d72e",
+ "verdict": "CANONICAL_CLEAN_EXPOSURE_IS_0_PUBLISHED_BRANCHES",
  "what_this_does_not_do": {
   "does_not_push": true,
   "does_not_rewrite": true,

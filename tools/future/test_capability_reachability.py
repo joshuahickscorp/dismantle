@@ -239,3 +239,76 @@ def test_live_sidecar_modules_are_overwhelmingly_not_registered(live_doc):
 
 def test_live_selftest_passes():
     cr.selftest()
+
+
+# --------------------------------------------------------------------------
+# Rust index path: fallback, hermetic facts, live-repo parity gate.
+# --------------------------------------------------------------------------
+
+
+def test_assemble_falls_back_when_binary_missing(fixture_repo, monkeypatch):
+    """A missing binary must degrade to the Python scan, never crash."""
+    monkeypatch.setenv("HAWKING_INDEX_BIN", str(fixture_repo["root"] / "no-such-hawking-index"))
+    monkeypatch.delenv("HAWKING_REACHABILITY_FORCE_PYTHON", raising=False)
+    doc = cr.assemble()
+    assert doc["facts_source"] == "python-ast"
+    assert "schema" in doc
+    assert isinstance(doc["capabilities"], dict)
+    assert any(n.startswith("tools.future.") for n in doc["capabilities"])
+
+
+def test_repo_index_from_facts_drives_call_sites(fixture_repo):
+    """The assembler must honour precomputed facts (what the rust CLI emits)
+    without re-walking the tree: import is not a call, a Name call is."""
+    files = [fixture_repo["widget"], fixture_repo["own_test"], fixture_repo["caller"]]
+    facts = {
+        "schema": cr.RUST_FACTS_SCHEMA,
+        "files": ["tools/future/widget.py", "tools/future/test_widget.py", "tools/future/caller.py"],
+        "import_sites": {
+            "tools.future.widget": [
+                {"file": "tools/future/test_widget.py", "line": 1, "kind": "import"},
+                {"file": "tools/future/caller.py", "line": 1, "kind": "import"},
+            ],
+            "tools.future.widget.gadget": [
+                {"file": "tools/future/test_widget.py", "line": 1, "kind": "import"},
+                {"file": "tools/future/caller.py", "line": 1, "kind": "import"},
+            ],
+        },
+        "bound_names": {
+            "tools/future/test_widget.py": [["gadget", "tools.future.widget.gadget"]],
+            "tools/future/caller.py": [["gadget", "tools.future.widget.gadget"]],
+        },
+        "calls": [
+            {"file": "tools/future/test_widget.py", "line": 4, "name": "gadget"},
+            {"file": "tools/future/caller.py", "line": 4, "name": "gadget"},
+        ],
+        "subprocess": [],
+        "literals": [],
+    }
+    idx = cr.repo_index_from_facts(facts)
+    assert idx.facts_source == "hawking-index"
+    sites = cr.find_symbol_call_sites(idx, "tools.future.widget", "gadget")
+    cap = cr.build_capability(
+        "tools.future.widget.gadget", "function",
+        defined=True, registered=False, resident_visible=False, sites=sites,
+    )
+    assert cap["tested"] is True
+    assert cap["callable"] is True
+    assert cap["call_sites"] == [
+        {"file": "tools/future/caller.py", "line": 4, "kind": "call"}
+    ]
+    # And the files we passed aren't needed for the lookup — the table is.
+    assert set(cr.rel(p) for p in files) == set(facts["files"])
+
+
+def test_parity_gate_rust_matches_python_on_this_repo():
+    """THE acceptance: identical capability verdicts and call-site evidence."""
+    if cr._find_hawking_index_bin() is None:
+        pytest.skip("hawking-index binary not built")
+    report = cr.run_parity()
+    assert report["status"] == "IDENTICAL", (
+        f"parity {report['status']} compared={report.get('compared')} "
+        f"diffs={report.get('diffs', [])[:20]}"
+    )
+    assert report["compared"] >= 44
+    assert report["rust_count"] == report["python_count"] == report["compared"]

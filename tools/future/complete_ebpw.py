@@ -5,13 +5,15 @@ The resident must never compute a bit-per-weight figure itself. It got
 17.113e9 x 2.25 / 8 wrong: a rounded element count, the 2.25 coherent-class
 floor instead of the packed 2.5, and only the MLP body. This module is the
 deterministic calculator. A candidate is its declared parts — per-region
-bitwidths, generators, metadata, tables, residuals, runtime auxiliaries —
-and every part bills. A generator, a codebook and a lookup table are not
-free. Declared parts that do not reconcile against a stated total are
-REFUSED. A candidate that stores small but reconstructs the full parent
-to execute is flagged DENSE_PARENT_REMATERIALIZATION; the complete
-executable BPW is the parent working set, not the flattering stored
-number, and it is not a sub-2 executable.
+bitwidths, generators, metadata, tables, residuals, runtime auxiliaries,
+representation payload, model-specific code — and every part bills. A
+generator, a codebook and a lookup table are not free. A part-like object
+sitting on an undeclared key is hidden free information and is REFUSED.
+Declared parts that do not reconcile against a stated total are REFUSED.
+A candidate that stores small but reconstructs the full parent to execute
+is flagged DENSE_PARENT_REMATERIALIZATION; the complete executable BPW is
+the parent working set, not the flattering stored number, and it is not a
+sub-2 executable.
 
 Time is billed at the stream-class rates from executable_economics /
 ECONOMICS_CALIBRATION.json: weight_codes 0.547282 ms/GB, broadcast_aux
@@ -36,6 +38,7 @@ _sys.path.insert(
 
 import argparse
 import json
+import subprocess
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, Mapping
@@ -70,6 +73,10 @@ GB = 1e9
 CITED_WEIGHT_CODES_MS_PER_GB = 0.547282
 CITED_BROADCAST_AUX_MS_PER_GB = 0.0
 
+# Historical names (regions, generators) stay required so existing candidates
+# keep reconciling. The complete bill also requires the family-level payload
+# (representation) and any model-specific decoder/code (model_specific_code).
+# An omitted category is a refusal, not a zero.
 PART_CATEGORIES = (
     "regions",
     "generators",
@@ -77,6 +84,8 @@ PART_CATEGORIES = (
     "tables",
     "residuals",
     "runtime_auxiliaries",
+    "representation",
+    "model_specific_code",
 )
 
 REQUIRED_CANDIDATE_KEYS = (
@@ -86,6 +95,21 @@ REQUIRED_CANDIDATE_KEYS = (
     *PART_CATEGORIES,
     "reconstructs_dense_parent",
     "consumes_representation_directly",
+)
+
+# Keys that are not billed parts. Anything else that looks like a payload is
+# hidden free information and is REFUSED.
+NON_PART_CANDIDATE_KEYS = frozenset(
+    {
+        "id",
+        "parent_params",
+        "stated_total_bytes",
+        "reconstructs_dense_parent",
+        "consumes_representation_directly",
+        "parent_executable_bytes",
+        "parent_stream_class",
+        "source",
+    }
 )
 
 CLAIM_BOUNDARY = (
@@ -182,10 +206,35 @@ def mix_report() -> dict[str, Any]:
     return d
 
 
+def _load_calibration() -> dict[str, Any]:
+    """Sealed stream-class rates. Sparse checkouts may not materialize receipts/.
+
+    Disk first; git HEAD next. Both are the same committed authority. Missing
+    still REFUSES — this is not a default.
+    """
+    p = REPO / ECON_REL
+    if p.is_file():
+        return _load_json(p, why="stream-class ms/GB is the time-cost authority")
+    raw = subprocess.run(
+        ["git", "-C", str(REPO), "show", f"HEAD:{ECON_REL}"],
+        capture_output=True,
+        text=True,
+    )
+    if raw.returncode != 0:
+        raise CompleteEbpwRefused(
+            f"{p} is not on disk and git show HEAD:{ECON_REL} failed; "
+            "stream-class ms/GB is the time-cost authority. A calculator "
+            "with a missing input is a guess wearing a receipt"
+        )
+    d = json.loads(raw.stdout)
+    if not isinstance(d, dict):
+        raise CompleteEbpwRefused(f"HEAD:{ECON_REL} is not a JSON object")
+    return d
+
+
 def stream_rates() -> dict[str, Any]:
     """Catalog ms/GB by stream class. Missing or mismatched calibration REFUSES."""
-    p = REPO / ECON_REL
-    d = _load_json(p, why="stream-class ms/GB is the time-cost authority")
+    d = _load_calibration()
     classes = d.get("stream_classes")
     if not isinstance(classes, dict):
         raise CompleteEbpwRefused(f"{ECON_REL} has no stream_classes object")
@@ -317,6 +366,37 @@ def _normalize_part(
     return part
 
 
+def _is_part_like(value: Any) -> bool:
+    """A payload object: bytes/elements/bitwidth, or a list of those."""
+    if isinstance(value, Mapping):
+        return any(k in value for k in ("bytes", "elements", "bitwidth", "stream_class"))
+    if isinstance(value, list):
+        return any(_is_part_like(item) for item in value)
+    return False
+
+
+def refuse_unbilled_components(candidate: Mapping[str, Any]) -> None:
+    """Hidden-free-information guard.
+
+    A part-like object on a key that is not a billed PART_CATEGORY is
+    information the accountant would otherwise skip. That is a refusal,
+    not a silent zero. Declared empty lists on billed categories are
+    explicit zeros and are allowed.
+    """
+    extra: list[str] = []
+    for key, value in candidate.items():
+        if key in PART_CATEGORIES or key in NON_PART_CANDIDATE_KEYS:
+            continue
+        if _is_part_like(value):
+            extra.append(key)
+    if extra:
+        raise CompleteEbpwRefused(
+            f"unbilled component {sorted(extra)}; hidden free information is "
+            "refused (a codebook, sidecar, residual or table that is not in "
+            f"{list(PART_CATEGORIES)} does not bill and must not pass)"
+        )
+
+
 def _parts_of(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
     missing = [k for k in REQUIRED_CANDIDATE_KEYS if k not in candidate]
     if missing:
@@ -324,6 +404,7 @@ def _parts_of(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
             f"candidate is missing {missing}; refusing to default a missing "
             "input (an omitted generator is not a zero-byte generator)"
         )
+    refuse_unbilled_components(candidate)
     out: list[dict[str, Any]] = []
     for category in PART_CATEGORIES:
         rows = candidate[category]
@@ -421,6 +502,8 @@ def incumbent_candidate() -> dict[str, Any]:
         "tables": [],
         "residuals": [],
         "runtime_auxiliaries": [],
+        "representation": [],
+        "model_specific_code": [],
         "reconstructs_dense_parent": False,
         "consumes_representation_directly": True,
         "source": str(MIX_REPORT),
@@ -582,8 +665,10 @@ def cost(
         "reconstructs_dense_parent": remat,
         "consumes_representation_directly": consumes,
         "nothing_is_free": (
-            "a generator, a codebook and a lookup table all bill; "
-            "omitting a part category is a refusal, not a zero"
+            "a generator, a codebook, a lookup table, representation payload "
+            "and model-specific code all bill; omitting a part category is a "
+            "refusal, not a zero; a part-like object on an undeclared key is "
+            "hidden free information and is refused"
         ),
     }
     if versus is not None:
@@ -758,7 +843,9 @@ def build() -> dict[str, Any]:
         "rules": {
             "missing_input": "REFUSE; never default a missing part category to empty-as-zero",
             "unreconciled_stated_total": "REFUSE",
+            "unbilled_component": "REFUSE; hidden free information is not a silent zero",
             "generator_codebook_lookup_table": "all bill",
+            "representation_and_model_specific_code": "bill; required categories",
             "dense_parent_rematerialization": (
                 "flag DENSE_PARENT_REMATERIALIZATION; complete_ebpw is the "
                 "parent working set; is_sub2_executable is false"

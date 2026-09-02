@@ -727,15 +727,32 @@ def _scan_probe_index(
     weak.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
     tests.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
 
+    src_commit = dump.get("commit")
+
+    def stamp(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for s in rows:
+            if s.get("commit"):
+                out.append(s)
+                continue
+            ff = index_client.file_facts(dump, s.get("file") or "") or {}
+            c = ff.get("commit") or src_commit
+            if c:
+                s = dict(s)
+                s["commit"] = c
+            out.append(s)
+        return out
+
     return {
         "defined": bool(defined_refs),
-        "defined_refs": defined_refs,
+        "defined_refs": stamp(defined_refs),
         "missing_paths": missing,
-        "runtime_caller": runtime,
-        "import_sites": import_prod,
-        "weak_signals": weak[:24],
-        "tests": tests,
+        "runtime_caller": stamp(runtime),
+        "import_sites": stamp(import_prod),
+        "weak_signals": stamp(weak[:24]),
+        "tests": stamp(tests),
         "symbols_scanned": [s.get("symbol") for s in catalog_symbols],
+        "commit": src_commit,
     }
 
 

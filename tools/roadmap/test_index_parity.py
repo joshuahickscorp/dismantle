@@ -119,3 +119,28 @@ def test_sparse_hcli_absent_from_disk():
     assert view.exists("hcli/scheduler.py"), "HEAD blob for hcli/scheduler.py must still count as defined"
     text = view.read("hcli/scheduler.py")
     assert "class Scheduler" in text or "Scheduler" in text
+
+
+@pytest.mark.skipif(index_client.find_index_bin() is None, reason="hawking-index-query not built")
+def test_python_facts_carry_head_commit_and_stay_inside_blob():
+    """Facts are parsed from HEAD blobs. A line past EOF at HEAD is a bug."""
+    from tools.roadmap.gitfs import blob_text, head_commit
+
+    view = SourceView()
+    view._python_facts = None  # type: ignore[attr-defined]
+    dump = index_client.load_python_facts(view)
+    sha = head_commit()
+    assert dump.get("commit") == sha, dump.get("commit")
+    rel = "hcli/controller.py"
+    ff = index_client.file_facts(dump, rel)
+    assert ff is not None, "HEAD blob for hcli/controller.py must be indexed"
+    assert ff.get("commit") == sha
+    text = blob_text(sha, rel) or ""
+    n = len(text.splitlines())
+    assert n > 0
+    for d in ff.get("definitions") or []:
+        line = int(d.get("line") or 0)
+        assert 1 <= line <= n, f"{rel}:{line} exceeds {n} lines at {sha} ({d})"
+    for c in ff.get("calls") or []:
+        line = int(c.get("line") or 0)
+        assert 1 <= line <= n, f"{rel} call {line} exceeds {n} lines at {sha}"

@@ -21,11 +21,17 @@ than rewriting them:
 * COST_MODEL HBM traffic and host<->device transfer (bytes and modelled cycles)
 * STATIC LUT/DSP/BRAM/URAM estimator that refuses an over-budget engine
 * a synthetic U50-class device profile and a row-split partitioner
+* sealed COST_MODEL / CYCLE_APPROX / STATIC predictions with a falsifier
+* a scoring path keyed to wake_condition U50_PRESENT that names the
+  implicated coefficient on FALSIFIED; a synthetic-arrival rehearsal
+  that is never an arrival
 
     python3 tools/future/hwir.py --selftest
     python3 tools/future/hwir.py --build
     python3 tools/future/hwir.py --lower receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json --organ expert_bank
     python3 tools/future/hwir.py --qgemv
+    python3 tools/future/hwir.py --seal-predictions
+    python3 tools/future/hwir.py --rehearse
 """
 from __future__ import annotations
 
@@ -39,12 +45,20 @@ import hashlib
 import json
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 
 SCHEMA = "hawking.future.hwir.v1"
 VERSION = 1
 RECEIPT = "HWIR_V1.json"
+PREDICTION_SCHEMA = "hawking.future.hwir.sealed_prediction.v1"
+PREDICTION_SET_SCHEMA = "hawking.future.hwir.sealed_prediction_set.v1"
+SCORE_SCHEMA = "hawking.future.hwir.prediction_score.v1"
+REHEARSAL_SCHEMA = "hawking.future.hwir.synthetic_arrival_rehearsal.v1"
+PREDICTION_RECEIPT = "HWIR_SEALED_PREDICTIONS.json"
+REHEARSAL_RECEIPT = "HWIR_SYNTHETIC_ARRIVAL_REHEARSAL.json"
+CAPABILITY_GRAPH_REL = "civilization/CAPABILITY_GRAPH.json"
+WAKE_U50_PRESENT = "U50_PRESENT"
 
 CANON_DUMP = {"sort_keys": True, "separators": (",", ":"), "ensure_ascii": True}
 
@@ -1658,6 +1672,46 @@ HBM_BYTES_PER_MODELLED_CYCLE = 1024
 HOST_DEVICE_BYTES_PER_MODELLED_CYCLE = 16
 HOST_DEVICE_QUEUE_CYCLES = 32
 
+# Wake-gated FPGA ledger rows. Recovered from civilization/CAPABILITY_GRAPH.json
+# (hardware_blocker / wake_condition = U50_PRESENT). Twelve gates. Not a board.
+U50_WAKE_GATES: tuple[str, ...] = (
+    "U50_PURCHASE_ACCEPTANCE",
+    "U50_SAFE_COOLING",
+    "U50_DEVICE_PROFILE",
+    "U50_DMA_HBM",
+    "U50_FIRST_NATIVE_ENGINE",
+    "U50_MIXED_APPLE_FPGA_GRAPH",
+    "U50_34_TO_40",
+    "U50_40_TO_50",
+    "U50_50_TO_60",
+    "U50_60_TO_70",
+    "U50_70_TO_80",
+    "U50_80_TO_90",
+)
+
+# Sealed prediction ids. Stable names so scoring and the rehearsal key on them.
+PRED_HBM_BEAT = "u50.coeff.hbm_bytes_per_modelled_cycle"
+PRED_FABRIC_BEAT = "u50.coeff.fabric_bytes_per_modelled_cycle"
+PRED_HOST_BEAT = "u50.coeff.host_device_bytes_per_modelled_cycle"
+PRED_HOST_QUEUE = "u50.coeff.host_device_queue_cycles"
+PRED_CANON_HBM_BYTES = "qgemv.canonical.hbm_per_token_bytes"
+PRED_CANON_HBM_CYCLES = "qgemv.canonical.hbm_modelled_cycles"
+PRED_CANON_XFER_CYCLES = "qgemv.canonical.host_device_modelled_cycles_total"
+PRED_CANON_CRIT_CYCLES = "qgemv.canonical.critical_path_modelled_cycles"
+PRED_CANON_DSP = "qgemv.canonical.dsp_estimate"
+PRED_CANON_LUT = "qgemv.canonical.lut_estimate"
+PRED_PLAN_HBM_BYTES = "qgemv.planning.hbm_per_token_bytes"
+PRED_PLAN_HBM_CYCLES = "qgemv.planning.hbm_modelled_cycles"
+
+# Synthetic-rehearsal divergence. Fabricated. Not an arrival, not a board.
+# HBM beat 1024 -> 256 (outside 50% relative). Fabric beat 64 -> 8.
+# Host beat is the CONFIRMED control (left at the declared 16).
+SYNTHETIC_DIVERGENT_HBM_BEAT = 256
+SYNTHETIC_DIVERGENT_FABRIC_BEAT = 8
+
+TOLERANCE_KINDS = ("relative", "absolute")
+SCORE_VERDICTS = ("CONFIRMED", "FALSIFIED", "UNPINNED", "REFUSED")
+
 # §15.5 Apple/FPGA split is "only a measured-bandwidth prior". We store it as
 # a COST_MODEL prior and never call it a measurement.
 APPLE_FPGA_PRIOR_NUM = 65
@@ -1845,6 +1899,28 @@ def canonical_qgemv_kernel() -> QGemvKernel:
         group_size=4,
         mac_lanes=2,
         tile_m=2,
+        organ="qgemv",
+        model="qgemv-class",
+        engine_ladder_level="L1",
+        arithmetic="DSP_MAC",
+    )
+
+
+def planning_qgemv_kernel() -> QGemvKernel:
+    """Declared planning-scale qGEMV for inbound-board COST_MODEL predictions.
+
+    Not a measured workload and not a board trace. Sized so per-token HBM
+    bytes exceed one HBM beat, so a wrong hbm_bytes_per_modelled_cycle can
+    actually move modelled_cycles. The canonical L1 golden (M=2, K=4) cannot:
+    24 bytes ceil-divides to 1 cycle for every beat >= 24.
+    """
+    return QGemvKernel(
+        M=1024,
+        K=4096,
+        weight_bits=4,
+        group_size=64,
+        mac_lanes=8,
+        tile_m=4,
         organ="qgemv",
         model="qgemv-class",
         engine_ladder_level="L1",
@@ -2625,6 +2701,998 @@ def run_qgemv_preboard(
 
 
 # ---------------------------------------------------------------------------
+# Sealed predictions. PREHARDWARE. Scored when U50_PRESENT; rehearsed without.
+#
+# An unsealed prediction can be rationalised after the board arrives. Sealing
+# before arrival is the scientific act. There is no FPGA on this host; the
+# rehearsal below is a test of the scoring machinery, never an arrival.
+# ---------------------------------------------------------------------------
+
+
+class PredictionRefused(ValueError):
+    """A prediction was refused at creation. Not a hardware result."""
+
+
+class TamperedPrediction(ValueError):
+    """Sealed prediction content does not match its content hash."""
+
+
+class ScoringRefused(ValueError):
+    """Scoring cannot run: no U50, a mislabeled rehearsal, or a bad observation."""
+
+
+_PREDICTION_SEAL_EXCLUDE = frozenset({"content_sha256"})
+
+SYNTHETIC_REHEARSAL_LABEL = (
+    "SYNTHETIC REHEARSAL — NOT AN ARRIVAL — NOT A BOARD MEASUREMENT — "
+    "NOT HARDWARE_MEASURED. A test of the scoring machinery, not evidence "
+    "about any FPGA."
+)
+
+
+def _require_falsifier(value: Any) -> str:
+    if value is None:
+        raise PredictionRefused(
+            "prediction refused: falsification_condition is required"
+        )
+    if not isinstance(value, str):
+        raise PredictionRefused(
+            "prediction refused: falsification_condition must be a non-empty string"
+        )
+    text = value.strip()
+    if not text:
+        raise PredictionRefused(
+            "prediction refused: falsification_condition is empty"
+        )
+    return text
+
+
+def _require_number(value: Any, what: str) -> int | float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise PredictionRefused(f"prediction refused: {what} must be a number")
+    return value
+
+
+def _prediction_material(pred: Mapping[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in pred.items() if k not in _PREDICTION_SEAL_EXCLUDE}
+
+
+def prediction_content_sha256(pred: Mapping[str, Any]) -> str:
+    """Content hash of a prediction. Everything except content_sha256 itself."""
+    material = json.loads(canon_dumps(_prediction_material(pred)))
+    return hashlib.sha256(canon_dumps(material).encode("utf-8")).hexdigest()
+
+
+def _seal_is_valid(expected: str, stored: Any) -> bool:
+    """True iff the recomputed hash matches the stored seal.
+
+    MUTATION_CHECK: replace the body with `return True` (treat any stored
+    seal as valid). test_tampered_sealed_prediction_is_rejected must then
+    FAIL. Restore after the check.
+    """
+    return stored == expected
+
+
+def verify_prediction_seal(pred: Mapping[str, Any]) -> str:
+    """Recompute the content hash. Raise TamperedPrediction on mismatch."""
+    stored = pred.get("content_sha256")
+    if not stored:
+        raise TamperedPrediction("sealed prediction has no content_sha256")
+    expected = prediction_content_sha256(pred)
+    if not _seal_is_valid(expected, stored):
+        raise TamperedPrediction(
+            f"sealed prediction {pred.get('id')!r} content does not match "
+            f"content_sha256 (stored={stored!r} recomputed={expected!r})"
+        )
+    return expected
+
+
+def declared_planning_coefficients(
+    device: DeviceProfile | None = None,
+) -> dict[str, Any]:
+    """Snapshot of DECLARED planning coefficients. Not measurements."""
+    device = device or synthetic_u50_class()
+    return {
+        "hbm_bytes_per_modelled_cycle": {
+            "document_class": (
+                "COST_MODEL declared planning coefficient. Not vendor "
+                "datasheet HBM2 GB/s, not a board census, not HARDWARE_MEASURED."
+            ),
+            "evidence_tier": "COST_MODEL",
+            "note": "Declared HBM beat used by model_hbm_traffic. Not a measured HBM2 rate.",
+            "origin": "DECLARED_PLANNING_COEFFICIENT",
+            "units": "bytes/modelled_cycle",
+            "value": int(device.hbm_bytes_per_modelled_cycle),
+        },
+        "fabric_bytes_per_modelled_cycle": {
+            "document_class": (
+                "COST_MODEL declared planning coefficient matching "
+                "tools/future/fpga_fidelity.py MODEL_BYTES_PER_CYCLE. "
+                "Not a measurement. Honest gap: CYCLE_APPROX does not yet "
+                "fold this beat into critical-path modelled cycles."
+            ),
+            "evidence_tier": "COST_MODEL",
+            "note": "Declared on-chip fabric beat. Not a measured interconnect rate.",
+            "origin": "DECLARED_PLANNING_COEFFICIENT",
+            "units": "bytes/modelled_cycle",
+            "value": int(device.fabric_bytes_per_modelled_cycle),
+        },
+        "host_device_bytes_per_modelled_cycle": {
+            "document_class": (
+                "H-ROADMAP.md §15.1 USB4/Thunderbolt ~40 Gb/s CLASS prior, "
+                "expressed as a declared bytes/cycle beat. COST_MODEL. "
+                "Not a cable measurement."
+            ),
+            "evidence_tier": "COST_MODEL",
+            "note": "Declared host<->device beat used by model_host_device_transfer.",
+            "origin": "DECLARED_PLANNING_COEFFICIENT",
+            "units": "bytes/modelled_cycle",
+            "value": int(device.host_device_bytes_per_modelled_cycle),
+        },
+        "host_device_queue_cycles": {
+            "document_class": (
+                "COST_MODEL declared queue/setup overhead in modelled cycles. "
+                "Not a measured doorbell or descriptor latency."
+            ),
+            "evidence_tier": "COST_MODEL",
+            "note": "Declared HOST_DEVICE_QUEUE_CYCLES prior.",
+            "origin": "DECLARED_PLANNING_COEFFICIENT",
+            "units": "modelled_cycles",
+            "value": int(HOST_DEVICE_QUEUE_CYCLES),
+        },
+        "lut_per_mac_lane": {
+            "document_class": (
+                "STATIC assumed coefficient table v1-assumed-not-synthesized. "
+                "Not a synthesis report, not place-and-route."
+            ),
+            "evidence_tier": "STATIC",
+            "note": "LUT_PER_MAC_LANE assumed coefficient.",
+            "origin": "ASSUMED_COEFFICIENT_TABLE",
+            "units": "LUT",
+            "value": int(LUT_PER_MAC_LANE),
+        },
+        "pipeline_depth": {
+            "document_class": "STATIC declared pipeline depth on the synthetic device profile.",
+            "evidence_tier": "STATIC",
+            "note": "Declared DeviceProfile.pipeline_depth. Not a measured II/depth.",
+            "origin": "DECLARED_PLANNING_COEFFICIENT",
+            "units": "modelled_cycles",
+            "value": int(device.pipeline_depth),
+        },
+        "initiation_interval": {
+            "document_class": "STATIC declared initiation interval on the synthetic device profile.",
+            "evidence_tier": "STATIC",
+            "note": "Declared DeviceProfile.initiation_interval. Not a measured II.",
+            "origin": "DECLARED_PLANNING_COEFFICIENT",
+            "units": "modelled_cycles",
+            "value": int(device.initiation_interval),
+        },
+        "resident_per_token_byte_identity": {
+            "document_class": (
+                "COST_MODEL identity. weights_resident=True => per_token_bytes "
+                "= activation_in_bytes + activation_out_bytes. Doctrine §15.4: "
+                "resident weights do not move per token. Not a beat coefficient."
+            ),
+            "evidence_tier": "COST_MODEL",
+            "note": "Per-token HBM traffic identity used by model_hbm_traffic.",
+            "origin": "COST_MODEL_IDENTITY",
+            "units": "bytes",
+            "value": "activation_in_bytes + activation_out_bytes",
+        },
+        "dsp_equals_mac_lanes_times_tile": {
+            "document_class": (
+                "STATIC identity: DSP = mac_lanes * tile_m in estimate_qgemv_resources. "
+                "Not a synthesis result."
+            ),
+            "evidence_tier": "STATIC",
+            "note": "DSP MAC mapping used by the STATIC resource estimator.",
+            "origin": "ASSUMED_COEFFICIENT_TABLE",
+            "units": "DSP",
+            "value": "mac_lanes * tile_m",
+        },
+    }
+
+
+def _subset_coefficients(
+    names: Sequence[str],
+    table: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    table = dict(table or declared_planning_coefficients())
+    missing = [n for n in names if n not in table]
+    if missing:
+        raise PredictionRefused(
+            f"prediction refused: unknown model coefficient(s) {missing}"
+        )
+    return {n: json.loads(canon_dumps(table[n])) for n in names}
+
+
+def _normalize_tolerance(tolerance: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(tolerance, Mapping):
+        raise PredictionRefused("prediction refused: tolerance is required")
+    kind = str(tolerance.get("kind") or "").strip()
+    if kind not in TOLERANCE_KINDS:
+        raise PredictionRefused(
+            f"prediction refused: tolerance.kind must be one of {list(TOLERANCE_KINDS)}"
+        )
+    raw = tolerance.get("value")
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise PredictionRefused("prediction refused: tolerance.value must be a number")
+    if float(raw) < 0:
+        raise PredictionRefused("prediction refused: tolerance.value must be >= 0")
+    return {"kind": kind, "value": float(raw)}
+
+
+def seal_prediction(
+    *,
+    id: str,
+    plan: str,
+    quantity: str,
+    predicted_value: Any,
+    units: str,
+    model_coefficients: Mapping[str, Any],
+    depends_on: Sequence[str],
+    tolerance: Mapping[str, Any],
+    falsification_condition: Any,
+    implicated_coefficient: str,
+    evidence_tier: str,
+    kernel: Mapping[str, Any] | None = None,
+    notes: Sequence[str] | None = None,
+    wake_condition: str = WAKE_U50_PRESENT,
+) -> dict[str, Any]:
+    """Create a sealed prediction. Refused without a falsification condition.
+
+    The content hash covers every scientific field. Re-sealing after an edit
+    produces a different hash; that is a new prediction, not a quiet re-aim.
+    """
+    falsifier = _require_falsifier(falsification_condition)
+    if not str(id).strip():
+        raise PredictionRefused("prediction refused: id is required")
+    if not str(plan).strip():
+        raise PredictionRefused("prediction refused: plan is required")
+    if not str(quantity).strip():
+        raise PredictionRefused("prediction refused: quantity is required")
+    if not str(units).strip():
+        raise PredictionRefused("prediction refused: units are required")
+    if not str(implicated_coefficient).strip():
+        raise PredictionRefused("prediction refused: implicated_coefficient is required")
+    if evidence_tier in ILLEGAL_EVIDENCE_TIERS or evidence_tier == "HARDWARE_MEASURED":
+        raise IllegalEvidenceTier(
+            f"prediction {id!r} cannot carry evidence_tier={evidence_tier!r}"
+        )
+    if evidence_tier not in EVIDENCE_TIERS:
+        raise IllegalEvidenceTier(
+            f"prediction {id!r} evidence_tier={evidence_tier!r} is not one of {list(EVIDENCE_TIERS)}"
+        )
+    if str(wake_condition) != WAKE_U50_PRESENT:
+        raise PredictionRefused(
+            f"prediction refused: wake_condition must be {WAKE_U50_PRESENT!r}"
+        )
+    predicted = _require_number(predicted_value, "predicted_value")
+    tol = _normalize_tolerance(tolerance)
+    deps = [str(x) for x in depends_on]
+    if not deps:
+        raise PredictionRefused("prediction refused: depends_on must name at least one coefficient")
+    if implicated_coefficient not in deps:
+        raise PredictionRefused(
+            "prediction refused: implicated_coefficient must be listed in depends_on"
+        )
+    coeff_table = dict(model_coefficients)
+    missing_deps = [n for n in deps if n not in coeff_table]
+    if missing_deps:
+        raise PredictionRefused(
+            f"prediction refused: depends_on not present in model_coefficients: {missing_deps}"
+        )
+    body = {
+        "depends_on": list(deps),
+        "evidence_tier": str(evidence_tier),
+        "falsification_condition": falsifier,
+        "hardware_measured": False,
+        "id": str(id),
+        "implicated_coefficient": str(implicated_coefficient),
+        "kernel": None if kernel is None else json.loads(canon_dumps(dict(kernel))),
+        "model_coefficients": json.loads(canon_dumps(coeff_table)),
+        "notes": [str(x) for x in (notes or ())],
+        "plan": str(plan),
+        "predicted_value": predicted,
+        "prehardware": True,
+        "qualification": PREHARDWARE,
+        "quantity": str(quantity),
+        "schema": PREDICTION_SCHEMA,
+        "tolerance": tol,
+        "units": str(units),
+        "wake_condition": WAKE_U50_PRESENT,
+    }
+    body = json.loads(canon_dumps(body))
+    body["content_sha256"] = prediction_content_sha256(body)
+    assert_no_hardware_measured(body)
+    return body
+
+
+def prediction_set_digest(predictions: Sequence[Mapping[str, Any]]) -> str:
+    pairs = sorted((str(p["id"]), str(p["content_sha256"])) for p in predictions)
+    return hashlib.sha256(canon_dumps(pairs).encode("utf-8")).hexdigest()
+
+
+def load_u50_wake_condition() -> dict[str, Any]:
+    """U50_PRESENT from the capability graph. Absent graph => present=False.
+
+    Never invents present=True. There is no FPGA on this host.
+    """
+    present = False
+    source = "default_false_no_board"
+    probe: dict[str, Any] | None = None
+    gates_carrying: list[str] = []
+    graph_sha: str | None = None
+    disk = REPO / CAPABILITY_GRAPH_REL
+    doc: dict[str, Any] | None = None
+    if disk.is_file():
+        try:
+            doc = load_json(disk)
+            graph_sha = sha256_file(disk)
+            source = CAPABILITY_GRAPH_REL
+        except (OSError, ValueError, TypeError):
+            doc = None
+    if doc is None:
+        git_doc = _git_json(CAPABILITY_GRAPH_REL)
+        if git_doc is not None:
+            doc, graph_sha = git_doc
+            source = f"git HEAD:{CAPABILITY_GRAPH_REL}"
+    if isinstance(doc, dict):
+        probes = doc.get("hardware_probes") if isinstance(doc.get("hardware_probes"), Mapping) else {}
+        raw = probes.get(WAKE_U50_PRESENT) if isinstance(probes, Mapping) else None
+        if isinstance(raw, Mapping):
+            probe = {
+                "description": raw.get("description"),
+                "evidence": raw.get("evidence"),
+                "evidence_tier": raw.get("evidence_tier"),
+                "id": raw.get("id") or WAKE_U50_PRESENT,
+                "present": bool(raw.get("present")),
+            }
+            present = bool(raw.get("present"))
+        gates = doc.get("gates") if isinstance(doc.get("gates"), Mapping) else {}
+        for gid in U50_WAKE_GATES:
+            row = gates.get(gid) if isinstance(gates, Mapping) else None
+            if not isinstance(row, Mapping):
+                continue
+            if (
+                row.get("wake_condition") == WAKE_U50_PRESENT
+                or row.get("hardware_blocker") == WAKE_U50_PRESENT
+            ):
+                gates_carrying.append(gid)
+    if not gates_carrying:
+        gates_carrying = list(U50_WAKE_GATES)
+        if source == "default_false_no_board":
+            source = "hardcoded_U50_WAKE_GATES_graph_absent"
+    return emit_evidence(
+        "STATIC",
+        {
+            "capability_graph": CAPABILITY_GRAPH_REL,
+            "capability_graph_sha256": graph_sha,
+            "gates_carrying_wake": list(gates_carrying),
+            "kind": "WAKE_CONDITION",
+            "note": (
+                "U50_PRESENT is the wake condition for the inbound Alveo U50. "
+                "present=false unless the capability graph says otherwise. "
+                "This host has no FPGA; do not treat this block as a census."
+            ),
+            "present": bool(present),
+            "probe": probe,
+            "source": source,
+            "wake_condition": WAKE_U50_PRESENT,
+        },
+    )
+
+
+def inbound_board_predictions(
+    device: DeviceProfile | None = None,
+) -> list[dict[str, Any]]:
+    """Starting sealed set about the inbound board. Cost-model numbers, not measurements."""
+    device = device or synthetic_u50_class()
+    canonical = canonical_qgemv_kernel()
+    planning = planning_qgemv_kernel()
+    coeffs = declared_planning_coefficients(device)
+    hbm_c = model_hbm_traffic(canonical, device)
+    xfer_c = model_host_device_transfer(canonical, device)
+    cyc_c = approximate_cycles(canonical, device, hbm_c, xfer_c)
+    est_c = estimate_qgemv_resources(canonical)
+    hbm_p = model_hbm_traffic(planning, device)
+    plan = "inbound-u50-qgemv"
+    canon_kernel = canonical.to_dict()
+    plan_kernel = planning.to_dict()
+
+    def coeff_pred(
+        *,
+        pid: str,
+        quantity: str,
+        value: int | float,
+        units: str,
+        implicated: str,
+        falsifier: str,
+        evidence_tier: str,
+        kernel: Mapping[str, Any] | None,
+        notes: Sequence[str],
+        rel: float = 0.50,
+        abs_tol: float | None = None,
+        extra_depends: Sequence[str] = (),
+    ) -> dict[str, Any]:
+        depends = (implicated, *extra_depends)
+        tol = (
+            {"kind": "absolute", "value": float(abs_tol)}
+            if abs_tol is not None
+            else {"kind": "relative", "value": float(rel)}
+        )
+        return seal_prediction(
+            id=pid,
+            plan=plan,
+            quantity=quantity,
+            predicted_value=value,
+            units=units,
+            model_coefficients=_subset_coefficients(depends, coeffs),
+            depends_on=depends,
+            tolerance=tol,
+            falsification_condition=falsifier,
+            implicated_coefficient=implicated,
+            evidence_tier=evidence_tier,
+            kernel=kernel,
+            notes=notes,
+        )
+
+    rows = [
+        coeff_pred(
+            pid=PRED_HBM_BEAT,
+            quantity="hbm_bytes_per_modelled_cycle",
+            value=int(device.hbm_bytes_per_modelled_cycle),
+            units="bytes/modelled_cycle",
+            implicated="hbm_bytes_per_modelled_cycle",
+            evidence_tier="COST_MODEL",
+            kernel=canon_kernel,
+            notes=[
+                "Declared planning coefficient on the synthetic U50-class profile.",
+                "Not a measured HBM2 rate and not a vendor-datasheet GB/s figure.",
+            ],
+            falsifier=(
+                "An observation of HBM bytes per modelled cycle on the inbound "
+                f"U50 that differs from {int(device.hbm_bytes_per_modelled_cycle)} "
+                "by more than 50% relative. That observation falsifies the "
+                "declared planning coefficient hbm_bytes_per_modelled_cycle."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_FABRIC_BEAT,
+            quantity="fabric_bytes_per_modelled_cycle",
+            value=int(device.fabric_bytes_per_modelled_cycle),
+            units="bytes/modelled_cycle",
+            implicated="fabric_bytes_per_modelled_cycle",
+            evidence_tier="COST_MODEL",
+            kernel=canon_kernel,
+            notes=[
+                "Declared on-chip fabric beat. COST_MODEL prior.",
+                "Honest gap: approximate_cycles does not fold this beat into the critical path.",
+            ],
+            falsifier=(
+                "An observation of on-chip fabric bytes per modelled cycle on the "
+                f"inbound U50 that differs from {int(device.fabric_bytes_per_modelled_cycle)} "
+                "by more than 50% relative. That observation falsifies the "
+                "declared planning coefficient fabric_bytes_per_modelled_cycle."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_HOST_BEAT,
+            quantity="host_device_bytes_per_modelled_cycle",
+            value=int(device.host_device_bytes_per_modelled_cycle),
+            units="bytes/modelled_cycle",
+            implicated="host_device_bytes_per_modelled_cycle",
+            evidence_tier="COST_MODEL",
+            kernel=canon_kernel,
+            notes=[
+                "USB4/Thunderbolt ~40 Gb/s CLASS prior from H-ROADMAP.md §15.1.",
+                "Not a measurement of any cable.",
+            ],
+            falsifier=(
+                "An observation of host<->device bytes per modelled cycle on the "
+                f"inbound U50 that differs from {int(device.host_device_bytes_per_modelled_cycle)} "
+                "by more than 50% relative. That observation falsifies the "
+                "declared planning coefficient host_device_bytes_per_modelled_cycle."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_HOST_QUEUE,
+            quantity="host_device_queue_cycles",
+            value=int(HOST_DEVICE_QUEUE_CYCLES),
+            units="modelled_cycles",
+            implicated="host_device_queue_cycles",
+            evidence_tier="COST_MODEL",
+            kernel=canon_kernel,
+            notes=["Declared queue/setup overhead. Not a measured doorbell latency."],
+            falsifier=(
+                "An observation of host<->device queue/setup overhead in modelled "
+                f"cycles that differs from {int(HOST_DEVICE_QUEUE_CYCLES)} by more "
+                "than 50% relative. That observation falsifies the declared "
+                "planning coefficient host_device_queue_cycles."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_CANON_HBM_BYTES,
+            quantity="hbm_per_token_bytes",
+            value=int(hbm_c["per_token_bytes"]),
+            units="bytes",
+            implicated="resident_per_token_byte_identity",
+            extra_depends=(),
+            abs_tol=0.0,
+            evidence_tier="COST_MODEL",
+            kernel=canon_kernel,
+            notes=[
+                "Canonical qGEMV L1 golden (M=2, K=4), weights resident: x_bytes + y_bytes.",
+                "Geometry identity. A mismatch falsifies resident_per_token_byte_identity.",
+            ],
+            falsifier=(
+                "An observation of per-token HBM bytes for the canonical qGEMV "
+                f"(weights resident) that is not exactly {int(hbm_c['per_token_bytes'])} "
+                "bytes. That observation falsifies the model's per-token traffic "
+                "identity (resident weights do not move; only activations do)."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_CANON_HBM_CYCLES,
+            quantity="hbm_modelled_cycles",
+            value=int(hbm_c["modelled_cycles"]),
+            units="modelled_cycles",
+            implicated="hbm_bytes_per_modelled_cycle",
+            evidence_tier="COST_MODEL",
+            kernel=canon_kernel,
+            notes=[
+                "Canonical L1 kernel moves 24 bytes; ceil(24/beat) is 1 for every "
+                "beat >= 24. This quantity cannot falsify the HBM beat at this size.",
+            ],
+            falsifier=(
+                "An observation of HBM modelled cycles for the canonical qGEMV "
+                f"per-token traffic that differs from {int(hbm_c['modelled_cycles'])} "
+                "by more than 50% relative. That observation falsifies "
+                "hbm_bytes_per_modelled_cycle (or unmodeled HBM latency)."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_CANON_XFER_CYCLES,
+            quantity="host_device_modelled_cycles_total",
+            value=int(xfer_c["modelled_cycles_total"]),
+            units="modelled_cycles",
+            implicated="host_device_bytes_per_modelled_cycle",
+            extra_depends=("host_device_queue_cycles",),
+            evidence_tier="COST_MODEL",
+            kernel=canon_kernel,
+            notes=[
+                "Canonical L1 host<->device modelled cycles. Queue (32) dominates "
+                "the 16+8 byte payload, so a wrong host beat barely moves this number.",
+            ],
+            falsifier=(
+                "An observation of host<->device modelled cycles (H2C+C2H including "
+                f"queue) for the canonical qGEMV that differs from {int(xfer_c['modelled_cycles_total'])} "
+                "by more than 50% relative. That observation falsifies "
+                "host_device_bytes_per_modelled_cycle (and/or host_device_queue_cycles)."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_CANON_CRIT_CYCLES,
+            quantity="critical_path_modelled_cycles",
+            value=int(cyc_c["modelled_cycles"]),
+            units="modelled_cycles",
+            implicated="host_device_bytes_per_modelled_cycle",
+            extra_depends=(
+                "host_device_queue_cycles",
+                "hbm_bytes_per_modelled_cycle",
+                "pipeline_depth",
+                "initiation_interval",
+            ),
+            evidence_tier="CYCLE_APPROX",
+            kernel=canon_kernel,
+            notes=[
+                "CYCLE_APPROX critical path: H2C + max(compute, HBM) + C2H.",
+                "Canonical L1 is host-transfer dominated. Not seconds. clock_hz UNKNOWN.",
+            ],
+            falsifier=(
+                "An observation of critical-path modelled cycles for the canonical "
+                f"qGEMV that differs from {int(cyc_c['modelled_cycles'])} by more than "
+                "50% relative. That observation falsifies the host-device beat/queue "
+                "and/or the declared pipeline depth / initiation interval."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_CANON_DSP,
+            quantity="dsp_estimate",
+            value=int(est_c["used"]["DSP"]),
+            units="DSP",
+            implicated="dsp_equals_mac_lanes_times_tile",
+            abs_tol=0.0,
+            evidence_tier="STATIC",
+            kernel=canon_kernel,
+            notes=[
+                "STATIC identity: DSP = mac_lanes * tile_m. Not a synthesis result.",
+            ],
+            falsifier=(
+                "An observation (synthesis report or board census of the qGEMV engine, "
+                f"not the whole device) of DSP count not exactly {int(est_c['used']['DSP'])} "
+                "for the canonical kernel. That observation falsifies the declared "
+                "DSP = mac_lanes * tile_m mapping used by the STATIC estimator."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_CANON_LUT,
+            quantity="lut_estimate",
+            value=int(est_c["used"]["LUT"]),
+            units="LUT",
+            implicated="lut_per_mac_lane",
+            rel=1.0,
+            evidence_tier="STATIC",
+            kernel=canon_kernel,
+            notes=[
+                "STATIC ESTIMATE from the assumed coefficient table. Factor-of-two tolerance.",
+                "Not a synthesis report and not a board utilisation figure.",
+            ],
+            falsifier=(
+                "An observation of LUT count for the canonical qGEMV engine that "
+                f"differs from {int(est_c['used']['LUT'])} by more than 100% relative "
+                "(outside a factor of two). That observation falsifies lut_per_mac_lane "
+                "and/or the assumed decode/DMA/reduce LUT bases."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_PLAN_HBM_BYTES,
+            quantity="hbm_per_token_bytes",
+            value=int(hbm_p["per_token_bytes"]),
+            units="bytes",
+            implicated="resident_per_token_byte_identity",
+            abs_tol=0.0,
+            evidence_tier="COST_MODEL",
+            kernel=plan_kernel,
+            notes=[
+                "Planning-scale qGEMV (M=1024, K=4096), weights resident: x_bytes + y_bytes.",
+                "Declared dimensions so HBM bytes exceed one beat. Not a measured workload.",
+            ],
+            falsifier=(
+                "An observation of per-token HBM bytes for the planning-scale qGEMV "
+                f"(weights resident) that is not exactly {int(hbm_p['per_token_bytes'])} "
+                "bytes. That observation falsifies the model's per-token traffic identity."
+            ),
+        ),
+        coeff_pred(
+            pid=PRED_PLAN_HBM_CYCLES,
+            quantity="hbm_modelled_cycles",
+            value=int(hbm_p["modelled_cycles"]),
+            units="modelled_cycles",
+            implicated="hbm_bytes_per_modelled_cycle",
+            evidence_tier="COST_MODEL",
+            kernel=plan_kernel,
+            notes=[
+                "Planning-scale qGEMV HBM modelled cycles. Sensitive to the HBM beat "
+                "(unlike the canonical L1 24-byte kernel).",
+            ],
+            falsifier=(
+                "An observation of HBM modelled cycles for the planning-scale qGEMV "
+                f"per-token traffic that differs from {int(hbm_p['modelled_cycles'])} "
+                "by more than 50% relative. That observation falsifies "
+                "hbm_bytes_per_modelled_cycle."
+            ),
+        ),
+    ]
+    ids = [r["id"] for r in rows]
+    if len(ids) != len(set(ids)):
+        raise PredictionRefused("prediction refused: duplicate prediction id in inbound set")
+    for row in rows:
+        verify_prediction_seal(row)
+        assert_no_hardware_measured(row)
+    return rows
+
+
+def _within_tolerance(
+    predicted: int | float,
+    observed: int | float,
+    tolerance: Mapping[str, Any],
+) -> bool:
+    kind = str(tolerance.get("kind") or "")
+    raw = tolerance.get("value")
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ScoringRefused("tolerance.value must be a number")
+    t = float(raw)
+    if t < 0:
+        raise ScoringRefused("tolerance.value must be >= 0")
+    p = float(predicted)
+    o = float(observed)
+    if kind == "absolute":
+        return abs(o - p) <= t
+    if kind == "relative":
+        scale = abs(p)
+        if scale == 0.0:
+            return abs(o) <= t
+        return abs(o - p) <= t * scale
+    raise ScoringRefused(f"unknown tolerance kind {kind!r}")
+
+
+def _observation_value(obs: Mapping[str, Any] | None) -> tuple[int | float | None, str | None, str | None]:
+    """Return (value, units, unpin_reason). predicted_value in obs is ignored (anti-re-aim)."""
+    if obs is None:
+        return None, None, "no observation supplied"
+    if not isinstance(obs, Mapping):
+        return None, None, "observation is not a mapping"
+    if "value" not in obs:
+        return None, None, "observation has no value"
+    raw = obs.get("value")
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return None, None, "observation value is not a number"
+    units = obs.get("units")
+    return raw, None if units is None else str(units), None
+
+
+def grade_prediction(
+    pred: Mapping[str, Any],
+    observation: Mapping[str, Any] | None,
+    *,
+    synthetic_rehearsal: bool,
+) -> dict[str, Any]:
+    """Grade one sealed prediction. Verifies the seal first. Never re-aims."""
+    digest = verify_prediction_seal(pred)
+    observed, obs_units, unpin = _observation_value(observation)
+    predicted = pred["predicted_value"]
+    units = str(pred["units"])
+    verdict = "UNPINNED"
+    implicated: str | None = None
+    delta = None
+    within = None
+    reason = unpin or ""
+    if unpin is None:
+        if obs_units is not None and obs_units != units:
+            verdict = "REFUSED"
+            reason = (
+                f"units mismatch: prediction {units!r} vs observation {obs_units!r}; "
+                "refusing to convert"
+            )
+        else:
+            within = _within_tolerance(predicted, observed, pred["tolerance"])
+            delta = float(observed) - float(predicted)
+            if within:
+                verdict = "CONFIRMED"
+                implicated = None
+                reason = "observation within sealed tolerance"
+            else:
+                verdict = "FALSIFIED"
+                implicated = str(pred["implicated_coefficient"])
+                reason = (
+                    "observation outside sealed tolerance; implicated_coefficient="
+                    f"{implicated}"
+                )
+    body: dict[str, Any] = {
+        "delta": delta,
+        "depends_on": list(pred.get("depends_on") or []),
+        "hardware_measured": False,
+        "implicated_coefficient": implicated,
+        "kind": "PREDICTION_SCORE",
+        "not_an_arrival": bool(synthetic_rehearsal),
+        "observed_units": obs_units if obs_units is not None else units,
+        "observed_value": observed,
+        "predicted_value": predicted,
+        "prediction_content_sha256": digest,
+        "prediction_id": pred["id"],
+        "quantity": pred["quantity"],
+        "reason": reason,
+        "schema": SCORE_SCHEMA,
+        "synthetic_rehearsal": bool(synthetic_rehearsal),
+        "tolerance": json.loads(canon_dumps(pred["tolerance"])),
+        "units": units,
+        "verdict": verdict,
+        "wake_condition": WAKE_U50_PRESENT,
+        "within_tolerance": within,
+    }
+    if synthetic_rehearsal:
+        body["label"] = SYNTHETIC_REHEARSAL_LABEL
+        body["not_a_board_measurement"] = True
+    report = emit_evidence("STATIC", body)
+    assert_no_hardware_measured(report)
+    if report["verdict"] not in SCORE_VERDICTS:
+        raise ScoringRefused(f"illegal score verdict {report['verdict']!r}")
+    return report
+
+
+def score_prediction_set(
+    predictions: Sequence[Mapping[str, Any]],
+    observations: Mapping[str, Mapping[str, Any]] | None,
+    *,
+    synthetic_rehearsal: bool,
+) -> dict[str, Any]:
+    """Score a sealed set. Real path is keyed to U50_PRESENT; rehearsal is not an arrival.
+
+    Re-scoring cannot quietly re-aim: each prediction's seal is verified, and
+    the predicted_value used is the sealed one. Observation['predicted_value']
+    is ignored if present.
+    """
+    wake = load_u50_wake_condition()
+    present = bool(wake.get("present"))
+    if synthetic_rehearsal:
+        if present:
+            raise ScoringRefused(
+                "synthetic rehearsal cannot run under U50_PRESENT=true; "
+                "that would look like an arrival"
+            )
+        kind = "SYNTHETIC_ARRIVAL_REHEARSAL"
+    else:
+        if not present:
+            raise ScoringRefused(
+                "real scoring is keyed to wake_condition U50_PRESENT; "
+                "no U50 is present on this host"
+            )
+        kind = "U50_PRESENT_SCORE"
+    obs_map = dict(observations or {})
+    scores = []
+    for pred in predictions:
+        pid = str(pred.get("id") or "")
+        scores.append(
+            grade_prediction(
+                pred,
+                obs_map.get(pid),
+                synthetic_rehearsal=synthetic_rehearsal,
+            )
+        )
+    falsified = [s for s in scores if s["verdict"] == "FALSIFIED"]
+    confirmed = [s for s in scores if s["verdict"] == "CONFIRMED"]
+    unpinned = [s for s in scores if s["verdict"] == "UNPINNED"]
+    refused = [s for s in scores if s["verdict"] == "REFUSED"]
+    implicated = sorted(
+        {s["implicated_coefficient"] for s in falsified if s.get("implicated_coefficient")}
+    )
+    body: dict[str, Any] = {
+        "confirmed_ids": [s["prediction_id"] for s in confirmed],
+        "falsified_ids": [s["prediction_id"] for s in falsified],
+        "hardware_measured": False,
+        "implicated_coefficients": implicated,
+        "kind": kind,
+        "not_an_arrival": bool(synthetic_rehearsal),
+        "prediction_set_sha256": prediction_set_digest(predictions),
+        "refused_ids": [s["prediction_id"] for s in refused],
+        "scores": scores,
+        "synthetic_rehearsal": bool(synthetic_rehearsal),
+        "unpinned_ids": [s["prediction_id"] for s in unpinned],
+        "u50": wake,
+        "wake_condition": WAKE_U50_PRESENT,
+    }
+    if synthetic_rehearsal:
+        body["label"] = SYNTHETIC_REHEARSAL_LABEL
+        body["not_a_board_measurement"] = True
+        body["not_a_board_result"] = True
+    report = emit_evidence("STATIC", body)
+    assert_no_hardware_measured(report)
+    return report
+
+
+def synthetic_rehearsal_observations(
+    device: DeviceProfile | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Fabricated observation set. SYNTHETIC REHEARSAL. Not an arrival.
+
+    Diverges HBM and fabric beats on purpose. Leaves the host beat as the
+    CONFIRMED control. Derived planning-scale HBM cycles are produced by
+    re-running the cost model with the divergent HBM beat so the falsifier
+    is consistent with the coefficient error, not a hand-picked number.
+    """
+    device = device or synthetic_u50_class()
+    canonical = canonical_qgemv_kernel()
+    planning = planning_qgemv_kernel()
+    hbm_c = model_hbm_traffic(canonical, device)
+    xfer_c = model_host_device_transfer(canonical, device)
+    cyc_c = approximate_cycles(canonical, device, hbm_c, xfer_c)
+    est_c = estimate_qgemv_resources(canonical)
+    hbm_p = model_hbm_traffic(planning, device)
+    divergent = replace(
+        device, hbm_bytes_per_modelled_cycle=int(SYNTHETIC_DIVERGENT_HBM_BEAT)
+    )
+    hbm_p_div = model_hbm_traffic(planning, divergent)
+
+    def obs(value: int | float, units: str) -> dict[str, Any]:
+        return {
+            "label": SYNTHETIC_REHEARSAL_LABEL,
+            "not_a_board_measurement": True,
+            "not_an_arrival": True,
+            "note": (
+                "SYNTHETIC REHEARSAL observation. Fabricated to test scoring. "
+                "Not an FPGA result, not HARDWARE_MEASURED."
+            ),
+            "synthetic_rehearsal": True,
+            "units": units,
+            "value": value,
+        }
+
+    return {
+        PRED_HBM_BEAT: obs(int(SYNTHETIC_DIVERGENT_HBM_BEAT), "bytes/modelled_cycle"),
+        PRED_FABRIC_BEAT: obs(int(SYNTHETIC_DIVERGENT_FABRIC_BEAT), "bytes/modelled_cycle"),
+        PRED_HOST_BEAT: obs(
+            int(device.host_device_bytes_per_modelled_cycle), "bytes/modelled_cycle"
+        ),
+        PRED_HOST_QUEUE: obs(int(HOST_DEVICE_QUEUE_CYCLES), "modelled_cycles"),
+        PRED_CANON_HBM_BYTES: obs(int(hbm_c["per_token_bytes"]), "bytes"),
+        PRED_CANON_HBM_CYCLES: obs(int(hbm_c["modelled_cycles"]), "modelled_cycles"),
+        PRED_CANON_XFER_CYCLES: obs(int(xfer_c["modelled_cycles_total"]), "modelled_cycles"),
+        PRED_CANON_CRIT_CYCLES: obs(int(cyc_c["modelled_cycles"]), "modelled_cycles"),
+        PRED_CANON_DSP: obs(int(est_c["used"]["DSP"]), "DSP"),
+        PRED_CANON_LUT: obs(int(est_c["used"]["LUT"]), "LUT"),
+        PRED_PLAN_HBM_BYTES: obs(int(hbm_p["per_token_bytes"]), "bytes"),
+        PRED_PLAN_HBM_CYCLES: obs(int(hbm_p_div["modelled_cycles"]), "modelled_cycles"),
+    }
+
+
+def write_sealed_predictions_receipt(
+    predictions: Sequence[Mapping[str, Any]] | None = None,
+) -> Path:
+    preds = list(predictions or inbound_board_predictions())
+    for pred in preds:
+        verify_prediction_seal(pred)
+        assert_no_hardware_measured(pred)
+    wake = load_u50_wake_condition()
+    doc = {
+        "schema": PREDICTION_SET_SCHEMA,
+        "kind": "SEALED_PREDICTION_SET",
+        "purpose": (
+            "Pre-registered predictions about the inbound U50, sealed before "
+            "arrival so they cannot be rationalised after the fact. Every "
+            "number is PREHARDWARE (COST_MODEL / CYCLE_APPROX / STATIC). "
+            "None is HARDWARE_MEASURED. There is no FPGA on this host."
+        ),
+        "wake_condition": WAKE_U50_PRESENT,
+        "u50": wake,
+        "plan": "inbound-u50-qgemv",
+        "predictions": preds,
+        "prediction_ids": [p["id"] for p in preds],
+        "prediction_set_sha256": prediction_set_digest(preds),
+        "gates_keyed_to_wake": list(U50_WAKE_GATES),
+        "claim_boundary": (
+            "PREHARDWARE sealed predictions. Not a board result, not a "
+            "synthesis report, not HARDWARE_MEASURED. Scoring of real "
+            "observations is keyed to wake_condition U50_PRESENT."
+        ),
+    }
+    assert_no_hardware_measured(doc)
+    return write_receipt(PREDICTION_RECEIPT, doc, "tools/future/hwir.py")
+
+
+def run_synthetic_arrival_rehearsal(*, write: bool = True) -> dict[str, Any]:
+    """Seal, fabricate divergent observations, score. NOT AN ARRIVAL."""
+    preds = inbound_board_predictions()
+    observations = synthetic_rehearsal_observations()
+    scored = score_prediction_set(
+        preds, observations, synthetic_rehearsal=True
+    )
+    doc = {
+        "schema": REHEARSAL_SCHEMA,
+        "kind": "SYNTHETIC_ARRIVAL_REHEARSAL",
+        "label": SYNTHETIC_REHEARSAL_LABEL,
+        "not_an_arrival": True,
+        "not_a_board_measurement": True,
+        "not_a_board_result": True,
+        "synthetic_rehearsal": True,
+        "hardware_measured": False,
+        "wake_condition": WAKE_U50_PRESENT,
+        "u50_present": False,
+        "purpose": (
+            "Prove the scoring path without a board: seal predictions, replay "
+            "a fabricated measurement set that deliberately diverges from the "
+            "model, and show FALSIFIED rows name the responsible coefficient. "
+            "This is a test of the scoring machinery, not evidence about any FPGA."
+        ),
+        "claim_boundary": SYNTHETIC_REHEARSAL_LABEL,
+        "predictions": preds,
+        "observations": observations,
+        "score": scored,
+        "confirmed_ids": list(scored["confirmed_ids"]),
+        "falsified_ids": list(scored["falsified_ids"]),
+        "implicated_coefficients": list(scored["implicated_coefficients"]),
+        "prediction_set_sha256": scored["prediction_set_sha256"],
+    }
+    assert_no_hardware_measured(doc)
+    illegal = collect_evidence_tiers(doc) - set(EVIDENCE_TIERS)
+    if illegal:
+        raise IllegalEvidenceTier(f"illegal evidence tiers in rehearsal: {sorted(illegal)}")
+    if write:
+        write_receipt(REHEARSAL_RECEIPT, doc, "tools/future/hwir.py")
+    return doc
+
+
+# ---------------------------------------------------------------------------
 # Receipt
 # ---------------------------------------------------------------------------
 
@@ -2741,6 +3809,76 @@ def _run_proofs() -> dict[str, Any]:
         raise RuntimeError(f"illegal evidence tiers: {sorted(q_tiers)}")
     if "HARDWARE_MEASURED" in q_tiers:
         raise RuntimeError("HARDWARE_MEASURED leaked into the preboard report")
+
+    preds = inbound_board_predictions()
+    for pred in preds:
+        verify_prediction_seal(pred)
+        if not str(pred.get("falsification_condition") or "").strip():
+            raise RuntimeError(f"sealed prediction {pred['id']} has empty falsifier")
+    refused_empty = False
+    try:
+        seal_prediction(
+            id="negative.empty_falsifier",
+            plan="inbound-u50-qgemv",
+            quantity="hbm_bytes_per_modelled_cycle",
+            predicted_value=1024,
+            units="bytes/modelled_cycle",
+            model_coefficients=_subset_coefficients(["hbm_bytes_per_modelled_cycle"]),
+            depends_on=["hbm_bytes_per_modelled_cycle"],
+            tolerance={"kind": "relative", "value": 0.5},
+            falsification_condition="",
+            implicated_coefficient="hbm_bytes_per_modelled_cycle",
+            evidence_tier="COST_MODEL",
+        )
+    except PredictionRefused:
+        refused_empty = True
+    tampered = dict(preds[0])
+    tampered["predicted_value"] = float(preds[0]["predicted_value"]) * 2 + 1
+    tamper_caught = False
+    try:
+        verify_prediction_seal(tampered)
+    except TamperedPrediction:
+        tamper_caught = True
+    rehearsal = run_synthetic_arrival_rehearsal(write=False)
+    assert_no_hardware_measured(rehearsal)
+    if rehearsal.get("kind") != "SYNTHETIC_ARRIVAL_REHEARSAL":
+        raise RuntimeError("rehearsal is not labeled SYNTHETIC_ARRIVAL_REHEARSAL")
+    if not rehearsal.get("not_an_arrival"):
+        raise RuntimeError("rehearsal must declare not_an_arrival")
+    if "HARDWARE_MEASURED" in collect_evidence_tiers(rehearsal):
+        raise RuntimeError("HARDWARE_MEASURED leaked into the rehearsal")
+    named = set(rehearsal.get("implicated_coefficients") or [])
+    if "hbm_bytes_per_modelled_cycle" not in named:
+        raise RuntimeError("rehearsal did not name hbm_bytes_per_modelled_cycle")
+    if "fabric_bytes_per_modelled_cycle" not in named:
+        raise RuntimeError("rehearsal did not name fabric_bytes_per_modelled_cycle")
+    if PRED_HBM_BEAT not in rehearsal["falsified_ids"]:
+        raise RuntimeError("divergent HBM beat was not FALSIFIED")
+    if PRED_FABRIC_BEAT not in rehearsal["falsified_ids"]:
+        raise RuntimeError("divergent fabric beat was not FALSIFIED")
+    if PRED_HOST_BEAT not in rehearsal["confirmed_ids"]:
+        raise RuntimeError("host beat control was not CONFIRMED")
+    if PRED_PLAN_HBM_CYCLES not in rehearsal["falsified_ids"]:
+        raise RuntimeError("planning-scale HBM cycles were not FALSIFIED")
+    real_score_refused = False
+    try:
+        score_prediction_set(preds, synthetic_rehearsal_observations(), synthetic_rehearsal=False)
+    except ScoringRefused:
+        real_score_refused = True
+    proofs["prediction_count"] = len(preds)
+    proofs["prediction_set_sha256"] = prediction_set_digest(preds)
+    proofs["prediction_without_falsifier_refused"] = refused_empty
+    proofs["tampered_prediction_rejected"] = tamper_caught
+    proofs["synthetic_rehearsal_not_an_arrival"] = bool(rehearsal.get("not_an_arrival"))
+    proofs["synthetic_rehearsal_implicated"] = sorted(named)
+    proofs["synthetic_rehearsal_falsified_ids"] = list(rehearsal["falsified_ids"])
+    proofs["real_scoring_refused_without_u50"] = real_score_refused
+    if not refused_empty:
+        raise RuntimeError("empty falsification_condition was not refused")
+    if not tamper_caught:
+        raise RuntimeError("tampered sealed prediction was not rejected")
+    if not real_score_refused:
+        raise RuntimeError("real scoring ran without U50_PRESENT")
     return proofs
 
 
@@ -2774,6 +3912,9 @@ def build() -> Path:
     except FileNotFoundError:
         qwen_sha = None
     qgemv_preboard = run_qgemv_preboard()
+    sealed_path = write_sealed_predictions_receipt()
+    rehearsal_doc = run_synthetic_arrival_rehearsal(write=True)
+    sealed_doc = load_json(sealed_path)
 
     doc = {
         "schema": SCHEMA,
@@ -2924,6 +4065,9 @@ def build() -> Path:
             "STATIC resource estimator refuses an engine that exceeds a declared device budget",
             "synthetic U50-class device profile (declared, not a board census) and row-split partitioner",
             "no code path emits HARDWARE_MEASURED",
+            "sealed predictions: content-hashed, refused without a falsification condition, keyed to U50_PRESENT",
+            "synthetic-arrival rehearsal grades divergent predictions FALSIFIED and names the implicated coefficient; not an arrival",
+            "tampered sealed predictions are detected and rejected",
         ],
         "negative_findings": [
             "ACCELERATOR_ARCHITECTURE_ATLAS.json is absent from this worktree HEAD and sparse disk",
@@ -2944,6 +4088,26 @@ def build() -> Path:
             "ESTIMATES. Cycle figures are APPROXIMATIONS, not measurements."
         ),
         "preboard": qgemv_preboard,
+        "sealed_predictions": {
+            "receipt": PREDICTION_RECEIPT,
+            "kind": "SEALED_PREDICTION_SET",
+            "count": len(sealed_doc.get("predictions") or []),
+            "ids": list(sealed_doc.get("prediction_ids") or []),
+            "prediction_set_sha256": sealed_doc.get("prediction_set_sha256"),
+            "wake_condition": WAKE_U50_PRESENT,
+            "u50_present": bool((sealed_doc.get("u50") or {}).get("present")),
+        },
+        "synthetic_arrival_rehearsal": {
+            "receipt": REHEARSAL_RECEIPT,
+            "kind": "SYNTHETIC_ARRIVAL_REHEARSAL",
+            "not_an_arrival": True,
+            "not_a_board_result": True,
+            "label": SYNTHETIC_REHEARSAL_LABEL,
+            "falsified_ids": list(rehearsal_doc.get("falsified_ids") or []),
+            "confirmed_ids": list(rehearsal_doc.get("confirmed_ids") or []),
+            "implicated_coefficients": list(rehearsal_doc.get("implicated_coefficients") or []),
+            "prediction_set_sha256": rehearsal_doc.get("prediction_set_sha256"),
+        },
         "evidence_tiers_legal": list(EVIDENCE_TIERS),
         "evidence_tiers_illegal": sorted(ILLEGAL_EVIDENCE_TIERS),
     }
@@ -2962,7 +4126,31 @@ def main() -> int:
     ap.add_argument("--lower", metavar="ORGAN_MAP")
     ap.add_argument("--organ")
     ap.add_argument("--qgemv", action="store_true", help="run the PREHARDWARE qGEMV pre-board stack")
+    ap.add_argument(
+        "--seal-predictions",
+        action="store_true",
+        help="seal the inbound-board prediction set (PREHARDWARE, keyed to U50_PRESENT)",
+    )
+    ap.add_argument(
+        "--rehearse",
+        action="store_true",
+        help="synthetic arrival rehearsal; NOT an arrival, NOT a board measurement",
+    )
     a = ap.parse_args()
+    if a.seal_predictions:
+        out = write_sealed_predictions_receipt()
+        print(out)
+        return 0
+    if a.rehearse:
+        doc = run_synthetic_arrival_rehearsal(write=True)
+        print(canon_dumps({
+            "kind": doc.get("kind"),
+            "not_an_arrival": doc.get("not_an_arrival"),
+            "falsified_ids": doc.get("falsified_ids"),
+            "implicated_coefficients": doc.get("implicated_coefficients"),
+            "receipt": REHEARSAL_RECEIPT,
+        }))
+        return 0
     if a.qgemv:
         doc = run_qgemv_preboard()
         print(canon_dumps(doc))

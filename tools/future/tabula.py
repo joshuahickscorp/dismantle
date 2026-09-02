@@ -16,6 +16,8 @@ synthetic result.
 
     python3 tools/future/tabula.py --build
     python3 tools/future/tabula.py --selftest
+    python3 tools/future/tabula.py --disposition
+    python3 tools/audit/reachability_triage.py --invoke future.tabula --args '{"scores":{"behavioral":0.7,"capability":0.05,"tool_use":0.02,"reasoning":0.01,"instruction_following":0.0}}'
     python3 -m pytest tools/future/test_tabula.py -q
 
 A Tabula transformation is one method of CHILD generation (see
@@ -48,6 +50,9 @@ VERSION = 1
 RECORDED_BY = "tools/future/tabula.py"
 LINEAGE_SCHEMA = "hawking.future.tabula.lineage.v1"
 CONTRACT_SCHEMA = "hawking.future.tabula.contract.v1"
+DISPOSITION_SCHEMA = "hawking.audit.subsystem_disposition.v1"
+WAKE_SCHEMA = "hawking.audit.wake_condition.v1"
+WAKE_REQUIRED_KIND = "call"
 
 ERAS = (
     "I Genesis of the Laboratory",
@@ -233,6 +238,33 @@ DOCTRINE = (
     "capability, increased useful behavioral freedom, minimized suppression, "
     "minimized calibration drift, and minimized personality and style drift. "
     "Behavioral freedom and external authority are different systems."
+)
+
+# Production callers of the floor (kind=call, not import). Cited so the
+# floor is not "absent by accident". Line numbers are not the authority;
+# tests AST-walk these files for a Call of the named symbol.
+FLOOR_CALL_SITES: tuple[dict[str, str], ...] = (
+    {
+        "file": "tools/future/abliteration.py",
+        "symbol": "tools.future.tabula.project",
+        "kind": "call",
+    },
+    {
+        "file": "tools/future/abliteration_run.py",
+        "symbol": "tools.future.tabula.project",
+        "kind": "call",
+    },
+    {
+        "file": "tools/future/power_torture.py",
+        "symbol": "tools.future.tabula.evaluate",
+        "kind": "call",
+    },
+    {
+        "file": "tools/audit/reachability_triage.py",
+        "symbol": "tools.future.tabula.evaluate",
+        "kind": "call",
+        "via": "WIRED future.tabula",
+    },
 )
 
 
@@ -1560,7 +1592,12 @@ def resident_callable(
         "entry_point": "python3 tools/future/tabula.py --build",
         "module": "tools.future.tabula",
         "callable": "build",
-        "cli": ["--build", "--selftest"],
+        "invoke": (
+            "python3 tools/audit/reachability_triage.py --invoke future.tabula "
+            "--args '{\"scores\":{\"behavioral\":0.7,\"capability\":0.05,"
+            "\"tool_use\":0.02,\"reasoning\":0.01,\"instruction_following\":0.0}}'"
+        ),
+        "cli": ["--build", "--selftest", "--disposition"],
         "workunit_emitted": [row["id"] for row in units],
         "work_units": [
             {
@@ -1636,6 +1673,172 @@ def negative_findings(recovered: Sequence[Mapping[str, Any]], capture: Mapping[s
             "unlocated recovered paths (sparse checkout is not absence): " + ", ".join(unlocated)
         )
     return findings
+
+
+def disposition() -> dict[str, Any]:
+    """CONNECTED floor vs PARKED fit / drift instruments. Not absent by accident.
+
+    Tabula is not roadmap 'tabular data' (H-ROADMAP.md hits are columnar catalogs).
+    It is a Doctor axis: behavioral surgery via left-null orthogonal projection.
+    I-B Doctor is the starting thread (experiment ranking, negative science);
+    G123 / G1 are the recovered instruments.
+    """
+    capture = teacher_capture_progress()
+    fit_wake_body = fitting_wake_condition(capture)
+    fit_wake = {
+        "schema": WAKE_SCHEMA,
+        "kind": "SLEEPING_FIT",
+        "required_kind": WAKE_REQUIRED_KIND,
+        "required_symbol": "tools.future.tabula.apply_to_weights",
+        "required_caller_prefix": "hcli/",
+        "predicate": (
+            "production AST Call of tools.future.tabula.apply_to_weights from "
+            "an HCLI entry AFTER every fitting_wake_condition clause holds "
+            "(Metal-capable GPU, Metal compiler, protected lease held by this "
+            "process, machine not HEAVY, Flash NX QUALIFIED, teacher capture "
+            "executed_units == units > 0, specimens on disk). Until then the "
+            "WorkUnit stays status=sleeping and is_ready is false."
+        ),
+        "blocker": _sleeping_blocked_reason(capture),
+        "missing_dependency": (
+            "Metal-capable GPU + Metal compiler + HCLI-held protected "
+            "accelerator lease + completed teacher capture + specimen tensors "
+            "on disk. apply_to_weights currently raises WeightsFrozen."
+        ),
+        "condition": fit_wake_body,
+        "evidence_tier": "STATIC",
+    }
+    drift_wake = {
+        "schema": WAKE_SCHEMA,
+        "kind": "SPECIMEN_DRIFT_INSTRUMENT",
+        "required_kind": WAKE_REQUIRED_KIND,
+        "required_symbol": "tools.tabula_drift.recover_direction",
+        "required_caller_prefix": "hcli/",
+        "predicate": (
+            "production AST Call of tools.tabula_drift.recover_direction (or "
+            "tools.gravity_tabula_probe.smallest_left_dir) from an HCLI entry "
+            "after language_model.model.layers.*.mlp.down_proj.weight tensors "
+            "for the abliterated patient are loadable from "
+            "workspace/campaign/records/runs/qwen38-27b/bf16"
+        ),
+        "blocker": (
+            "G123 instrument exists as tools/tabula_drift.py and "
+            "tools/gravity_tabula_probe.py but needs the qwen38-27b bf16 "
+            "specimen; this sidecar never loads those weights. Doctor seal "
+            "records instrument_validated=false (ladder does not reproduce "
+            "the recorded range)."
+        ),
+        "missing_dependency": (
+            "abliterated qwen38-27b bf16 tensors + abliteration-manifest.json "
+            "at workspace/campaign/records/runs/qwen38-27b/bf16"
+        ),
+        "evidence_tier": "STATIC",
+    }
+    behaviour_wake = {
+        "schema": WAKE_SCHEMA,
+        "kind": "BEHAVIOURAL_REFUSAL_PROBE",
+        "required_kind": WAKE_REQUIRED_KIND,
+        "required_symbol": "tools.gravity_tabula_behaviour.run",
+        "required_caller_prefix": "hcli/",
+        "predicate": (
+            "production AST Call of tools.gravity_tabula_behaviour.run from an "
+            "HCLI entry after the hybrid greedy binary and tokenizer exist. "
+            "The probe is the WEAKER half and cannot certify absence of drift."
+        ),
+        "blocker": (
+            "tools/gravity_tabula_behaviour.py is a CLI that shells out to "
+            "workspace/ops/build/rust/release/examples/ascension_qwen38_hybrid_greedy; "
+            "marker-based refusal counts are not an independent-evaluation vector"
+        ),
+        "missing_dependency": (
+            "ascension_qwen38_hybrid_greedy binary + tokenizer.json + artifact "
+            "roots under workspace/campaign/records/runs/qwen38-27b"
+        ),
+        "evidence_tier": "STATIC",
+    }
+    return {
+        "schema": DISPOSITION_SCHEMA,
+        "subsystem": "tabula",
+        "what_it_is": (
+            "Doctor axis: behavioral surgery. Recover the abliterated refusal "
+            "direction as a left-null vector of residual-writing tensors, "
+            "project it out (W'=(I-vv^T)W), score the child on an independent "
+            "vector (behavioral, capability, tool_use, reasoning, "
+            "instruction_following). Zero refusal is never the only score. "
+            "Permission is not personality."
+        ),
+        "not_this": (
+            "H-ROADMAP.md 'tabular / catalog data' (Art. 70.2) is unrelated. "
+            "Tabula is not a refusal-rate contest and not Gravity."
+        ),
+        "roadmap": {
+            "I-B_Doctor": (
+                "experiment ranking / negative-science / capability contracts; "
+                "Tabula is the behavioral-surgery gene Doctor verifies beside Gravity"
+            ),
+            "named_section": None,
+            "note": (
+                "H-ROADMAP.md does not name Tabula as a subsystem; the live "
+                "name is this Doctor axis plus G123/G1 instruments"
+            ),
+        },
+        "doctrine": DOCTRINE,
+        "items": [
+            {
+                "id": "tabula.floor",
+                "disposition": "CONNECTED",
+                "implementation": "tools/future/tabula.py",
+                "symbol": "tools.future.tabula.evaluate",
+                "also_called": [
+                    "tools.future.tabula.project",
+                    "tools.future.tabula.rank",
+                    "tools.future.tabula.catalog",
+                ],
+                "call_sites": [dict(s) for s in FLOOR_CALL_SITES],
+                "test": "tools/future/test_tabula.py",
+                "invoke": (
+                    "python3 tools/audit/reachability_triage.py --invoke "
+                    "future.tabula --args '{\"scores\":{...}}'"
+                ),
+                "evidence_tier": "FUNCTIONAL_SIM",
+                "wake": None,
+            },
+            {
+                "id": "tabula.fit-weights",
+                "disposition": "PARKED",
+                "implementation": "tools/future/tabula.py",
+                "symbol": "tools.future.tabula.apply_to_weights",
+                "workunit_id": "future.tabula.fit-weights",
+                "status": "sleeping",
+                "evidence_tier": "STATIC",
+                "wake": fit_wake,
+            },
+            {
+                "id": "tabula.drift-instrument",
+                "disposition": "PARKED",
+                "implementation": "tools/tabula_drift.py",
+                "also": [
+                    "tools/gravity_tabula_probe.py",
+                    "tools/doctor_seal.py (requires a tabula_drift cell; does not call the instrument)",
+                    "tools/cost_vector_t.py (quotes the G123 ladder; does not remeasure)",
+                ],
+                "evidence_tier": "STATIC",
+                "wake": drift_wake,
+            },
+            {
+                "id": "tabula.behaviour-probe",
+                "disposition": "PARKED",
+                "implementation": "tools/gravity_tabula_behaviour.py",
+                "evidence_tier": "STATIC",
+                "wake": behaviour_wake,
+                "note": "explicitly the WEAKER half; cannot certify absence of drift",
+            },
+        ],
+        "claim_boundary": CLAIM_BOUNDARY,
+        "gpu_authority": False,
+        "weights_modified": False,
+        "evidence_class": "STATIC_ONLY",
+    }
 
 
 def build() -> Path:
@@ -1743,6 +1946,7 @@ def build() -> Path:
         "gaps_closed": gaps_closed(),
         "negative_findings": negative_findings(recovered, capture),
         "resident_callable": resident_callable(units=units, refusals=refusals),
+        "disposition": disposition(),
         "promote_exists": hasattr(TabulaFloor, "promote"),
         "gpu_authority": False,
         "evidence_class": "STATIC_ONLY",
@@ -1779,6 +1983,19 @@ def selftest() -> Path:
     )
     if not sleeping_unit_is_not_ready(units):
         raise AssertionError("sleeping unit was ready")
+    disp = disposition()
+    items = {row["id"]: row for row in disp["items"]}
+    if items["tabula.floor"]["disposition"] != "CONNECTED":
+        raise AssertionError("floor must be CONNECTED")
+    for parked_id in ("tabula.fit-weights", "tabula.drift-instrument", "tabula.behaviour-probe"):
+        row = items[parked_id]
+        if row["disposition"] != "PARKED":
+            raise AssertionError(f"{parked_id} must be PARKED")
+        wake = row.get("wake") or {}
+        if not wake.get("predicate") or not wake.get("missing_dependency"):
+            raise AssertionError(f"{parked_id} PARKED without a wake")
+        if wake.get("required_kind") != WAKE_REQUIRED_KIND:
+            raise AssertionError(f"{parked_id} wake required_kind is not call")
     return build()
 
 
@@ -1786,7 +2003,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--disposition", action="store_true")
     args = ap.parse_args()
+    if args.disposition:
+        print(json.dumps(disposition(), indent=2, sort_keys=True))
+        return 0
     if args.selftest:
         print(selftest())
         return 0

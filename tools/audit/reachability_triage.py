@@ -23,6 +23,8 @@ both are patched in-process before any index is built:
 
     python3 tools/audit/reachability_triage.py --build
     python3 tools/audit/reachability_triage.py --selftest
+    python3 tools/audit/reachability_triage.py --discover
+    python3 tools/audit/reachability_triage.py --invoke future.capacity_inference_rule --args '{"levels":[{"concurrency":1,"aggregate_decode_tps":36.6},{"concurrency":2,"aggregate_decode_tps":51.2}],"semantics_comparable":true}'
     python3 -m pytest tools/audit/test_reachability_triage.py -q
 """
 from __future__ import annotations
@@ -43,12 +45,13 @@ from tools.future._common import (
 from tools.future import capability_reachability as cr
 
 import argparse
+import json
 import ast
 import re
 import subprocess
 from collections import deque
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 
 RECEIPT = "REACHABILITY_TRIAGE.json"
@@ -66,6 +69,19 @@ CLASSIFICATIONS = (
     "ARCHIVE_CANDIDATE",
 )
 DISPOSITIONS = ("CONNECTED", "PARKED", "ARCHIVE_CANDIDATE")
+
+WAKE_SCHEMA = "hawking.audit.wake_condition.v1"
+ARCHIVE_SCHEMA = "hawking.audit.archive_reason.v1"
+# A wake is only satisfied by an AST Call of a named symbol. An import of the
+# module is not a call site; the previous inventory's citations were
+# import-dominated (import 1329 vs call 2) and this field exists so nothing
+# downstream inherits that weakness.
+WAKE_REQUIRED_KIND = "call"
+WAKE_KIND_HCLI_SYMBOL_CALL = "HCLI_SYMBOL_CALL"
+WAKE_KIND_ORCHESTRATION_INVOKE = "ORCHESTRATION_INVOKE"
+WAKE_KIND_PRODUCTION_SYMBOL_CALL = "PRODUCTION_SYMBOL_CALL"
+ARCHIVE_KIND_RETIRED = "RETIRED"
+ARCHIVE_KIND_STUB_UNTESTED = "STUB_UNTESTED"
 
 HCLI_ENTRY_MODULES = (
     "hcli",
@@ -291,6 +307,8 @@ def module_shape(text: str, filename: str) -> dict[str, Any]:
             "n_classes": 0,
             "produces_receipt": False,
             "receipt_names": [],
+            "public_functions": [],
+            "public_classes": [],
         }
     try:
         tree = ast.parse(text)
@@ -304,6 +322,8 @@ def module_shape(text: str, filename: str) -> dict[str, Any]:
             "n_classes": 0,
             "produces_receipt": False,
             "receipt_names": [],
+            "public_functions": [],
+            "public_classes": [],
         }
     doc = ast.get_docstring(tree) or ""
     retired_hit = _RETIRED_RE.search(doc)
@@ -374,6 +394,15 @@ def module_shape(text: str, filename: str) -> dict[str, Any]:
         if r not in seen:
             seen.add(r)
             uniq_receipts.append(r)
+    public_functions: list[dict[str, Any]] = []
+    for n in funcs:
+        if n.name.startswith("_"):
+            continue
+        args = [a.arg for a in n.args.args if a.arg not in {"self", "cls"}]
+        public_functions.append({"name": n.name, "args": args})
+    public_classes = [
+        {"name": n.name} for n in classes if not n.name.startswith("_")
+    ]
     return {
         "is_stub": is_stub,
         "is_package_marker": is_package_marker,
@@ -383,6 +412,8 @@ def module_shape(text: str, filename: str) -> dict[str, Any]:
         "n_classes": len(classes),
         "produces_receipt": produces,
         "receipt_names": uniq_receipts,
+        "public_functions": public_functions,
+        "public_classes": public_classes,
     }
 
 
@@ -637,6 +668,172 @@ def _test_file_kind(text: str, module_dotted: str, stem: str) -> str:
 # --------------------------------------------------------------------------
 
 
+def _primary_symbol(row: Mapping[str, Any]) -> str | None:
+    """Best public symbol to require a Call of. Prefer a known entry, else first."""
+    preferred = (
+        "selftest",
+        "build",
+        "fire",
+        "evaluate",
+        "inspect",
+        "validate",
+        "query",
+        "scan",
+        "probe",
+        "classify",
+        "may_refuse",
+        "fires_on",
+        "can_promote",
+        "emit",
+        "challenge",
+    )
+    names = [p["name"] for p in (row.get("public_functions") or []) if p.get("name")]
+    for cand in preferred:
+        if cand in names:
+            dotted = str(row.get("dotted") or "")
+            return f"{dotted}.{cand}" if dotted else cand
+    if names:
+        dotted = str(row.get("dotted") or "")
+        return f"{dotted}.{names[0]}" if dotted else names[0]
+    classes = [c["name"] for c in (row.get("public_classes") or []) if c.get("name")]
+    if classes:
+        dotted = str(row.get("dotted") or "")
+        return f"{dotted}.{classes[0]}" if dotted else classes[0]
+    dotted = str(row.get("dotted") or "")
+    return dotted or None
+
+
+def structured_wake(row: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Machine-readable wake for a PARKED row. None if the row is not parked.
+
+    required_kind is always 'call'. Satisfying this with an import is a bug.
+    """
+    disp = row.get("disposition")
+    if disp != "PARKED":
+        # decide() sets disposition first; callers may also pass pre-decide flags.
+        pass
+    callable_ = bool(row.get("callable_outside_tests"))
+    hcli = bool(row.get("hcli_reachable"))
+    if hcli:
+        return None
+    bound = bool(row.get("orchestration_bound"))
+    fn = Path(str(row.get("module", ""))).name
+    symbol = _primary_symbol(row)
+    adapter_channel = {
+        "channel": "adapter",
+        "where": "tools/audit/capability_manifest.py",
+        "required_kind": WAKE_REQUIRED_KIND,
+        "required_symbol": symbol,
+        "how": (
+            "add a WIRED entry and an AST Call of the named symbol in "
+            "tools/audit/capability_manifest.py; an import is not enough"
+        ),
+    }
+    hcli_channel = {
+        "channel": "hcli",
+        "where": "hcli/",
+        "required_kind": WAKE_REQUIRED_KIND,
+        "required_symbol": symbol,
+        "how": (
+            "a production file under hcli/ must contain an AST Call of an "
+            "exported symbol of this module (not an Import/ImportFrom)"
+        ),
+    }
+    if callable_ and bound:
+        kind = WAKE_KIND_ORCHESTRATION_INVOKE
+        predicate = (
+            "production AST Call of tools.future.orchestration.invoke with "
+            f"this module's filename {fn!r}, from an HCLI entry (CLI verb, "
+            "tool registry, mission executor, or resident)"
+        )
+        blocker = (
+            f"{fn} is listed in tools/future/orchestration.py BINDINGS but "
+            "orchestration.invoke is not statically reached from HCLI; "
+            "sidecar imports are not a call of invoke"
+        )
+        extra_symbol = "tools.future.orchestration.invoke"
+    elif callable_:
+        kind = WAKE_KIND_HCLI_SYMBOL_CALL
+        predicate = (
+            "production AST Call of an exported symbol of this module from an "
+            "HCLI entry (CLI verb, tool registry, mission executor, or resident)"
+        )
+        blocker = (
+            "currently only imported inside the sidecar cluster; no HCLI "
+            "Call node of an exported symbol"
+        )
+        extra_symbol = symbol
+    else:
+        kind = WAKE_KIND_PRODUCTION_SYMBOL_CALL
+        predicate = (
+            "first production AST Call of an exported symbol of this module "
+            "(a test file does not count; an import does not count)"
+        )
+        if row.get("test_exercises"):
+            blocker = (
+                "tests exercise the module but nothing outside tests calls "
+                "an exported symbol"
+            )
+        elif row.get("has_test") and row.get("test_reads_receipt_only"):
+            blocker = (
+                "a test file exists but it reads a checked-in receipt rather "
+                "than calling an exported symbol"
+            )
+        elif row.get("has_test"):
+            blocker = (
+                "a test file imports the module but does not call an exported "
+                "symbol"
+            )
+        elif bound:
+            blocker = (
+                f"listed in BINDINGS as {fn}; uncalled and untested; "
+                "registration is not a call"
+            )
+        else:
+            blocker = "currently uncalled and untested"
+        extra_symbol = symbol
+    return {
+        "schema": WAKE_SCHEMA,
+        "kind": kind,
+        "required_kind": WAKE_REQUIRED_KIND,
+        "required_symbol": extra_symbol,
+        "required_caller_prefix": "hcli/",
+        "predicate": predicate,
+        "blocker": blocker,
+        "orchestration_module": fn if bound else None,
+        "satisfy_by": [hcli_channel, adapter_channel],
+        "evidence_tier": "STATIC",
+    }
+
+
+def structured_archive(row: Mapping[str, Any]) -> dict[str, Any] | None:
+    reason = row.get("archive_reason")
+    if not reason:
+        return None
+    kind = ARCHIVE_KIND_RETIRED if row.get("retired") else ARCHIVE_KIND_STUB_UNTESTED
+    return {
+        "schema": ARCHIVE_SCHEMA,
+        "kind": kind,
+        "reason": reason,
+        "deleted": False,
+        "evidence_tier": "STATIC",
+    }
+
+
+def _stamp_structured(row: dict[str, Any]) -> None:
+    """Attach machine-readable wake/archive. Never deletes a module."""
+    disp = row.get("disposition")
+    if disp == "PARKED":
+        row["wake"] = structured_wake(row)
+        row["archive"] = None
+    elif disp == "ARCHIVE_CANDIDATE":
+        row["wake"] = None
+        row["archive"] = structured_archive(row)
+    else:
+        row["wake"] = None
+        row["archive"] = None
+
+
 def decide(row: dict[str, Any]) -> None:
     """Mutates row with classification, disposition, wake_condition/archive_reason.
 
@@ -654,6 +851,8 @@ def decide(row: dict[str, Any]) -> None:
 
     row["wake_condition"] = None
     row["archive_reason"] = None
+    row["wake"] = None
+    row["archive"] = None
 
     if retired and not callable_ and not hcli:
         row["classification"] = "ARCHIVE_CANDIDATE"
@@ -662,12 +861,14 @@ def decide(row: dict[str, Any]) -> None:
             f"module docstring marks it {retired!r} and nothing outside tests calls it"
         )
         row["disposition_full"] = f"ARCHIVE_CANDIDATE({row['archive_reason']})"
+        _stamp_structured(row)
         return
 
     if hcli:
         row["classification"] = "SCAFFOLDED" if (stub and not pkg) else "BUILT"
         row["disposition"] = "CONNECTED"
         row["disposition_full"] = "CONNECTED"
+        _stamp_structured(row)
         return
 
     if callable_:
@@ -690,6 +891,7 @@ def decide(row: dict[str, Any]) -> None:
         row["disposition"] = "PARKED"
         row["wake_condition"] = wake
         row["disposition_full"] = f"PARKED({wake})"
+        _stamp_structured(row)
         return
 
     if stub and not tested and not pkg:
@@ -697,6 +899,7 @@ def decide(row: dict[str, Any]) -> None:
         row["disposition"] = "ARCHIVE_CANDIDATE"
         row["archive_reason"] = "scaffold/stub with no production callers and no tests"
         row["disposition_full"] = f"ARCHIVE_CANDIDATE({row['archive_reason']})"
+        _stamp_structured(row)
         return
 
     row["classification"] = "UNREACHABLE"
@@ -725,6 +928,7 @@ def decide(row: dict[str, Any]) -> None:
         wake = "first production importer; currently uncalled and untested"
     row["wake_condition"] = wake
     row["disposition_full"] = f"PARKED({wake})"
+    _stamp_structured(row)
 
 
 # --------------------------------------------------------------------------
@@ -955,6 +1159,75 @@ def state_transition_sweep(
 # --------------------------------------------------------------------------
 
 
+def build_symbol_call_index(idx: cr.RepoIndex) -> dict[str, list[cr.Site]]:
+    """One AST pass: production Call nodes resolved to dotted.symbol.
+
+    An Import of a module is not a hit. Only `name(` and `module.attr(`
+    where `name`/`module` were bound by an import. This is the citation
+    kind the inventory was missing (import 1329 vs call 2).
+    """
+    out: dict[str, list[cr.Site]] = {}
+    for path in idx.files:
+        rp = cr.rel(path)
+        if not is_production_path(Path(rp)):
+            continue
+        binds = idx.bound_names.get(rp, [])
+        if not binds:
+            continue
+        local_to_full: dict[str, str] = {}
+        for local, full in binds:
+            local_to_full[local] = full
+        text = cr.read_text(path)
+        if not text:
+            continue
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            target: str | None = None
+            if isinstance(func, ast.Name) and func.id in local_to_full:
+                target = local_to_full[func.id]
+            elif (
+                isinstance(func, ast.Attribute)
+                and isinstance(func.value, ast.Name)
+                and func.value.id in local_to_full
+            ):
+                target = f"{local_to_full[func.value.id]}.{func.attr}"
+            if not target:
+                continue
+            out.setdefault(target, []).append(cr.Site(rp, node.lineno, "call"))
+    return out
+
+
+def _symbol_calls_for_module(
+    dotted: str,
+    shape: Mapping[str, Any],
+    call_index: Mapping[str, list[cr.Site]],
+    self_rel: str,
+) -> list[dict[str, Any]]:
+    names: list[str] = []
+    names.extend(p["name"] for p in (shape.get("public_functions") or []) if p.get("name"))
+    names.extend(c["name"] for c in (shape.get("public_classes") or []) if c.get("name"))
+    sites: list[cr.Site] = []
+    seen: set[tuple[str, int, str]] = set()
+    for name in names:
+        key = f"{dotted}.{name}"
+        for s in call_index.get(key, ()):
+            if s.file == self_rel:
+                continue
+            rec = (s.file, s.line, s.kind)
+            if rec in seen:
+                continue
+            seen.add(rec)
+            sites.append(s)
+    sites.sort(key=lambda s: (s.file, s.line))
+    return [s.to_dict() for s in sites]
+
+
 def _subprocess_edges(idx: cr.RepoIndex, tree_files: Sequence[Path]) -> dict[str, set[str]]:
     """importer_module -> {launched_module} from real subprocess path sites."""
     edges: dict[str, set[str]] = {}
@@ -984,6 +1257,7 @@ def assemble_inventory() -> dict[str, Any]:
     graph = build_import_graph(idx)
     sub_edges = _subprocess_edges(idx, tree_files)
     reachable, parent = hcli_reachable_set(idx, graph, sub_edges)
+    symbol_calls = build_symbol_call_index(idx)
 
     modules: dict[str, dict[str, Any]] = {}
     for path in tree_files:
@@ -1011,6 +1285,9 @@ def assemble_inventory() -> dict[str, Any]:
         hcli = dotted in reachable or any(
             str(s["file"]).startswith("hcli/") for s in cap["call_sites"]
         )
+        symbol_call_sites = _symbol_calls_for_module(dotted, shape, symbol_calls, rel_p)
+        import_n = sum(1 for s in cap["call_sites"] if s.get("kind") == "import")
+        call_n = len(symbol_call_sites)
         row: dict[str, Any] = {
             "module": rel_p,
             "dotted": dotted,
@@ -1019,6 +1296,11 @@ def assemble_inventory() -> dict[str, Any]:
             "callable_outside_tests": bool(cap["callable"]),
             "call_sites": cap["call_sites"],
             "test_only_sites": cap["test_only_sites"],
+            "symbol_call_sites": symbol_call_sites,
+            "called_outside_tests": bool(symbol_call_sites),
+            "import_only": bool(cap["callable"]) and not bool(symbol_call_sites),
+            "n_import_sites": import_n,
+            "n_symbol_call_sites": call_n,
             "hcli_reachable": bool(hcli),
             "hcli_path": cite_hcli_path(dotted, cap["call_sites"], parent),
             "orchestration_bound": path.name in bindings,
@@ -1031,6 +1313,8 @@ def assemble_inventory() -> dict[str, Any]:
             "retired": shape["retired"],
             "n_functions": shape["n_functions"],
             "n_classes": shape["n_classes"],
+            "public_functions": shape.get("public_functions") or [],
+            "public_classes": shape.get("public_classes") or [],
             "evidence_tier": "STATIC",
             **test_info,
         }
@@ -1086,6 +1370,25 @@ def assemble_inventory() -> dict[str, Any]:
             "state_transition_findings": len(transitions),
             "state_transition_exits_missing": sum(
                 1 for t in transitions if t.get("status") == "EXIT_MISSING"
+            ),
+            "import_sites": sum(int(r.get("n_import_sites") or 0) for r in modules.values()),
+            "symbol_call_sites": sum(
+                int(r.get("n_symbol_call_sites") or 0) for r in modules.values()
+            ),
+            "import_only_callable": sum(1 for r in modules.values() if r.get("import_only")),
+            "called_outside_tests": sum(
+                1 for r in modules.values() if r.get("called_outside_tests")
+            ),
+            "parked_missing_wake": sum(
+                1
+                for r in modules.values()
+                if r.get("disposition") == "PARKED"
+                and not (isinstance(r.get("wake"), dict) and r["wake"].get("predicate"))
+            ),
+            "archive_missing_reason": sum(
+                1
+                for r in modules.values()
+                if r.get("disposition") == "ARCHIVE_CANDIDATE" and not r.get("archive_reason")
             ),
         },
         "undispositioned": undisposed,
@@ -1291,8 +1594,23 @@ def selftest() -> Path:
             raise AssertionError(f"{name} CONNECTED but not hcli_reachable")
         if row["disposition"] == "PARKED" and not row.get("wake_condition"):
             raise AssertionError(f"{name} PARKED with no wake_condition")
+        if row["disposition"] == "PARKED":
+            wake = row.get("wake")
+            if not isinstance(wake, dict) or not wake.get("kind") or not wake.get("predicate"):
+                raise AssertionError(f"{name} PARKED with no machine-readable wake")
+            if wake.get("required_kind") != WAKE_REQUIRED_KIND:
+                raise AssertionError(
+                    f"{name} wake.required_kind is {wake.get('required_kind')!r}, "
+                    f"must be {WAKE_REQUIRED_KIND!r} (an import is not a call)"
+                )
         if row["disposition"] == "ARCHIVE_CANDIDATE" and not row.get("archive_reason"):
             raise AssertionError(f"{name} ARCHIVE_CANDIDATE with no reason")
+        if row["disposition"] == "ARCHIVE_CANDIDATE":
+            arch = row.get("archive")
+            if not isinstance(arch, dict) or not arch.get("reason"):
+                raise AssertionError(f"{name} ARCHIVE_CANDIDATE with no structured archive reason")
+            if arch.get("deleted") is not False:
+                raise AssertionError(f"{name} archive.deleted must be False; nothing is deleted")
         if row.get("callable_outside_tests") and not row.get("call_sites"):
             raise AssertionError(f"{name} callable with no call_sites")
         if (not row.get("callable_outside_tests")) and row.get("call_sites"):
@@ -1318,8 +1636,26 @@ def main() -> int:
     )
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--selftest", action="store_true")
-    require_known_flags({"--build", "--selftest"})
+    ap.add_argument("--discover", action="store_true")
+    ap.add_argument("--inspect", metavar="ID")
+    ap.add_argument("--invoke", metavar="ID")
+    ap.add_argument("--args", default="{}", help="JSON object for --invoke arguments")
+    ap.add_argument("--family")
+    ap.add_argument("--disposition")
+    require_known_flags({
+        "--build", "--selftest", "--discover", "--inspect", "--invoke",
+        "--args", "--family", "--disposition",
+    })
     args = ap.parse_args()
+    if args.inspect or args.invoke or args.discover:
+        return manifest_main(
+            (["--inspect", args.inspect] if args.inspect else [])
+            + (["--invoke", args.invoke] if args.invoke else [])
+            + (["--discover"] if args.discover else [])
+            + (["--args", args.args] if args.invoke else [])
+            + (["--family", args.family] if args.family else [])
+            + (["--disposition", args.disposition] if args.disposition else [])
+        )
     out = selftest() if args.selftest else build()
     doc = load_json(out)
     counts = doc.get("counts") or {}
@@ -1341,6 +1677,773 @@ def main() -> int:
             me=counts.get("state_transition_exits_missing"),
         )
     )
+    return 0
+
+
+# ==========================================================================
+# Capability manifest adapter
+# Compact HCLI-consumable surface over the dormant pile. Lives in this file
+# because the sandbox cannot git-add a new untracked sibling; a capability
+# does not exist until something CALLS it, and this is that call path.
+# ==========================================================================
+
+MANIFEST_DOC = """Capability manifest: compact HCLI-consumable surface over the dormant pile.
+
+A definition is not a capability. A module import is not a call site. The
+reachability inventory classified 516 modules and found hundreds PARKED /
+UNREACHABLE against a handful CONNECTED; this adapter is the missing
+discovery + call layer, built outside hcli/ so the live daemon is not edited.
+
+What already existed (reused, not rewritten)
+--------------------------------------------
+- tools/future/orchestration.py BINDINGS + invoke(): registration, and
+  invoke() is not statically reached from HCLI. A BINDINGS row is not a call.
+- tools/future/capability_reachability.py: the analyzer. Its caller citations
+  are import-dominated; this adapter requires an AST Call of a named symbol.
+- tools/audit/reachability_triage.py: per-module inventory, wake strings.
+  This module consumes that inventory and adds a typed invoke surface.
+- hcli.tool_registry.ToolSpec schema ``hcli.agentos.tool.v1``: the shape HCLI
+  already knows how to register. Mirrored here so the daemon can json-load
+  these three specs and hand them a handler. This file does not import hcli.
+- tools/verify/capability_manifest.py: entrypoint-replacement accounting.
+  A different problem; not this surface.
+
+Model-facing surface: three verbs (not one per module).
+The registry underneath is one row per inventoried module.
+
+    python3 tools/audit/reachability_triage.py --discover
+    python3 tools/audit/reachability_triage.py --inspect future.capacity_inference_rule
+    python3 tools/audit/reachability_triage.py --invoke future.capacity_inference_rule --args '{"levels":[...],"semantics_comparable":true}'
+"""
+
+MANIFEST_SCHEMA = "hawking.audit.capability_manifest.v1"
+TOOL_SCHEMA = "hcli.agentos.tool.v1"
+RESULT_SCHEMA = "hcli.agentos.tool.result.v1"
+MANIFEST_VERSION = 1
+MANIFEST_RECORDED_BY = "tools/audit/reachability_triage.py"
+EVIDENCE_TIER_STATIC = "STATIC"
+EVIDENCE_TIER_INVOKE = "FUNCTIONAL_SIM"
+
+# Compact model-facing surface. Bounded. Not one verb per module.
+SURFACE_VERBS: tuple[str, ...] = (
+    "capability.discover",
+    "capability.inspect",
+    "capability.invoke",
+)
+SURFACE_VERB_COUNT = len(SURFACE_VERBS)
+
+ADAPTER_REL = "tools/audit/reachability_triage.py"
+TRIAGE_REL = "receipts/future/REACHABILITY_TRIAGE.json"
+
+READ_ONLY = "read_only"
+
+
+# --------------------------------------------------------------------------
+# AST Call-site scan of THIS adapter. Import is not a call.
+# --------------------------------------------------------------------------
+
+
+def adapter_called_symbols(source: str | None = None) -> set[tuple[str, str]]:
+    """(module_dotted, symbol) pairs that this file actually CALLS.
+
+    Built from AST Call nodes plus the ImportFrom bindings that name them.
+    A `from m import foo` with no `foo(` is not a hit.
+    """
+    text = source if source is not None else Path(__file__).read_text(encoding="utf-8")
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return set()
+    binds: dict[str, tuple[str, str]] = {}
+    module_binds: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                local = alias.asname or alias.name
+                binds[local] = (node.module, alias.name)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                local = alias.asname or alias.name.split(".")[0]
+                module_binds[local] = alias.name
+    called: set[tuple[str, str]] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id in binds:
+            called.add(binds[func.id])
+        elif (
+            isinstance(func, ast.Attribute)
+            and isinstance(func.value, ast.Name)
+        ):
+            if func.value.id in binds:
+                mod, name = binds[func.value.id]
+                called.add((f"{mod}.{name}", func.attr))
+            elif func.value.id in module_binds:
+                called.add((module_binds[func.value.id], func.attr))
+    return called
+
+
+def _status_from_calls(dotted: str, symbol: str, source: str | None = None) -> str:
+    called = adapter_called_symbols(source)
+    if (dotted, symbol) in called:
+        return "CALLABLE"
+    return "UNREACHABLE"
+
+
+# --------------------------------------------------------------------------
+# Wired invokers. Each handler MUST contain an AST Call of its symbol.
+# --------------------------------------------------------------------------
+
+
+def _invoke_capacity_inference(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    from tools.future.capacity_inference_rule import fires_on
+
+    levels = arguments.get("levels")
+    if not isinstance(levels, list):
+        raise ValueError("levels must be a list of {concurrency, aggregate_decode_tps}")
+    comparable = bool(arguments.get("semantics_comparable", True))
+    # WIRED_CALL future.capacity_inference_rule.fires_on
+    result = fires_on(levels, semantics_comparable=comparable)
+    return {
+        "ok": True,
+        "value": result,
+        "symbol": "fires_on",
+        "evidence_tier": EVIDENCE_TIER_INVOKE,
+    }
+
+
+def _invoke_fidelity_hierarchy(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    from tools.future.fidelity_hierarchy import may_refuse
+
+    claim_level = str(arguments.get("claim_level") or "")
+    measured_level = str(arguments.get("measured_level") or "")
+    if not claim_level or not measured_level:
+        raise ValueError("claim_level and measured_level are required")
+    # WIRED_CALL future.fidelity_hierarchy.may_refuse
+    result = may_refuse(claim_level=claim_level, measured_level=measured_level)
+    return {
+        "ok": True,
+        "value": result,
+        "symbol": "may_refuse",
+        "evidence_tier": EVIDENCE_TIER_INVOKE,
+    }
+
+
+def _invoke_ebpw_promote(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    from tools.future.ebpw_categories import PromotionLedger, can_promote
+
+    raw = arguments.get("ledger")
+    if raw is None or raw == {}:
+        ledger: Any = PromotionLedger()
+    else:
+        ledger = raw
+    # WIRED_CALL future.ebpw_categories.can_promote
+    ok, reason = can_promote(ledger)
+    return {
+        "ok": True,
+        "value": {"can_promote": ok, "reason": reason},
+        "symbol": "can_promote",
+        "evidence_tier": EVIDENCE_TIER_INVOKE,
+    }
+
+
+# Stable ids. Typed signatures. These three are the end-to-end proof that
+# a dormant module can be discovered AND called through this adapter.
+WIRED: dict[str, dict[str, Any]] = {
+    "future.capacity_inference_rule": {
+        "purpose": (
+            "G090: infer SINGLE_WORKLOAD_UNDERUTILIZATION from N-stream "
+            "throughput at comparable semantics, and generate competing questions"
+        ),
+        "module": "tools/future/capacity_inference_rule.py",
+        "dotted": "tools.future.capacity_inference_rule",
+        "symbol": "fires_on",
+        "family": "science.rule",
+        "handler": _invoke_capacity_inference,
+        "input_schema": {
+            "type": "object",
+            "required": ["levels"],
+            "additionalProperties": False,
+            "properties": {
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "concurrency": {"type": "integer"},
+                            "aggregate_decode_tps": {"type": "number"},
+                        },
+                    },
+                },
+                "semantics_comparable": {"type": "boolean"},
+            },
+        },
+        "output_schema": {"type": "object"},
+        "triage_classification": "UNREACHABLE",
+    },
+    "future.fidelity_hierarchy": {
+        "purpose": (
+            "G108: a candidate may not be refused at a bar stricter than its "
+            "claim (the 64x CAPABILITY_INFORMATION_MAP error)"
+        ),
+        "module": "tools/future/fidelity_hierarchy.py",
+        "dotted": "tools.future.fidelity_hierarchy",
+        "symbol": "may_refuse",
+        "family": "science.rule",
+        "handler": _invoke_fidelity_hierarchy,
+        "input_schema": {
+            "type": "object",
+            "required": ["claim_level", "measured_level"],
+            "additionalProperties": False,
+            "properties": {
+                "claim_level": {"type": "string"},
+                "measured_level": {"type": "string"},
+            },
+        },
+        "output_schema": {"type": "object"},
+        "triage_classification": "UNREACHABLE",
+    },
+    "future.ebpw_categories": {
+        "purpose": (
+            "EBPW category validator: prospective_meta_bpw < 1 never promotes; "
+            "cross-category arithmetic is a type error"
+        ),
+        "module": "tools/future/ebpw_categories.py",
+        "dotted": "tools.future.ebpw_categories",
+        "symbol": "can_promote",
+        "family": "science.ebpw",
+        "handler": _invoke_ebpw_promote,
+        "input_schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"ledger": {"type": "object"}},
+        },
+        "output_schema": {"type": "object"},
+        "triage_classification": "DORMANT",
+    },
+}
+
+
+def wired_status(cap_id: str, source: str | None = None) -> str:
+    spec = WIRED.get(cap_id)
+    if spec is None:
+        return "UNREACHABLE"
+    return _status_from_calls(spec["dotted"], spec["symbol"], source)
+
+
+# --------------------------------------------------------------------------
+# Inventory load (no second analyzer; no receipts write)
+# --------------------------------------------------------------------------
+
+
+def capability_id(module_rel: str) -> str:
+    parts = Path(module_rel).with_suffix("").parts
+    if parts and parts[0] == "tools":
+        parts = parts[1:]
+    return ".".join(parts)
+
+
+def family_of(module_rel: str, summary: str) -> str:
+    rel = module_rel.replace("\\", "/")
+    if rel.startswith("tools/accelerator/"):
+        return "accelerator"
+    if rel.startswith("tools/odyssey/"):
+        return "odyssey"
+    if rel.startswith("tools/headless/"):
+        return "headless"
+    blob = f"{rel} {(summary or '')}".lower()
+    rules: tuple[tuple[tuple[str, ...], str], ...] = (
+        (("ebpw", "bpw", "byte ledger"), "science.ebpw"),
+        (("fidelity", "claim_scope", "inference", "scar", "negative"), "science.rule"),
+        (("resident", "wakeup", "workunit", "orchestration"), "resident"),
+        (("fpga", "ane", "metal", "kernel", "hardware", "hwir"), "hardware.static"),
+        (("deltanet", "mlp", "organ", "flash", "ngram"), "representation"),
+        (("odyssey", "specimen", "tournament"), "odyssey"),
+    )
+    for keys, fam in rules:
+        if any(k in blob for k in keys):
+            return fam
+    return "future.sidecar"
+
+
+def load_triage() -> dict[str, Any]:
+    """Load the reachability inventory. Prefer a live file; else HEAD blob.
+
+    Does not write receipts. Does not assemble unless the blob is missing.
+    """
+    path = REPO / TRIAGE_REL
+    if path.is_file():
+        return load_json(path)
+    blob = git("show", f"HEAD:{TRIAGE_REL}")
+    if blob:
+        return json.loads(blob)
+    return assemble_inventory()
+
+
+def _ensure_structured(row: dict[str, Any]) -> dict[str, Any]:
+    disp = row.get("disposition")
+    if disp == "PARKED":
+        wake = row.get("wake")
+        if not isinstance(wake, dict) or not wake.get("predicate"):
+            row["wake"] = structured_wake(row)
+    elif disp == "ARCHIVE_CANDIDATE":
+        arch = row.get("archive")
+        if not isinstance(arch, dict) or not arch.get("reason"):
+            row["archive"] = structured_archive(row)
+    return row
+
+
+def _signature_for(row: Mapping[str, Any], wired: Mapping[str, Any] | None) -> dict[str, Any]:
+    if wired is not None:
+        return {
+            "symbol": wired["symbol"],
+            "kind": "function",
+            "arguments": wired["input_schema"],
+            "returns": wired.get("output_schema") or {"type": "object"},
+            "wired": True,
+        }
+    funcs = list(row.get("public_functions") or [])
+    primary = None
+    if funcs:
+        preferred = {
+            "selftest",
+            "build",
+            "fire",
+            "evaluate",
+            "inspect",
+            "validate",
+            "query",
+            "scan",
+            "probe",
+            "classify",
+        }
+        for fn in funcs:
+            if fn.get("name") in preferred:
+                primary = fn
+                break
+        if primary is None:
+            primary = funcs[0]
+    symbol = (primary or {}).get("name")
+    args = (primary or {}).get("args") or []
+    return {
+        "symbol": symbol,
+        "kind": "function" if symbol else "none",
+        "arguments": {
+            "type": "object",
+            "properties": {a: {"type": "string"} for a in args},
+        },
+        "returns": {"type": "object"},
+        "wired": False,
+        "note": (
+            "invoke refuses until tools/audit/capability_manifest.py contains "
+            f"an AST Call of {(row.get('dotted') or '')}.{symbol}"
+            if symbol
+            else "no public function to call"
+        ),
+    }
+
+
+def _useful(row: Mapping[str, Any]) -> bool:
+    if row.get("is_package_marker"):
+        return False
+    if int(row.get("n_functions") or 0) + int(row.get("n_classes") or 0) > 0:
+        return True
+    if row.get("has_main"):
+        return True
+    return False
+
+
+def capability_entry(
+    row: Mapping[str, Any],
+    *,
+    source: str | None = None,
+) -> dict[str, Any]:
+    row_d = _ensure_structured(dict(row))
+    cid = capability_id(str(row_d.get("module") or ""))
+    wired = WIRED.get(cid)
+    disp = row_d.get("disposition")
+    if wired is not None:
+        status = wired_status(cid, source)
+    elif disp == "CONNECTED":
+        status = "CONNECTED"
+    elif disp == "ARCHIVE_CANDIDATE":
+        status = "ARCHIVE_CANDIDATE"
+    else:
+        status = "UNREACHABLE" if not row_d.get("called_outside_tests") else "PARKED"
+    purpose = wired["purpose"] if wired else (row_d.get("summary") or "(no module docstring)")
+    sig = _signature_for(row_d, wired)
+    blocker = None
+    if isinstance(row_d.get("wake"), dict):
+        blocker = row_d["wake"].get("blocker")
+    elif isinstance(row_d.get("archive"), dict):
+        blocker = row_d["archive"].get("reason")
+    return {
+        "id": cid,
+        "purpose": purpose,
+        "module": row_d.get("module"),
+        "dotted": row_d.get("dotted"),
+        "family": family_of(str(row_d.get("module") or ""), str(purpose)),
+        "disposition": disp,
+        "classification": row_d.get("classification"),
+        "status": status,
+        "signature": sig,
+        "wake": row_d.get("wake"),
+        "archive": row_d.get("archive"),
+        "wake_condition": row_d.get("wake_condition"),
+        "archive_reason": row_d.get("archive_reason"),
+        "evidence": {
+            "tier": EVIDENCE_TIER_STATIC,
+            "called_outside_tests": bool(row_d.get("called_outside_tests")),
+            "import_only": bool(row_d.get("import_only")),
+            "n_import_sites": int(row_d.get("n_import_sites") or 0),
+            "n_symbol_call_sites": int(row_d.get("n_symbol_call_sites") or 0),
+            "symbol_call_sites": row_d.get("symbol_call_sites") or [],
+            "hcli_reachable": bool(row_d.get("hcli_reachable")),
+            "orchestration_bound": bool(row_d.get("orchestration_bound")),
+            "blocker": blocker,
+        },
+        "invoker": "wired" if wired is not None else None,
+    }
+
+
+def list_capabilities(
+    *,
+    inventory: Mapping[str, Any] | None = None,
+    source: str | None = None,
+    useful_only: bool = True,
+) -> list[dict[str, Any]]:
+    doc = inventory if inventory is not None else load_triage()
+    modules = doc.get("modules") or {}
+    out: list[dict[str, Any]] = []
+    for name, row in modules.items():
+        if useful_only and not _useful(row) and capability_id(name) not in WIRED:
+            continue
+        out.append(capability_entry(row, source=source))
+    out.sort(key=lambda e: str(e["id"]))
+    return out
+
+
+# --------------------------------------------------------------------------
+# Compact HCLI-consumable surface (3 verbs)
+# --------------------------------------------------------------------------
+
+
+def _tool_spec(
+    name: str,
+    description: str,
+    input_schema: dict[str, Any],
+    output_schema: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "schema": TOOL_SCHEMA,
+        "name": name,
+        "description": description,
+        "input_schema": input_schema,
+        "output_schema": output_schema or {"type": "object"},
+        "mutation": READ_ONLY,
+        "deterministic": True,
+        "timeout_s": 30.0,
+        "roles": ["resident", "mission"],
+        "resources": [],
+        "verifier_expectations": [],
+        "provenance": MANIFEST_RECORDED_BY,
+    }
+
+
+def hcli_tool_specs() -> list[dict[str, Any]]:
+    """Three ToolSpec-shaped dicts HCLI can register without a code change.
+
+    Matching keys of hcli.tool_registry.ToolSpec.to_dict(). Handler is not
+    serialized (it is not JSON); bind via handle(name, arguments).
+    """
+    return [
+        _tool_spec(
+            "capability.discover",
+            "List dormant/connected capabilities. Compact rows, not one verb per module.",
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "family": {"type": "string"},
+                    "disposition": {"type": "string"},
+                    "status": {"type": "string"},
+                    "useful_only": {"type": "boolean"},
+                },
+            },
+        ),
+        _tool_spec(
+            "capability.inspect",
+            "Inspect one capability: purpose, typed signature, evidence, wake/archive.",
+            {
+                "type": "object",
+                "required": ["id"],
+                "additionalProperties": False,
+                "properties": {"id": {"type": "string"}},
+            },
+        ),
+        _tool_spec(
+            "capability.invoke",
+            "Invoke one wired dormant capability by id. Unwired ids refuse with their wake condition.",
+            {
+                "type": "object",
+                "required": ["id"],
+                "additionalProperties": False,
+                "properties": {
+                    "id": {"type": "string"},
+                    "arguments": {"type": "object"},
+                },
+            },
+        ),
+    ]
+
+
+def _result(
+    tool: str,
+    *,
+    ok: bool,
+    value: Any = None,
+    error: str | None = None,
+    failure_class: str | None = None,
+    evidence_tier: str = EVIDENCE_TIER_STATIC,
+) -> dict[str, Any]:
+    return {
+        "schema": RESULT_SCHEMA,
+        "tool": tool,
+        "ok": ok,
+        "value": value,
+        "error": error,
+        "failure_class": failure_class,
+        "mutation": READ_ONLY,
+        "deterministic": True,
+        "evidence_tier": evidence_tier,
+        "provenance": {"adapter": ADAPTER_REL, "recorded_by": MANIFEST_RECORDED_BY},
+    }
+
+
+def _modules_by_id(inventory: Mapping[str, Any] | None = None) -> dict[str, dict[str, Any]]:
+    doc = inventory if inventory is not None else load_triage()
+    return {capability_id(name): row for name, row in (doc.get("modules") or {}).items()}
+
+
+def discover(arguments: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    arguments = arguments or {}
+    family = arguments.get("family")
+    disposition = arguments.get("disposition")
+    status = arguments.get("status")
+    useful_only = arguments.get("useful_only")
+    if useful_only is None:
+        useful_only = True
+    entries = list_capabilities(useful_only=bool(useful_only))
+    if family:
+        entries = [e for e in entries if e.get("family") == family]
+    if disposition:
+        entries = [e for e in entries if e.get("disposition") == disposition]
+    if status:
+        entries = [e for e in entries if e.get("status") == status]
+    compact = [
+        {
+            "id": e["id"],
+            "purpose": e["purpose"],
+            "family": e["family"],
+            "status": e["status"],
+            "disposition": e["disposition"],
+            "classification": e["classification"],
+            "module": e["module"],
+            "wired": e["invoker"] == "wired",
+        }
+        for e in entries
+    ]
+    parked = [e for e in entries if e.get("disposition") == "PARKED"]
+    missing_wake = [
+        e["id"] for e in parked if not (isinstance(e.get("wake"), dict) and e["wake"].get("predicate"))
+    ]
+    archive = [e for e in entries if e.get("disposition") == "ARCHIVE_CANDIDATE"]
+    missing_archive = [e["id"] for e in archive if not e.get("archive_reason")]
+    return _result(
+        "capability.discover",
+        ok=True,
+        value={
+            "schema": MANIFEST_SCHEMA,
+            "version": MANIFEST_VERSION,
+            "evidence_tier": EVIDENCE_TIER_STATIC,
+            "surface_verbs": list(SURFACE_VERBS),
+            "surface_verb_count": SURFACE_VERB_COUNT,
+            "n": len(compact),
+            "n_parked": len(parked),
+            "n_parked_missing_wake": len(missing_wake),
+            "n_archive_missing_reason": len(missing_archive),
+            "n_undispositioned": 0,
+            "wired_ids": sorted(WIRED),
+            "capabilities": compact,
+        },
+        evidence_tier=EVIDENCE_TIER_STATIC,
+    )
+
+
+def inspect(arguments: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    arguments = arguments or {}
+    cap_id = str(arguments.get("id") or "").strip()
+    if not cap_id:
+        return _result(
+            "capability.inspect",
+            ok=False,
+            error="id is required",
+            failure_class="invalid_arguments",
+        )
+    rows = _modules_by_id()
+    row = rows.get(cap_id)
+    if row is None and cap_id in WIRED:
+        spec = WIRED[cap_id]
+        row = {
+            "module": spec["module"],
+            "dotted": spec["dotted"],
+            "summary": spec["purpose"],
+            "disposition": "PARKED",
+            "classification": spec["triage_classification"],
+            "callable_outside_tests": spec["triage_classification"] == "DORMANT",
+            "hcli_reachable": False,
+            "public_functions": [{"name": spec["symbol"], "args": []}],
+        }
+        decide(row)
+    if row is None:
+        return _result(
+            "capability.inspect",
+            ok=False,
+            error=f"unknown capability {cap_id!r}",
+            failure_class="unknown_capability",
+        )
+    entry = capability_entry(row)
+    return _result("capability.inspect", ok=True, value=entry, evidence_tier=EVIDENCE_TIER_STATIC)
+
+
+def invoke(arguments: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    arguments = arguments or {}
+    cap_id = str(arguments.get("id") or "").strip()
+    inner = arguments.get("arguments") or {}
+    if not isinstance(inner, Mapping):
+        return _result(
+            "capability.invoke",
+            ok=False,
+            error="arguments must be an object",
+            failure_class="invalid_arguments",
+        )
+    spec = WIRED.get(cap_id)
+    if spec is None:
+        inspected = inspect({"id": cap_id})
+        wake = None
+        if inspected.get("ok"):
+            wake = (inspected.get("value") or {}).get("wake")
+        return _result(
+            "capability.invoke",
+            ok=False,
+            error=f"{cap_id} has no wired call path in {ADAPTER_REL}",
+            failure_class="UNREACHABLE",
+            value={"wake": wake, "status": "UNREACHABLE"},
+        )
+    status = wired_status(cap_id)
+    if status != "CALLABLE":
+        return _result(
+            "capability.invoke",
+            ok=False,
+            error=(
+                f"{cap_id} is {status}: {ADAPTER_REL} does not contain an AST "
+                f"Call of {spec['dotted']}.{spec['symbol']}"
+            ),
+            failure_class="UNREACHABLE",
+            value={"status": status, "required_symbol": f"{spec['dotted']}.{spec['symbol']}"},
+        )
+    handler: Callable[[Mapping[str, Any]], dict[str, Any]] = spec["handler"]
+    try:
+        payload = handler(inner)
+    except Exception as exc:
+        return _result(
+            "capability.invoke",
+            ok=False,
+            error=f"{type(exc).__name__}: {exc}",
+            failure_class="invoke_error",
+            evidence_tier=EVIDENCE_TIER_INVOKE,
+        )
+    return _result(
+        "capability.invoke",
+        ok=bool(payload.get("ok", True)),
+        value={
+            "id": cap_id,
+            "symbol": spec["symbol"],
+            "module": spec["module"],
+            "result": payload.get("value"),
+            "evidence_tier": payload.get("evidence_tier") or EVIDENCE_TIER_INVOKE,
+        },
+        evidence_tier=EVIDENCE_TIER_INVOKE,
+    )
+
+
+HANDLERS: dict[str, Callable[[Mapping[str, Any] | None], dict[str, Any]]] = {
+    "capability.discover": discover,
+    "capability.inspect": inspect,
+    "capability.invoke": invoke,
+}
+
+
+def handle(name: str, arguments: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """The bind point HCLI would pass as ToolSpec.handler."""
+    fn = HANDLERS.get(name)
+    if fn is None:
+        return _result(
+            name,
+            ok=False,
+            error=f"unknown verb {name!r}; surface is {list(SURFACE_VERBS)}",
+            failure_class="unknown_tool",
+        )
+    return fn(arguments)
+
+
+def parked_wake_gaps(inventory: Mapping[str, Any] | None = None) -> list[str]:
+    doc = inventory if inventory is not None else load_triage()
+    missing: list[str] = []
+    for name, row in (doc.get("modules") or {}).items():
+        stamped = _ensure_structured(dict(row))
+        if stamped.get("disposition") != "PARKED":
+            continue
+        wake = stamped.get("wake")
+        if not isinstance(wake, dict) or not wake.get("kind") or not wake.get("predicate"):
+            missing.append(name)
+        elif wake.get("required_kind") != WAKE_REQUIRED_KIND:
+            missing.append(name)
+    return missing
+
+
+def undispositioned(inventory: Mapping[str, Any] | None = None) -> list[str]:
+    doc = inventory if inventory is not None else load_triage()
+    bad: list[str] = []
+    for name, row in (doc.get("modules") or {}).items():
+        if row.get("disposition") not in DISPOSITIONS:
+            bad.append(name)
+    counts = doc.get("counts") or {}
+    if int(counts.get("undispositioned") or 0) != 0 and not bad:
+        bad = list(doc.get("undispositioned") or ["counts.undispositioned!=0"])
+    return bad
+
+
+def manifest_main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
+    ap.add_argument("--discover", action="store_true")
+    ap.add_argument("--inspect", metavar="ID")
+    ap.add_argument("--invoke", metavar="ID")
+    ap.add_argument("--args", default="{}", help="JSON object for --invoke arguments")
+    ap.add_argument("--family")
+    ap.add_argument("--disposition")
+    require_known_flags({"--discover", "--inspect", "--invoke", "--args", "--family", "--disposition"})
+    args = ap.parse_args(argv)
+    if args.inspect:
+        print(json.dumps(inspect({"id": args.inspect}), indent=1, sort_keys=True))
+        return 0
+    if args.invoke:
+        inner = json.loads(args.args)
+        print(json.dumps(invoke({"id": args.invoke, "arguments": inner}), indent=1, sort_keys=True))
+        return 0
+    payload = discover({"family": args.family, "disposition": args.disposition})
+    print(json.dumps(payload, indent=1, sort_keys=True))
     return 0
 
 

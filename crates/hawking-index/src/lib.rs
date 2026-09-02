@@ -19,6 +19,7 @@
 //! [`semantic::StubEmbeddingClient`] refuses so production never silently
 //! ranks on fixture vectors.
 
+pub mod artifact;
 pub mod daemon;
 pub mod graph;
 pub mod merkle;
@@ -44,3 +45,7 @@ pub use semantic::{
     HttpEmbeddingClient, HybridRetrievalWeights, HybridRetriever, StubEmbeddingClient,
 };
 pub use store::SqliteStore;
+pub use artifact::{
+    capability_id as artifact_capability_id, content_hash_hex as artifact_content_hash_hex,
+    ArtifactIndex, ArtifactMeta, EntityRef, SCHEMA_VERSION as ARTIFACT_SCHEMA_VERSION,
+};

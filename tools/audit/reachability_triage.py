@@ -25,7 +25,12 @@ both are patched in-process before any index is built:
     python3 tools/audit/reachability_triage.py --selftest
     python3 tools/audit/reachability_triage.py --discover
     python3 tools/audit/reachability_triage.py --invoke future.capacity_inference_rule --args '{"levels":[{"concurrency":1,"aggregate_decode_tps":36.6},{"concurrency":2,"aggregate_decode_tps":51.2}],"semantics_comparable":true}'
-    python3 -m pytest tools/audit/test_reachability_triage.py -q
+    python3 tools/audit/reachability_triage.py --module tools/future/status_causality.py
+    python3 tools/audit/reachability_triage.py --classification UNREACHABLE
+    python3 tools/audit/reachability_triage.py --status BUILT
+    python3 tools/audit/reachability_triage.py --parity
+    python3 tools/audit/reachability_triage.py --measure
+    python3 -m pytest tools/audit/test_reachability_triage.py tools/audit/test_artifact_query.py -q -o addopts=""
 """
 from __future__ import annotations
 
@@ -1773,9 +1778,16 @@ def main() -> int:
     ap.add_argument("--args", default="{}", help="JSON object for --invoke arguments")
     ap.add_argument("--family")
     ap.add_argument("--disposition")
+    ap.add_argument("--module", metavar="PATH", help="targeted query: one module row")
+    ap.add_argument("--classification", help="targeted query: modules with this classification")
+    ap.add_argument("--gate", metavar="ID", help="targeted query: one CAPABILITY_GRAPH gate")
+    ap.add_argument("--status", help="targeted query: gates with this status (e.g. BUILT)")
+    ap.add_argument("--parity", action="store_true", help="all-entity equivalence vs full parse")
+    ap.add_argument("--measure", action="store_true", help="time + bytes-read, both paths")
     require_known_flags({
         "--build", "--selftest", "--discover", "--inspect", "--invoke",
         "--args", "--family", "--disposition",
+        "--module", "--classification", "--gate", "--status", "--parity", "--measure",
     })
     args = ap.parse_args()
     if args.inspect or args.invoke or args.discover:
@@ -1787,6 +1799,16 @@ def main() -> int:
             + (["--family", args.family] if args.family else [])
             + (["--disposition", args.disposition] if args.disposition else [])
         )
+    if (
+        args.parity
+        or args.measure
+        or args.module
+        or args.classification
+        or args.gate
+        or args.status
+        or args.disposition
+    ):
+        return _query_main(args)
     out = selftest() if args.selftest else build()
     doc = load_json(out)
     counts = doc.get("counts") or {}
@@ -1809,6 +1831,65 @@ def main() -> int:
         )
     )
     return 0
+
+
+def _query_main(args: argparse.Namespace) -> int:
+    """Targeted access path. Never writes receipts. Full parse is the oracle."""
+    from tools.audit import artifact_index as _ai
+
+    if args.parity or args.measure:
+        triage = _ai.materialize(TRIAGE_REL)
+        graph = _ai.materialize("civilization/CAPABILITY_GRAPH.json")
+        report: dict[str, Any] = {"schema": "hawking.audit.artifact_query_parity.v1"}
+        if args.parity:
+            report["triage_modules"] = _ai.parity_map(triage, "modules")
+            report["graph_gates"] = _ai.parity_map(graph, "gates")
+            unreachable = _ai.measure_filter(triage, "modules", classification="UNREACHABLE")
+            built = _ai.measure_filter(graph, "gates", status="BUILT")
+            report["unreachable"] = unreachable
+            report["built_gates"] = built
+            ok = (
+                report["triage_modules"]["ok"]
+                and report["graph_gates"]["ok"]
+                and unreachable["equal"]
+                and built["equal"]
+            )
+            report["ok"] = ok
+        if args.measure:
+            # One-module question on a real CONNECTED row, plus the two filters.
+            sample = "tools/future/status_causality.py"
+            report["measure_module"] = _ai.measure_one(triage, "modules", sample)
+            report["measure_unreachable"] = _ai.measure_filter(
+                triage, "modules", classification="UNREACHABLE"
+            )
+            report["measure_built_gates"] = _ai.measure_filter(
+                graph, "gates", status="BUILT"
+            )
+        print(json.dumps(report, indent=1, sort_keys=True))
+        if args.parity and not report.get("ok", True):
+            return 1
+        return 0
+    if args.module:
+        print(json.dumps(query_module(args.module), indent=1, sort_keys=True))
+        return 0
+    if args.classification or args.disposition:
+        print(
+            json.dumps(
+                query_modules(
+                    classification=args.classification,
+                    disposition=args.disposition,
+                ),
+                indent=1,
+            )
+        )
+        return 0
+    if args.gate:
+        print(json.dumps(query_gates(gate=args.gate), indent=1, sort_keys=True))
+        return 0
+    if args.status:
+        print(json.dumps(query_gates(status=args.status), indent=1))
+        return 0
+    return 2
 
 
 # ==========================================================================
@@ -2211,6 +2292,10 @@ def load_triage() -> dict[str, Any]:
     """Load the reachability inventory. Prefer a live file; else HEAD blob.
 
     Does not write receipts. Does not assemble unless the blob is missing.
+
+    This is the FULL PARSE path — the parity oracle. Targeted questions
+    (one module, UNREACHABLE set, BUILT gates) go through query_module /
+    query_modules / query_gates so they do not json.loads the 2.7MB document.
     """
     path = REPO / TRIAGE_REL
     if path.is_file():
@@ -2219,6 +2304,135 @@ def load_triage() -> dict[str, Any]:
     if blob:
         return json.loads(blob)
     return assemble_inventory()
+
+
+def _triage_json_path() -> Path:
+    from tools.audit import artifact_index as _ai
+
+    return _ai.materialize(TRIAGE_REL)
+
+
+def _graph_json_path() -> Path:
+    from tools.audit import artifact_index as _ai
+
+    return _ai.materialize("civilization/CAPABILITY_GRAPH.json")
+
+
+def query_module(module: str) -> dict[str, Any]:
+    """Disposition row for one module. Identical to load_triage()['modules'][module].
+
+    Fast path: sidecar pread. On any error, the full parse is the verdict.
+    """
+    if _os.environ.get("HCLI_TRIAGE_FULLPARSE") == "1":
+        return load_triage()["modules"][module]
+    try:
+        from tools.audit import artifact_index as _ai
+
+        return _ai.get("modules", module, json_path=_triage_json_path()).value
+    except Exception:
+        return load_triage()["modules"][module]
+
+
+def query_modules(
+    *,
+    classification: str | None = None,
+    disposition: str | None = None,
+) -> list[str]:
+    """Module paths matching a column filter. Identical to the full-parse key set."""
+    if _os.environ.get("HCLI_TRIAGE_FULLPARSE") == "1":
+        return _full_module_keys(classification=classification, disposition=disposition)
+    try:
+        from tools.audit import artifact_index as _ai
+
+        keys, _n, _s = _ai.list_keys(
+            "modules",
+            json_path=_triage_json_path(),
+            classification=classification,
+            disposition=disposition,
+        )
+        return keys
+    except Exception:
+        return _full_module_keys(classification=classification, disposition=disposition)
+
+
+def query_gates(*, status: str | None = None, gate: str | None = None) -> Any:
+    """CAPABILITY_GRAPH gates. `gate` returns one row; `status` returns matching ids."""
+    if gate is not None:
+        if _os.environ.get("HCLI_TRIAGE_FULLPARSE") == "1":
+            return _full_graph()["gates"][gate]
+        try:
+            from tools.audit import artifact_index as _ai
+
+            return _ai.get("gates", gate, json_path=_graph_json_path()).value
+        except Exception:
+            return _full_graph()["gates"][gate]
+    if _os.environ.get("HCLI_TRIAGE_FULLPARSE") == "1":
+        return _full_gate_keys(status=status)
+    try:
+        from tools.audit import artifact_index as _ai
+
+        keys, _n, _s = _ai.list_keys(
+            "gates", json_path=_graph_json_path(), status=status
+        )
+        return keys
+    except Exception:
+        return _full_gate_keys(status=status)
+
+
+def _full_graph() -> dict[str, Any]:
+    from tools.audit import artifact_index as _ai
+
+    path = REPO / "civilization" / "CAPABILITY_GRAPH.json"
+    if path.is_file():
+        return load_json(path)
+    blob = git("show", "HEAD:civilization/CAPABILITY_GRAPH.json")
+    if blob:
+        return json.loads(blob)
+    doc, _n, _s = _ai.full_parse(_graph_json_path())
+    return doc
+
+
+def _full_module_keys(
+    *,
+    classification: str | None = None,
+    disposition: str | None = None,
+) -> list[str]:
+    modules = load_triage().get("modules") or {}
+    out = []
+    for name, row in modules.items():
+        if classification is not None and row.get("classification") != classification:
+            continue
+        if disposition is not None and row.get("disposition") != disposition:
+            continue
+        out.append(name)
+    out.sort()
+    return out
+
+
+def _full_gate_keys(*, status: str | None = None) -> list[str]:
+    gates = (_full_graph().get("gates") or {})
+    out = []
+    for name, row in gates.items():
+        if status is not None and row.get("status") != status:
+            continue
+        out.append(name)
+    out.sort()
+    return out
+
+
+def _lookup_module_row(cap_id: str) -> dict[str, Any] | None:
+    """One inventory row by capability id. Fast path first; full parse fallback."""
+    if _os.environ.get("HCLI_TRIAGE_FULLPARSE") == "1":
+        return _modules_by_id().get(cap_id)
+    try:
+        from tools.audit import artifact_index as _ai
+
+        hit = _ai.get_by_cap_id(cap_id, json_path=_triage_json_path())
+        if hit is not None:
+            return hit.value
+    except Exception:
+        pass
+    return _modules_by_id().get(cap_id)
 
 
 def _ensure_structured(row: dict[str, Any]) -> dict[str, Any]:
@@ -2531,8 +2745,7 @@ def inspect(arguments: Mapping[str, Any] | None = None) -> dict[str, Any]:
             error="id is required",
             failure_class="invalid_arguments",
         )
-    rows = _modules_by_id()
-    row = rows.get(cap_id)
+    row = _lookup_module_row(cap_id)
     if row is None and cap_id in WIRED:
         spec = WIRED[cap_id]
         row = {

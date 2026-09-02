@@ -5,16 +5,23 @@ Statuses are never hand-written. Rules, in order:
 1. Hardware-requiring + device absent => BLOCKED_HARDWARE (never BUILT/PASS).
 2. No git-tracked definition => ABSENT (era I / bounty) or DORMANT (later era).
 3. Definition whose only callers are tests => SCAFFOLDED. Receipts do not upgrade this.
-4. Definition + non-test call/subprocess of the implementing SYMBOL => BUILT.
+4. Definition + non-test call/subprocess of the implementing SYMBOL => wired.
    Importing a module is not calling a capability. Registration is not wiring.
-   Importability is not existence. kind=import never justifies BUILT (at most
+   Importability is not existence. kind=import never justifies wired (at most
    SCAFFOLDED). A name-only match (constant, string, comment, except-handler)
-   is weak_signal and never moves status.
-5. After all local statuses: a defined gate whose every dependency is
+   is weak_signal and never moves status. wired is not accepted and is not BUILT.
+5. accepted is orthogonal: the gate's own acceptance criterion is demonstrably
+   satisfied — a receipt or measurement that meets the stated bar, not merely a
+   receipt that exists on the topic. A numeric bar (EBPW <= 1) is compared
+   against the real value in the receipt; failing the comparison is not accepted.
+6. BUILT requires wired AND accepted. wired and not accepted => WIRED.
+   accepted without wired is still SCAFFOLDED. Never let wired alone produce BUILT.
+7. After all local statuses: a defined gate whose every dependency is
    ABSENT/BLOCKED_* becomes UNREACHABLE unless it is itself BLOCKED_HARDWARE.
-6. Named software/external blocker that actually holds => BLOCKED_EXTERNAL.
+8. Named software/external blocker that actually holds => BLOCKED_EXTERNAL.
 
 Every non-ABSENT verdict cites file:line, a command, or a receipt path.
+Citations are bound to the emitting commit and re-resolved if a line is past EOF.
 Evidence tier is STATIC: this auditor does not take hardware measurements.
 """
 from __future__ import annotations
@@ -23,11 +30,11 @@ import json
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from tools.roadmap import EVIDENCE_TIER, GRAPH_REL, SCHEMA, VERSION
 from tools.roadmap import catalog
-from tools.roadmap.gitfs import REPO, SourceView
+from tools.roadmap.gitfs import REPO, SourceView, blob_text, head_commit
 from tools.roadmap.hardware import probe, probe_all
 from tools.roadmap.parse import load_existing_state, parse_roadmap, span
 from tools.roadmap import reach
@@ -37,10 +44,249 @@ _BUILT_KINDS = reach.BUILT_KINDS
 _LATER_ERAS = {"II", "III", "IV", "V"}
 
 
+_CITATION_KEYS = (
+    "evidence_refs",
+    "code_refs",
+    "runtime_caller",
+    "import_sites",
+    "weak_signals",
+    "tests",
+)
+
+_NUMERIC_OPS = {
+    "<=": lambda a, b: a <= b,
+    "<": lambda a, b: a < b,
+    ">=": lambda a, b: a >= b,
+    ">": lambda a, b: a > b,
+    "==": lambda a, b: a == b,
+}
+
+
 def _cite(file: str, line: int | None, *, kind: str, note: str | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {"file": file, "line": line, "kind": kind}
     if note:
         out["note"] = note
+    return out
+
+
+def _dig(obj: Any, dotted: str) -> Any:
+    cur = obj
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
+def _compare_numeric(measured: float, op: str, threshold: float) -> bool:
+    fn = _NUMERIC_OPS.get(op)
+    if fn is None:
+        raise ValueError(f"unknown numeric acceptance op {op!r}")
+    return bool(fn(measured, threshold))
+
+
+def _load_json_receipt(rel: str, view: SourceView) -> Any | None:
+    text = view.read(rel) if rel else ""
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+
+def _wired_fact(look: dict[str, Any]) -> dict[str, Any]:
+    invocations = _invocation_sites(look)
+    if invocations:
+        evidence = [
+            _cite(s["file"], s["line"], kind=s.get("kind") or "call", note=s.get("symbol"))
+            for s in invocations
+        ]
+        return {"value": True, "evidence": evidence}
+    defined_file = look["defined_refs"][0]["file"] if look.get("defined_refs") else None
+    defined_line = look["defined_refs"][0]["line"] if look.get("defined_refs") else None
+    if look.get("defined"):
+        note = (
+            "definition exists; no non-test call/subprocess of the implementing "
+            "symbol. A module import is not a call. not wired."
+        )
+    else:
+        note = "no git-tracked definition; not wired"
+    return {
+        "value": False,
+        "evidence": [
+            {
+                "kind": "no_production_caller",
+                "file": defined_file or ((look.get("missing_paths") or [None])[0]),
+                "line": defined_line,
+                "note": note,
+            }
+        ],
+    }
+
+
+def _numeric_acceptance(spec: dict[str, Any], view: SourceView) -> dict[str, Any]:
+    receipt = spec.get("receipt")
+    field = spec.get("field")
+    op = spec.get("op")
+    threshold = spec.get("threshold")
+    base = {
+        "kind": "numeric_acceptance",
+        "file": receipt,
+        "line": None,
+        "field": field,
+        "op": op,
+        "threshold": threshold,
+    }
+    if not receipt or not field or op not in _NUMERIC_OPS or threshold is None:
+        base["note"] = "numeric acceptance spec is incomplete; not accepted"
+        return {"value": False, "evidence": [base]}
+    data = _load_json_receipt(str(receipt), view)
+    if data is None:
+        base["note"] = f"receipt {receipt} missing or not JSON; not accepted"
+        return {"value": False, "evidence": [base]}
+    raw = _dig(data, str(field))
+    if raw is None:
+        base["measured"] = None
+        base["note"] = f"{field} missing in {receipt}; not accepted"
+        return {"value": False, "evidence": [base]}
+    try:
+        measured = float(raw)
+    except (TypeError, ValueError):
+        base["measured"] = raw
+        base["note"] = f"measured {field}={raw!r} is not numeric; not accepted"
+        return {"value": False, "evidence": [base]}
+    try:
+        bar = float(threshold)
+    except (TypeError, ValueError):
+        base["measured"] = measured
+        base["note"] = f"threshold {threshold!r} is not numeric; not accepted"
+        return {"value": False, "evidence": [base]}
+    ok = _compare_numeric(measured, str(op), bar)
+    # Format so a reader (and the FLASH test) sees the real value against the bar.
+    bar_s = str(int(bar)) if float(bar) == int(bar) else str(bar)
+    base["measured"] = measured
+    base["note"] = f"measured {measured} against required {op} {bar_s}"
+    return {"value": ok, "evidence": [base]}
+
+
+def _accepted_fact(probe: dict[str, Any], look: dict[str, Any], view: SourceView) -> dict[str, Any]:
+    """The gate's own acceptance criterion, not 'a receipt on this topic exists'."""
+    spec = probe.get("acceptance")
+    if isinstance(spec, dict) and spec.get("kind") == "numeric":
+        return _numeric_acceptance(spec, view)
+    topic = (look.get("receipts") or [None])[0]
+    note = (
+        "wired is not accepted: no receipt or measurement demonstrates the "
+        "gate's own acceptance criterion. A receipt on the topic is not the bar."
+    )
+    return {
+        "value": False,
+        "evidence": [
+            {
+                "kind": "acceptance_undemonstrated",
+                "file": topic,
+                "line": None,
+                "note": note,
+            }
+        ],
+    }
+
+
+def _iter_citation_refs(entry: dict[str, Any]) -> Iterable[dict[str, Any]]:
+    for key in _CITATION_KEYS:
+        for ref in entry.get(key) or []:
+            if isinstance(ref, dict):
+                yield ref
+    for fact_key in ("wired", "accepted"):
+        fact = entry.get(fact_key)
+        if isinstance(fact, dict):
+            for ref in fact.get("evidence") or []:
+                if isinstance(ref, dict):
+                    yield ref
+
+
+def _line_count_at_commit(rel: str, commit: str, view: SourceView) -> int | None:
+    if not rel or str(rel).startswith("/"):
+        return None
+    if rel in view.overlay:
+        text = view.read(rel)
+        return len(text.splitlines()) if text else 0
+    text = blob_text(commit, rel)
+    if text is None:
+        # Overlay-or-disk view of a path git does not know (should be rare).
+        scanned = view.read(rel)
+        if scanned:
+            return len(scanned.splitlines())
+        return None
+    return len(text.splitlines())
+
+
+def _find_symbol_line(text: str, needle: str | None, hint: int) -> int | None:
+    if not text or not needle:
+        return None
+    hits = [i for i, line in enumerate(text.splitlines(), start=1) if needle in line]
+    if not hits:
+        return None
+    return min(hits, key=lambda i: abs(i - hint))
+
+
+def _bind_entry_citations(entry: dict[str, Any], view: SourceView, commit: str) -> list[str]:
+    """Stamp commit on repo citations; re-resolve lines that sit past EOF.
+
+    Returns remaining out-of-bounds descriptions (empty means clean).
+    """
+    violations: list[str] = []
+    gid = entry.get("id")
+    for ref in _iter_citation_refs(entry):
+        rel = ref.get("file")
+        line = ref.get("line")
+        if not rel or str(rel).startswith("/"):
+            continue
+        ref["commit"] = commit
+        if not isinstance(line, int):
+            continue
+        n = _line_count_at_commit(str(rel), commit, view)
+        if n is None:
+            continue
+        if 1 <= line <= n:
+            continue
+        needle = ref.get("symbol") or ref.get("note")
+        if rel in view.overlay:
+            text = view.read(str(rel))
+        else:
+            text = blob_text(commit, str(rel)) or view.read(str(rel))
+        new_line = _find_symbol_line(text or "", str(needle) if needle else None, line)
+        if new_line is not None and 1 <= new_line <= n:
+            ref["line"] = new_line
+            ref["re_resolved"] = True
+            continue
+        violations.append(
+            f"{gid} {rel}:{line} exceeds {n} lines at {commit}"
+        )
+    return violations
+
+
+def citation_bound_violations(doc: dict[str, Any], view: SourceView | None = None) -> list[str]:
+    """Return descriptions of citations whose line is past EOF at the emitting commit."""
+    view = view or SourceView()
+    commit = doc.get("generated_from_commit") or head_commit()
+    out: list[str] = []
+    for table in (doc.get("gates") or {}, doc.get("genes") or {}):
+        for entry in table.values():
+            for ref in _iter_citation_refs(entry):
+                rel = ref.get("file")
+                line = ref.get("line")
+                if not rel or not isinstance(line, int) or str(rel).startswith("/"):
+                    continue
+                n = _line_count_at_commit(str(rel), ref.get("commit") or commit, view)
+                if n is None:
+                    continue
+                if line < 1 or line > n:
+                    out.append(
+                        f"{entry.get('id')} {rel}:{line} exceeds {n} lines at "
+                        f"{ref.get('commit') or commit}"
+                    )
     return out
 
 
@@ -105,6 +351,11 @@ def _next_upgrade(status: str, *, wake: str | None, callers_needed: str | None, 
             f"wire a non-test call (or CLI subprocess) of "
             f"{callers_needed or 'the implementing symbol'} — an import is not a call"
         )
+    if status == "WIRED":
+        return (
+            "demonstrate the gate's own acceptance criterion — a non-test caller "
+            "is wired, not accepted, and does not produce BUILT"
+        )
     if status == "ABSENT":
         return (
             f"implement {callers_needed or 'the named symbol'} and wire a non-test call of it"
@@ -125,9 +376,18 @@ def _local_status(
     hw_id: str | None,
     hw_probe: dict[str, Any] | None,
     ext: str | None,
+    wired: bool = False,
+    accepted: bool = False,
+    wired_evidence: list[dict[str, Any]] | None = None,
+    accepted_evidence: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[dict[str, Any]], str | None, str | None]:
-    """Return (status, evidence_refs, hardware_blocker, software_blocker)."""
+    """Return (status, evidence_refs, hardware_blocker, software_blocker).
+
+    wired and accepted are orthogonal. BUILT requires both. wired alone is WIRED.
+    """
     evidence: list[dict[str, Any]] = []
+    wired_evidence = list(wired_evidence or [])
+    accepted_evidence = list(accepted_evidence or [])
     if hw_id and hw_probe and not hw_probe.get("present"):
         evidence.append(
             {
@@ -140,12 +400,15 @@ def _local_status(
         )
         if look["defined"]:
             evidence.extend(look["defined_refs"])
-        invocations = _invocation_sites(look)
-        if invocations:
-            evidence.extend(
-                _cite(s["file"], s["line"], kind=s.get("kind") or "call", note=s.get("symbol"))
-                for s in invocations[:8]
-            )
+        if wired_evidence:
+            evidence.extend(wired_evidence[:8])
+        else:
+            invocations = _invocation_sites(look)
+            if invocations:
+                evidence.extend(
+                    _cite(s["file"], s["line"], kind=s.get("kind") or "call", note=s.get("symbol"))
+                    for s in invocations[:8]
+                )
         return "BLOCKED_HARDWARE", evidence, hw_id, None
 
     if not look["defined"]:
@@ -170,13 +433,18 @@ def _local_status(
         return "ABSENT", evidence, None, None
 
     evidence.extend(look["defined_refs"])
-    invocations = _invocation_sites(look)
-    if invocations:
-        evidence.extend(
+    # Load-bearing split: a non-test caller is wired, not BUILT. accepted is
+    # a separate fact. Mutating the next branch to return BUILT on wired
+    # alone must fail test_no_gate_is_built_on_wired_alone.
+    if wired:
+        evidence.extend(wired_evidence or [
             _cite(s["file"], s["line"], kind=s.get("kind") or "call", note=s.get("symbol"))
-            for s in invocations
-        )
-        return "BUILT", evidence, None, None
+            for s in _invocation_sites(look)
+        ])
+        evidence.extend(accepted_evidence)
+        if accepted:
+            return "BUILT", evidence, None, None
+        return "WIRED", evidence, None, None
 
     evidence.append(
         {
@@ -218,6 +486,8 @@ def _local_status(
                 "note": "receipt exists but producer+caller were not both found; not BUILT evidence",
             }
         )
+    if accepted_evidence:
+        evidence.extend(accepted_evidence)
     if ext:
         return "BLOCKED_EXTERNAL", evidence, None, ext
     return "SCAFFOLDED", evidence, None, None
@@ -230,12 +500,23 @@ def _fill_entry(
     look: dict[str, Any],
     hw_cache: dict[str, dict[str, Any]],
     roadmap_file: str,
+    view: SourceView,
 ) -> dict[str, Any]:
     era = probe.get("era") or skeleton.get("era") or "I"
     hw_id = probe.get("hardware_wake")
     hw_probe = hw_cache.get(hw_id) if hw_id else None
+    wired = _wired_fact(look)
+    accepted = _accepted_fact(probe, look, view)
     status, evidence, hw_block, sw_block = _local_status(
-        era=era, look=look, hw_id=hw_id, hw_probe=hw_probe, ext=probe.get("software_blocker")
+        era=era,
+        look=look,
+        hw_id=hw_id,
+        hw_probe=hw_probe,
+        ext=probe.get("software_blocker"),
+        wired=wired["value"],
+        accepted=accepted["value"],
+        wired_evidence=wired["evidence"],
+        accepted_evidence=accepted["evidence"],
     )
     acc = probe.get("acceptance_span") or {}
     entry = dict(skeleton)
@@ -247,6 +528,8 @@ def _fill_entry(
         note="proof-obligation section (not copied)",
     )
     entry["status"] = status
+    entry["wired"] = wired
+    entry["accepted"] = accepted
     entry["evidence_tier"] = EVIDENCE_TIER
     entry["evidence_refs"] = evidence
     entry["code_refs"] = look["defined_refs"]
@@ -403,7 +686,12 @@ def audit(
             raise KeyError(f"APPENDIX O gate {name} has no catalog probe (auditor cannot invent a look-up)")
         look = _look_up(view, probe_row, unique_paths=gate_unique)
         gates[name] = _fill_entry(
-            skeleton=skeleton, probe=probe_row, look=look, hw_cache=hw_cache, roadmap_file=road_file
+            skeleton=skeleton,
+            probe=probe_row,
+            look=look,
+            hw_cache=hw_cache,
+            roadmap_file=road_file,
+            view=view,
         )
     _apply_unreachable(gates)
 
@@ -414,7 +702,21 @@ def audit(
             raise KeyError(f"gene {gid} has no catalog probe")
         look = _look_up(view, probe_row, unique_paths=gene_unique)
         genes[gid] = _fill_entry(
-            skeleton=skeleton, probe=probe_row, look=look, hw_cache=hw_cache, roadmap_file=road_file
+            skeleton=skeleton,
+            probe=probe_row,
+            look=look,
+            hw_cache=hw_cache,
+            roadmap_file=road_file,
+            view=view,
+        )
+
+    emit_commit = head_commit()
+    bound_violations: list[str] = []
+    for entry in list(gates.values()) + list(genes.values()):
+        bound_violations.extend(_bind_entry_citations(entry, view, emit_commit))
+    if bound_violations:
+        raise AssertionError(
+            "citation(s) out of bounds at emit:\n" + "\n".join(bound_violations)
         )
 
     status_counts = Counter(g["status"] for g in gates.values())
@@ -438,16 +740,19 @@ def audit(
         "version": VERSION,
         "purpose": (
             "Machine-readable capability graph for H-ROADMAP.md. Status is derived "
-            "from callers/tests/receipts/hardware probes, never self-report."
+            "from callers/tests/receipts/hardware probes, never self-report. "
+            "wired and accepted are orthogonal facts; BUILT requires both."
         ),
         "law": (
             "A capability nothing calls does not exist. Grep for call sites of the "
             "implementing symbol, not module imports, not definitions. Importing a "
-            "module is not calling a capability."
+            "module is not calling a capability. A non-test caller is wired, not "
+            "accepted. BUILT requires wired AND accepted. wired alone is WIRED."
         ),
         "evidence_tier": EVIDENCE_TIER,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "generated_by": "tools/roadmap/auditor.py",
+        "generated_from_commit": emit_commit,
         "roadmap": {
             "path": parsed["roadmap_path"],
             "hash": parsed["roadmap_hash"],
@@ -461,6 +766,8 @@ def audit(
             "gates_by_status": dict(status_counts),
             "genes_by_status": dict(gene_counts),
             "built_gates": len(built),
+            "wired_gates": sum(1 for g in gates.values() if (g.get("wired") or {}).get("value")),
+            "accepted_gates": sum(1 for g in gates.values() if (g.get("accepted") or {}).get("value")),
         },
         "gates": gates,
         "genes": genes,
@@ -473,10 +780,13 @@ def audit(
             "STATIC source analysis. Definitions via git cat-file; callers via "
             "tools.future.capability_reachability AST Call/subprocess helpers over "
             "git-backed text (sparse-checkout safe). kind=import never justifies "
-            "BUILT (SCAFFOLDED at most). Name-only matches are weak_signal and never "
+            "wired (SCAFFOLDED at most). Name-only matches are weak_signal and never "
             "move status. Subprocess counts only an exact CLI path, not a suffix of "
-            "another tree. Receipts are citations only. Hardware presence is an "
-            "inventory probe, not a performance measurement."
+            "another tree. Receipts are citations only unless a numeric acceptance "
+            "spec compares the measured value against the stated bar. Hardware "
+            "presence is an inventory probe, not a performance measurement. "
+            "BUILT requires wired AND accepted; wired alone is WIRED. Citations "
+            "are bound to the emitting commit and re-resolved if a line is past EOF."
         ),
     }
     return doc

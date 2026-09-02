@@ -21,6 +21,20 @@ def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     )
 
 
+def head_commit() -> str:
+    return _git("rev-parse", "HEAD").stdout.strip()
+
+
+def blob_text(commit: str, rel: str) -> str | None:
+    """File text at `commit:rel`, or None if that blob does not exist."""
+    if not commit or not rel:
+        return None
+    cp = _git("cat-file", "-p", f"{commit}:{rel}", check=False)
+    if cp.returncode != 0:
+        return None
+    return cp.stdout
+
+
 class SourceView:
     """Readable snapshot of HEAD plus an optional overlay used by mutation checks."""
 

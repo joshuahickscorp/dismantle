@@ -7,14 +7,16 @@ tools.future.capability_reachability), tests, receipts as citations only, and
 hardware presence probes.
 
 A definition is not a capability. A module import is not a call. A receipt is
-not evidence that anything runs.
+not evidence that anything runs. A non-test caller is wired, not accepted.
+BUILT requires both.
 """
 from __future__ import annotations
 
 SCHEMA = "hawking.roadmap.capability_graph.v1"
-VERSION = 2
+VERSION = 3
 ALLOWED_STATUSES = (
     "BUILT",
+    "WIRED",
     "SCAFFOLDED",
     "ABSENT",
     "BLOCKED_HARDWARE",

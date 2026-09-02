@@ -194,6 +194,20 @@ def test_missing_part_category_is_refused_not_defaulted():
         ce.cost(cand)
 
 
+def test_missing_representation_category_is_refused():
+    cand = _inc()
+    del cand["representation"]
+    with pytest.raises(ce.CompleteEbpwRefused, match="missing"):
+        ce.cost(cand)
+
+
+def test_missing_model_specific_code_category_is_refused():
+    cand = _inc()
+    del cand["model_specific_code"]
+    with pytest.raises(ce.CompleteEbpwRefused, match="missing"):
+        ce.cost(cand)
+
+
 def test_empty_generators_list_is_explicit_and_ok():
     cand = _inc()
     assert cand["generators"] == []
@@ -244,6 +258,50 @@ def test_generator_codebook_and_lookup_table_all_bill():
     assert row["versus"]["ms_saved"] < 0.0
     names = {p["name"] for p in row["parts"]}
     assert {"block_generator", "codebook", "lookup_table"} <= names
+
+
+def test_unbilled_component_is_refused():
+    """Hidden-free-information guard: a part-like sidecar must not skip billing."""
+    cand = _inc()
+    cand["sidecar_codebook"] = [
+        {
+            "name": "hidden_free_codebook",
+            "bytes": 1_000,
+            "stream_class": ce.STREAM_WEIGHT_CODES,
+        }
+    ]
+    with pytest.raises(ce.CompleteEbpwRefused, match="unbilled component|hidden free"):
+        ce.cost(cand)
+
+
+def test_representation_and_model_specific_code_bill():
+    inc = _inc()
+    cand = copy.deepcopy(inc)
+    cand["id"] = "family_payload_and_decoder"
+    cand["representation"] = [
+        {
+            "name": "family_codes",
+            "bytes": 6_000,
+            "stream_class": ce.STREAM_WEIGHT_CODES,
+        }
+    ]
+    cand["model_specific_code"] = [
+        {
+            "name": "decoder_stub",
+            "bytes": 2_000,
+            "stream_class": ce.STREAM_BROADCAST_AUX,
+        }
+    ]
+    cand["stated_total_bytes"] = int(inc["stated_total_bytes"]) + 8_000
+    row = ce.cost(cand, versus=inc)
+    assert row["versus"]["bytes_saved"] == -8_000
+    by_name = {p["name"]: p for p in row["parts"]}
+    assert by_name["family_codes"]["bytes"] == 6_000
+    assert by_name["family_codes"]["ms"] > 0.0
+    assert by_name["decoder_stub"]["bytes"] == 2_000
+    assert by_name["decoder_stub"]["ms"] == 0.0
+    assert by_name["family_codes"]["category"] == "representation"
+    assert by_name["decoder_stub"]["category"] == "model_specific_code"
 
 
 def test_residual_and_runtime_aux_bill():

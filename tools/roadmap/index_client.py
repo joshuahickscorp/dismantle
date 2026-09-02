@@ -184,9 +184,30 @@ def module_name_of_rel(rel: str) -> str:
     return ".".join(parts)
 
 
-def _resolved_from_modules(importer_rel: str, imp: dict[str, Any]) -> list[str]:
+def sibling_rel(importer_rel: str, stem: str) -> str:
+    """Repo-relative path of `stem.py` next to `importer_rel`."""
+    parent = importer_rel.rsplit("/", 1)[0] if "/" in importer_rel else ""
+    if parent in ("", "."):
+        return f"{stem}.py"
+    return f"{parent}/{stem}.py"
+
+
+def _known_has(rel: str, known_files: set[str] | frozenset[str] | None) -> bool:
+    """Does `rel` exist in the source of truth (HEAD dump, never the worktree)."""
+    if known_files is not None:
+        return rel in known_files
+    from tools.roadmap.gitfs import _git
+
+    return _git("cat-file", "-e", f"HEAD:{rel}", check=False).returncode == 0
+
+
+def _resolved_from_modules(
+    importer_rel: str,
+    imp: dict[str, Any],
+    *,
+    known_files: set[str] | frozenset[str] | None = None,
+) -> list[str]:
     """Port of tools.future.capability_reachability._resolved_from_modules."""
-    importer = REPO / importer_rel
     bases: list[str] = []
     level = int(imp.get("level") or 0)
     if imp.get("form") == "from" and level > 0:
@@ -206,23 +227,21 @@ def _resolved_from_modules(importer_rel: str, imp: dict[str, Any]) -> list[str]:
         if mod:
             bases.append(mod)
             if "." not in mod:
-                sib = importer.parent / f"{mod}.py"
-                if sib.is_file() and sib != importer:
-                    try:
-                        rel = sib.resolve().relative_to(REPO).as_posix()
-                    except ValueError:
-                        rel = str(sib)
-                    bases.append(module_name_of_rel(rel))
+                sib = sibling_rel(importer_rel, mod)
+                if sib != importer_rel and _known_has(sib, known_files):
+                    bases.append(module_name_of_rel(sib))
     return bases
 
 
 def import_targets_and_binds(
-    importer_rel: str, imp: dict[str, Any]
+    importer_rel: str,
+    imp: dict[str, Any],
+    *,
+    known_files: set[str] | frozenset[str] | None = None,
 ) -> tuple[list[str], list[tuple[str, str]]]:
     """Port of CR import-target + bound_names construction for one statement."""
     targets: list[str] = []
     binds: list[tuple[str, str]] = []
-    importer = REPO / importer_rel
     if imp.get("form") == "import":
         for alias in imp.get("names") or []:
             name = alias.get("name") or ""
@@ -230,17 +249,14 @@ def import_targets_and_binds(
                 continue
             asname = alias.get("asname")
             targets.append(name)
-            sib = importer.parent / (name.split(".")[0] + ".py")
-            if "." not in name and sib.is_file() and sib != importer:
-                try:
-                    rel = sib.resolve().relative_to(REPO).as_posix()
-                except ValueError:
-                    rel = str(sib)
-                targets.append(module_name_of_rel(rel))
+            if "." not in name:
+                sib = sibling_rel(importer_rel, name.split(".")[0])
+                if sib != importer_rel and _known_has(sib, known_files):
+                    targets.append(module_name_of_rel(sib))
             local = asname or name.split(".")[0]
             binds.append((local, name))
     else:
-        for mod in _resolved_from_modules(importer_rel, imp):
+        for mod in _resolved_from_modules(importer_rel, imp, known_files=known_files):
             targets.append(mod)
             for alias in imp.get("names") or []:
                 aname = alias.get("name") or ""

@@ -1,7 +1,9 @@
 """Git-backed source view.
 
 This worktree is a sparse checkout. A path missing from disk is not evidence
-the file does not exist. Reads go: overlay -> working tree -> `git show HEAD`.
+the file does not exist. Default reads go: overlay -> HEAD blob. Dirty
+working-tree bytes are invisible unless SourceView(source='worktree') is
+constructed explicitly.
 """
 from __future__ import annotations
 
@@ -36,9 +38,20 @@ def blob_text(commit: str, rel: str) -> str | None:
 
 
 class SourceView:
-    """Readable snapshot of HEAD plus an optional overlay used by mutation checks."""
+    """Readable snapshot of HEAD plus an optional overlay used by mutation checks.
 
-    def __init__(self) -> None:
+    `source` is the file source of truth. Default ``head``: commit blobs, never
+    the working tree. Pass ``source='worktree'`` only for an explicit
+    working-tree view (overlay still wins).
+    """
+
+    def __init__(self, *, source: str = "head") -> None:
+        raw = (source or "head").strip().lower()
+        self.source = (
+            "worktree"
+            if raw in {"worktree", "working-tree", "working_tree", "disk", "wt"}
+            else "head"
+        )
         self.overlay: dict[str, str] = {}
         self._cache: dict[str, str] = {}
         self._exists_cache: dict[str, bool] = {}
@@ -47,8 +60,16 @@ class SourceView:
 
     def tracked_py(self) -> list[str]:
         if self._py_files is None:
-            out = _git("ls-files", "*.py").stdout.splitlines()
-            self._py_files = [line for line in out if line and "__pycache__" not in line]
+            if self.source == "head":
+                out = _git("ls-tree", "-r", "--name-only", "HEAD").stdout.splitlines()
+                self._py_files = [
+                    line
+                    for line in out
+                    if line.endswith(".py") and line and "__pycache__" not in line
+                ]
+            else:
+                out = _git("ls-files", "*.py").stdout.splitlines()
+                self._py_files = [line for line in out if line and "__pycache__" not in line]
         files = list(self._py_files)
         for rel in self.overlay:
             if rel.endswith(".py") and rel not in files:
@@ -60,10 +81,11 @@ class SourceView:
             return True
         if rel in self._exists_cache:
             return self._exists_cache[rel]
-        disk = REPO / rel
-        if disk.is_file():
-            self._exists_cache[rel] = True
-            return True
+        if self.source != "head":
+            disk = REPO / rel
+            if disk.is_file():
+                self._exists_cache[rel] = True
+                return True
         cp = _git("cat-file", "-e", f"HEAD:{rel}", check=False)
         present = cp.returncode == 0
         self._exists_cache[rel] = present
@@ -74,15 +96,13 @@ class SourceView:
             return self.overlay[rel]
         if rel in self._cache:
             return self._cache[rel]
-        disk = REPO / rel
-        if disk.is_file():
-            text = disk.read_text(encoding="utf-8", errors="replace")
-        else:
-            cp = _git("show", f"HEAD:{rel}", check=False)
-            if cp.returncode != 0:
-                text = ""
-            else:
-                text = cp.stdout
+        if self.source != "head":
+            disk = REPO / rel
+            if disk.is_file():
+                text = disk.read_text(encoding="utf-8", errors="replace")
+                self._cache[rel] = text
+                return text
+        text = blob_text("HEAD", rel) or ""
         self._cache[rel] = text
         return text
 

@@ -621,9 +621,8 @@ pub fn collect_reachability_facts(opts: &CollectOptions) -> Result<ReachabilityD
 
     let commit_sha = git_rev_parse(&opts.root, &opts.commit);
     let files = if let Some(sha) = &commit_sha {
-        git_ls_tree_py(&opts.root, sha).ok_or_else(|| {
-            HideError::Storage(format!("git ls-tree {} failed", sha))
-        })?
+        git_ls_tree_py(&opts.root, sha)
+            .ok_or_else(|| HideError::Storage(format!("git ls-tree {} failed", sha)))?
     } else {
         walk_py(&opts.root)
     };
@@ -1052,11 +1051,7 @@ fn walk_py(root: &Path) -> Vec<String> {
     out
 }
 
-fn load_sources(
-    root: &Path,
-    rels: &[String],
-    commit: Option<&str>,
-) -> HashMap<String, String> {
+fn load_sources(root: &Path, rels: &[String], commit: Option<&str>) -> HashMap<String, String> {
     if let Some(commit) = commit {
         let mut out = git_cat_file_batch(root, commit, rels);
         for rel in rels {
@@ -1421,6 +1416,45 @@ mod tests {
             dump.calls.iter().all(|c| c.line <= 2),
             "citation past HEAD blob: {:?}",
             dump.calls
+        );
+    }
+
+    #[test]
+    fn sibling_import_resolves_from_head_listing_when_file_absent_from_disk() {
+        let tmp = scratch_dir();
+        let root = tmp.0.as_path();
+        init_git_repo(root);
+        fs::create_dir_all(root.join("pkg")).unwrap();
+        fs::write(root.join("pkg/mod.py"), "from _common import REPO\n").unwrap();
+        fs::write(root.join("pkg/_common.py"), "REPO = 1\n").unwrap();
+        assert!(git_in(root, &["add", "-A"]).status.success());
+        assert!(git_in(root, &["commit", "-m", "base"]).status.success());
+        fs::remove_file(root.join("pkg/_common.py")).unwrap();
+
+        let cache = root.join("cache");
+        let opts = CollectOptions::new(root).with_cache_dir(&cache);
+        let dump = collect_reachability_facts(&opts).unwrap();
+        assert!(
+            dump.files.iter().any(|f| f == "pkg/_common.py"),
+            "HEAD blob must still be listed: {:?}",
+            dump.files
+        );
+        let targets: Vec<&str> = dump
+            .import_sites
+            .iter()
+            .filter_map(|(k, sites)| {
+                if sites.iter().any(|s| s.file == "pkg/mod.py") {
+                    Some(k.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert!(
+            targets
+                .iter()
+                .any(|t| *t == "pkg._common" || t.starts_with("pkg._common.")),
+            "sibling import must resolve via ls-tree known_files, not disk: {targets:?}"
         );
     }
 }

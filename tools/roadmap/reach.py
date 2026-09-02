@@ -553,11 +553,14 @@ def _scan_probe_index(
 
     import_sites: dict[str, list[dict[str, Any]]] = {}
     bound_names: dict[str, list[tuple[str, str]]] = {}
+    known_files = frozenset(dump.get("files") or {}) | frozenset(view.overlay)
     for rel in rels:
         ff = index_client.file_facts(dump, rel) or {}
         binds: list[tuple[str, str]] = []
         for imp in ff.get("imports") or []:
-            targets, b = index_client.import_targets_and_binds(rel, imp)
+            targets, b = index_client.import_targets_and_binds(
+                rel, imp, known_files=known_files
+            )
             line = int(imp.get("line") or 0)
             site = {"file": rel, "line": line, "kind": "import"}
             for t in targets:

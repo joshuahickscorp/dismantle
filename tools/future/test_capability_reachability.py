@@ -12,11 +12,13 @@ exists to catch.
 """
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from tools.future import capability_reachability as cr
+from tools.future import _common as cr_common
 
 
 # --------------------------------------------------------------------------
@@ -39,6 +41,9 @@ def fixture_repo(tmp_path, monkeypatch):
     cache so fixtures from an earlier test never leak in."""
     monkeypatch.setattr(cr, "REPO", tmp_path)
     cr._TEXT_CACHE.clear()
+    cr._TRACKED_PY = None
+    cr._GIT_CHECKOUT = None
+    cr._REL_MEMO.clear()
     widget = _write(
         tmp_path, "tools/future/widget.py",
         "def gadget():\n    return 1\n",
@@ -302,13 +307,90 @@ def test_repo_index_from_facts_drives_call_sites(fixture_repo):
 
 
 def test_parity_gate_rust_matches_python_on_this_repo():
-    """THE acceptance: identical capability verdicts and call-site evidence."""
-    if cr._find_hawking_index_bin() is None:
-        pytest.skip("hawking-index binary not built")
+    """Both paths over the real repo: identical keys and identical capability objects.
+
+    A missing hawking-index binary must fail this test, not skip it. Skipping
+    is how rust/python divergence (21 verdicts after the indexer moved to HEAD)
+    landed without a red test.
+    """
     report = cr.run_parity()
+    assert report["status"] != "BINARY_MISSING", (
+        "hawking-index binary is required for rust/python parity; "
+        "a skip here would let the analyzers diverge silently again"
+    )
     assert report["status"] == "IDENTICAL", (
         f"parity {report['status']} compared={report.get('compared')} "
+        f"key_sets_equal={report.get('key_sets_equal')} "
         f"diffs={report.get('diffs', [])[:20]}"
     )
+    assert report.get("key_sets_equal") is True
     assert report["compared"] >= 44
     assert report["rust_count"] == report["python_count"] == report["compared"]
+    assert not report.get("diffs")
+
+
+def test_head_source_ignores_dirty_worktree(tmp_path, monkeypatch):
+    """source='head' (default) reads committed blobs; source='worktree' sees dirt.
+
+    This is the named opt-in the assembler exposes. No production caller
+    passes worktree; the parameter exists so the two behaviours cannot be
+    silent variants of the same function.
+    """
+    repo = tmp_path
+    monkeypatch.setattr(cr, "REPO", repo)
+    monkeypatch.setattr(cr_common, "REPO", repo)
+    cr._TEXT_CACHE.clear()
+    cr._TRACKED_PY = None
+    cr._GIT_CHECKOUT = None
+    cr._REL_MEMO.clear()
+
+    def git_in(*args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(repo), *args],
+            check=True,
+            capture_output=True,
+        )
+
+    git_in("init", "-b", "main")
+    git_in("config", "user.email", "r6@test")
+    git_in("config", "user.name", "r6")
+    git_in("config", "commit.gpgsign", "false")
+
+    widget = repo / "tools" / "future" / "widget.py"
+    caller = repo / "tools" / "future" / "caller.py"
+    widget.parent.mkdir(parents=True)
+    widget.write_text("def gadget():\n    return 1\n")
+    caller.write_text(
+        "from tools.future.widget import gadget\n\n"
+        "def use_it():\n    return gadget() + 1\n"
+    )
+    git_in("add", "-A")
+    git_in("commit", "-m", "base")
+
+    caller.write_text(
+        "from tools.future.widget import gadget\n\n"
+        "def use_it():\n    return gadget() + 1\n"
+        "def extra_only_on_disk():\n    return gadget()\n"
+    )
+    (repo / "tools" / "future" / "untracked.py").write_text(
+        "from tools.future.widget import gadget\n\n"
+        "def ghost():\n    return gadget()\n"
+    )
+
+    files = [widget, caller, repo / "tools" / "future" / "untracked.py"]
+    cr._TEXT_CACHE.clear()
+    idx_head = cr.build_repo_index(files=files, source="head")
+    sites_head = cr.find_symbol_call_sites(idx_head, "tools.future.widget", "gadget")
+    head_files = {s.file for s in sites_head}
+    head_lines = {(s.file, s.line) for s in sites_head}
+    assert ("tools/future/caller.py", 4) in head_lines
+    assert ("tools/future/caller.py", 6) not in head_lines
+    assert "tools/future/untracked.py" not in head_files
+
+    cr._TEXT_CACHE.clear()
+    idx_wt = cr.build_repo_index(files=files, source="worktree")
+    sites_wt = cr.find_symbol_call_sites(idx_wt, "tools.future.widget", "gadget")
+    wt_lines = {(s.file, s.line) for s in sites_wt}
+    wt_files = {s.file for s in sites_wt}
+    assert ("tools/future/caller.py", 6) in wt_lines
+    assert "tools/future/untracked.py" in wt_files

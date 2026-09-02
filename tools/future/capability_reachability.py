@@ -21,7 +21,7 @@ hand-typed as a verdict:
 
 Method and its honest limit
 ----------------------------
-Two evidence classes are gathered, over every `git ls-files '*.py'` file:
+Two evidence classes are gathered, over every `git ls-tree -r --name-only HEAD` `*.py` blob:
 
   * IMPORT sites: an AST pass over every file's Import/ImportFrom nodes,
     resolving relative imports and the `sys.path.insert(dirname(__file__));
@@ -79,13 +79,15 @@ from tools.future._common import GIT_TIMEOUT_S, REPO, git, load_json, require_kn
 
 import argparse
 import ast
+import contextvars
 import json
 import re
 import shutil
 import subprocess
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Iterable, Iterator, Mapping, Sequence
 
 RECEIPT = "HCLI_CAPABILITY_REACHABILITY.json"
 SCHEMA = "hawking.future.capability_reachability.v1"
@@ -99,6 +101,73 @@ FIELDS = ("defined", "registered", "resident_visible", "callable", "tested")
 
 RUST_FACTS_SCHEMA = "hawking.index.reachability_facts.v1"
 _TRACKED_PY: tuple[str, frozenset[str]] | None = None
+_GIT_CHECKOUT: tuple[str, bool] | None = None
+
+# Source of truth for file bytes and the file list. HEAD blobs match the Rust
+# indexer. `worktree` exists for callers that opt in explicitly; it is never
+# the default. A tmpdir that is not this repo's git toplevel always reads the
+# filesystem, because there is no HEAD to consult.
+SOURCE_HEAD = "head"
+SOURCE_WORKTREE = "worktree"
+DEFAULT_SOURCE = SOURCE_HEAD
+_source_var: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "capability_reachability_source", default=DEFAULT_SOURCE
+)
+
+
+def current_source() -> str:
+    raw = (_source_var.get() or DEFAULT_SOURCE).strip().lower()
+    if raw in {"worktree", "working-tree", "working_tree", "disk", "wt"}:
+        return SOURCE_WORKTREE
+    return SOURCE_HEAD
+
+
+@contextmanager
+def using_source(source: str) -> Iterator[None]:
+    """Pin the analyzer to HEAD blobs or working-tree bytes.
+
+    Named and explicit: passing ``source="worktree"`` is the only way to see
+    uncommitted edits. Default is HEAD.
+    """
+    token = _source_var.set(source)
+    global _TRACKED_PY
+    _TRACKED_PY = None
+    try:
+        yield
+    finally:
+        _source_var.reset(token)
+        _TRACKED_PY = None
+
+
+def repo_is_git_checkout() -> bool:
+    """True only when `REPO` itself is the git work tree, not a tmpdir inside one."""
+    global _GIT_CHECKOUT
+    key = str(REPO)
+    if _GIT_CHECKOUT is not None and _GIT_CHECKOUT[0] == key:
+        return _GIT_CHECKOUT[1]
+    out = git("rev-parse", "--show-toplevel")
+    ok = False
+    if out:
+        try:
+            ok = Path(out).resolve() == REPO.resolve()
+        except OSError:
+            ok = False
+    _GIT_CHECKOUT = (key, ok)
+    return ok
+
+
+def _list_py_rels(source: str) -> frozenset[str]:
+    if source == SOURCE_HEAD and repo_is_git_checkout():
+        out = git("ls-tree", "-r", "--name-only", "HEAD")
+        return frozenset(
+            line
+            for line in out.splitlines()
+            if line.endswith(".py") and line and "__pycache__" not in line
+        )
+    out = git("ls-files", "*.py")
+    return frozenset(
+        line for line in out.splitlines() if line and "__pycache__" not in line
+    )
 
 
 # --------------------------------------------------------------------------
@@ -106,33 +175,33 @@ _TRACKED_PY: tuple[str, frozenset[str]] | None = None
 # --------------------------------------------------------------------------
 
 
-def repo_py_files() -> list[Path]:
-    """Every git-tracked *.py file. Derived from git, never a hand roster."""
-    out = git("ls-files", "*.py")
-    return sorted(
-        REPO / line for line in out.splitlines() if line and "__pycache__" not in line
-    )
+def repo_py_files(*, source: str | None = None) -> list[Path]:
+    """Every HEAD `*.py` blob (default), or the index if `source='worktree'`."""
+    if source is not None:
+        with using_source(source):
+            return [REPO / r for r in sorted(tracked_py_set())]
+    return [REPO / r for r in sorted(tracked_py_set())]
 
 
 def tracked_py_set() -> frozenset[str]:
-    """Repo-relative git-tracked `*.py` paths. Cached per process, keyed by REPO."""
+    """Repo-relative `*.py` paths for the current source. Cached per (REPO, source)."""
     global _TRACKED_PY
-    key = str(REPO)
+    key = f"{REPO}\0{current_source()}"
     if _TRACKED_PY is None or _TRACKED_PY[0] != key:
-        _TRACKED_PY = (
-            key,
-            frozenset(
-                line for line in git("ls-files", "*.py").splitlines()
-                if line and "__pycache__" not in line
-            ),
-        )
+        _TRACKED_PY = (key, _list_py_rels(current_source()))
     return _TRACKED_PY[1]
 
 
-def source_exists(path: Path) -> bool:
-    """On disk, or git-tracked but sparse-missing. Untracked on-disk still counts."""
-    if path.is_file():
-        return True
+def source_exists(path: Path, *, source: str | None = None) -> bool:
+    """HEAD blob exists (default). Untracked on-disk files do not count.
+
+    `source='worktree'` also accepts a real file on disk (the explicit
+    working-tree view). A non-git REPO (test tmpdir) always accepts disk.
+    """
+    src = source if source is not None else current_source()
+    if src == SOURCE_WORKTREE or not repo_is_git_checkout():
+        if path.is_file():
+            return True
     return rel(path) in tracked_py_set()
 
 
@@ -187,19 +256,40 @@ def _prefetch_git_blobs(paths: Sequence[Path]) -> None:
         _TEXT_CACHE[path] = blob.decode("utf-8", errors="replace")
 
 
-def prefetch_texts(files: Sequence[Path]) -> None:
-    missing: list[Path] = []
-    for path in files:
-        if path in _TEXT_CACHE:
-            continue
-        if path.is_file():
-            try:
-                _TEXT_CACHE[path] = path.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                _TEXT_CACHE[path] = ""
-        else:
-            missing.append(path)
-    _prefetch_git_blobs(missing)
+def prefetch_texts(files: Sequence[Path], *, source: str | None = None) -> None:
+    """Load file text. Default is HEAD blobs, matching hawking-index.
+
+    `source='worktree'` reads on-disk bytes when the file exists (dirty
+    edits visible) and falls back to HEAD for sparse-missing paths.
+    A non-git REPO always reads the filesystem.
+    """
+    token = _source_var.set(source) if source is not None else None
+    try:
+        pending = [p for p in files if p not in _TEXT_CACHE]
+        if not pending:
+            return
+        src = current_source()
+        if src == SOURCE_HEAD and repo_is_git_checkout():
+            _prefetch_git_blobs(pending)
+            for path in pending:
+                _TEXT_CACHE.setdefault(path, "")
+            return
+        missing: list[Path] = []
+        for path in pending:
+            if path.is_file():
+                try:
+                    _TEXT_CACHE[path] = path.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    _TEXT_CACHE[path] = ""
+            else:
+                missing.append(path)
+        if missing:
+            _prefetch_git_blobs(missing)
+            for path in missing:
+                _TEXT_CACHE.setdefault(path, "")
+    finally:
+        if token is not None:
+            _source_var.reset(token)
 
 
 def read_text(path: Path) -> str:
@@ -331,9 +421,18 @@ class RepoIndex:
         self.import_sites.setdefault(target, []).append(site)
 
 
-def build_repo_index(files: Sequence[Path] | None = None) -> RepoIndex:
-    idx = RepoIndex(files=list(files) if files is not None else repo_py_files())
-    prefetch_texts(idx.files)
+def build_repo_index(
+    files: Sequence[Path] | None = None, *, source: str = DEFAULT_SOURCE
+) -> RepoIndex:
+    with using_source(source):
+        idx = RepoIndex(files=list(files) if files is not None else repo_py_files())
+        prefetch_texts(idx.files)
+        _fill_repo_index(idx)
+        idx.facts_source = "python-ast"
+        return idx
+
+
+def _fill_repo_index(idx: RepoIndex) -> None:
     for path in idx.files:
         text = read_text(path)
         if not text:
@@ -363,7 +462,6 @@ def build_repo_index(files: Sequence[Path] | None = None) -> RepoIndex:
                         local = alias.asname or alias.name.split(".")[0]
                         binds.append((local, alias.name))
         idx.bound_names[rel(path)] = binds
-    return idx
 
 
 def find_symbol_call_sites(
@@ -1034,17 +1132,36 @@ _ALREADY_DETAILED_STEMS = frozenset(
 
 
 def discover_future_modules(future_dir: Path | None = None) -> list[Path]:
+    """`tools/future/*.py` sidecar modules from the current source of truth.
+
+    HEAD listing (default) matches rust `git ls-tree`; a filesystem glob would
+    miss sparse-missing files and would credit untracked files rust cannot see.
+    """
+    prefix = FUTURE_DIR_REL + "/"
+    out: list[Path] = []
+    for rp in sorted(tracked_py_set()):
+        if not rp.startswith(prefix) or not rp.endswith(".py"):
+            continue
+        rest = rp[len(prefix) :]
+        if "/" in rest:
+            continue
+        name = rest
+        if name in ("__init__.py", "_common.py") or name.startswith("test_"):
+            continue
+        out.append(REPO / rp)
+    if out:
+        return out
     base = future_dir if future_dir is not None else REPO / FUTURE_DIR_REL
     if not base.is_dir():
         return []
-    out = []
+    fallback = []
     for p in sorted(base.glob("*.py")):
         if p.name in ("__init__.py", "_common.py"):
             continue
         if p.name.startswith("test_"):
             continue
-        out.append(p)
-    return out
+        fallback.append(p)
+    return fallback
 
 
 def build_sidecar_sweep(idx: RepoIndex, registered_future_tools: frozenset[str]) -> list[dict[str, Any]]:
@@ -1178,18 +1295,28 @@ def _load_rust_facts() -> dict[str, Any] | None:
     return facts
 
 
-def assemble() -> dict[str, Any]:
-    facts = _load_rust_facts()
-    if facts is not None:
-        idx = repo_index_from_facts(facts)
-        prefetch_texts([REPO / TOOL_REGISTRY_REL])
+def assemble(*, source: str = DEFAULT_SOURCE) -> dict[str, Any]:
+    """Build the capability map.
+
+    `source` is the file source of truth. Default ``head``: commit blobs,
+    matching hawking-index. Pass ``source='worktree'`` only for an explicit
+    working-tree view; that path does not use the rust dump (the dump is HEAD).
+    """
+    with using_source(source):
+        if current_source() == SOURCE_HEAD:
+            facts = _load_rust_facts()
+            if facts is not None:
+                idx = repo_index_from_facts(facts)
+                prefetch_texts([REPO / TOOL_REGISTRY_REL])
+                doc = _assemble_from_index(idx)
+                doc["facts_source"] = "hawking-index"
+                doc["source"] = SOURCE_HEAD
+                return doc
+        idx = build_repo_index(source=current_source())
         doc = _assemble_from_index(idx)
-        doc["facts_source"] = "hawking-index"
+        doc["facts_source"] = "python-ast"
+        doc["source"] = current_source()
         return doc
-    idx = build_repo_index()
-    doc = _assemble_from_index(idx)
-    doc["facts_source"] = "python-ast"
-    return doc
 
 
 def _assemble_from_index(idx: RepoIndex) -> dict[str, Any]:
@@ -1243,9 +1370,9 @@ def _assemble_from_index(idx: RepoIndex) -> dict[str, Any]:
         "DEAD_SURFACE": dead,
         "method": (
             "Static source analysis only (AST import/call graph + quoted-"
-            "literal search) over every git-tracked *.py file. Cannot see "
-            "runtime-only dispatch (a model-proposed WorkUnit.tool string); "
-            "see the module docstring's 'Hard limit' section."
+            "literal search) over every HEAD `*.py` blob (`git ls-tree`). "
+            "Cannot see runtime-only dispatch (a model-proposed WorkUnit.tool "
+            "string); see the module docstring's 'Hard limit' section."
         ),
         "negative_findings": [
             f"{counts['typed_tools_dead']} of {counts['typed_tools']} typed tools have "
@@ -1337,7 +1464,7 @@ def _capability_view(cap: Mapping[str, Any]) -> dict[str, Any]:
 def compare_capability_maps(
     rust_caps: Mapping[str, Any], python_caps: Mapping[str, Any]
 ) -> list[str]:
-    """Exact-equality diffs. Empty list means IDENTICAL."""
+    """Exact-equality diffs of the full capability objects. Empty list means IDENTICAL."""
     diffs: list[str] = []
     rust_keys = set(rust_caps)
     py_keys = set(python_caps)
@@ -1348,29 +1475,16 @@ def compare_capability_maps(
     if only_py:
         diffs.append(f"keys only in python ({len(only_py)}): {only_py[:20]}")
     for name in sorted(rust_keys & py_keys):
-        a = _capability_view(rust_caps[name])
-        b = _capability_view(python_caps[name])
+        a = rust_caps[name]
+        b = python_caps[name]
         if a == b:
             continue
-        for field_name in (
-            "defined",
-            "registered",
-            "resident_visible",
-            "callable",
-            "tested",
-        ):
-            if a[field_name] != b[field_name]:
+        fields = sorted(set(a) | set(b))
+        for field_name in fields:
+            if a.get(field_name) != b.get(field_name):
                 diffs.append(
-                    f"{name}.{field_name}: rust={a[field_name]!r} python={b[field_name]!r}"
+                    f"{name}.{field_name}: rust={a.get(field_name)!r} python={b.get(field_name)!r}"
                 )
-        if a["call_sites"] != b["call_sites"]:
-            diffs.append(
-                f"{name}.call_sites: rust={a['call_sites']!r} python={b['call_sites']!r}"
-            )
-        if a["test_only_sites"] != b["test_only_sites"]:
-            diffs.append(
-                f"{name}.test_only_sites: rust={a['test_only_sites']!r} python={b['test_only_sites']!r}"
-            )
     return diffs
 
 
@@ -1412,6 +1526,7 @@ def run_parity() -> dict[str, Any]:
         "compared": len(py_caps),
         "rust_count": len(rust_caps),
         "python_count": len(py_caps),
+        "key_sets_equal": set(rust_caps) == set(py_caps),
         "rust_facts_source": rust_doc.get("facts_source"),
         "python_facts_source": py_doc.get("facts_source"),
         "diffs": diffs,

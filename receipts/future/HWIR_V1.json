@@ -1,7 +1,7 @@
 {
  "atlas": {
   "git_head_has_file": false,
-  "on_disk": true,
+  "on_disk": false,
   "path": "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
   "recovered_fingerprint": "e763623e8a4ddcfc8350d6b5f680284a23db68f8bfbca53428e258d24adfc2ab",
   "recovered_from": "parent checkout /Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
@@ -30,12 +30,12 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T05:34:51Z",
+  "recorded_at": "2026-09-02T07:04:07Z",
   "recorded_by": "tools/future/hwir.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
- "branch": "odyssey-i",
+ "branch": "grok/s2-hwir-pluggable-lowering-target-20260902-025130",
  "claim_boundary": "PREHARDWARE sidecar HWIR artifact. No FPGA board, bitstream, timing, or HARDWARE_MEASURED number. Resource figures are ESTIMATES. Cycle figures are APPROXIMATIONS, not measurements.",
  "evidence_tiers_illegal": [
   "HARDWARE_MEASURED"
@@ -71,21 +71,24 @@
   "U50-family variants (U50/U50C/U50DD/U50LV) selectable with per-field provenance or explicit UNPINNED",
   "CarrierEnvelope DOWNGRADES a DeviceProfile (PCIe beat, power-derated resources); constrained carrier refuses a brochure-fit kernel",
   "no code path emits HARDWARE_MEASURED",
+  "pluggable LoweringTarget interface with equal-citizen HLS-style and Rust-HDL-style source emitters",
+  "each lowering target names the primitives it cannot express and the HDL still required",
   "sealed predictions: content-hashed, refused without a falsification condition, keyed to U50_PRESENT",
   "synthetic-arrival rehearsal grades divergent predictions FALSIFIED and names the implicated coefficient; not an arrival",
   "tampered sealed predictions are detected and rejected"
  ],
- "head": "fde672fecfb54dd26ff22f7c804e25f65bd19b02",
+ "head": "c8f7ab8de9031bf44a85f99820a465cd395c9e71",
  "hwir_hypotheses": [
   {
    "behavior_id": "move_or_recompute",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "costed_dependency_queries",
@@ -95,21 +98,22 @@
    "primitive": "MoveOrRecompute",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "persistent_physical_region",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "persistent-pipeline",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy.process": "long_lived_executor",
@@ -119,21 +123,22 @@
    "primitive": "PersistentPhysicalRegion",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "fused_decode_compute",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "spatial_region",
+   "ir_node_kind": "representation-decoder",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "projection_plus_decode",
@@ -143,21 +148,22 @@
    "primitive": "FusedDecodeCompute",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "local_state_machine",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "spatial_region",
+   "ir_node_kind": "state",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy": "fixed_state_transitions",
@@ -167,21 +173,22 @@
    "primitive": "LocalStateMachine",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "graph_replay",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "persistent-pipeline",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy.dynamic_slots": [
@@ -195,21 +202,22 @@
    "primitive": "GraphReplay",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "layout_algebra",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "tile_and_lane_mapping",
@@ -219,21 +227,22 @@
    "primitive": "LayoutTransform",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "static_dynamic_skeleton",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "precomputed",
@@ -243,21 +252,22 @@
    "primitive": "ConditionalPhysicalProgram",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "stationary_representation",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "memory",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "memory": "tier_is_executable_identity",
@@ -267,21 +277,22 @@
    "primitive": "StationaryRepresentation",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "semantic_transport",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "dma-transport",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "typed_transport_edges",
@@ -291,21 +302,22 @@
    "primitive": "SemanticTransportEdge",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "collective_region",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "reduction",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "semantic_transport",
@@ -315,21 +327,22 @@
    "primitive": "CollectiveRegion",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "async_double_buffer",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "memory",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy": "overlap_when_measured",
@@ -339,21 +352,22 @@
    "primitive": "DoubleBufferedTile",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "spatial_local_pipeline",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "spatial_region",
+   "ir_node_kind": "persistent-pipeline",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "spatial_regions",
@@ -363,21 +377,22 @@
    "primitive": "SpatialPipeline",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "direct_routed_accumulate",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "route_then_native_expert",
@@ -387,21 +402,22 @@
    "primitive": "DirectRoutedAccumulate",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "sparse_conditional_execution",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "conditional_regions",
@@ -411,21 +427,22 @@
    "primitive": "SparseSkip",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "npu_regular_island",
    "buffers": [
-    "resident_representation",
-    "token_activation",
     "partial_reduction",
-    "persistent_state"
+    "persistent_state",
+    "resident_representation",
+    "token_activation"
    ],
    "hwir_node_kind": "dataflow_region",
+   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "explicit_transfer_edges",
@@ -435,14 +452,14 @@
    "primitive": "ConditionalPhysicalProgram",
    "semantic_edges": [
     "activation",
-    "state",
     "compact_representation",
-    "partial_reduction"
+    "partial_reduction",
+    "state"
    ],
    "status": "CANDIDATE"
   }
  ],
- "hypotheses_source": "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
+ "hypotheses_source": "embedded_recovery_atlas_absent_from_worktree",
  "in_transit_transforms": [
   "identity",
   "quantize",
@@ -764,12 +781,227 @@
    "ok": true
   }
  },
+ "lowering_targets": {
+  "interface": "LoweringTarget",
+  "preferred": null,
+  "qgemv": {
+   "hls_style": {
+    "artifact_filenames": [
+     "qgemv_hls_style.cpp"
+    ],
+    "cannot_express": [
+     "AsyncPrefetch",
+     "ConditionalPhysicalProgram",
+     "DirectRoutedAccumulate",
+     "DoubleBufferedTile",
+     "GraphReplay",
+     "LayoutTransform",
+     "LocalStateMachine",
+     "MemoryTierIdentity",
+     "MoveOrRecompute",
+     "PersistentPhysicalRegion",
+     "SparseSkip",
+     "SpatialPipeline",
+     "clock_generator",
+     "dfx_region_wrapper",
+     "explicit_pipeline_registers",
+     "explicit_ready_valid_handshake",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "emits": [
+     "c_kernel_source"
+    ],
+    "family": "hls",
+    "graph_fingerprint": "e31cf3e5ef4f26e4527420b0f8b4a112ed256fb496c22b89e37028fa0841b62f",
+    "handwritten_hdl": [
+     "clock_generator",
+     "dfx_region_wrapper",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "supported_primitives": [
+     "CollectiveRegion",
+     "FusedDecodeCompute",
+     "SemanticTransportEdge",
+     "StationaryRepresentation",
+     "TiledProjection"
+    ],
+    "target_id": "hls_style"
+   },
+   "rust_hdl_style": {
+    "artifact_filenames": [
+     "qgemv_rust_hdl_style.rs"
+    ],
+    "cannot_express": [
+     "AsyncPrefetch",
+     "ConditionalPhysicalProgram",
+     "DirectRoutedAccumulate",
+     "DoubleBufferedTile",
+     "GraphReplay",
+     "LayoutTransform",
+     "LocalStateMachine",
+     "MemoryTierIdentity",
+     "MoveOrRecompute",
+     "PersistentPhysicalRegion",
+     "SparseSkip",
+     "SpatialPipeline",
+     "clock_generator",
+     "dfx_region_wrapper",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "inferred_loop_pipelining",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "emits": [
+     "rust_hdl_ir_source"
+    ],
+    "family": "rust_hdl",
+    "graph_fingerprint": "e31cf3e5ef4f26e4527420b0f8b4a112ed256fb496c22b89e37028fa0841b62f",
+    "handwritten_hdl": [
+     "clock_generator",
+     "dfx_region_wrapper",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "supported_primitives": [
+     "CollectiveRegion",
+     "FusedDecodeCompute",
+     "SemanticTransportEdge",
+     "StationaryRepresentation",
+     "TiledProjection"
+    ],
+    "target_id": "rust_hdl_style"
+   }
+  },
+  "registered": {
+   "hls_style": {
+    "cannot_express": [
+     "AsyncPrefetch",
+     "ConditionalPhysicalProgram",
+     "DirectRoutedAccumulate",
+     "DoubleBufferedTile",
+     "GraphReplay",
+     "LayoutTransform",
+     "LocalStateMachine",
+     "MemoryTierIdentity",
+     "MoveOrRecompute",
+     "PersistentPhysicalRegion",
+     "SparseSkip",
+     "SpatialPipeline",
+     "clock_generator",
+     "dfx_region_wrapper",
+     "explicit_pipeline_registers",
+     "explicit_ready_valid_handshake",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "emits": [
+     "c_kernel_source"
+    ],
+    "evidence_tier": "STATIC",
+    "family": "hls",
+    "handwritten_hdl": [
+     "clock_generator",
+     "dfx_region_wrapper",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "hardware_measured": false,
+    "kind": "LOWERING_TARGET_MANIFEST",
+    "note": "Equal-citizen lowering target. PREHARDWARE source artifacts only. Toolchain choice is not encoded.",
+    "preferred": false,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "supported_primitives": [
+     "CollectiveRegion",
+     "FusedDecodeCompute",
+     "SemanticTransportEdge",
+     "StationaryRepresentation",
+     "TiledProjection"
+    ],
+    "target_id": "hls_style",
+    "toolchain_choice": null
+   },
+   "rust_hdl_style": {
+    "cannot_express": [
+     "AsyncPrefetch",
+     "ConditionalPhysicalProgram",
+     "DirectRoutedAccumulate",
+     "DoubleBufferedTile",
+     "GraphReplay",
+     "LayoutTransform",
+     "LocalStateMachine",
+     "MemoryTierIdentity",
+     "MoveOrRecompute",
+     "PersistentPhysicalRegion",
+     "SparseSkip",
+     "SpatialPipeline",
+     "clock_generator",
+     "dfx_region_wrapper",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "inferred_loop_pipelining",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "emits": [
+     "rust_hdl_ir_source"
+    ],
+    "evidence_tier": "STATIC",
+    "family": "rust_hdl",
+    "handwritten_hdl": [
+     "clock_generator",
+     "dfx_region_wrapper",
+     "hbm_memory_controller",
+     "host_link_phy",
+     "interrupt_doorbell",
+     "io_pinout_constraints",
+     "vendor_dsp_primitive"
+    ],
+    "hardware_measured": false,
+    "kind": "LOWERING_TARGET_MANIFEST",
+    "note": "Equal-citizen lowering target. PREHARDWARE source artifacts only. Toolchain choice is not encoded.",
+    "preferred": false,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "supported_primitives": [
+     "CollectiveRegion",
+     "FusedDecodeCompute",
+     "SemanticTransportEdge",
+     "StationaryRepresentation",
+     "TiledProjection"
+    ],
+    "target_id": "rust_hdl_style",
+    "toolchain_choice": null
+   }
+  },
+  "toolchain_choice": null
+ },
  "negative_findings": [
   "ACCELERATOR_ARCHITECTURE_ATLAS.json is absent from this worktree HEAD and sparse disk",
   "hcli/physical_graph.py and hcli/agentos/fpga_preboard.py are git-present but not materialized (sparse checkout)",
   "existing hcli.fpga.hwir.v1 is not an IR: no types, no validator, no serdes, organ_operator only",
   "device genome is TARGET_UNSELECTED; HBM channel and resource footprints cannot be known without a board/synthesis",
-  "no FPGA board, no HDL, no bitstream; this module must not and did not emit any",
+  "no FPGA board, no bitstream; lowering targets emit PREHARDWARE source artifacts only",
   "AIR exists and executes on Metal; it is not HWIR and was not reused as the spatial IR",
   "PhysicalGraph compile_physical_graph is too unresolved to lower into a resource-accurate HWIR without invention; organ maps are the reality connection",
   "fpga_fidelity.StructuralGraph is a sibling stand-in and was not imported; HWIR owns the qGEMV preboard stack",
@@ -793,12 +1025,12 @@
   "flash": {
    "path": "receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
    "present": true,
-   "sha256": "fb7ca577696f3dbbd783e6a3d7b5986a30e7f1cbec7a30ed522fc45b3cf88011"
+   "sha256": "a31e3a548f5ce955131bc9e6c04a812ad212ea2dd31e669e93328b33f84c98d0"
   },
   "qwen27": {
    "path": "receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
    "present": true,
-   "sha256": "66a606e5ce0319ef828bfed3ec4a49f2904289692bd447bbffcb1f1cbf841aec"
+   "sha256": "790c7356c757cf0ad1186acb16dff1f0fb053b0d146d06582f0b1452bebcf655"
   }
  },
  "physical_graph_semantics_consumed": [
@@ -1180,7 +1412,7 @@
    "reduction",
    "representation-decoder"
   ],
-  "lowered_qwen_fingerprint": "4d3e58f334a4a13406658beef6f9f5506a00927221ab9a872b6300c3ac42fce6",
+  "lowered_qwen_fingerprint": null,
   "lowered_state_fingerprint": "cd03dac5abe5f898b119e9e4f5f4d6943042d0ba931230cebf8f43b7d617d1ca",
   "lowered_state_kinds": [
    "compute",
@@ -1192,6 +1424,14 @@
   ],
   "lowered_state_valid": true,
   "lowered_valid": true,
+  "lowering_cannot_express_nonempty": true,
+  "lowering_interface_identical": true,
+  "lowering_no_preferred_target": true,
+  "lowering_same_graph": true,
+  "lowering_target_ids": [
+   "hls_style",
+   "rust_hdl_style"
+  ],
   "no_hardware_measured_emitted": true,
   "prediction_count": 12,
   "prediction_set_sha256": "e7e77cc29b33a0ff2f47db34867368ab51070cae1da87494777882994ec6e15e",
@@ -1207,7 +1447,7 @@
    "STATIC"
   ],
   "qgemv_resource_fit": true,
-  "qwen_lowered_valid": true,
+  "qwen_lowered_valid": null,
   "real_carrier_unpinned": true,
   "real_scoring_refused_without_u50": true,
   "resource_over_budget_rejected": true,
@@ -1236,7 +1476,7 @@
   ],
   "wall_clock_in_hashed_content": false
  },
- "purpose": "Hardware IR a future physical compiler uses to decide what an FPGA should become. Not a backend, not HDL, not a bitstream.",
+ "purpose": "Hardware IR a future physical compiler uses to decide what an FPGA should become. Lowering targets emit PREHARDWARE source artifacts. Not a vendor backend, not a bitstream.",
  "recovered_implementation": [
   {
    "adequate_as_ir": false,
@@ -1318,7 +1558,7 @@
   "URAM"
  ],
  "schema": "hawking.future.hwir.v1",
- "seal_sha256": "2b5743348f8e60229db79b39afbdef9fd7240b18e58f3f6a72ba00852b70de91",
+ "seal_sha256": "f59a171ee72b24fe7fb74501867da6679767852987f033b1c96e1306fbb26d28",
  "sealed_predictions": {
   "count": 12,
   "ids": [
@@ -1438,6 +1678,8 @@
     "kind": "CARRIER_ENVELOPE",
     "mechanical_limit": "low_profile_ok",
     "note": "LABELED EXAMPLE. Constrained low-power / few-lane slot. NOT the inbound comma-device carrier. The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "observed_payload_beat": "UNPINNED",
+    "observed_payload_bytes_per_s": "UNPINNED",
     "origin": "EXAMPLE_ENVELOPE_NOT_THE_REAL_CARRIER",
     "pcie_generation": 3,
     "pcie_lanes": 4,
@@ -1508,6 +1750,8 @@
     "kind": "CARRIER_ENVELOPE",
     "mechanical_limit": "full_height_full_length_ok",
     "note": "LABELED EXAMPLE. Full-airflow server slot matching a 75W PCIe card's own datasheet load. NOT the inbound comma-device carrier. The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "observed_payload_beat": "UNPINNED",
+    "observed_payload_bytes_per_s": "UNPINNED",
     "origin": "EXAMPLE_ENVELOPE_NOT_THE_REAL_CARRIER",
     "pcie_generation": 4,
     "pcie_lanes": 16,
@@ -1578,6 +1822,8 @@
     "kind": "CARRIER_ENVELOPE",
     "mechanical_limit": "UNPINNED",
     "note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "observed_payload_beat": "UNPINNED",
+    "observed_payload_bytes_per_s": "UNPINNED",
     "origin": "REAL_CARRIER_UNPINNED",
     "pcie_generation": "UNPINNED",
     "pcie_lanes": "UNPINNED",

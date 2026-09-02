@@ -215,5 +215,31 @@ def main():
     return 0 if out["pass"] else 1
 
 
+def attach_heterogeneous_plan(compiler_output, plan_dict=None):
+    """Annotate a compiler receipt with a fusion-bridge plan. COST_MODEL only.
+
+    Does not run organ-collapse measurements and does not import the
+    accelerator package (this script's main() needs checkpoint weights;
+    the annotation does not). tools/odyssey/fusion_bridge_adapter.py is
+    the full overlay path.
+    """
+    out = dict(compiler_output)
+    dag = list(out.get("transformation_dag") or [])
+    dag.append({
+        "stage": "heterogeneous_fusion_bridge",
+        "input": "physical_operator_graph",
+        "output": "typed transport edges and node placements across execution domains",
+        "cost_delta": {
+            "label": "COST_MODEL",
+            "meaning": "planner estimate; not a hardware measurement",
+        },
+        "evidence": "tools/accelerator/fusion_bridge.py",
+    })
+    out["transformation_dag"] = dag
+    if plan_dict is not None:
+        out["fusion_bridge"] = plan_dict
+    return out
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

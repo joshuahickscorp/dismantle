@@ -27,7 +27,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
-from tools.future._common import REPO, write_receipt
+from tools.future._common import REPO, git, write_receipt
 from tools.future.cuda_lowbit_hypotheses import REQUIRED_HYPOTHESIS_FIELDS
 from tools.future.experiment_policy import apply_deterministic_belief_update
 from tools.future.odyssey2_law_store import LAW_FIELDS
@@ -114,13 +114,26 @@ def _as_mapping(value: Any) -> dict[str, Any] | None:
 
 
 def _read_json(rel: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Load a historical receipt from disk, else from HEAD (sparse checkout)."""
     path = REPO / rel
-    meta = {"path": rel, "on_disk": path.is_file(), "loaded": False}
-    if not path.is_file():
+    meta = {"path": rel, "on_disk": path.is_file(), "loaded": False, "loaded_from": None}
+    text: str | None = None
+    if path.is_file():
+        try:
+            text = path.read_text()
+            meta["loaded_from"] = "disk"
+        except OSError:
+            text = None
+    if text is None:
+        blob = git("show", f"HEAD:{rel}")
+        if blob:
+            text = blob
+            meta["loaded_from"] = "git"
+    if text is None:
         return None, meta
     try:
-        doc = json.loads(path.read_text())
-    except (OSError, ValueError):
+        doc = json.loads(text)
+    except ValueError:
         return None, meta
     if not isinstance(doc, dict):
         return None, meta
@@ -753,6 +766,63 @@ def adapt_turnaround(doc: Mapping[str, Any], *, source_receipt: str) -> list[dic
     return out
 
 
+def adapt_experiment_receipt(doc: Mapping[str, Any], *, source_receipt: str) -> list[dict[str, Any]]:
+    """Project a shared ExperimentReceipt. Nested on a producer doc, or top-level.
+
+    Reuses schema_family / _first. Does not rewrite the historical document.
+    """
+    schema = doc.get("schema")
+    family = schema_family(schema if isinstance(schema, str) else None)
+    env: Mapping[str, Any]
+    if family == "hawking.experiment.receipt":
+        env = doc
+    else:
+        nested = doc.get("experiment_receipt")
+        if not isinstance(nested, Mapping):
+            return []
+        env = nested
+        schema = env.get("schema") or schema
+    claim = _first(env, "claim", "statement")
+    verdict = _first(env, "verdict", "status")
+    if not claim:
+        return []
+    ident = env.get("identity") if isinstance(env.get("identity"), Mapping) else {}
+    if not ident and isinstance(doc.get("artifact_identity"), Mapping):
+        ident = doc["artifact_identity"]
+    rid = ident.get("identity_key") or _first(env, "id") or "envelope"
+    tier = str(env.get("evidence_tier") or _tier_for_source(doc))
+    if tier not in EVIDENCE_TIERS:
+        tier = "STATIC"
+    keys = {
+        "id": f"experiment_receipt:{rid}",
+        "verdict": verdict,
+        "claim": claim,
+        "scope": env.get("scope"),
+        "facts": _first(env, "facts", "verified_facts"),
+        "hypotheses": env.get("hypotheses"),
+        "negative_controls": env.get("negative_controls"),
+        "failures": env.get("failures"),
+        "resource_usage": _first(env, "resource_usage", "resource_use"),
+        "uncertainty": env.get("uncertainty"),
+        "falsifier": env.get("falsifier"),
+        "evidence_tier": env.get("evidence_tier"),
+        "identity_key": ident.get("identity_key"),
+        "producer": ident.get("producer"),
+        "content_sha256": ident.get("content_sha256"),
+    }
+    return [
+        _record(
+            kind="experiment",
+            record_id=f"experiment:{source_receipt}:{rid}",
+            source_receipt=source_receipt,
+            source_schema=schema,
+            evidence_tier=tier,
+            source_evidence_class=doc.get("evidence_class") or env.get("qualification"),
+            key_fields=keys,
+        )
+    ]
+
+
 def adapt_meta_funnel(doc: Mapping[str, Any], *, source_receipt: str) -> list[dict[str, Any]]:
     schema = doc.get("schema")
     tier = _tier_for_source(doc)
@@ -791,6 +861,7 @@ FAMILY_ADAPTERS: dict[str, Callable[..., list[dict[str, Any]]]] = {
     "hawking.future.resident_token_budget": adapt_token_budget,
     "hawking.future.turnaround": adapt_turnaround,
     "hawking.future.meta_funnel": adapt_meta_funnel,
+    "hawking.experiment.receipt": adapt_experiment_receipt,
 }
 
 # Filename fallback when a document has no schema (older dumps).
@@ -822,9 +893,19 @@ def adapt_document(
     adapter = FAMILY_ADAPTERS.get(family)
     if adapter is None:
         adapter = FILENAME_ADAPTERS.get(Path(source_receipt).name)
-    if adapter is None:
-        return []
-    return adapter(doc, source_receipt=source_receipt)
+    out: list[dict[str, Any]] = []
+    if adapter is not None:
+        out = list(adapter(doc, source_receipt=source_receipt))
+    # A producer that adopted ExperimentReceipt still has its old family
+    # adapter. Also project the nested envelope without duplicating history.
+    if adapter is not adapt_experiment_receipt and isinstance(
+        doc.get("experiment_receipt"), Mapping
+    ):
+        seen = {r["record_id"] for r in out}
+        for rec in adapt_experiment_receipt(doc, source_receipt=source_receipt):
+            if rec["record_id"] not in seen:
+                out.append(rec)
+    return out
 
 
 def measurement_from_ebpw_bill(billed: Mapping[str, Any]) -> dict[str, Any]:

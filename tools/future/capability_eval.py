@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from tools.future._common import git, write_receipt
+from tools.future.experiment_receipt import attach
 
 
 RECEIPT = "CAPABILITY_EVAL.json"
@@ -542,6 +543,49 @@ def build() -> Any:
     if not refused:
         raise LiveResidentRefused("LiveResidentSource was not refused")
     doc["live_resident_refusal_fired"] = True
+    doc = attach(
+        doc,
+        producer=RECORDED_BY,
+        location=f"receipts/future/{RECEIPT}",
+        claim=(
+            "A generic capability-evaluation interface runs at least two "
+            "distinct evaluators and refuses a live-resident source."
+        ),
+        verdict="ACCEPT",
+        evidence_tier="FUNCTIONAL_SIM",
+        scope="fixture subjects; live resident is out of scope",
+        facts=[
+            {"claim": "reasoning.predicate and coding.execute both ran"},
+            {"claim": "LiveResidentSource was refused"},
+        ],
+        hypotheses=[],
+        negative_controls=[
+            {
+                "id": "failing_source",
+                "what": "a failing CompletionSource is rejected by both evaluators",
+                "observed": fail_results,
+            },
+            {
+                "id": "live_resident_refused",
+                "what": "talks_to_live_daemon=True is a refusal, not a skip",
+            },
+        ],
+        failures=[],
+        resource_usage={"gpu_authority": False},
+        qualification="FUNCTIONAL_SIM over fixtures; not a live-resident score",
+        contamination=[],
+        uncertainty=[
+            "fixture items are not a substitute for a domain benchmark corpus"
+        ],
+        falsifier=(
+            "a live-resident source is accepted, only one evaluator is "
+            "registered, or evaluate() is never called"
+        ),
+        next_actions=[],
+        receipts=[f"receipts/future/{RECEIPT}"],
+        tests={"live_resident_refusal_fired": True},
+        evidence=[{"call_sites": doc["call_sites"]}],
+    )
     return write_receipt(RECEIPT, doc, RECORDED_BY)
 
 

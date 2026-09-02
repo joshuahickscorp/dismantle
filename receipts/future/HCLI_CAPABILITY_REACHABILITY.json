@@ -4,7 +4,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1555
+    "line": 1782
    },
    "kind": "typed_tool",
    "name": "tool:git.checkout-safe",
@@ -15,7 +15,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1555
+    "line": 1782
    },
    "kind": "typed_tool",
    "name": "tool:git.revert-safe",
@@ -26,7 +26,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1555
+    "line": 1782
    },
    "kind": "typed_tool",
    "name": "tool:git.checkout/revert-safe",
@@ -37,7 +37,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:roadmap.read",
@@ -48,7 +48,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:vmcp.capabilities",
@@ -59,7 +59,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:doctor.inspect",
@@ -70,7 +70,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:gravity.inspect",
@@ -81,7 +81,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:accelerator.inspect",
@@ -92,7 +92,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.status",
@@ -103,7 +103,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.queue",
@@ -114,7 +114,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.value",
@@ -125,7 +125,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.economics",
@@ -136,10 +136,76 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1503
+    "line": 1941
    },
    "kind": "typed_tool",
-   "name": "tool:fs.read",
+   "name": "tool:add_to_eligibility",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:park_specimen",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:record_law",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:record_scar",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:create_transfer_probe",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:create_adversarial_probe",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1672
+   },
+   "kind": "typed_tool",
+   "name": "tool:tools.catalog",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "tested": true
   },
@@ -147,7 +213,18 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1504
+    "line": 1689
+   },
+   "kind": "typed_tool",
+   "name": "tool:context.recall",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": true
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1716
    },
    "kind": "typed_tool",
    "name": "tool:filesystem.read",
@@ -158,7 +235,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1511
+    "line": 1723
    },
    "kind": "typed_tool",
    "name": "tool:filesystem.search",
@@ -169,7 +246,18 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1526
+    "line": 1740
+   },
+   "kind": "typed_tool",
+   "name": "tool:filesystem.list",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1753
    },
    "kind": "typed_tool",
    "name": "tool:shell.readonly",
@@ -180,7 +268,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1531
+    "line": 1758
    },
    "kind": "typed_tool",
    "name": "tool:shell.exec",
@@ -191,7 +279,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1540
+    "line": 1767
    },
    "kind": "typed_tool",
    "name": "tool:git.status",
@@ -202,7 +290,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1545
+    "line": 1772
    },
    "kind": "typed_tool",
    "name": "tool:git.log",
@@ -213,7 +301,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1563
+    "line": 1790
    },
    "kind": "typed_tool",
    "name": "tool:git.land.propose",
@@ -224,7 +312,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1591
+    "line": 1818
    },
    "kind": "typed_tool",
    "name": "tool:github.fetch",
@@ -235,7 +323,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1592
+    "line": 1819
    },
    "kind": "typed_tool",
    "name": "tool:web.search",
@@ -246,7 +334,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1599
+    "line": 1826
    },
    "kind": "typed_tool",
    "name": "tool:github.search",
@@ -257,7 +345,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1606
+    "line": 1833
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.resolve",
@@ -268,7 +356,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1611
+    "line": 1838
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.manifest",
@@ -279,7 +367,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1616
+    "line": 1843
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.fetch_file",
@@ -290,7 +378,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1621
+    "line": 1848
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.history",
@@ -301,7 +389,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1626
+    "line": 1853
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.download",
@@ -312,7 +400,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1634
+    "line": 1861
    },
    "kind": "typed_tool",
    "name": "tool:receipt.inspect",
@@ -323,7 +411,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1664
+    "line": 1891
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.cycle",
@@ -334,7 +422,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1673
+    "line": 1900
    },
    "kind": "typed_tool",
    "name": "tool:forbidden_fruit.lab",
@@ -345,7 +433,51 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1684
+    "line": 1916
+   },
+   "kind": "typed_tool",
+   "name": "tool:frontier.decide",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1922
+   },
+   "kind": "typed_tool",
+   "name": "tool:specimens.registry",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1929
+   },
+   "kind": "typed_tool",
+   "name": "tool:acquisition.propose",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1935
+   },
+   "kind": "typed_tool",
+   "name": "tool:odyssey.ingest",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "tested": false
+  },
+  {
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1961
    },
    "kind": "typed_tool",
    "name": "tool:tests.list",
@@ -356,7 +488,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1695
+    "line": 1972
    },
    "kind": "typed_tool",
    "name": "tool:vmcp.inspect",
@@ -367,7 +499,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1700
+    "line": 1977
    },
    "kind": "typed_tool",
    "name": "tool:vmcp.query",
@@ -378,7 +510,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1714
+    "line": 1991
    },
    "kind": "typed_tool",
    "name": "tool:doctor.query",
@@ -389,7 +521,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1720
+    "line": 1997
    },
    "kind": "typed_tool",
    "name": "tool:gravity.experiment",
@@ -400,7 +532,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1726
+    "line": 2003
    },
    "kind": "typed_tool",
    "name": "tool:accelerator.benchmark",
@@ -411,7 +543,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1738
+    "line": 2015
    },
    "kind": "typed_tool",
    "name": "tool:roadmap.inspect",
@@ -422,7 +554,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1743
+    "line": 2020
    },
    "kind": "typed_tool",
    "name": "tool:benchmark.inspect",
@@ -433,7 +565,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1754
+    "line": 2031
    },
    "kind": "typed_tool",
    "name": "tool:frontier.escalate",
@@ -444,7 +576,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1786
+    "line": 2063
    },
    "kind": "typed_tool",
    "name": "tool:grok.swarm.propose",
@@ -455,7 +587,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1794
+    "line": 2071
    },
    "kind": "typed_tool",
    "name": "tool:grok.swarm.launch",
@@ -1941,7 +2073,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T19:50:17Z",
+  "recorded_at": "2026-09-02T00:28:29Z",
   "recorded_by": "tools/future/capability_reachability.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1952,7 +2084,7 @@
     {
      "file": "hcli/agentos/resident.py",
      "kind": "call",
-     "line": 629
+     "line": 659
     }
    ],
    "callable": true,
@@ -1990,7 +2122,7 @@
     {
      "file": "hcli/agentos/__init__.py",
      "kind": "import",
-     "line": 58
+     "line": 60
     }
    ],
    "callable": true,
@@ -2050,17 +2182,17 @@
     {
      "file": "hcli/tool_registry.py",
      "kind": "import",
-     "line": 1387
+     "line": 1508
     },
     {
      "file": "hcli/tool_registry.py",
      "kind": "import",
-     "line": 1453
+     "line": 1632
     },
     {
      "file": "hcli/tool_registry.py",
      "kind": "import",
-     "line": 1461
+     "line": 1640
     }
    ],
    "callable": true,
@@ -2088,7 +2220,7 @@
     {
      "file": "hcli/tool_registry.py",
      "kind": "call",
-     "line": 1389
+     "line": 1510
     }
    ],
    "callable": true,
@@ -2126,7 +2258,7 @@
     {
      "file": "hcli/tool_registry.py",
      "kind": "call",
-     "line": 1463
+     "line": 1642
     }
    ],
    "callable": true,
@@ -2159,7 +2291,7 @@
     {
      "file": "hcli/tool_registry.py",
      "kind": "call",
-     "line": 1455
+     "line": 1634
     }
    ],
    "callable": true,
@@ -2307,7 +2439,7 @@
     {
      "file": "hcli/agentos/runtime.py",
      "kind": "call",
-     "line": 89
+     "line": 91
     },
     {
      "file": "hcli/agentos/vmcp_gate.py",
@@ -2317,7 +2449,12 @@
     {
      "file": "hcli/commands.py",
      "kind": "call",
-     "line": 1032
+     "line": 1040
+    },
+    {
+     "file": "hcli/engine.py",
+     "kind": "call",
+     "line": 571
     },
     {
      "file": "hcli/executors.py",
@@ -2348,6 +2485,21 @@
      "line": 53
     },
     {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "call",
+     "line": 27
+    },
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "call",
+     "line": 150
+    },
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "call",
+     "line": 181
+    },
+    {
      "file": "hcli/test_escalation.py",
      "kind": "call",
      "line": 203
@@ -2363,6 +2515,11 @@
      "line": 52
     },
     {
+     "file": "tools/future/test_tool_reachability.py",
+     "kind": "call",
+     "line": 29
+    },
+    {
      "file": "tools/haider/hcli/tests/test_agentos_general.py",
      "kind": "call",
      "line": 167
@@ -2376,7 +2533,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1726
+    "line": 2003
    },
    "kind": "typed_tool",
    "name": "tool:accelerator.benchmark",
@@ -2392,10 +2549,42 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:accelerator.inspect",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:acquisition.propose": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1929
+   },
+   "kind": "typed_tool",
+   "name": "tool:acquisition.propose",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:add_to_eligibility": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:add_to_eligibility",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "registered": true,
    "resident_visible": true,
@@ -2414,7 +2603,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1709
+    "line": 1986
    },
    "kind": "typed_tool",
    "name": "tool:architecture.inspect",
@@ -2430,7 +2619,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1743
+    "line": 2020
    },
    "kind": "typed_tool",
    "name": "tool:benchmark.inspect",
@@ -2452,11 +2641,65 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1732
+    "line": 2009
    },
    "kind": "typed_tool",
    "name": "tool:benchmark.run",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally; callable is real here -- see call_sites for the static `\"tool\": 'benchmark.run'` catalog entry (or other quoted use) that proves it, outside any test file.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:context.recall": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1689
+   },
+   "kind": "typed_tool",
+   "name": "tool:context.recall",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 152
+    }
+   ],
+   "tested": true
+  },
+  "tool:create_adversarial_probe": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:create_adversarial_probe",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:create_transfer_probe": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:create_transfer_probe",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "registered": true,
    "resident_visible": true,
    "test_only_sites": [],
@@ -2468,7 +2711,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:doctor.inspect",
@@ -2484,10 +2727,26 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1714
+    "line": 1991
    },
    "kind": "typed_tool",
    "name": "tool:doctor.query",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:filesystem.list": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1740
+   },
+   "kind": "typed_tool",
+   "name": "tool:filesystem.list",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "registered": true,
    "resident_visible": true,
@@ -2500,7 +2759,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1504
+    "line": 1716
    },
    "kind": "typed_tool",
    "name": "tool:filesystem.read",
@@ -2532,7 +2791,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1511
+    "line": 1723
    },
    "kind": "typed_tool",
    "name": "tool:filesystem.search",
@@ -2554,7 +2813,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1517
+    "line": 1744
    },
    "kind": "typed_tool",
    "name": "tool:filesystem.write",
@@ -2570,10 +2829,26 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1673
+    "line": 1900
    },
    "kind": "typed_tool",
    "name": "tool:forbidden_fruit.lab",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:frontier.decide": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1916
+   },
+   "kind": "typed_tool",
+   "name": "tool:frontier.decide",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "registered": true,
    "resident_visible": true,
@@ -2586,7 +2861,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1754
+    "line": 2031
    },
    "kind": "typed_tool",
    "name": "tool:frontier.escalate",
@@ -2602,20 +2877,89 @@
    ],
    "tested": true
   },
-  "tool:fs.read": {
-   "call_sites": [],
-   "callable": false,
+  "tool:fs.list": {
+   "call_sites": [
+    {
+     "file": "hcli/engine.py",
+     "kind": "literal",
+     "line": 653
+    },
+    {
+     "file": "hcli/engine.py",
+     "kind": "literal",
+     "line": 681
+    },
+    {
+     "file": "hcli/engine.py",
+     "kind": "literal",
+     "line": 703
+    }
+   ],
+   "callable": true,
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1503
+    "line": 1736
    },
    "kind": "typed_tool",
-   "name": "tool:fs.read",
-   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "name": "tool:fs.list",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally; callable is real here -- see call_sites for the static `\"tool\": 'fs.list'` catalog entry (or other quoted use) that proves it, outside any test file.",
    "registered": true,
    "resident_visible": true,
    "test_only_sites": [
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 56
+    },
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 69
+    },
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 171
+    },
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 221
+    },
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 236
+    }
+   ],
+   "tested": true
+  },
+  "tool:fs.read": {
+   "call_sites": [
+    {
+     "file": "hcli/engine.py",
+     "kind": "literal",
+     "line": 177
+    }
+   ],
+   "callable": true,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1715
+   },
+   "kind": "typed_tool",
+   "name": "tool:fs.read",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally; callable is real here -- see call_sites for the static `\"tool\": 'fs.read'` catalog entry (or other quoted use) that proves it, outside any test file.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 86
+    },
     {
      "file": "tools/future/test_hcli_self_profile.py",
      "kind": "literal",
@@ -2646,15 +2990,21 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1505
+    "line": 1717
    },
    "kind": "typed_tool",
    "name": "tool:fs.search",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally; callable is real here -- see call_sites for the static `\"tool\": 'fs.search'` catalog entry (or other quoted use) that proves it, outside any test file.",
    "registered": true,
    "resident_visible": true,
-   "test_only_sites": [],
-   "tested": false
+   "test_only_sites": [
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 85
+    }
+   ],
+   "tested": true
   },
   "tool:git.checkout-safe": {
    "call_sites": [],
@@ -2662,7 +3012,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1555
+    "line": 1782
    },
    "kind": "typed_tool",
    "name": "tool:git.checkout-safe",
@@ -2678,7 +3028,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1555
+    "line": 1782
    },
    "kind": "typed_tool",
    "name": "tool:git.checkout/revert-safe",
@@ -2700,7 +3050,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1550
+    "line": 1777
    },
    "kind": "typed_tool",
    "name": "tool:git.diff",
@@ -2716,7 +3066,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1563
+    "line": 1790
    },
    "kind": "typed_tool",
    "name": "tool:git.land.propose",
@@ -2748,7 +3098,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1545
+    "line": 1772
    },
    "kind": "typed_tool",
    "name": "tool:git.log",
@@ -2764,7 +3114,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1555
+    "line": 1782
    },
    "kind": "typed_tool",
    "name": "tool:git.revert-safe",
@@ -2780,7 +3130,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1540
+    "line": 1767
    },
    "kind": "typed_tool",
    "name": "tool:git.status",
@@ -2832,7 +3182,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1591
+    "line": 1818
    },
    "kind": "typed_tool",
    "name": "tool:github.fetch",
@@ -2848,7 +3198,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1599
+    "line": 1826
    },
    "kind": "typed_tool",
    "name": "tool:github.search",
@@ -2864,7 +3214,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1720
+    "line": 1997
    },
    "kind": "typed_tool",
    "name": "tool:gravity.experiment",
@@ -2880,7 +3230,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:gravity.inspect",
@@ -2896,7 +3246,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1794
+    "line": 2071
    },
    "kind": "typed_tool",
    "name": "tool:grok.swarm.launch",
@@ -2918,7 +3268,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1786
+    "line": 2063
    },
    "kind": "typed_tool",
    "name": "tool:grok.swarm.propose",
@@ -2934,7 +3284,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1626
+    "line": 1853
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.download",
@@ -2950,7 +3300,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1616
+    "line": 1843
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.fetch_file",
@@ -2966,7 +3316,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1621
+    "line": 1848
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.history",
@@ -2982,7 +3332,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1611
+    "line": 1838
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.manifest",
@@ -2998,7 +3348,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1606
+    "line": 1833
    },
    "kind": "typed_tool",
    "name": "tool:huggingface.resolve",
@@ -3020,7 +3370,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:modellake.status",
@@ -3036,7 +3386,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1664
+    "line": 1891
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.cycle",
@@ -3052,10 +3402,26 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.economics",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:odyssey.ingest": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1935
+   },
+   "kind": "typed_tool",
+   "name": "tool:odyssey.ingest",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "registered": true,
    "resident_visible": true,
@@ -3068,7 +3434,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.queue",
@@ -3084,7 +3450,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.status",
@@ -3100,10 +3466,26 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1653
+    "line": 1880
    },
    "kind": "typed_tool",
    "name": "tool:odyssey.value",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:park_specimen": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:park_specimen",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "registered": true,
    "resident_visible": true,
@@ -3116,7 +3498,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1634
+    "line": 1861
    },
    "kind": "typed_tool",
    "name": "tool:receipt.inspect",
@@ -3178,11 +3560,43 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1633
+    "line": 1860
    },
    "kind": "typed_tool",
    "name": "tool:receipt.read",
    "note": "resident_visible because default_tool_registry() registers every tool unconditionally; callable is real here -- see call_sites for the static `\"tool\": 'receipt.read'` catalog entry (or other quoted use) that proves it, outside any test file.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:record_law": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:record_law",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
+  "tool:record_scar": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1941
+   },
+   "kind": "typed_tool",
+   "name": "tool:record_scar",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
    "registered": true,
    "resident_visible": true,
    "test_only_sites": [],
@@ -3194,7 +3608,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1738
+    "line": 2015
    },
    "kind": "typed_tool",
    "name": "tool:roadmap.inspect",
@@ -3210,7 +3624,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:roadmap.read",
@@ -3226,7 +3640,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1531
+    "line": 1758
    },
    "kind": "typed_tool",
    "name": "tool:shell.exec",
@@ -3248,7 +3662,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1526
+    "line": 1753
    },
    "kind": "typed_tool",
    "name": "tool:shell.readonly",
@@ -3264,13 +3678,29 @@
    ],
    "tested": true
   },
+  "tool:specimens.registry": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1922
+   },
+   "kind": "typed_tool",
+   "name": "tool:specimens.registry",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [],
+   "tested": false
+  },
   "tool:tests.list": {
    "call_sites": [],
    "callable": false,
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1684
+    "line": 1961
    },
    "kind": "typed_tool",
    "name": "tool:tests.list",
@@ -3292,7 +3722,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1689
+    "line": 1966
    },
    "kind": "typed_tool",
    "name": "tool:tests.run",
@@ -3302,13 +3732,35 @@
    "test_only_sites": [],
    "tested": false
   },
+  "tool:tools.catalog": {
+   "call_sites": [],
+   "callable": false,
+   "defined": true,
+   "definition": {
+    "file": "hcli/tool_registry.py",
+    "line": 1672
+   },
+   "kind": "typed_tool",
+   "name": "tool:tools.catalog",
+   "note": "resident_visible because default_tool_registry() registers every tool unconditionally and AgentOS.tools is that registry; callable requires a quoted use of the tool's string key outside hcli/tool_registry.py and outside any test file. No static gate catalog and no other reference names this tool; the model could still propose it as a runtime WorkUnit.tool string, which no static search can see, so callable=false means 'no deterministic path', not 'never invoked'.",
+   "registered": true,
+   "resident_visible": true,
+   "test_only_sites": [
+    {
+     "file": "hcli/test_engine_tool_loop.py",
+     "kind": "literal",
+     "line": 137
+    }
+   ],
+   "tested": true
+  },
   "tool:vmcp.capabilities": {
    "call_sites": [],
    "callable": false,
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1635
+    "line": 1862
    },
    "kind": "typed_tool",
    "name": "tool:vmcp.capabilities",
@@ -3324,7 +3776,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1695
+    "line": 1972
    },
    "kind": "typed_tool",
    "name": "tool:vmcp.inspect",
@@ -3340,7 +3792,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1700
+    "line": 1977
    },
    "kind": "typed_tool",
    "name": "tool:vmcp.query",
@@ -3362,7 +3814,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1590
+    "line": 1817
    },
    "kind": "typed_tool",
    "name": "tool:web.fetch",
@@ -3384,7 +3836,7 @@
    "defined": true,
    "definition": {
     "file": "hcli/tool_registry.py",
-    "line": 1592
+    "line": 1819
    },
    "kind": "typed_tool",
    "name": "tool:web.search",
@@ -8194,7 +8646,7 @@
     {
      "file": "tools/odyssey/modellake_watch.py",
      "kind": "import",
-     "line": 831
+     "line": 827
     }
    ],
    "callable": true,
@@ -8232,7 +8684,7 @@
     {
      "file": "tools/odyssey/modellake_watch.py",
      "kind": "call",
-     "line": 834
+     "line": 830
     }
    ],
    "callable": true,
@@ -12745,6 +13197,11 @@
   "tools.odyssey_ctl": {
    "call_sites": [
     {
+     "file": "hcli/acquisition.py",
+     "kind": "import",
+     "line": 58
+    },
+    {
      "file": "tools/odyssey_patient_runner.py",
      "kind": "import",
      "line": 81
@@ -12760,23 +13217,29 @@
    "name": "tools.odyssey_ctl",
    "note": "Not registered: hcli/tool_registry.py has no odyssey.* tool, so a resident cannot discover this through AgentOS. It is still callable: tools/odyssey_patient_runner.py does `from tools.odyssey_ctl import (...)`, a real production import outside any test.",
    "registered": false,
-   "resident_visible": false,
-   "test_only_sites": [],
-   "tested": false
+   "resident_visible": true,
+   "test_only_sites": [
+    {
+     "file": "hcli/test_acquisition.py",
+     "kind": "import",
+     "line": 94
+    }
+   ],
+   "tested": true
   }
  },
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "counts": {
-  "capabilities": 317,
-  "dead_surface": 176,
+  "capabilities": 331,
+  "dead_surface": 188,
   "named_callable": 12,
   "named_capabilities": 14,
   "sidecar_callable": 119,
   "sidecar_modules": 251,
   "sidecar_registered": 0,
-  "typed_tools": 51,
-  "typed_tools_callable": 9,
-  "typed_tools_dead": 42
+  "typed_tools": 65,
+  "typed_tools_callable": 11,
+  "typed_tools_dead": 54
  },
  "fields": [
   "defined",
@@ -12788,13 +13251,13 @@
  "law": "A capability nothing calls does not exist. Grep for call sites, not definitions.",
  "method": "Static source analysis only (AST import/call graph + quoted-literal search) over every git-tracked *.py file. Cannot see runtime-only dispatch (a model-proposed WorkUnit.tool string); see the module docstring's 'Hard limit' section.",
  "negative_findings": [
-  "42 of 51 typed tools have zero call sites outside hcli/tool_registry.py and outside every test file.",
+  "54 of 65 typed tools have zero call sites outside hcli/tool_registry.py and outside every test file.",
   "251 of 251 tools/future sidecar modules are registered in no ToolSpec; a resident cannot discover them via AgentOS.tools.discover().",
   "132 of 251 tools/future sidecar modules have zero call sites outside their own test files.",
   "hcli.ane_provider.ANEProvider, tools.future.hcli_compactor each have a passing test and zero callers outside it; a green test does not make a capability reachable."
  ],
  "purpose": "Answer, per capability and from evidence only: who calls it. A definition count is not a capability.",
  "schema": "hawking.future.capability_reachability.v1",
- "seal_sha256": "d7fc2b851aea6a6c7fba57e0cf3df43d42463dd47893325be10764fd4bb35af7",
+ "seal_sha256": "777f997da1e7c34a047aeebc69d3749dcfabd380f636d5a5f1c836d564c8ccfc",
  "version": 1
 }

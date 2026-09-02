@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T08:29:02Z",
+  "recorded_at": "2026-09-01T21:06:53Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -149,6 +149,11 @@
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "Qwen/Qwen2.5-72B-Instruct",
+      "revision": "495f39366efe"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "Qwen/Qwen3-30B-A3B",
       "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
      },
@@ -161,6 +166,11 @@
       "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
       "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "Qwen/Qwen3-VL-8B-Instruct",
+      "revision": "0c351dd01ed8"
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -249,6 +259,11 @@
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "ibm-granite/granite-4.0-h-tiny",
+      "revision": "791e0d3d28c8"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "kyutai/moshika-pytorch-bf16",
       "revision": "a49141e28b3d"
      },
@@ -281,6 +296,11 @@
       "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "moonshotai/Kimi-K3",
       "revision": "9f62e4e9fffbd0a83ddd60e1c209d828994b3569"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+      "revision": "e1df551a4471"
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -1971,16 +1991,16 @@
     "would_lower": "a demonstration that the observation is consistent with the claim being false",
     "would_raise": "independent replication of the same probe"
    },
-   "direct_observation": "dir_present=True n_json=315 path=/Users/scammermike/Downloads/hawking/receipts/future flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
+   "direct_observation": "dir_present=True n_json=317 path=/Users/scammermike/Downloads/hawking/receipts/future flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
-     "n_json": 315,
+     "n_json": 317,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
    "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "receipts",
-   "interpretation": "receipts/future is present with n_json=315 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields",
+   "interpretation": "receipts/future is present with n_json=317 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -2001,7 +2021,7 @@
    },
    "probe_kind": "measured_flags",
    "probe_performed": "Path.is_dir() and glob('*.json') on receipts/future; write_receipt seals STATIC_ONLY and raises on hardware fields",
-   "reason": "receipts/future is present with n_json=315 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=317 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2752,7 +2772,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "ac160c5a35ef5472a3550bf272c2879dc017c728",
+ "head": "dd7640a72f2569b0bd2c0c433dab329f9a9248b5",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -2909,6 +2929,11 @@
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "Qwen/Qwen2.5-72B-Instruct",
+     "revision": "495f39366efe"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "Qwen/Qwen3-30B-A3B",
      "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
     },
@@ -2921,6 +2946,11 @@
      "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
      "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "Qwen/Qwen3-VL-8B-Instruct",
+     "revision": "0c351dd01ed8"
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -3009,6 +3039,11 @@
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "ibm-granite/granite-4.0-h-tiny",
+     "revision": "791e0d3d28c8"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "kyutai/moshika-pytorch-bf16",
      "revision": "a49141e28b3d"
     },
@@ -3041,6 +3076,11 @@
      "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "moonshotai/Kimi-K3",
      "revision": "9f62e4e9fffbd0a83ddd60e1c209d828994b3569"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+     "revision": "e1df551a4471"
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -4967,7 +5007,7 @@
   "unmet_not_from_this_rewire": []
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "b0d56b4530989528b794ebce7e79240093a665c4198c42b7ef4d56d5b22a326f",
+ "seal_sha256": "d2b2db9739cb5e493989c80d49f3af54f5f531495c6e3a71db7057ae2c8d6dce",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -5217,6 +5257,11 @@
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "Qwen/Qwen2.5-72B-Instruct",
+    "revision": "495f39366efe"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "Qwen/Qwen3-30B-A3B",
     "revision": "ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
    },
@@ -5229,6 +5274,11 @@
     "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "Qwen/Qwen3-VL-30B-A3B-Instruct",
     "revision": "9c4b90e1e4ba969fd3b5378b57d966d725f1b86c"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "Qwen/Qwen3-VL-8B-Instruct",
+    "revision": "0c351dd01ed8"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -5317,6 +5367,11 @@
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "ibm-granite/granite-4.0-h-tiny",
+    "revision": "791e0d3d28c8"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "kyutai/moshika-pytorch-bf16",
     "revision": "a49141e28b3d"
    },
@@ -5349,6 +5404,11 @@
     "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "moonshotai/Kimi-K3",
     "revision": "9f62e4e9fffbd0a83ddd60e1c209d828994b3569"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "moonshotai/Kimi-Linear-48B-A3B-Instruct",
+    "revision": "e1df551a4471"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",

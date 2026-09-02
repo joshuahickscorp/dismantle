@@ -30,13 +30,22 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:30:20Z",
+  "recorded_at": "2026-09-02T03:19:39Z",
   "recorded_by": "tools/future/hwir.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
  "branch": "odyssey-i",
- "claim_boundary": "Static sidecar HWIR artifact. No FPGA board, bitstream, timing, or hardware measurement.",
+ "claim_boundary": "PREHARDWARE sidecar HWIR artifact. No FPGA board, bitstream, timing, or HARDWARE_MEASURED number. Resource figures are ESTIMATES. Cycle figures are APPROXIMATIONS, not measurements.",
+ "evidence_tiers_illegal": [
+  "HARDWARE_MEASURED"
+ ],
+ "evidence_tiers_legal": [
+  "STATIC",
+  "FUNCTIONAL_SIM",
+  "COST_MODEL",
+  "CYCLE_APPROX"
+ ],
  "frame_kinds": [
   "activation",
   "partial_reduction",
@@ -52,9 +61,16 @@
   "byte-stable to_json/from_json (sorted keys, no wall-clock in hashed content)",
   "validate() rejects source-tensor identity / dense rematerialization, dangling and type-mismatched edges, over-budget footprints, unowned state",
   "from_organ_map() lowers a real Flash/Qwen27 organ into a valid HWIR graph",
-  "negative controls that actually fire"
+  "negative controls that actually fire",
+  "from_qgemv() lowers a qGEMV-class kernel with evidence-backed atlas primitives (physical_primitives.instantiate)",
+  "FUNCTIONAL_SIM calls tools.future.fpga_engines.qgemv (not a reimplementation)",
+  "CYCLE_APPROX modelled cycles refuse conversion to seconds",
+  "COST_MODEL HBM traffic + host<->device transfer; bandwidth_gbps is not emitted",
+  "STATIC resource estimator refuses an engine that exceeds a declared device budget",
+  "synthetic U50-class device profile (declared, not a board census) and row-split partitioner",
+  "no code path emits HARDWARE_MEASURED"
  ],
- "head": "d6d14e9fd7255571ac832936c3d638d89df90074",
+ "head": "f3e4676f0172dda190eaed5878783fc02ef1788b",
  "hwir_hypotheses": [
   {
    "behavior_id": "move_or_recompute",
@@ -434,7 +450,7 @@
  "lowered": {
   "device_budget": null,
   "edge_count": 5,
-  "fingerprint": "49f7746a105c8d34e19eb94e77efc72a162e27f534b19fe94f37f351040ddc9b",
+  "fingerprint": "1ad07ac5d2ecf973cc72d5d3605c13dcf7b0d1e09e1aa86d7531d8725f803892",
   "frame_kinds": [
    "activation",
    "compact_representation_fragment",
@@ -489,12 +505,15 @@
      "src_port": "out"
     }
    ],
-   "fingerprint": "49f7746a105c8d34e19eb94e77efc72a162e27f534b19fe94f37f351040ddc9b",
+   "fingerprint": "1ad07ac5d2ecf973cc72d5d3605c13dcf7b0d1e09e1aa86d7531d8725f803892",
+   "kernel": null,
    "model": "flash-next",
    "nodes": [
     {
      "assumes_source_tensor_identity": false,
+     "backed_identity": null,
      "dense_weight_materialization": false,
+     "evidence_tier": "STATIC",
      "id": "cmp.expert_bank.body",
      "inputs": {
       "in_act": "activation",
@@ -503,6 +522,7 @@
      "kind": "compute",
      "lifetime": "token",
      "mapping": "HBM-resident selected expert subsets with native NF GEMV",
+     "memory_tier": null,
      "organ": "expert_bank",
      "outputs": {
       "out": "partial_reduction"
@@ -529,7 +549,9 @@
     },
     {
      "assumes_source_tensor_identity": false,
+     "backed_identity": null,
      "dense_weight_materialization": false,
+     "evidence_tier": "STATIC",
      "id": "dec.expert_bank.native",
      "inputs": {
       "in": "compact_representation_fragment"
@@ -537,6 +559,7 @@
      "kind": "representation-decoder",
      "lifetime": "token",
      "mapping": "native decode of compact representation at the consumer; no_dense_rematerialization",
+     "memory_tier": null,
      "organ": "expert_bank",
      "outputs": {
       "out": "activation"
@@ -563,12 +586,15 @@
     },
     {
      "assumes_source_tensor_identity": false,
+     "backed_identity": null,
      "dense_weight_materialization": false,
+     "evidence_tier": "STATIC",
      "id": "dma.expert_bank.in",
      "inputs": {},
      "kind": "dma-transport",
      "lifetime": "token",
      "mapping": "token activation ingress; no weight body",
+     "memory_tier": null,
      "organ": "expert_bank",
      "outputs": {
       "out": "activation"
@@ -595,7 +621,9 @@
     },
     {
      "assumes_source_tensor_identity": false,
+     "backed_identity": null,
      "dense_weight_materialization": false,
+     "evidence_tier": "STATIC",
      "id": "dma.expert_bank.out",
      "inputs": {
       "in": "partial_reduction"
@@ -603,6 +631,7 @@
      "kind": "dma-transport",
      "lifetime": "token",
      "mapping": "token activation or partial-reduction egress; no weight body",
+     "memory_tier": null,
      "organ": "expert_bank",
      "outputs": {},
      "owner": null,
@@ -627,12 +656,15 @@
     },
     {
      "assumes_source_tensor_identity": false,
+     "backed_identity": null,
      "dense_weight_materialization": false,
+     "evidence_tier": "STATIC",
      "id": "mem.expert_bank.shards",
      "inputs": {},
      "kind": "memory",
      "lifetime": "persistent",
      "mapping": "resident compact representation shards; not source-dense weights",
+     "memory_tier": null,
      "organ": "expert_bank",
      "outputs": {
       "out": "compact_representation_fragment"
@@ -659,7 +691,9 @@
     },
     {
      "assumes_source_tensor_identity": false,
+     "backed_identity": null,
      "dense_weight_materialization": false,
+     "evidence_tier": "STATIC",
      "id": "red.expert_bank.partial",
      "inputs": {
       "in": "partial_reduction"
@@ -667,6 +701,7 @@
      "kind": "reduction",
      "lifetime": "token",
      "mapping": "partial reduction of native fragments",
+     "memory_tier": null,
      "organ": "expert_bank",
      "outputs": {
       "out": "partial_reduction"
@@ -731,7 +766,10 @@
   "device genome is TARGET_UNSELECTED; HBM channel and resource footprints cannot be known without a board/synthesis",
   "no FPGA board, no HDL, no bitstream; this module must not and did not emit any",
   "AIR exists and executes on Metal; it is not HWIR and was not reused as the spatial IR",
-  "PhysicalGraph compile_physical_graph is too unresolved to lower into a resource-accurate HWIR without invention; organ maps are the reality connection"
+  "PhysicalGraph compile_physical_graph is too unresolved to lower into a resource-accurate HWIR without invention; organ maps are the reality connection",
+  "fpga_fidelity.StructuralGraph is a sibling stand-in and was not imported; HWIR owns the qGEMV preboard stack",
+  "hcli.agentos.fpga_preboard.HWIR remains schema-only (Codex/hcli surface; cannot edit)",
+  "no U50 board; every preboard number is PREHARDWARE"
  ],
  "node_kinds": [
   "compute",
@@ -747,12 +785,12 @@
   "flash": {
    "path": "receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
    "present": true,
-   "sha256": "a31e3a548f5ce955131bc9e6c04a812ad212ea2dd31e669e93328b33f84c98d0"
+   "sha256": "fb7ca577696f3dbbd783e6a3d7b5986a30e7f1cbec7a30ed522fc45b3cf88011"
   },
   "qwen27": {
    "path": "receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
    "present": true,
-   "sha256": "790c7356c757cf0ad1186acb16dff1f0fb053b0d146d06582f0b1452bebcf655"
+   "sha256": "66a606e5ce0319ef828bfed3ec4a49f2904289692bd447bbffcb1f1cbf841aec"
   }
  },
  "physical_graph_semantics_consumed": [
@@ -768,6 +806,309 @@
   "synchronization",
   "qualification"
  ],
+ "preboard": {
+  "claim_boundary": "PREHARDWARE qGEMV pre-board stack. No FPGA board, no bitstream, no synthesis, no U50, no HARDWARE_MEASURED number. The resource figure is an ESTIMATE. The cycle figure is an APPROXIMATION, not a measurement.",
+  "cycle_approx": {
+   "clock_hz": "UNKNOWN",
+   "compute_modelled_cycles": 9,
+   "conversion_reason": "a cycle approximation is not a duration without a real clock; this host has no FPGA and no emulation seat",
+   "conversion_to_seconds": "REFUSED",
+   "evidence_tier": "CYCLE_APPROX",
+   "hardware_measured": false,
+   "hbm_modelled_cycles": 1,
+   "host_c2h_modelled_cycles": 33,
+   "host_h2c_modelled_cycles": 33,
+   "initiation_interval": 1,
+   "issue_beats": 2,
+   "issue_width": 4,
+   "kind": "CYCLE_APPROXIMATION",
+   "modelled_cycles": 75,
+   "note": "CYCLE_APPROX. Modelled critical-path cycles from declared II, depth, and COST_MODEL beats. Not a measurement. Not seconds.",
+   "pipeline_depth": 8,
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "seconds": null
+  },
+  "device_profile": {
+   "BRAM": 2016,
+   "DSP": 9024,
+   "LUT": 872000,
+   "URAM": 960,
+   "declared_not_measured": true,
+   "device_id": "synthetic-u50-class",
+   "evidence_tier": "STATIC",
+   "fabric_bytes_per_modelled_cycle": 64,
+   "hardware_measured": false,
+   "hbm_bytes_per_modelled_cycle": 1024,
+   "hbm_capacity_bytes": 8589934592,
+   "hbm_channels": 32,
+   "host_device_bytes_per_modelled_cycle": 16,
+   "initiation_interval": 1,
+   "kind": "SYNTHETIC_DEVICE_PROFILE",
+   "mac_lanes_default": 8,
+   "origin": "SYNTHETIC_U50_CLASS_DECLARED_NOT_A_BOARD",
+   "pipeline_depth": 8,
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "vendor_literature": "AMD Alveo U50 / XCU50 / VU35P class envelope from public product literature. SYNTHETIC planning profile. Not a local board census."
+  },
+  "evidence_tier": "STATIC",
+  "floorplan_hints": {
+   "bram_uram_locality": "tile_buffer_beside_mac_array",
+   "device_id": "synthetic-u50-class",
+   "dfx_region": "qgemv_module",
+   "dsp_locality": "column_aligned_mac_array",
+   "engine_placement": "near_hbm_controller",
+   "evidence_tier": "STATIC",
+   "hardware_measured": false,
+   "hbm_controller_proximity": true,
+   "kind": "FLOORPLAN_HINTS",
+   "module_boundary": "qgemv",
+   "note": "STATIC hints from APPENDIX K.4. Not a floorplan, not P&R, not a congestion map, not HARDWARE_MEASURED.",
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "stream_topology": "dma_in -> decode+mac -> reduce -> dma_out"
+  },
+  "functional_sim": {
+   "engine": "tools.future.fpga_engines.qgemv",
+   "engine_symbol": "qgemv",
+   "evidence_tier": "FUNCTIONAL_SIM",
+   "expected": [
+    10.0,
+    1.5
+   ],
+   "graph_fingerprint": "e31cf3e5ef4f26e4527420b0f8b4a112ed256fb496c22b89e37028fa0841b62f",
+   "hardware_measured": false,
+   "kernel": {
+    "K": 4,
+    "M": 2,
+    "arithmetic": "DSP_MAC",
+    "engine_ladder_level": "L1",
+    "engine_ladder_meaning": "APPENDIX K.2 L1 = correct low-bit. Not L5 HBM-channel-specialized, not a board engine.",
+    "evidence_tier": "STATIC",
+    "group_size": 4,
+    "hardware_measured": false,
+    "mac_lanes": 2,
+    "model": "qgemv-class",
+    "organ": "qgemv",
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "tile_m": 2,
+    "weight_bits": 4
+   },
+   "matches_expected": true,
+   "note": "Host-CPU functional interpreter of the qGEMV numerical contract. Not a cycle count, not a board run, not HARDWARE_MEASURED.",
+   "ok": true,
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "validate": {
+    "errors": [],
+    "ok": true
+   },
+   "y": [
+    10.0,
+    1.5
+   ]
+  },
+  "graph_fingerprint": "e31cf3e5ef4f26e4527420b0f8b4a112ed256fb496c22b89e37028fa0841b62f",
+  "hardware_measured": false,
+  "hbm_traffic": {
+   "assumed_bytes_per_modelled_cycle": 1024,
+   "channels_touched": 1,
+   "evidence_tier": "COST_MODEL",
+   "hardware_measured": false,
+   "kind": "HBM_TRAFFIC_MODEL",
+   "modelled_cycles": 1,
+   "note": "COST_MODEL. Bytes and modelled cycles from a declared HBM beat. Not a measured HBM2 bandwidth, not HARDWARE_MEASURED.",
+   "per_token_bytes": 24,
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "resident_weight_bytes": 12,
+   "scale_bytes": 8,
+   "weight_bytes": 4,
+   "weights_resident": true,
+   "x_bytes": 16,
+   "y_bytes": 8
+  },
+  "host_device_transfer": {
+   "assumed_bytes_per_modelled_cycle": 16,
+   "bytes_c2h": 8,
+   "bytes_h2c": 16,
+   "evidence_tier": "COST_MODEL",
+   "fpga_rows": 2,
+   "hardware_measured": false,
+   "kind": "HOST_DEVICE_TRANSFER_MODEL",
+   "modelled_cycles_c2h": 33,
+   "modelled_cycles_h2c": 33,
+   "modelled_cycles_total": 66,
+   "note": "COST_MODEL. USB4/Thunderbolt ~40 Gb/s CLASS prior from H-ROADMAP.md \u00a715.1, expressed as a declared bytes/cycle beat. Not a measurement of any cable, not HARDWARE_MEASURED. bandwidth_gbps is intentionally absent.",
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "queue_cycles_assumed": 32,
+   "transport_class": "USB4_40G_CLASS",
+   "transport_class_source": "H-ROADMAP.md \u00a715.1 initial ~40 Gb/s class; COST_MODEL prior",
+   "weights_resident": true
+  },
+  "kernel": {
+   "K": 4,
+   "M": 2,
+   "arithmetic": "DSP_MAC",
+   "engine_ladder_level": "L1",
+   "engine_ladder_meaning": "APPENDIX K.2 L1 = correct low-bit. Not L5 HBM-channel-specialized, not a board engine.",
+   "evidence_tier": "STATIC",
+   "group_size": 4,
+   "hardware_measured": false,
+   "mac_lanes": 2,
+   "model": "qgemv-class",
+   "organ": "qgemv",
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "tile_m": 2,
+   "weight_bits": 4
+  },
+  "kind": "QGEMV_PREBOARD",
+  "organ_map_lowering": "from_qgemv",
+  "partition": {
+   "apple_fpga_prior": {
+    "apple": 65,
+    "den": 100,
+    "fpga": 35,
+    "note": "H-ROADMAP.md \u00a715.5 initial 65/35 Apple/FPGA is a COST_MODEL prior, not a measurement, and is not applied as physics."
+   },
+   "axis": "within_organ_tensor_parallel_rows",
+   "bytes_per_resident_row": 6,
+   "device_assignment": "APPLE_UMA_PLUS_FPGA_HBM_HYPOTHESIS",
+   "device_id": "synthetic-u50-class",
+   "engine_fit": {
+    "budget": {
+     "BRAM": 2016,
+     "DSP": 9024,
+     "LUT": 872000,
+     "URAM": 960
+    },
+    "device_id": "synthetic-u50-class",
+    "evidence_tier": "STATIC",
+    "ok": true,
+    "used": {
+     "BRAM": 1,
+     "DSP": 4,
+     "LUT": 1424,
+     "URAM": 0
+    }
+   },
+   "evidence_tier": "COST_MODEL",
+   "fpga_rows": 2,
+   "hardware_measured": false,
+   "hbm": {
+    "assumed_bytes_per_modelled_cycle": 1024,
+    "channels_touched": 1,
+    "evidence_tier": "COST_MODEL",
+    "hardware_measured": false,
+    "kind": "HBM_TRAFFIC_MODEL",
+    "modelled_cycles": 1,
+    "note": "COST_MODEL. Bytes and modelled cycles from a declared HBM beat. Not a measured HBM2 bandwidth, not HARDWARE_MEASURED.",
+    "per_token_bytes": 24,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "resident_weight_bytes": 12,
+    "scale_bytes": 8,
+    "weight_bytes": 4,
+    "weights_resident": true,
+    "x_bytes": 16,
+    "y_bytes": 8
+   },
+   "hbm_capacity_bytes": 8589934592,
+   "host_rows": 0,
+   "kind": "PARTITION",
+   "note": "COST_MODEL partition. Resident packed shards stay on the FPGA shard; per-token transport is activation / partial reduction. Not a board placement.",
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "resident_weight_policy": "resident_shards_no_weight_body_per_token_transfer",
+   "transfer": {
+    "assumed_bytes_per_modelled_cycle": 16,
+    "bytes_c2h": 8,
+    "bytes_h2c": 16,
+    "evidence_tier": "COST_MODEL",
+    "fpga_rows": 2,
+    "hardware_measured": false,
+    "kind": "HOST_DEVICE_TRANSFER_MODEL",
+    "modelled_cycles_c2h": 33,
+    "modelled_cycles_h2c": 33,
+    "modelled_cycles_total": 66,
+    "note": "COST_MODEL. USB4/Thunderbolt ~40 Gb/s CLASS prior from H-ROADMAP.md \u00a715.1, expressed as a declared bytes/cycle beat. Not a measurement of any cable, not HARDWARE_MEASURED. bandwidth_gbps is intentionally absent.",
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "queue_cycles_assumed": 32,
+    "transport_class": "USB4_40G_CLASS",
+    "transport_class_source": "H-ROADMAP.md \u00a715.1 initial ~40 Gb/s class; COST_MODEL prior",
+    "weights_resident": true
+   },
+   "transport_policy": "activations_and_partial_reductions_only",
+   "weights_resident": true
+  },
+  "prehardware": true,
+  "qualification": "PREHARDWARE",
+  "resource_estimate": {
+   "arithmetic": "DSP_MAC",
+   "coefficient_table": "v1-assumed-not-synthesized",
+   "evidence_tier": "STATIC",
+   "hardware_measured": false,
+   "kind": "RESOURCE_ESTIMATE",
+   "note": "ESTIMATE from an assumed coefficient table. Not a synthesis report, not place-and-route, not a board measurement.",
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "tile_bits": 96,
+   "used": {
+    "BRAM": 1,
+    "DSP": 4,
+    "LUT": 1424,
+    "URAM": 0
+   }
+  },
+  "resource_fit": {
+   "budget": {
+    "BRAM": 2016,
+    "DSP": 9024,
+    "LUT": 872000,
+    "URAM": 960
+   },
+   "device_id": "synthetic-u50-class",
+   "estimate": {
+    "arithmetic": "DSP_MAC",
+    "coefficient_table": "v1-assumed-not-synthesized",
+    "evidence_tier": "STATIC",
+    "hardware_measured": false,
+    "kind": "RESOURCE_ESTIMATE",
+    "note": "ESTIMATE from an assumed coefficient table. Not a synthesis report, not place-and-route, not a board measurement.",
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "tile_bits": 96,
+    "used": {
+     "BRAM": 1,
+     "DSP": 4,
+     "LUT": 1424,
+     "URAM": 0
+    }
+   },
+   "evidence_tier": "STATIC",
+   "hardware_measured": false,
+   "kind": "RESOURCE_FIT",
+   "ok": true,
+   "overflow": {},
+   "prehardware": true,
+   "qualification": "PREHARDWARE",
+   "used": {
+    "BRAM": 1,
+    "DSP": 4,
+    "LUT": 1424,
+    "URAM": 0
+   }
+  },
+  "validate": {
+   "errors": [],
+   "ok": true
+  }
+ },
  "primitive_to_node_kind": {
   "AsyncPrefetch": "dma-transport",
   "CollectiveRegion": "reduction",
@@ -807,8 +1148,8 @@
    "reduction",
    "representation-decoder"
   ],
-  "lowered_qwen_fingerprint": "0a8ff6c4474783b9a96038d3a420624b1d8c74dff75efc9922805414bf3990e0",
-  "lowered_state_fingerprint": "4fae29ee1d14506e35e6429f18dbbb8eddeafe17398fec8b0b6f97edd6e9980f",
+  "lowered_qwen_fingerprint": "4d3e58f334a4a13406658beef6f9f5506a00927221ab9a872b6300c3ac42fce6",
+  "lowered_state_fingerprint": "cd03dac5abe5f898b119e9e4f5f4d6943042d0ba931230cebf8f43b7d617d1ca",
   "lowered_state_kinds": [
    "compute",
    "dma-transport",
@@ -819,9 +1160,21 @@
   ],
   "lowered_state_valid": true,
   "lowered_valid": true,
+  "no_hardware_measured_emitted": true,
+  "qgemv_functional_matches": true,
+  "qgemv_functional_symbol": "qgemv",
+  "qgemv_graph_valid": true,
+  "qgemv_overflow_refused": true,
+  "qgemv_preboard_tiers": [
+   "COST_MODEL",
+   "CYCLE_APPROX",
+   "FUNCTIONAL_SIM",
+   "STATIC"
+  ],
+  "qgemv_resource_fit": true,
   "qwen_lowered_valid": true,
   "resource_over_budget_rejected": true,
-  "round_trip_bytes": 5941,
+  "round_trip_bytes": 6357,
   "round_trip_equal": true,
   "state_no_owner_rejected": true,
   "type_mismatch_rejected": true,
@@ -882,6 +1235,24 @@
    "note": "Named the gap this module closes. Recovered via git show.",
    "path": "hcli/agentos/preboard.py",
    "what": "hwir interface INTERFACE_DEFINED / SCHEMA_ONLY empty nodes"
+  },
+  {
+   "adequate_as_ir": false,
+   "note": "CALL SITE: simulate_qgemv_functional invokes fpga_engines.qgemv. Not forked, not reimplemented. FUNCTIONAL_SIM only.",
+   "path": "tools/future/fpga_engines.py",
+   "what": "qgemv bit-exact functional golden (sequential left-to-right float32)"
+  },
+  {
+   "adequate_as_ir": false,
+   "note": "CALL SITE: from_qgemv backs each node via instantiate(..., backend='FPGA'). An import of the module is not a call site; instantiate is.",
+   "path": "tools/future/physical_primitives.py",
+   "what": "atlas primitive contracts + instantiate/physical_identity"
+  },
+  {
+   "adequate_as_ir": false,
+   "note": "Sibling. Explicitly asked not to import HWIR. Different graph type. Not imported here; HWIR owns the qGEMV preboard stack on HwirGraph.",
+   "path": "tools/future/fpga_fidelity.py",
+   "what": "multi-fidelity ladder over a local StructuralGraph stand-in"
   }
  ],
  "resource_classes": [
@@ -891,7 +1262,7 @@
   "URAM"
  ],
  "schema": "hawking.future.hwir.v1",
- "seal_sha256": "cc597fe5038c4c9b0cea17c8338d41baef93c3bdf30acaa0b42a870ed79d712c",
+ "seal_sha256": "c048816fcc89bf3a54ce742f28b37ab09c6fff03d8426bea9b1d38f8e03fc410",
  "serialization": {
   "canonical": "json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=True)",
   "fingerprint": "sha256 of canonical body excluding the fingerprint field",

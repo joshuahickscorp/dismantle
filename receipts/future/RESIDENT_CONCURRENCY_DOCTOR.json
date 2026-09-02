@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:22:09Z",
+  "recorded_at": "2026-09-01T21:12:35Z",
   "recorded_by": "tools/future/concurrency_doctor.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -44,7 +44,7 @@
  "host_capability": {
   "evidence_class": "STATIC_ONLY",
   "gpu_authority": false,
-  "gpu_occupancy_class": "LOW",
+  "gpu_occupancy_class": "HIGH",
   "gpu_occupancy_probe_status": "OK",
   "is_a_measurement": false,
   "memory_pressure": "warn",
@@ -83,7 +83,7 @@
   "swap": {
    "note": "cumulative vm_stat Swapins, not a per-level experiment rate",
    "status": "OK",
-   "swap_ins": 73547396
+   "swap_ins": 106372868
   }
  },
  "is_a_measurement": false,
@@ -107,14 +107,14 @@
  "live_observations": [
   {
    "capability_envelope": {
-    "gpu_occupancy_class": "LOW",
+    "gpu_occupancy_class": "HIGH",
     "memory_pressure": "warn",
     "occupancy_is_not_available_compute": true,
     "resident_bytes": null,
     "swap": {
      "note": "cumulative vm_stat Swapins, not a per-level experiment rate",
      "status": "OK",
-     "swap_ins": 73547396
+     "swap_ins": 106372868
     }
    },
    "concurrency": 1,
@@ -165,14 +165,14 @@
   },
   {
    "capability_envelope": {
-    "gpu_occupancy_class": "LOW",
+    "gpu_occupancy_class": "HIGH",
     "memory_pressure": "warn",
     "occupancy_is_not_available_compute": true,
     "resident_bytes": null,
     "swap": {
      "note": "cumulative vm_stat Swapins, not a per-level experiment rate",
      "status": "OK",
-     "swap_ins": 73547396
+     "swap_ins": 106372868
     }
    },
    "concurrency": 2,
@@ -223,14 +223,14 @@
   },
   {
    "capability_envelope": {
-    "gpu_occupancy_class": "LOW",
+    "gpu_occupancy_class": "HIGH",
     "memory_pressure": "warn",
     "occupancy_is_not_available_compute": true,
     "resident_bytes": null,
     "swap": {
      "note": "cumulative vm_stat Swapins, not a per-level experiment rate",
      "status": "OK",
-     "swap_ins": 73547396
+     "swap_ins": 106372868
     }
    },
    "concurrency": 3,
@@ -281,14 +281,14 @@
   },
   {
    "capability_envelope": {
-    "gpu_occupancy_class": "LOW",
+    "gpu_occupancy_class": "HIGH",
     "memory_pressure": "warn",
     "occupancy_is_not_available_compute": true,
     "resident_bytes": null,
     "swap": {
      "note": "cumulative vm_stat Swapins, not a per-level experiment rate",
      "status": "OK",
-     "swap_ins": 73547396
+     "swap_ins": 106372868
     }
    },
    "concurrency": 4,
@@ -564,7 +564,7 @@
   "workunit": "one CPU_ANALYSIS unit for the plan; the live experiment is GPU_EXCLUSIVE and SLEEPING until resident+lease+quiescence"
  },
  "schema": "hawking.future.concurrency_doctor.v1",
- "seal_sha256": "5277a1df05db1a5e411ee55c18ad09d7f6399a07bac5b86ac5e9615a0e4a4baf",
+ "seal_sha256": "f198fb132c20061f19084c38a22b95a5d6e7b0948eebf8bd7442da08c7e5760b",
  "sleeping_workunit": {
   "assigned_backend": null,
   "assigned_runtime": null,

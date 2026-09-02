@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T02:06:49Z",
+  "recorded_at": "2026-09-02T03:14:48Z",
   "recorded_by": "tools/theia/engine.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -192,7 +192,7 @@
   ]
  },
  "schema": "hawking.theia.bounty_engine.v1",
- "seal_sha256": "0c1e916dca4e6cd2ef0a623067f1b8ae7482a834da16b1b4a11dc240dca5b3f2",
+ "seal_sha256": "7be68ca2764e66d9b75bca0ef313b590ccd10243574bc14b8dfb28887adc886c",
  "security": {
   "ACTIVE_TEST": "modeled; transition refused; cannot be forced",
   "active_test": false,
@@ -210,13 +210,13 @@
   "lab": "HAWKING SELF-BOUNTY",
   "notes": {
    "artifacts": [
-    "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json"
+    "/Users/scammermike/Downloads/hawking/receipts/future/AUTONOMY_SCARS.json"
    ],
    "authorization": {
     "reason": "self-bounty; not a security class",
     "status": "HAWKING_INTERNAL"
    },
-   "discovered": "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json",
+   "discovered": "/Users/scammermike/Downloads/hawking/receipts/future/AUTONOMY_SCARS.json",
    "known_solution": false,
    "plan": {
     "actions": [
@@ -282,7 +282,7 @@
     "probability_of_success": {
      "denominator": 1,
      "numerator": 1,
-     "source": "artifact already on disk at /Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json; intake is local parse, not a search"
+     "source": "artifact already on disk at /Users/scammermike/Downloads/hawking/receipts/future/AUTONOMY_SCARS.json; intake is local parse, not a search"
     },
     "risk": {
      "denominator": 1,
@@ -317,7 +317,7 @@
   },
   "security_halt": null,
   "self_bounty_kind": "negative science",
-  "source": "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json",
+  "source": "/Users/scammermike/Downloads/hawking/receipts/future/AUTONOMY_SCARS.json",
   "stages_visited": [
    "DISCOVER",
    "AUTHORITY/SCOPE RESOLUTION",
@@ -333,7 +333,7 @@
    "TRAJECTORY + METHOD + NEGATIVE SCIENCE"
   ],
   "verified_result": {
-   "artifact": "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json",
+   "artifact": "/Users/scammermike/Downloads/hawking/receipts/future/AUTONOMY_SCARS.json",
    "detail": {
     "independent_module": "tools.future.autonomy_scars.scars",
     "n_scars": 4,
@@ -344,7 +344,7 @@
      "STATUS_LABEL_LAUNDERED_AS_CAUSAL_CLAIM"
     ],
     "schema": "hawking.future.autonomy_scars.v1",
-    "seal_sha256": "b633eb0ca55f6924a48984047390dab565993c4329efc491cc7ae3bca6c81258"
+    "seal_sha256": "099c415914cef2b1fa93b8d3474d16561de39ad50aada313c903618859cbac8c"
    },
    "kind": "receipt_seal",
    "type": "VerifiedResult"

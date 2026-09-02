@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T08:29:15Z",
+  "recorded_at": "2026-09-01T21:17:14Z",
   "recorded_by": "tools/future/dirty_measure.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -11,86 +11,32 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "competing_workloads": [
   {
-   "cpu_pct": 1.9,
-   "name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-   "pid": 54279,
-   "rss_gib": 7.57
-  },
-  {
-   "cpu_pct": 74.0,
-   "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-   "pid": 50831,
-   "rss_gib": 1.92
-  },
-  {
-   "cpu_pct": 77.1,
-   "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-   "pid": 50834,
-   "rss_gib": 1.87
-  },
-  {
-   "cpu_pct": 99.4,
-   "name": "/Library/Developer/CommandLineTools/usr/bin/swift-frontend",
-   "pid": 56038,
-   "rss_gib": 0.88
-  },
-  {
-   "cpu_pct": 70.0,
-   "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
-   "pid": 292,
-   "rss_gib": 0.12
-  },
-  {
-   "cpu_pct": 36.9,
+   "cpu_pct": 65.3,
    "name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
-   "pid": 50032,
-   "rss_gib": 0.08
+   "pid": 90055,
+   "rss_gib": 12.54
   },
   {
-   "cpu_pct": 48.7,
-   "name": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-   "pid": 77282,
-   "rss_gib": 0.06
+   "cpu_pct": 205.6,
+   "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+   "pid": 25772,
+   "rss_gib": 5.4
   },
   {
-   "cpu_pct": 35.7,
-   "name": "postgres: cx cx_iso_6453f5444d9146f1898d9561 127.0.0.1(50230) BIND",
-   "pid": 56554,
-   "rss_gib": 0.06
-  },
-  {
-   "cpu_pct": 43.9,
+   "cpu_pct": 38.8,
    "name": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
    "pid": 180,
-   "rss_gib": 0.05
+   "rss_gib": 0.06
   },
   {
-   "cpu_pct": 81.6,
-   "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-   "pid": 77296,
-   "rss_gib": 0.03
-  },
-  {
-   "cpu_pct": 33.6,
-   "name": "/System/Library/CoreServices/RemoteManagement/screensharingd.bundle/Contents/MacOS/screensharingd",
-   "pid": 41075,
-   "rss_gib": 0.03
-  },
-  {
-   "cpu_pct": 99.5,
-   "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-   "pid": 77305,
-   "rss_gib": 0.02
-  },
-  {
-   "cpu_pct": 36.5,
-   "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
-   "pid": 113,
+   "cpu_pct": 99.0,
+   "name": ".venv/bin/python",
+   "pid": 17887,
    "rss_gib": 0.01
   }
  ],
  "contamination_class": "HEAVY",
- "contamination_fingerprint": "f332291cf61ea105a7a292b7c7f2e66a49c635423b4f096013a303e4ad5bf604",
+ "contamination_fingerprint": "8276755121d107b4932949ae4fc33a79bc5f4f8a6413a21ff15b9ae244ee6b2d",
  "direction_is_not_magnitude": {
   "fixture_ab": {
    "faster_arm": "B",
@@ -148,81 +94,27 @@
   "classification_rule": "UNKNOWN when a required probe failed \u2014 never optimistic QUIESCENT. HEAVY evidence from a probe that succeeded still classifies HEAVY.",
   "competing_workloads": [
    {
-    "cpu_pct": 1.9,
-    "name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-    "pid": 54279,
-    "rss_gib": 7.57
-   },
-   {
-    "cpu_pct": 74.0,
-    "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-    "pid": 50831,
-    "rss_gib": 1.92
-   },
-   {
-    "cpu_pct": 77.1,
-    "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-    "pid": 50834,
-    "rss_gib": 1.87
-   },
-   {
-    "cpu_pct": 99.4,
-    "name": "/Library/Developer/CommandLineTools/usr/bin/swift-frontend",
-    "pid": 56038,
-    "rss_gib": 0.88
-   },
-   {
-    "cpu_pct": 70.0,
-    "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
-    "pid": 292,
-    "rss_gib": 0.12
-   },
-   {
-    "cpu_pct": 36.9,
+    "cpu_pct": 65.3,
     "name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
-    "pid": 50032,
-    "rss_gib": 0.08
+    "pid": 90055,
+    "rss_gib": 12.54
    },
    {
-    "cpu_pct": 48.7,
-    "name": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-    "pid": 77282,
-    "rss_gib": 0.06
+    "cpu_pct": 205.6,
+    "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+    "pid": 25772,
+    "rss_gib": 5.4
    },
    {
-    "cpu_pct": 35.7,
-    "name": "postgres: cx cx_iso_6453f5444d9146f1898d9561 127.0.0.1(50230) BIND",
-    "pid": 56554,
-    "rss_gib": 0.06
-   },
-   {
-    "cpu_pct": 43.9,
+    "cpu_pct": 38.8,
     "name": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
     "pid": 180,
-    "rss_gib": 0.05
+    "rss_gib": 0.06
    },
    {
-    "cpu_pct": 81.6,
-    "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-    "pid": 77296,
-    "rss_gib": 0.03
-   },
-   {
-    "cpu_pct": 33.6,
-    "name": "/System/Library/CoreServices/RemoteManagement/screensharingd.bundle/Contents/MacOS/screensharingd",
-    "pid": 41075,
-    "rss_gib": 0.03
-   },
-   {
-    "cpu_pct": 99.5,
-    "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-    "pid": 77305,
-    "rss_gib": 0.02
-   },
-   {
-    "cpu_pct": 36.5,
-    "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
-    "pid": 113,
+    "cpu_pct": 99.0,
+    "name": ".venv/bin/python",
+    "pid": 17887,
     "rss_gib": 0.01
    }
   ],
@@ -230,8 +122,14 @@
   "contamination_evidence": [
    {
     "contributes": "HEAVY",
-    "finding": "device_utilization_pct=100 >= 20.0",
+    "finding": "max_rss_gib=12.54 >= 8.0",
     "kind": "heavy",
+    "probe": "rss"
+   },
+   {
+    "contributes": "LIGHT",
+    "finding": "device_utilization_pct=16 > 0",
+    "kind": "light",
     "probe": "gpu_occupancy"
    },
    {
@@ -241,90 +139,45 @@
     "probe": "memory"
    }
   ],
-  "contamination_fingerprint": "f332291cf61ea105a7a292b7c7f2e66a49c635423b4f096013a303e4ad5bf604",
+  "contamination_fingerprint": "8276755121d107b4932949ae4fc33a79bc5f4f8a6413a21ff15b9ae244ee6b2d",
   "contamination_reason": "at least one HEAVY probe fired",
   "dirty_binding": {
-   "contamination_fingerprint": "f332291cf61ea105a7a292b7c7f2e66a49c635423b4f096013a303e4ad5bf604",
+   "contamination_fingerprint": "8276755121d107b4932949ae4fc33a79bc5f4f8a6413a21ff15b9ae244ee6b2d",
    "evidence_class": "SELF_MEASURED_DIRTY",
    "rule": "SELF_MEASURED_DIRTY values cannot be rebound as PROTECTED_ABSOLUTE; copying this object does not change its evidence class",
-   "token": "41b824d1b9ac71bad2797c384e9b05a6257c7c898e0c02c560548848dbda1aa2",
+   "token": "3513d54de94d4b98f399930137b53744e5273104aac939e24741b66275eeff3b",
    "use": "envelope"
   },
-  "dirty_value_token": "41b824d1b9ac71bad2797c384e9b05a6257c7c898e0c02c560548848dbda1aa2",
+  "dirty_value_token": "3513d54de94d4b98f399930137b53744e5273104aac939e24741b66275eeff3b",
   "evidence_class": "SELF_MEASURED_DIRTY",
   "gpu_authority": false,
   "gpu_processes": {
    "attribution": "enumerated by CPU% and/or RSS; PID-level GPU occupancy is not available without a protected lease. On Apple Silicon RSS is the Metal working-set dimension (ACCELERATOR_QUIESCENCE_INSTRUMENT).",
    "cpu_pct_available": true,
    "method": "ps_enumerate",
-   "n_enumerated": 448,
-   "n_over_threshold": 13,
+   "n_enumerated": 411,
+   "n_over_threshold": 4,
    "no_name_filter": true,
    "processes": [
     {
-     "cpu_pct": 1.9,
-     "name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-     "pid": 54279
-    },
-    {
-     "cpu_pct": 74.0,
-     "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-     "pid": 50831
-    },
-    {
-     "cpu_pct": 77.1,
-     "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-     "pid": 50834
-    },
-    {
-     "cpu_pct": 99.4,
-     "name": "/Library/Developer/CommandLineTools/usr/bin/swift-frontend",
-     "pid": 56038
-    },
-    {
-     "cpu_pct": 70.0,
-     "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
-     "pid": 292
-    },
-    {
-     "cpu_pct": 36.9,
+     "cpu_pct": 65.3,
      "name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
-     "pid": 50032
+     "pid": 90055
     },
     {
-     "cpu_pct": 48.7,
-     "name": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-     "pid": 77282
+     "cpu_pct": 205.6,
+     "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+     "pid": 25772
     },
     {
-     "cpu_pct": 35.7,
-     "name": "postgres: cx cx_iso_6453f5444d9146f1898d9561 127.0.0.1(50230) BIND",
-     "pid": 56554
-    },
-    {
-     "cpu_pct": 43.9,
+     "cpu_pct": 38.8,
      "name": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
      "pid": 180
     },
     {
-     "cpu_pct": 81.6,
-     "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-     "pid": 77296
-    },
-    {
-     "cpu_pct": 33.6,
-     "name": "/System/Library/CoreServices/RemoteManagement/screensharingd.bundle/Contents/MacOS/screensharingd",
-     "pid": 41075
-    },
-    {
-     "cpu_pct": 99.5,
-     "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-     "pid": 77305
-    },
-    {
-     "cpu_pct": 36.5,
-     "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
-     "pid": 113
+     "cpu_pct": 99.0,
+     "name": ".venv/bin/python",
+     "pid": 17887
     }
    ],
    "reason": null,
@@ -356,35 +209,35 @@
   "measurement_class": "STATIC_ONLY",
   "memory_pressure": {
    "bytes": {
-    "active": 10211295232,
-    "compressor": 6990004224,
-    "free": 36759420928,
-    "inactive": 14367490048,
-    "wired": 33844281344
+    "active": 16887627776,
+    "compressor": 20506935296,
+    "free": 39247380480,
+    "inactive": 16802840576,
+    "wired": 8670724096
    },
    "pages": {
-    "\"Translation faults\"": 22330692125,
-    "Anonymous pages": 599504,
-    "Compressions": 1778745473,
-    "Decompressions": 599459150,
-    "File-backed pages": 902525,
-    "Pageins": 792052850,
-    "Pageouts": 532150,
-    "Pages active": 623248,
-    "Pages copy-on-write": 1833305135,
-    "Pages free": 2243617,
-    "Pages inactive": 876922,
-    "Pages occupied by compressor": 426636,
-    "Pages purgeable": 26104,
-    "Pages purged": 67307232,
-    "Pages reactivated": 439720582,
-    "Pages speculative": 1859,
-    "Pages stored in compressor": 470517,
+    "\"Translation faults\"": 24104347704,
+    "Anonymous pages": 1624730,
+    "Compressions": 2183451639,
+    "Decompressions": 691620172,
+    "File-backed pages": 436895,
+    "Pageins": 864405950,
+    "Pageouts": 624501,
+    "Pages active": 1030739,
+    "Pages copy-on-write": 1926069110,
+    "Pages free": 2395470,
+    "Pages inactive": 1025564,
+    "Pages occupied by compressor": 1251644,
+    "Pages purgeable": 21541,
+    "Pages purged": 75225740,
+    "Pages reactivated": 499570713,
+    "Pages speculative": 5322,
+    "Pages stored in compressor": 1247217,
     "Pages throttled": 0,
-    "Pages wired down": 2065691,
-    "Pages zero filled": 34225092712,
-    "Swapins": 88693470,
-    "Swapouts": 172067192
+    "Pages wired down": 529219,
+    "Pages zero filled": 35527096795,
+    "Swapins": 106378341,
+    "Swapouts": 213601529
    },
    "pressure_level": 1,
    "pressure_name": "warn",
@@ -417,8 +270,8 @@
    "did_not_start_resident": true,
    "model": "UNKNOWN",
    "note": "this sidecar did not start a resident and did not take a GPU lease; process name is not a model identity; model stays UNKNOWN unless declared",
-   "pid": 54279,
-   "process_name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+   "pid": 90055,
+   "process_name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
    "source": "largest_rss_neighbour",
    "status": "PARTIAL"
   },
@@ -426,81 +279,27 @@
    "benchmark_ordinal": null,
    "competing_workloads": [
     {
-     "cpu_pct": 1.9,
-     "name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-     "pid": 54279,
-     "rss_gib": 7.57
-    },
-    {
-     "cpu_pct": 74.0,
-     "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-     "pid": 50831,
-     "rss_gib": 1.92
-    },
-    {
-     "cpu_pct": 77.1,
-     "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-     "pid": 50834,
-     "rss_gib": 1.87
-    },
-    {
-     "cpu_pct": 99.4,
-     "name": "/Library/Developer/CommandLineTools/usr/bin/swift-frontend",
-     "pid": 56038,
-     "rss_gib": 0.88
-    },
-    {
-     "cpu_pct": 70.0,
-     "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
-     "pid": 292,
-     "rss_gib": 0.12
-    },
-    {
-     "cpu_pct": 36.9,
+     "cpu_pct": 65.3,
      "name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
-     "pid": 50032,
-     "rss_gib": 0.08
+     "pid": 90055,
+     "rss_gib": 12.54
     },
     {
-     "cpu_pct": 48.7,
-     "name": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-     "pid": 77282,
-     "rss_gib": 0.06
+     "cpu_pct": 205.6,
+     "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+     "pid": 25772,
+     "rss_gib": 5.4
     },
     {
-     "cpu_pct": 35.7,
-     "name": "postgres: cx cx_iso_6453f5444d9146f1898d9561 127.0.0.1(50230) BIND",
-     "pid": 56554,
-     "rss_gib": 0.06
-    },
-    {
-     "cpu_pct": 43.9,
+     "cpu_pct": 38.8,
      "name": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
      "pid": 180,
-     "rss_gib": 0.05
+     "rss_gib": 0.06
     },
     {
-     "cpu_pct": 81.6,
-     "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-     "pid": 77296,
-     "rss_gib": 0.03
-    },
-    {
-     "cpu_pct": 33.6,
-     "name": "/System/Library/CoreServices/RemoteManagement/screensharingd.bundle/Contents/MacOS/screensharingd",
-     "pid": 41075,
-     "rss_gib": 0.03
-    },
-    {
-     "cpu_pct": 99.5,
-     "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-     "pid": 77305,
-     "rss_gib": 0.02
-    },
-    {
-     "cpu_pct": 36.5,
-     "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
-     "pid": 113,
+     "cpu_pct": 99.0,
+     "name": ".venv/bin/python",
+     "pid": 17887,
      "rss_gib": 0.01
     }
    ],
@@ -508,74 +307,29 @@
     "attribution": "enumerated by CPU% and/or RSS; PID-level GPU occupancy is not available without a protected lease. On Apple Silicon RSS is the Metal working-set dimension (ACCELERATOR_QUIESCENCE_INSTRUMENT).",
     "cpu_pct_available": true,
     "method": "ps_enumerate",
-    "n_enumerated": 448,
-    "n_over_threshold": 13,
+    "n_enumerated": 411,
+    "n_over_threshold": 4,
     "no_name_filter": true,
     "processes": [
      {
-      "cpu_pct": 1.9,
-      "name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-      "pid": 54279
-     },
-     {
-      "cpu_pct": 74.0,
-      "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-      "pid": 50831
-     },
-     {
-      "cpu_pct": 77.1,
-      "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-      "pid": 50834
-     },
-     {
-      "cpu_pct": 99.4,
-      "name": "/Library/Developer/CommandLineTools/usr/bin/swift-frontend",
-      "pid": 56038
-     },
-     {
-      "cpu_pct": 70.0,
-      "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
-      "pid": 292
-     },
-     {
-      "cpu_pct": 36.9,
+      "cpu_pct": 65.3,
       "name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
-      "pid": 50032
+      "pid": 90055
      },
      {
-      "cpu_pct": 48.7,
-      "name": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-      "pid": 77282
+      "cpu_pct": 205.6,
+      "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+      "pid": 25772
      },
      {
-      "cpu_pct": 35.7,
-      "name": "postgres: cx cx_iso_6453f5444d9146f1898d9561 127.0.0.1(50230) BIND",
-      "pid": 56554
-     },
-     {
-      "cpu_pct": 43.9,
+      "cpu_pct": 38.8,
       "name": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
       "pid": 180
      },
      {
-      "cpu_pct": 81.6,
-      "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-      "pid": 77296
-     },
-     {
-      "cpu_pct": 33.6,
-      "name": "/System/Library/CoreServices/RemoteManagement/screensharingd.bundle/Contents/MacOS/screensharingd",
-      "pid": 41075
-     },
-     {
-      "cpu_pct": 99.5,
-      "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-      "pid": 77305
-     },
-     {
-      "cpu_pct": 36.5,
-      "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
-      "pid": 113
+      "cpu_pct": 99.0,
+      "name": ".venv/bin/python",
+      "pid": 17887
      }
     ],
     "reason": null,
@@ -599,35 +353,35 @@
    },
    "memory_pressure": {
     "bytes": {
-     "active": 10211295232,
-     "compressor": 6990004224,
-     "free": 36759420928,
-     "inactive": 14367490048,
-     "wired": 33844281344
+     "active": 16887627776,
+     "compressor": 20506935296,
+     "free": 39247380480,
+     "inactive": 16802840576,
+     "wired": 8670724096
     },
     "pages": {
-     "\"Translation faults\"": 22330692125,
-     "Anonymous pages": 599504,
-     "Compressions": 1778745473,
-     "Decompressions": 599459150,
-     "File-backed pages": 902525,
-     "Pageins": 792052850,
-     "Pageouts": 532150,
-     "Pages active": 623248,
-     "Pages copy-on-write": 1833305135,
-     "Pages free": 2243617,
-     "Pages inactive": 876922,
-     "Pages occupied by compressor": 426636,
-     "Pages purgeable": 26104,
-     "Pages purged": 67307232,
-     "Pages reactivated": 439720582,
-     "Pages speculative": 1859,
-     "Pages stored in compressor": 470517,
+     "\"Translation faults\"": 24104347704,
+     "Anonymous pages": 1624730,
+     "Compressions": 2183451639,
+     "Decompressions": 691620172,
+     "File-backed pages": 436895,
+     "Pageins": 864405950,
+     "Pageouts": 624501,
+     "Pages active": 1030739,
+     "Pages copy-on-write": 1926069110,
+     "Pages free": 2395470,
+     "Pages inactive": 1025564,
+     "Pages occupied by compressor": 1251644,
+     "Pages purgeable": 21541,
+     "Pages purged": 75225740,
+     "Pages reactivated": 499570713,
+     "Pages speculative": 5322,
+     "Pages stored in compressor": 1247217,
      "Pages throttled": 0,
-     "Pages wired down": 2065691,
-     "Pages zero filled": 34225092712,
-     "Swapins": 88693470,
-     "Swapouts": 172067192
+     "Pages wired down": 529219,
+     "Pages zero filled": 35527096795,
+     "Swapins": 106378341,
+     "Swapouts": 213601529
     },
     "pressure_level": 1,
     "pressure_name": "warn",
@@ -636,53 +390,53 @@
    },
    "probes": {
     "gpu_occupancy": {
-     "device_utilization_pct": 100,
+     "device_utilization_pct": 16,
      "gpu_core_count": 60,
      "method": "ioreg_IOGPU_PerformanceStatistics",
      "no_gpu_lease": true,
      "note": "device occupancy percent, not a kernel timing and not a throughput claim; PID-level GPU attribution is unavailable without a protected lease",
-     "renderer_utilization_pct": 100,
+     "renderer_utilization_pct": 15,
      "status": "OK",
-     "tiler_utilization_pct": 100
+     "tiler_utilization_pct": 16
     },
     "load": {
-     "load_15m": 11.37841796875,
-     "load_1m": 12.3837890625,
-     "load_5m": 12.509765625,
+     "load_15m": 8.9091796875,
+     "load_1m": 10.51953125,
+     "load_5m": 9.42431640625,
      "ncpu": 28,
      "status": "OK"
     },
     "memory": {
      "bytes": {
-      "active": 10211295232,
-      "compressor": 6990004224,
-      "free": 36759420928,
-      "inactive": 14367490048,
-      "wired": 33844281344
+      "active": 16887627776,
+      "compressor": 20506935296,
+      "free": 39247380480,
+      "inactive": 16802840576,
+      "wired": 8670724096
      },
      "pages": {
-      "\"Translation faults\"": 22330692125,
-      "Anonymous pages": 599504,
-      "Compressions": 1778745473,
-      "Decompressions": 599459150,
-      "File-backed pages": 902525,
-      "Pageins": 792052850,
-      "Pageouts": 532150,
-      "Pages active": 623248,
-      "Pages copy-on-write": 1833305135,
-      "Pages free": 2243617,
-      "Pages inactive": 876922,
-      "Pages occupied by compressor": 426636,
-      "Pages purgeable": 26104,
-      "Pages purged": 67307232,
-      "Pages reactivated": 439720582,
-      "Pages speculative": 1859,
-      "Pages stored in compressor": 470517,
+      "\"Translation faults\"": 24104347704,
+      "Anonymous pages": 1624730,
+      "Compressions": 2183451639,
+      "Decompressions": 691620172,
+      "File-backed pages": 436895,
+      "Pageins": 864405950,
+      "Pageouts": 624501,
+      "Pages active": 1030739,
+      "Pages copy-on-write": 1926069110,
+      "Pages free": 2395470,
+      "Pages inactive": 1025564,
+      "Pages occupied by compressor": 1251644,
+      "Pages purgeable": 21541,
+      "Pages purged": 75225740,
+      "Pages reactivated": 499570713,
+      "Pages speculative": 5322,
+      "Pages stored in compressor": 1247217,
       "Pages throttled": 0,
-      "Pages wired down": 2065691,
-      "Pages zero filled": 34225092712,
-      "Swapins": 88693470,
-      "Swapouts": 172067192
+      "Pages wired down": 529219,
+      "Pages zero filled": 35527096795,
+      "Swapins": 106378341,
+      "Swapouts": 213601529
      },
      "pressure_level": 1,
      "pressure_name": "warn",
@@ -692,7 +446,7 @@
     "processes": {
      "cpu_pct_available": true,
      "method": "ps_enumerate",
-     "n_enumerated": 448,
+     "n_enumerated": 411,
      "no_name_filter": true,
      "status": "OK"
     },
@@ -703,11 +457,11 @@
     }
    },
    "resident_local_model": {
-    "cpu_pct": 1.9,
-    "name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+    "cpu_pct": 65.3,
+    "name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
     "note": "largest RSS neighbour over the quiet threshold; not a model-name guess",
-    "pid": 54279,
-    "rss_gib": 7.57
+    "pid": 90055,
+    "rss_gib": 12.54
    },
    "thermal_state": "UNKNOWN"
   },
@@ -741,74 +495,29 @@
   "attribution": "enumerated by CPU% and/or RSS; PID-level GPU occupancy is not available without a protected lease. On Apple Silicon RSS is the Metal working-set dimension (ACCELERATOR_QUIESCENCE_INSTRUMENT).",
   "cpu_pct_available": true,
   "method": "ps_enumerate",
-  "n_enumerated": 448,
-  "n_over_threshold": 13,
+  "n_enumerated": 411,
+  "n_over_threshold": 4,
   "no_name_filter": true,
   "processes": [
    {
-    "cpu_pct": 1.9,
-    "name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
-    "pid": 54279
-   },
-   {
-    "cpu_pct": 74.0,
-    "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-    "pid": 50831
-   },
-   {
-    "cpu_pct": 77.1,
-    "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
-    "pid": 50834
-   },
-   {
-    "cpu_pct": 99.4,
-    "name": "/Library/Developer/CommandLineTools/usr/bin/swift-frontend",
-    "pid": 56038
-   },
-   {
-    "cpu_pct": 70.0,
-    "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores",
-    "pid": 292
-   },
-   {
-    "cpu_pct": 36.9,
+    "cpu_pct": 65.3,
     "name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
-    "pid": 50032
+    "pid": 90055
    },
    {
-    "cpu_pct": 48.7,
-    "name": "/System/Library/ExtensionKit/Extensions/Storage.appex/Contents/MacOS/Storage",
-    "pid": 77282
+    "cpu_pct": 205.6,
+    "name": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+    "pid": 25772
    },
    {
-    "cpu_pct": 35.7,
-    "name": "postgres: cx cx_iso_6453f5444d9146f1898d9561 127.0.0.1(50230) BIND",
-    "pid": 56554
-   },
-   {
-    "cpu_pct": 43.9,
+    "cpu_pct": 38.8,
     "name": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer",
     "pid": 180
    },
    {
-    "cpu_pct": 81.6,
-    "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/StorageManagementService",
-    "pid": 77296
-   },
-   {
-    "cpu_pct": 33.6,
-    "name": "/System/Library/CoreServices/RemoteManagement/screensharingd.bundle/Contents/MacOS/screensharingd",
-    "pid": 41075
-   },
-   {
-    "cpu_pct": 99.5,
-    "name": "/System/Library/PrivateFrameworks/StorageManagement.framework/PlugIns/ApplicationsStorageExtension.appex/Contents/MacOS/ApplicationsStorageExtension",
-    "pid": 77305
-   },
-   {
-    "cpu_pct": 36.5,
-    "name": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
-    "pid": 113
+    "cpu_pct": 99.0,
+    "name": ".venv/bin/python",
+    "pid": 17887
    }
   ],
   "reason": null,
@@ -834,35 +543,35 @@
  "measurement_class": "STATIC_ONLY",
  "memory_pressure": {
   "bytes": {
-   "active": 10211295232,
-   "compressor": 6990004224,
-   "free": 36759420928,
-   "inactive": 14367490048,
-   "wired": 33844281344
+   "active": 16887627776,
+   "compressor": 20506935296,
+   "free": 39247380480,
+   "inactive": 16802840576,
+   "wired": 8670724096
   },
   "pages": {
-   "\"Translation faults\"": 22330692125,
-   "Anonymous pages": 599504,
-   "Compressions": 1778745473,
-   "Decompressions": 599459150,
-   "File-backed pages": 902525,
-   "Pageins": 792052850,
-   "Pageouts": 532150,
-   "Pages active": 623248,
-   "Pages copy-on-write": 1833305135,
-   "Pages free": 2243617,
-   "Pages inactive": 876922,
-   "Pages occupied by compressor": 426636,
-   "Pages purgeable": 26104,
-   "Pages purged": 67307232,
-   "Pages reactivated": 439720582,
-   "Pages speculative": 1859,
-   "Pages stored in compressor": 470517,
+   "\"Translation faults\"": 24104347704,
+   "Anonymous pages": 1624730,
+   "Compressions": 2183451639,
+   "Decompressions": 691620172,
+   "File-backed pages": 436895,
+   "Pageins": 864405950,
+   "Pageouts": 624501,
+   "Pages active": 1030739,
+   "Pages copy-on-write": 1926069110,
+   "Pages free": 2395470,
+   "Pages inactive": 1025564,
+   "Pages occupied by compressor": 1251644,
+   "Pages purgeable": 21541,
+   "Pages purged": 75225740,
+   "Pages reactivated": 499570713,
+   "Pages speculative": 5322,
+   "Pages stored in compressor": 1247217,
    "Pages throttled": 0,
-   "Pages wired down": 2065691,
-   "Pages zero filled": 34225092712,
-   "Swapins": 88693470,
-   "Swapouts": 172067192
+   "Pages wired down": 529219,
+   "Pages zero filled": 35527096795,
+   "Swapins": 106378341,
+   "Swapouts": 213601529
   },
   "pressure_level": 1,
   "pressure_name": "warn",
@@ -1058,13 +767,13 @@
   "did_not_start_resident": true,
   "model": "UNKNOWN",
   "note": "this sidecar did not start a resident and did not take a GPU lease; process name is not a model identity; model stays UNKNOWN unless declared",
-  "pid": 54279,
-  "process_name": "/Users/scammermike/Downloads/hawking/workspace/ops/build/rust/release-fast/examples/ascension_qwen38_resident",
+  "pid": 90055,
+  "process_name": "/Users/scammermike/.venvs/hawking-aider/bin/python3",
   "source": "largest_rss_neighbour",
   "status": "PARTIAL"
  },
  "schema": "hawking.future.dirty_measure.v1",
- "seal_sha256": "be0fff61d7c716aeeb676330932e47a9506dfd19c28f4d06228ab49422997040",
+ "seal_sha256": "ddb6ae90287dff8fa5f01e3203eb040b52fab8a5d91e21179bea1494f90fa17e",
  "structural_refusal": {
   "as_protected_absolute": "always raises; field copy is not a path",
   "copy_value_as": "raises when target is PROTECTED_ABSOLUTE",

@@ -50556,7 +50556,7 @@
     "sidecar_must_not_promote": true
    },
    "source": "receipts/headless/NOETIC_ASCENSION_HANDOFF.json",
-   "source_sha256": "4fe4d49f851fb5354682e91f0e3f47a13396a28d5d0f70272282c504d3d5b040"
+   "source_sha256": "be15ebb136a810b010492f05661e20e5eba1c4ae41ca011063ff4d6dd0aadfb9"
   },
   {
    "classification": "SCAR",
@@ -53507,7 +53507,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:22:07Z",
+  "recorded_at": "2026-09-01T21:04:25Z",
   "recorded_by": "tools/future/codex_ingest.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -55743,7 +55743,7 @@
    "driver_token": "no_verdict",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1787736939.329411,
+   "mtime": 1788244233.521165,
    "reason": "no LAW or SCAR driver in well-known fields",
    "sha256": "f6f264c03b08d51530c41550ae1b6d1a836e13a80a2c52a1be74fb15fe36a015",
    "size": 111298
@@ -55755,7 +55755,7 @@
    "driver_token": "no_verdict",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1787736939.3296552,
+   "mtime": 1788244233.521813,
    "reason": "no LAW or SCAR driver in well-known fields",
    "sha256": "f6f264c03b08d51530c41550ae1b6d1a836e13a80a2c52a1be74fb15fe36a015",
    "size": 111298
@@ -69495,7 +69495,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.7624562,
+   "mtime": 1788296448.490887,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "0b6209a16b3d0b546d16b47e23bf07fc23f2f50a100dbbe6d1a74bfceb76d484",
    "size": 132669
@@ -69531,7 +69531,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.7588239,
+   "mtime": 1788296448.4764853,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "45feb7b0f1bfd8e3873bbf14b3c54d24973d4106b8ab4ee72ec83b32436fc5ec",
    "size": 11084
@@ -69555,7 +69555,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.7676375,
+   "mtime": 1788296448.5027592,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "47617dd47099811fe178a5be6ddb29107072d097c73f9ea3679afda07317c223",
    "size": 4474
@@ -69567,7 +69567,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.7690406,
+   "mtime": 1788296448.5070121,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "ec9589bd2ced5e72a157422d5b7db9935f37da44f8a029491aba41f07764a766",
    "size": 13150
@@ -69579,7 +69579,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.757833,
+   "mtime": 1788296448.471564,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "2350a4f2a12f8ffbdb32e99d68895b6d8273f199584cfa9b5f97ed88c2802439",
    "size": 12677
@@ -69615,7 +69615,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.7669199,
+   "mtime": 1788296448.5017226,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "46b9377ab2c6743372f37ee6e2f71d9ebc8d985809f8dbf7d9947ef3fbc1145a",
    "size": 8160
@@ -69855,7 +69855,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.765509,
+   "mtime": 1788296448.4981003,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "3ce07ffe5e1d328de548477b8c831379f1b585654230a0276f13205f4a32cb8f",
    "size": 164064
@@ -69867,7 +69867,7 @@
    "driver_token": "PASSED",
    "first_seen": "2026-08-31T12:50:05Z",
    "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1788239427.760201,
+   "mtime": 1788296448.481309,
    "reason": "status PASSED is an evidence-backed positive result",
    "sha256": "79c7d5d916bebb31d6900f154c70b83943064c2323b1d7231b3e7f9bf469dcc8",
    "size": 55141
@@ -70610,11 +70610,11 @@
    "driver_field": "gate",
    "driver_token": "REJECTED",
    "first_seen": "2026-08-31T12:50:05Z",
-   "last_classified": "2026-08-31T12:50:05Z",
-   "mtime": 1787739372.3511057,
+   "last_classified": "2026-09-01T21:03:54Z",
+   "mtime": 1788241967.6366487,
    "reason": "gate is a failed/rejected gate",
-   "sha256": "4fe4d49f851fb5354682e91f0e3f47a13396a28d5d0f70272282c504d3d5b040",
-   "size": 102486
+   "sha256": "be15ebb136a810b010492f05661e20e5eba1c4ae41ca011063ff4d6dd0aadfb9",
+   "size": 103096
   },
   "receipts/headless/NOETIC_ASCENSION_LOOP.json": {
    "classification": "SCAR",
@@ -73578,7 +73578,7 @@
   "--once --assert-idempotent refusal that is capable of firing",
   "read-only open; writes only receipts/future/CODEX_INGEST_STATE.json"
  ],
- "head": "7f3f1ffc5bce328d4fa3e2cdf84cb369d8033e39",
+ "head": "dd7640a72f2569b0bd2c0c433dab329f9a9248b5",
  "idempotence": {
   "assert_idempotent": "exit non-zero iff n_new + n_changed > 0",
   "change_detector": "sha256 of file bytes; mtime is recorded and never consulted",
@@ -73662,13 +73662,13 @@
     "path": "tools/odyssey/physical_graph_compiler.py"
    },
    {
-    "in_git": false,
+    "in_git": true,
     "note": "named in the contract; absent from HEAD",
     "on_disk": true,
     "path": "receipts/headless/ACCELERATOR_SCOREBOARD.json"
    },
    {
-    "in_git": false,
+    "in_git": true,
     "note": "named in the contract; absent from HEAD",
     "on_disk": true,
     "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
@@ -73749,7 +73749,7 @@
   "unreadable": []
  },
  "schema": "hawking.future.codex_ingest.v1",
- "seal_sha256": "def4c76b215279ba8dde37f8dce553a8262c0d9c6f4a0ed2cc6ef3643d2e2756",
+ "seal_sha256": "4bd5598b6b98eee3717e3d47ff9cc77803f37bf870fb6c1886dc6404e16b0217",
  "version": 1,
  "vocabulary": {
   "bench_state": "UNKNOWN",

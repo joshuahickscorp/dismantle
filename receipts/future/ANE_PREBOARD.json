@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:10:39Z",
+  "recorded_at": "2026-09-01T21:02:03Z",
   "recorded_by": "tools/future/ane_preboard.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -1686,14 +1686,14 @@
    "source": "ON_DISK"
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk": true,
    "path": "hcli/ane_provider.py",
    "role": "named HCLI ANE provider seam (contract asked; disk/git answer below)",
    "source": "ON_DISK"
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk": true,
    "path": "hcli/test_ane_provider.py",
    "role": "named HCLI ANE provider seam (contract asked; disk/git answer below)",
@@ -1728,21 +1728,21 @@
    "source": "ON_DISK"
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk": true,
    "path": "tools/accelerator/ane_micrograph_author.py",
    "role": "named Accelerator ANE author/probe (contract asked; disk/git answer below)",
    "source": "ON_DISK"
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk": true,
    "path": "tools/accelerator/ane_probe.swift",
    "role": "named Accelerator ANE author/probe (contract asked; disk/git answer below)",
    "source": "ON_DISK"
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "on_disk": true,
    "path": "tools/accelerator/run_ane_lane.sh",
    "role": "named Accelerator ANE author/probe (contract asked; disk/git answer below)",
@@ -1764,7 +1764,7 @@
   }
  ],
  "schema": "hawking.future.ane_preboard.v1",
- "seal_sha256": "bf5bd706b1b5ca6d3c5df714bc1c426accb198fbe0d43dce6adeaefaf4c1e62b",
+ "seal_sha256": "58b6abb509938770311254e035e00b8579197ce09cdf71eac470df871e8d56ab",
  "test_matrix": [
   {
    "compute_units": "CPU_AND_NEURAL_ENGINE",

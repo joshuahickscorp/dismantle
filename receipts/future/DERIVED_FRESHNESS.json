@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:27:13Z",
+  "recorded_at": "2026-09-01T21:03:56Z",
   "recorded_by": "tools/future/freshness.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -2094,7 +2094,7 @@
   "STALE_SEMANTIC": 0,
   "UNKNOWN": 4,
   "registered": 6,
-  "unregistered": 298
+  "unregistered": 310
  },
  "eras": [
   "I Genesis of the Laboratory",
@@ -2114,7 +2114,7 @@
   "registry of derived -> source(s) -> producer; unregistered receipts/future/*.json are findings",
   "source resolution copes with live-present, live-absent, and pinned-snapshot copies and records which"
  ],
- "head": "d6d14e9fd7255571ac832936c3d638d89df90074",
+ "head": "dd7640a72f2569b0bd2c0c433dab329f9a9248b5",
  "measurement_class": "STATIC_ONLY",
  "negative_findings": [
   "QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json and TOURNAMENT_READINESS.json record no source sha256/semantic fingerprint, so they classify UNKNOWN until those producers start writing the CANDIDATE_STAGED_PLAN.input pattern",
@@ -2123,7 +2123,7 @@
   "no GPU / FPGA / power meter in this lane; no hardware quantity is asserted",
   "--refresh was not invoked by --check/--report; STALE_SEMANTIC artifacts stay on disk until a caller passes --refresh",
   "UNKNOWN artifacts: QUALIFICATION_PIPELINE.json, FLASH_NX_COMPLETENESS_AUDIT.json, HCLI_FUTURE_WORKUNITS.json, TOURNAMENT_READINESS.json",
-  "298 receipts/future/*.json files are not in the freshness registry"
+  "310 receipts/future/*.json files are not in the freshness registry"
  ],
  "no_era_vi": true,
  "no_odyssey_iv": true,
@@ -2211,7 +2211,7 @@
     "path": "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
    },
    {
-    "in_git": false,
+    "in_git": true,
     "note": "Codex live queue (untracked on many worktrees); disk state is authority",
     "on_disk": true,
     "path": "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
@@ -2288,7 +2288,7 @@
   }
  ],
  "schema": "hawking.future.freshness.v1",
- "seal_sha256": "7d35bf91e099ae10d9612d552941a089b81a23335bea42b3ca61929bee337081",
+ "seal_sha256": "8bb5ae465cbcf1861fc0ffcb8363f9a8855ec4edd8ef7b8216e062cca3c1bc49",
  "unregistered": [
   "ABI_VERDICT_HARNESS.json",
   "ABLITERATION.json",
@@ -2297,6 +2297,7 @@
   "ADAPTIVE_VERIFICATION.json",
   "ADDRESSING_ATTRIBUTION.json",
   "ADDRESSING_GAP.json",
+  "AIDER_NAMESPACE_AUDIT.json",
   "ANE_PREBOARD.json",
   "ANE_PROBE_LAB.json",
   "ARTIFACT_IDENTITY.json",
@@ -2314,6 +2315,8 @@
   "AUX_U8_NATIVE.json",
   "BASELINE_STALENESS.json",
   "BA_DELTA_AB.json",
+  "BENCH_A_LANDING_ATTACK.json",
+  "BENCH_B_TOOL_REACHABILITY.json",
   "BITCAST_DEQUANT_AB.json",
   "CAMPAIGN_SCARS.json",
   "CAPABILITY_BYTE_ELIMINATION.json",
@@ -2333,8 +2336,10 @@
   "CODEX_WORKUNIT_SPECIES.json",
   "COMPLETE_EBPW.json",
   "COMPONENT_PERTURBATION.json",
+  "CONFIG_ENV_AUDIT.json",
   "CONTAMINATION_SCIENCE.json",
   "CUDA_LOWBIT_HYPOTHESES.json",
+  "DEAD_CALLSITE_SWEEP.json",
   "DEBUGGER_LAB.json",
   "DECODE_CIVILIZATION.json",
   "DECODE_TAX_TARGET.json",
@@ -2377,12 +2382,14 @@
   "FLASH_ORGAN_SCHOOLS.json",
   "FLASH_ORGAN_WORKGRAPHS.json",
   "FOLD_ADDQX_AB.json",
+  "FORBIDDEN_FRUIT_LAB_READINESS.json",
   "FPGA_ENGINE_SCHOOL.json",
   "FPGA_MULTIFIDELITY.json",
   "FRONTIER_STATE.json",
   "FUNCTIONAL_ROLE_PROBE.json",
   "FUSION_SIMULATION.json",
   "FUTURE_SUBSTRATE_HANDOFF.json",
+  "G015_HARVEST.json",
   "GAP_LEDGER_60.json",
   "GEOMETRY_TABLE.json",
   "GIT_LOCK_DURABILITY_REPORT.json",
@@ -2391,9 +2398,11 @@
   "HARNESS_RECONCILIATION.json",
   "HBM_DOCTOR.json",
   "HCLI_AUTONOMY_BUILD.json",
+  "HCLI_CAPABILITY_REACHABILITY.json",
   "HCLI_COMPACTOR.json",
   "HCLI_FAST_THOUGHT.json",
   "HCLI_MISSION_KERNEL.json",
+  "HCLI_SELF_HOSTING_LAUNCH.json",
   "HCLI_SELF_PROFILE.json",
   "HMF_MANAGED_OBJECTS.json",
   "HWIR_V1.json",
@@ -2444,6 +2453,7 @@
   "MUTATION_TRIAL.json",
   "NEGATIVE_SCIENCE_INDEX.json",
   "NGRAM_SCHOOL.json",
+  "NOMENCLATURE_AUDIT.json",
   "NO_WAIT_ORCHESTRATION.json",
   "NO_WAIT_SCHEDULER.json",
   "NR_NX_GENERIC.json",
@@ -2505,6 +2515,7 @@
   "RESIDENT_TOKEN_BUDGET.json",
   "RESIDENT_TOKEN_BUDGET_POST_WIDEN_F4.json",
   "RESIDENT_TOKEN_ROOF_DECOMPOSITION.json",
+  "RESIDENT_TPS_RECON.json",
   "RESTART_SUPERVISOR.json",
   "RIVAL_CODEC_SCREEN.json",
   "ROOF_ANCHOR.json",
@@ -2528,6 +2539,7 @@
   "STATIC_SKELETON.json",
   "STATUS_CAUSALITY_CHALLENGE.json",
   "STATUS_CAUSALITY_COVERAGE.json",
+  "SUB2_TOOLING_READINESS.json",
   "SUB2_UNIFIED_PLAN.json",
   "SUCCESSION.json",
   "SUCCESSION_TRIAL.json",

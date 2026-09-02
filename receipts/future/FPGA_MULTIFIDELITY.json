@@ -117,7 +117,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T05:27:06Z",
+  "recorded_at": "2026-09-01T21:17:57Z",
   "recorded_by": "tools/future/fpga_fidelity.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -470,7 +470,7 @@
   "Four adaptation clocks with identity, compatibility predicate, cost class, cache key, footprint.",
   "Local StructuralGraph stand-in so this lane does not import in-flight hwir.py."
  ],
- "head": "d6d14e9fd7255571ac832936c3d638d89df90074",
+ "head": "dd7640a72f2569b0bd2c0c433dab329f9a9248b5",
  "negative_findings": [
   "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json is not in git HEAD and is not on disk here; the 15 hwir_hypotheses were not readable. Node kinds are a local catalog, not atlas-derived.",
   "hcli/agentos/test_fpga_preboard.py does not exist in git HEAD.",
@@ -566,7 +566,7 @@
    "what_found": "Ridge on 4 features; grades the occupancy cliff separately from the flat region; refuses to let easy points hide the hard one; unknowns stay unknown. It is a GPU occupancy model, not an FPGA fidelity ladder."
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "loaded_keys": [
     "asic_candidate_ledger",
     "backend_neutral_primitives",
@@ -597,7 +597,7 @@
    "what_found": "PLAN_ONLY placement/dataflow; computation nodes kind=computation; no FPGA resource fields. Not imported."
   },
   {
-   "in_git_head": false,
+   "in_git_head": true,
    "loaded_keys": [
     "<unreadable>"
    ],
@@ -628,7 +628,7 @@
   }
  ],
  "schema": "hawking.future.fpga_fidelity.v1",
- "seal_sha256": "e6daf31628e3bfac978e8e2d0276367168f1fe610e44dc14707c7e23fd1ec899",
+ "seal_sha256": "5f08b741c633fa65c8672a1acd0cf6eeb2ef18e20ec3154a34f4d638ca9c1f9e",
  "search_ladder": {
   "evidence_class": "STATIC_ONLY",
   "highest_available_level": "CYCLE_MODEL",

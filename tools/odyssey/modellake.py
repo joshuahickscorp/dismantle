@@ -82,11 +82,21 @@ def tier2_used():
 def admit(nbytes, tier):
     """Enforced, not advisory: an over-budget request is refused with a reason."""
     if tier == 2:
-        used, budget, avail = tier2_used(), TIER2_BUDGET, free("/Volumes/corpdrive")
+        budget = TIER2_BUDGET
     elif tier == 1:
-        used, budget, avail = du(SSD_STAGE), TIER1_BUDGET, free("/")
+        budget = TIER1_BUDGET
     else:
         raise ValueError(tier)
+    # A request larger than the entire tier can be rejected without touching a
+    # mounted filesystem. This matters for unattended callers: a busy or
+    # temporarily unavailable external volume must not turn an obvious refusal
+    # into an unbounded `du` wait.
+    if nbytes > budget:
+        return False, f"tier{tier} budget: request {nbytes} exceeds {budget}"
+    if tier == 2:
+        used, avail = tier2_used(), free("/Volumes/corpdrive")
+    else:
+        used, avail = du(SSD_STAGE), free("/")
     if used + nbytes > budget:
         return False, (f"tier{tier} budget: {used + nbytes} would exceed {budget} "
                        f"(used {used}, request {nbytes})")

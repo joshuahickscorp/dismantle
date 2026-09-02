@@ -75,11 +75,14 @@ from __future__ import annotations
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))))
 
-from tools.future._common import REPO, git, load_json, require_known_flags, write_receipt
+from tools.future._common import GIT_TIMEOUT_S, REPO, git, load_json, require_known_flags, write_receipt
 
 import argparse
 import ast
+import json
 import re
+import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -93,6 +96,9 @@ TOOL_REGISTRY_REL = "hcli/tool_registry.py"
 FUTURE_DIR_REL = "tools/future"
 
 FIELDS = ("defined", "registered", "resident_visible", "callable", "tested")
+
+RUST_FACTS_SCHEMA = "hawking.index.reachability_facts.v1"
+_TRACKED_PY: tuple[str, frozenset[str]] | None = None
 
 
 # --------------------------------------------------------------------------
@@ -108,16 +114,98 @@ def repo_py_files() -> list[Path]:
     )
 
 
+def tracked_py_set() -> frozenset[str]:
+    """Repo-relative git-tracked `*.py` paths. Cached per process, keyed by REPO."""
+    global _TRACKED_PY
+    key = str(REPO)
+    if _TRACKED_PY is None or _TRACKED_PY[0] != key:
+        _TRACKED_PY = (
+            key,
+            frozenset(
+                line for line in git("ls-files", "*.py").splitlines()
+                if line and "__pycache__" not in line
+            ),
+        )
+    return _TRACKED_PY[1]
+
+
+def source_exists(path: Path) -> bool:
+    """On disk, or git-tracked but sparse-missing. Untracked on-disk still counts."""
+    if path.is_file():
+        return True
+    return rel(path) in tracked_py_set()
+
+
 _TEXT_CACHE: dict[Path, str] = {}
+
+
+def _prefetch_git_blobs(paths: Sequence[Path]) -> None:
+    """Load sparse-missing files from HEAD. One `git cat-file --batch`, not N shows."""
+    if not paths:
+        return
+    specs = [f"HEAD:{rel(p)}" for p in paths]
+    try:
+        proc = subprocess.run(
+            ["git", "--no-optional-locks", "cat-file", "--batch"],
+            cwd=str(REPO),
+            input=("\n".join(specs) + "\n").encode("utf-8"),
+            capture_output=True,
+            timeout=GIT_TIMEOUT_S,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        for p in paths:
+            _TEXT_CACHE.setdefault(p, "")
+        return
+    data = proc.stdout
+    idx = 0
+    for path in paths:
+        if idx >= len(data):
+            _TEXT_CACHE[path] = ""
+            continue
+        nl = data.find(b"\n", idx)
+        if nl < 0:
+            _TEXT_CACHE[path] = ""
+            break
+        header = data[idx:nl].decode("utf-8", errors="replace")
+        idx = nl + 1
+        if " missing" in header:
+            _TEXT_CACHE[path] = ""
+            continue
+        parts = header.split()
+        if len(parts) < 3 or parts[1] != "blob":
+            _TEXT_CACHE[path] = ""
+            continue
+        try:
+            size = int(parts[2])
+        except ValueError:
+            _TEXT_CACHE[path] = ""
+            continue
+        blob = data[idx : idx + size]
+        idx = idx + size
+        if idx < len(data) and data[idx : idx + 1] == b"\n":
+            idx += 1
+        _TEXT_CACHE[path] = blob.decode("utf-8", errors="replace")
+
+
+def prefetch_texts(files: Sequence[Path]) -> None:
+    missing: list[Path] = []
+    for path in files:
+        if path in _TEXT_CACHE:
+            continue
+        if path.is_file():
+            try:
+                _TEXT_CACHE[path] = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                _TEXT_CACHE[path] = ""
+        else:
+            missing.append(path)
+    _prefetch_git_blobs(missing)
 
 
 def read_text(path: Path) -> str:
     if path not in _TEXT_CACHE:
-        try:
-            _TEXT_CACHE[path] = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            _TEXT_CACHE[path] = ""
-    return _TEXT_CACHE[path]
+        prefetch_texts([path])
+    return _TEXT_CACHE.get(path, "")
 
 
 def is_test_path(path: Path) -> bool:
@@ -127,15 +215,33 @@ def is_test_path(path: Path) -> bool:
     return "tests" in path.parts
 
 
+_REL_MEMO: dict[str, str] = {}
+
+
 def rel(path: Path) -> str:
+    key = f"{REPO}\0{path}"
+    cached = _REL_MEMO.get(key)
+    if cached is not None:
+        return cached
     try:
-        return path.resolve().relative_to(REPO).as_posix()
+        value = path.resolve().relative_to(REPO).as_posix()
     except ValueError:
-        return str(path)
+        value = str(path)
+    _REL_MEMO[key] = value
+    return value
 
 
 def module_name_of(path: Path) -> str:
     parts = list(path.resolve().relative_to(REPO).with_suffix("").parts)
+    if parts and parts[-1] == "__init__":
+        parts = parts[:-1]
+    return ".".join(parts)
+
+
+def _module_name_from_rel(rp: str) -> str:
+    """Same as module_name_of, from a repo-relative posix path (no stat)."""
+    without = rp[:-3] if rp.endswith(".py") else rp
+    parts = [p for p in without.split("/") if p]
     if parts and parts[-1] == "__init__":
         parts = parts[:-1]
     return ".".join(parts)
@@ -187,7 +293,7 @@ def _resolved_from_modules(importer: Path, node: ast.ImportFrom) -> list[str]:
             bases.append(mod)
             if "." not in mod:
                 sib = importer.parent / f"{mod}.py"
-                if sib.is_file() and sib != importer:
+                if source_exists(sib) and sib != importer:
                     bases.append(module_name_of(sib))
     return bases
 
@@ -199,7 +305,7 @@ def _resolve_import_targets(importer: Path, node: ast.AST) -> list[str]:
         for alias in node.names:
             targets.append(alias.name)
             sib = importer.parent / (alias.name.split(".")[0] + ".py")
-            if "." not in alias.name and sib.is_file() and sib != importer:
+            if "." not in alias.name and source_exists(sib) and sib != importer:
                 targets.append(module_name_of(sib))
     elif isinstance(node, ast.ImportFrom):
         for mod in _resolved_from_modules(importer, node):
@@ -215,6 +321,11 @@ class RepoIndex:
     import_sites: dict[str, list[Site]] = field(default_factory=dict)
     # per (importer_file) -> {local_name: symbol_dotted_or_module}
     bound_names: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
+    # Precomputed by hawking-index. None → fall back to a CPython ast walk.
+    call_table: dict[str, list[tuple[int, str, str | None]]] | None = None
+    subprocess_table: dict[str, list[tuple[int, list[str]]]] | None = None
+    literal_table: dict[str, list[Site]] | None = None
+    facts_source: str = "python-ast"
 
     def add_import(self, target: str, site: Site) -> None:
         self.import_sites.setdefault(target, []).append(site)
@@ -222,6 +333,7 @@ class RepoIndex:
 
 def build_repo_index(files: Sequence[Path] | None = None) -> RepoIndex:
     idx = RepoIndex(files=list(files) if files is not None else repo_py_files())
+    prefetch_texts(idx.files)
     for path in idx.files:
         text = read_text(path)
         if not text:
@@ -273,13 +385,20 @@ def find_symbol_call_sites(
         binds = idx.bound_names.get(rp, [])
         local_direct = {local for local, full in binds if full == target_full}
         local_module = {local for local, full in binds if full == module_dotted}
-        if module_name_of(path) == module_dotted:
+        if _module_name_from_rel(rp) == module_dotted:
             # The symbol's own defining file calls it by bare name with no
             # import at all -- a `def _neighborhood_lines(...)` used
             # elsewhere in the same module is a real call site an AST Call
             # node distinguishes cleanly from the def line itself.
             local_direct = local_direct | {symbol}
         if not local_direct and not local_module:
+            continue
+        if idx.call_table is not None:
+            for lineno, name, qualifier in idx.call_table.get(rp, []):
+                if qualifier is None and name in local_direct:
+                    sites.append(Site(rp, lineno, "call"))
+                elif qualifier is not None and name == symbol and qualifier in local_module:
+                    sites.append(Site(rp, lineno, "call"))
             continue
         text = read_text(path)
         try:
@@ -333,9 +452,20 @@ def _tool_dispatch_pattern(tool_name: str) -> re.Pattern[str]:
 
 
 def find_literal_sites(
-    token: str, files: Sequence[Path], *, exclude_files: Iterable[Path] = (), kind: str = "literal"
+    token: str,
+    files: Sequence[Path],
+    *,
+    exclude_files: Iterable[Path] = (),
+    kind: str = "literal",
+    idx: RepoIndex | None = None,
 ) -> list[Site]:
     excluded = {rel(p) for p in exclude_files}
+    if idx is not None and idx.literal_table is not None:
+        return [
+            Site(s.file, s.line, kind)
+            for s in idx.literal_table.get(token, [])
+            if s.file not in excluded
+        ]
     pattern = _tool_dispatch_pattern(token)
     sites: list[Site] = []
     for path in files:
@@ -478,7 +608,7 @@ def build_tool_capabilities(idx: RepoIndex, registry_path: Path) -> list[dict[st
     caps: list[dict[str, Any]] = []
     for tool_name, lineno in recover_tool_registrations(registry_path):
         sites = find_literal_sites(
-            tool_name, idx.files, exclude_files=(registry_path,), kind="literal"
+            tool_name, idx.files, exclude_files=(registry_path,), kind="literal", idx=idx
         )
         prod, _test = _partition(sites)
         if prod:
@@ -522,7 +652,7 @@ def build_tool_registry_capability(idx: RepoIndex, registry_path: Path) -> dict[
     return build_capability(
         "hcli.tool_registry.default_tool_registry",
         "function",
-        defined=registry_path.is_file(),
+        defined=source_exists(registry_path),
         registered=True,
         resident_visible=True,
         sites=sites,
@@ -552,7 +682,7 @@ def _module_capability(
     return build_capability(
         display_name,
         "module",
-        defined=def_file.is_file(),
+        defined=source_exists(def_file),
         registered=registered,
         resident_visible=resident_visible,
         sites=sites,
@@ -577,7 +707,7 @@ def _function_capability(
     return build_capability(
         display_name,
         "function",
-        defined=def_file.is_file(),
+        defined=source_exists(def_file),
         registered=registered,
         resident_visible=resident_visible,
         sites=sites,
@@ -598,13 +728,29 @@ def _is_subprocess_call(node: ast.Call) -> bool:
     return False
 
 
-def _subprocess_path_sites(rel_path: str, files: Sequence[Path], *, exclude_files: Iterable[Path]) -> list[Site]:
+def _subprocess_path_sites(
+    rel_path: str,
+    files: Sequence[Path],
+    *,
+    exclude_files: Iterable[Path],
+    subprocess_table: dict[str, list[tuple[int, list[str]]]] | None = None,
+) -> list[Site]:
     """A real launch, not a mention. `"tools/x.py"` sitting in a metadata
     dict (a handoff receipt's "unrelated_preserved_edit" field, a doc string
     describing what a launchd plist loops) is not a call site -- only a
     string literal reachable from inside an actual subprocess.run/Popen/
     check_call/check_output/call invocation counts."""
     excluded = {rel(p) for p in exclude_files}
+    if subprocess_table is not None:
+        allowed = {rel(p) for p in files} - excluded
+        sites: list[Site] = []
+        for rp, entries in subprocess_table.items():
+            if rp not in allowed:
+                continue
+            for lineno, strings in entries:
+                if any(rel_path in s for s in strings):
+                    sites.append(Site(rp, lineno, "subprocess"))
+        return sites
     sites: list[Site] = []
     for path in files:
         rp = rel(path)
@@ -711,7 +857,7 @@ def build_named_capabilities(idx: RepoIndex) -> list[dict[str, Any]]:
         build_capability(
             "hcli.ane_provider.ANEProvider",
             "class",
-            defined=ane_file.is_file(),
+            defined=source_exists(ane_file),
             registered=False,
             resident_visible=None,
             sites=inst_sites,
@@ -731,13 +877,16 @@ def build_named_capabilities(idx: RepoIndex) -> list[dict[str, Any]]:
     odyssey_file = REPO / "tools" / "odyssey_ctl.py"
     odyssey_sites = find_module_import_sites(idx, "tools.odyssey_ctl", exclude_files=(odyssey_file,))
     odyssey_sites += _subprocess_path_sites(
-        "tools/odyssey_ctl.py", idx.files, exclude_files=(odyssey_file,)
+        "tools/odyssey_ctl.py",
+        idx.files,
+        exclude_files=(odyssey_file,),
+        subprocess_table=idx.subprocess_table,
     )
     caps.append(
         build_capability(
             "tools.odyssey_ctl",
             "module",
-            defined=odyssey_file.is_file(),
+            defined=source_exists(odyssey_file),
             registered=False,
             resident_visible=None,
             sites=odyssey_sites,
@@ -816,7 +965,7 @@ def build_named_capabilities(idx: RepoIndex) -> list[dict[str, Any]]:
             build_capability(
                 f"hcli.escalation.{symbol}",
                 "function",
-                defined=escalation_file.is_file(),
+                defined=source_exists(escalation_file),
                 registered=True,
                 resident_visible=True,
                 sites=sites,
@@ -854,7 +1003,7 @@ def build_named_capabilities(idx: RepoIndex) -> list[dict[str, Any]]:
         build_capability(
             "hcli.goal._neighborhood_lines",
             "function",
-            defined=goal_file.is_file(),
+            defined=source_exists(goal_file),
             registered=False,
             resident_visible=None,
             sites=neighborhood_sites,
@@ -904,7 +1053,9 @@ def build_sidecar_sweep(idx: RepoIndex, registered_future_tools: frozenset[str])
         stem = path.stem
         mod = module_name_of(path)
         sites = find_module_import_sites(idx, mod, exclude_files=(path,))
-        sites += _subprocess_path_sites(rel(path), idx.files, exclude_files=(path,))
+        sites += _subprocess_path_sites(
+            rel(path), idx.files, exclude_files=(path,), subprocess_table=idx.subprocess_table
+        )
         registered = any(stem in t or mod in t for t in registered_future_tools)
         detail_note = None
         if stem in _ALREADY_DETAILED_STEMS:
@@ -934,8 +1085,114 @@ def recover_registered_future_tool_names(registry_path: Path) -> frozenset[str]:
 # --------------------------------------------------------------------------
 
 
+def _find_hawking_index_bin() -> Path | None:
+    """Locate the `hawking-index` binary. A missing/unexecutable path degrades
+    to the Python AST walk; it must never crash an unattended HCLI cycle."""
+    env = _os.environ.get("HAWKING_INDEX_BIN")
+    if env is not None:
+        p = Path(env)
+        if p.is_file() and _os.access(p, _os.X_OK):
+            return p
+        return None
+    dirs: list[Path] = []
+    cargo = _os.environ.get("CARGO_TARGET_DIR")
+    if cargo:
+        c = Path(cargo)
+        dirs.extend([c / "release", c / "release-fast", c / "debug"])
+    dirs.extend(
+        [
+            REPO / "workspace" / "ops" / "build" / "rust" / "release",
+            REPO / "workspace" / "ops" / "build" / "rust" / "release-fast",
+            REPO / "workspace" / "ops" / "build" / "rust" / "debug",
+            REPO / "target" / "release",
+            REPO / "target" / "release-fast",
+            REPO / "target" / "debug",
+        ]
+    )
+    for d in dirs:
+        p = d / "hawking-index"
+        if p.is_file() and _os.access(p, _os.X_OK):
+            return p
+    which = shutil.which("hawking-index")
+    return Path(which) if which else None
+
+
+def repo_index_from_facts(facts: Mapping[str, Any]) -> RepoIndex:
+    files = [REPO / f for f in facts.get("files") or []]
+    idx = RepoIndex(files=files, facts_source="hawking-index")
+    idx.call_table = {}
+    idx.subprocess_table = {}
+    idx.literal_table = {}
+    for target, sites in (facts.get("import_sites") or {}).items():
+        for s in sites:
+            idx.add_import(
+                str(target),
+                Site(s["file"], int(s["line"]), s.get("kind") or "import"),
+            )
+    for rp, binds in (facts.get("bound_names") or {}).items():
+        idx.bound_names[str(rp)] = [(str(a), str(b)) for a, b in binds]
+    for c in facts.get("calls") or []:
+        rp = str(c["file"])
+        idx.call_table.setdefault(rp, []).append(
+            (int(c["line"]), str(c["name"]), c.get("qualifier"))
+        )
+    for s in facts.get("subprocess") or []:
+        rp = str(s["file"])
+        idx.subprocess_table.setdefault(rp, []).append(
+            (int(s["line"]), [str(x) for x in (s.get("strings") or [])])
+        )
+    for lit in facts.get("literals") or []:
+        tok = str(lit["token"])
+        idx.literal_table.setdefault(tok, []).append(
+            Site(str(lit["file"]), int(lit["line"]), "literal")
+        )
+    return idx
+
+
+def _load_rust_facts() -> dict[str, Any] | None:
+    if _os.environ.get("HAWKING_REACHABILITY_FORCE_PYTHON"):
+        return None
+    binary = _find_hawking_index_bin()
+    if binary is None:
+        return None
+    cmd = [str(binary), "reachability-facts", "--root", str(REPO)]
+    cache = _os.environ.get("HAWKING_INDEX_CACHE")
+    cache_dir = Path(cache) if cache else (REPO / ".hide" / "reachability-index")
+    cmd.extend(["--cache", str(cache_dir)])
+    out_path = cache_dir / "facts.json"
+    cmd.extend(["--output", str(out_path)])
+    try:
+        proc = subprocess.run(
+            cmd, cwd=str(REPO), capture_output=True, text=True, timeout=300
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        facts = json.loads(out_path.read_text())
+    except (ValueError, json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(facts, dict) or facts.get("schema") != RUST_FACTS_SCHEMA:
+        return None
+    return facts
+
+
 def assemble() -> dict[str, Any]:
+    facts = _load_rust_facts()
+    if facts is not None:
+        idx = repo_index_from_facts(facts)
+        prefetch_texts([REPO / TOOL_REGISTRY_REL])
+        doc = _assemble_from_index(idx)
+        doc["facts_source"] = "hawking-index"
+        return doc
     idx = build_repo_index()
+    doc = _assemble_from_index(idx)
+    doc["facts_source"] = "python-ast"
+    return doc
+
+
+def _assemble_from_index(idx: RepoIndex) -> dict[str, Any]:
     registry_path = REPO / TOOL_REGISTRY_REL
 
     tool_caps = build_tool_capabilities(idx, registry_path)
@@ -1064,25 +1321,137 @@ def selftest() -> Path:
     return out
 
 
+def _capability_view(cap: Mapping[str, Any]) -> dict[str, Any]:
+    """The fields the parity gate compares. Notes/method text are not verdicts."""
+    return {
+        "defined": cap.get("defined"),
+        "registered": cap.get("registered"),
+        "resident_visible": cap.get("resident_visible"),
+        "callable": cap.get("callable"),
+        "tested": cap.get("tested"),
+        "call_sites": cap.get("call_sites") or [],
+        "test_only_sites": cap.get("test_only_sites") or [],
+    }
+
+
+def compare_capability_maps(
+    rust_caps: Mapping[str, Any], python_caps: Mapping[str, Any]
+) -> list[str]:
+    """Exact-equality diffs. Empty list means IDENTICAL."""
+    diffs: list[str] = []
+    rust_keys = set(rust_caps)
+    py_keys = set(python_caps)
+    only_rust = sorted(rust_keys - py_keys)
+    only_py = sorted(py_keys - rust_keys)
+    if only_rust:
+        diffs.append(f"keys only in rust ({len(only_rust)}): {only_rust[:20]}")
+    if only_py:
+        diffs.append(f"keys only in python ({len(only_py)}): {only_py[:20]}")
+    for name in sorted(rust_keys & py_keys):
+        a = _capability_view(rust_caps[name])
+        b = _capability_view(python_caps[name])
+        if a == b:
+            continue
+        for field_name in (
+            "defined",
+            "registered",
+            "resident_visible",
+            "callable",
+            "tested",
+        ):
+            if a[field_name] != b[field_name]:
+                diffs.append(
+                    f"{name}.{field_name}: rust={a[field_name]!r} python={b[field_name]!r}"
+                )
+        if a["call_sites"] != b["call_sites"]:
+            diffs.append(
+                f"{name}.call_sites: rust={a['call_sites']!r} python={b['call_sites']!r}"
+            )
+        if a["test_only_sites"] != b["test_only_sites"]:
+            diffs.append(
+                f"{name}.test_only_sites: rust={a['test_only_sites']!r} python={b['test_only_sites']!r}"
+            )
+    return diffs
+
+
+def run_parity() -> dict[str, Any]:
+    """Run both paths over this repo and compare capability maps."""
+    binary = _find_hawking_index_bin()
+    if binary is None:
+        return {
+            "status": "BINARY_MISSING",
+            "compared": 0,
+            "diffs": ["hawking-index binary not found; cannot prove rust/python parity"],
+        }
+    saved = _os.environ.pop("HAWKING_REACHABILITY_FORCE_PYTHON", None)
+    try:
+        _TEXT_CACHE.clear()
+        rust_doc = assemble()
+        if rust_doc.get("facts_source") != "hawking-index":
+            return {
+                "status": "RUST_PATH_UNUSED",
+                "compared": 0,
+                "diffs": [
+                    "binary present but assemble() did not use hawking-index "
+                    f"(facts_source={rust_doc.get('facts_source')!r})"
+                ],
+            }
+        _TEXT_CACHE.clear()
+        _os.environ["HAWKING_REACHABILITY_FORCE_PYTHON"] = "1"
+        py_doc = assemble()
+    finally:
+        if saved is None:
+            _os.environ.pop("HAWKING_REACHABILITY_FORCE_PYTHON", None)
+        else:
+            _os.environ["HAWKING_REACHABILITY_FORCE_PYTHON"] = saved
+    rust_caps = rust_doc.get("capabilities") or {}
+    py_caps = py_doc.get("capabilities") or {}
+    diffs = compare_capability_maps(rust_caps, py_caps)
+    return {
+        "status": "IDENTICAL" if not diffs else "DIFF",
+        "compared": len(py_caps),
+        "rust_count": len(rust_caps),
+        "python_count": len(py_caps),
+        "rust_facts_source": rust_doc.get("facts_source"),
+        "python_facts_source": py_doc.get("facts_source"),
+        "diffs": diffs,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Derive who calls each capability; emit HCLI_CAPABILITY_REACHABILITY.json")
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--audit", action="store_true")
     ap.add_argument("--selftest", action="store_true")
-    require_known_flags({"--build", "--audit", "--selftest"})
+    ap.add_argument("--parity", action="store_true")
+    require_known_flags({"--build", "--audit", "--selftest", "--parity"})
     args = ap.parse_args()
+    if args.parity:
+        report = run_parity()
+        print(json.dumps(
+            {k: (v[:30] if k == "diffs" and isinstance(v, list) else v) for k, v in report.items()},
+            indent=2,
+            sort_keys=True,
+        ))
+        n = report.get("compared") or 0
+        print(f"parity={report['status']} compared={n} diffs={len(report.get('diffs') or [])}")
+        if report.get("diffs"):
+            for d in (report["diffs"] or [])[:40]:
+                print("  DIFF", d)
+        return 0 if report["status"] == "IDENTICAL" else 1
     out = selftest() if args.selftest else build()
     doc = load_json(out)
     counts = doc.get("counts") or {}
     print(out)
     print(
-        "capabilities={cap} typed_tools_dead={ttd}/{tt} sidecar_dead={sd}/{sm} dead_surface={ds}".format(
+        "capabilities={cap} typed_tools_dead={ttd}/{tt} sidecar_dead={sd}/{sm} dead_surface={ds} facts_source={fs}".format(
             cap=counts.get("capabilities"),
             ttd=counts.get("typed_tools_dead"),
             tt=counts.get("typed_tools"),
             sd=counts.get("sidecar_modules", 0) - counts.get("sidecar_callable", 0),
             sm=counts.get("sidecar_modules"),
             ds=counts.get("dead_surface"),
+            fs=doc.get("facts_source"),
         )
     )
     return 0

@@ -522,6 +522,41 @@ def complete(item: dict[str, object], files: list[str], sizes: dict[str, int]) -
     return False
 
 
+def _notify_sealed_source(tag: str, action: object, *, source: str) -> None:
+    """Landing path for SLEEPING_SPECIMEN_WU: fire SEALED_SOURCE_READY.
+
+    Disk is authority (specimen directory). A notify/harvest failure must
+    not undo a promotion or take down the admission loop.
+    """
+    if action not in {"PROMOTED", "ALREADY_PROMOTED"}:
+        return
+    try:
+        from tools.future.sleeping_specimens import (
+            WAKE_SEALED_SOURCE_READY,
+            notify_sealed_source_ready,
+        )
+        from tools.future.wakeup import harvest_sealed_specimens
+
+        event = notify_sealed_source_ready(
+            tag, source=source, specimen_root=SPECIMEN_ROOT
+        )
+        if not event.get("ready"):
+            return
+        harvest_sealed_specimens(
+            [
+                {
+                    "id": f"odyssey-i.sleeping.{tag}",
+                    "wake_condition": WAKE_SEALED_SOURCE_READY,
+                    "modellake_identity": {"tag": tag},
+                    "status": "sleeping",
+                }
+            ],
+            specimen_root=SPECIMEN_ROOT,
+        )
+    except Exception:
+        return
+
+
 def promote_if_needed(tag: str, destination: str) -> dict[str, object] | None:
     """Move a verified-complete partial payload into specimens/.
 
@@ -548,6 +583,9 @@ def _promote_and_report(tag: str, destination: str, expected: int) -> None:
     outcome = promote_if_needed(tag, destination)
     action = outcome["action"] if outcome is not None else "ALREADY_PROMOTED"
     emit("already_complete", job=tag, expected_bytes=expected, promotion=action)
+    _notify_sealed_source(
+        tag, action, source="tools.odyssey.modellake_watch._promote_and_report"
+    )
     if action == "PROMOTED":
         notify(f"Promoted completed specimen out of partial/: {tag}", "modellake")
     elif action != "ALREADY_PROMOTED":
@@ -655,6 +693,9 @@ def reconcile() -> dict[str, object]:
             continue
         outcome = modellake_promote.promote(tag, go=True)
         action = outcome["action"]
+        _notify_sealed_source(
+            tag, action, source="tools.odyssey.modellake_watch.reconcile"
+        )
         if action == "PROMOTED":
             promoted.append(tag)
         else:

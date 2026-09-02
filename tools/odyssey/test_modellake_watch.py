@@ -201,6 +201,25 @@ def test_promote_and_report_notifies_on_success(wlake, monkeypatch):
     assert calls and "Promoted" in calls[0][0]
 
 
+def test_promote_and_report_fires_sealed_source_ready_transition(wlake, monkeypatch):
+    """Promotion is the enter->exit for SLEEPING_SPECIMEN_WU."""
+    d = _write_partial(wlake, TAG, FILES)
+    _write_manifest(wlake, TAG, FILES)
+    fired = []
+    monkeypatch.setattr(
+        mw,
+        "_notify_sealed_source",
+        lambda tag, action, source="": fired.append((tag, action, source)),
+    )
+
+    mw._promote_and_report(TAG, str(d), sum(len(c) for c in FILES.values()))
+
+    assert fired and fired[0][0] == TAG
+    assert fired[0][1] == "PROMOTED"
+    assert "_notify_sealed_source" in mw._promote_and_report.__code__.co_names
+    assert "_notify_sealed_source" in mw.reconcile.__code__.co_names
+
+
 def test_promote_and_report_notifies_on_conflicting_destination(wlake, monkeypatch):
     """A destination conflict must be surfaced (escalated), not silently
     dropped the way the pre-wiring `continue` did."""

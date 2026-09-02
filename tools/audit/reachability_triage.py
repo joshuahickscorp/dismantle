@@ -544,11 +544,63 @@ def hcli_reachable_set(
     return seen, parent
 
 
+def hcli_invocations(
+    symbol_call_sites: Sequence[Mapping[str, Any]],
+    call_sites: Sequence[Mapping[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """HCLI production Call/subprocess of an exported symbol. Imports are not hits.
+
+    kind=import never justifies CONNECTED. The previous inventory cited
+    import-dominated callers (import 1329 vs call 2); this is the same
+    rule tools/roadmap/auditor.py applies (BUILT_KINDS = call, subprocess).
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, int, str]] = set()
+    for s in list(symbol_call_sites or []):
+        if not str(s.get("file", "")).startswith("hcli/"):
+            continue
+        if s.get("kind") not in {"call", "subprocess"}:
+            continue
+        key = (str(s.get("file")), int(s.get("line") or 0), str(s.get("kind")))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(dict(s))
+    for s in list(call_sites or []):
+        if not str(s.get("file", "")).startswith("hcli/"):
+            continue
+        if s.get("kind") != "subprocess":
+            continue
+        key = (str(s.get("file")), int(s.get("line") or 0), str(s.get("kind")))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(dict(s))
+    out.sort(key=lambda s: (str(s.get("file")), int(s.get("line") or 0)))
+    return out
+
+
 def cite_hcli_path(
     module_dotted: str,
     call_sites: Sequence[Mapping[str, Any]],
     parent: Mapping[str, str],
+    invocations: Sequence[Mapping[str, Any]] | None = None,
 ) -> str | None:
+    """Cite an HCLI *invocation*. An import is not a path to CONNECTED."""
+    if invocations:
+        s = invocations[0]
+        return f"{s['file']}:{s['line']} ({s.get('kind', 'call')})"
+    # Import-graph chains are recorded on hcli_import_path, never here.
+    # Returning None for import-only evidence is the point of the rule.
+    return None
+
+
+def cite_hcli_import_path(
+    module_dotted: str,
+    call_sites: Sequence[Mapping[str, Any]],
+    parent: Mapping[str, str],
+) -> str | None:
+    """Informational import-graph citation. Never CONNECTED evidence."""
     hcli_sites = [s for s in call_sites if str(s.get("file", "")).startswith("hcli/")]
     if hcli_sites:
         s = hcli_sites[0]
@@ -758,10 +810,16 @@ def structured_wake(row: Mapping[str, Any]) -> dict[str, Any] | None:
             "production AST Call of an exported symbol of this module from an "
             "HCLI entry (CLI verb, tool registry, mission executor, or resident)"
         )
-        blocker = (
-            "currently only imported inside the sidecar cluster; no HCLI "
-            "Call node of an exported symbol"
-        )
+        if row.get("hcli_imported"):
+            blocker = (
+                "imported by HCLI but no AST Call of an exported symbol "
+                "(an import is not a call)"
+            )
+        else:
+            blocker = (
+                "currently only imported inside the sidecar cluster; no HCLI "
+                "Call node of an exported symbol"
+            )
         extra_symbol = symbol
     else:
         kind = WAKE_KIND_PRODUCTION_SYMBOL_CALL
@@ -882,11 +940,17 @@ def decide(row: dict[str, Any]) -> None:
                 "entry (CLI verb, tool registry, mission executor, or resident); "
                 "listed in BINDINGS but invoke() is not statically reached from HCLI"
             )
+        elif row.get("hcli_imported"):
+            wake = (
+                "production AST Call of an exported symbol from an HCLI entry "
+                "(CLI verb, tool registry, mission executor, or resident); "
+                "currently imported by HCLI but never called (an import is not a call)"
+            )
         else:
             wake = (
-                "first HCLI entry-point importer (CLI verb, tool registry, "
-                "mission executor, or resident); currently only called inside "
-                "the sidecar cluster, not from HCLI"
+                "first HCLI entry-point Call of an exported symbol (CLI verb, "
+                "tool registry, mission executor, or resident); currently only "
+                "called inside the sidecar cluster, not from HCLI"
             )
         row["disposition"] = "PARKED"
         row["wake_condition"] = wake
@@ -974,10 +1038,10 @@ def state_transition_sweep(
             "file": "tools/odyssey/modellake_watch.py",
             "enter": "tools/odyssey/modellake_watch.py:502 complete() returns True",
             "exit": (
-                "tools/odyssey/modellake_watch.py:1045 and :1084 call "
+                "tools/odyssey/modellake_watch.py:1086 and :1125 call "
                 "_promote_and_report -> promote_if_needed -> "
                 "modellake_promote.promote(tag, go=True); "
-                "reconcile() at :656 is the second-look path"
+                "reconcile() at :660 is the second-look path"
             ),
             "status": "EXIT_EXISTS",
             "evidence_tier": "STATIC",
@@ -1001,7 +1065,10 @@ def state_transition_sweep(
     outside = [
         r
         for r in sealed_refs
-        if r != "tools/future/sleeping_specimens.py" and not cr.is_test_path(Path(r))
+        if r != "tools/future/sleeping_specimens.py"
+        and not cr.is_test_path(Path(r))
+        and not is_data_path(Path(r))
+        and not r.startswith("tools/audit/")
     ]
     findings.append(
         {
@@ -1015,17 +1082,33 @@ def state_transition_sweep(
             "exit": (
                 None
                 if not outside
-                else f"named in {outside}"
+                else (
+                    "tools/future/sleeping_specimens.py:479 sealed_source_ready(tag) "
+                    "is True iff SPECIMEN_ROOT/tag is a non-empty directory; "
+                    ":501 notify_sealed_source_ready is the event. "
+                    "tools/odyssey/modellake_watch.py:525 _notify_sealed_source "
+                    "calls notify_sealed_source_ready + "
+                    "wakeup.harvest_sealed_specimens after PROMOTED/"
+                    "ALREADY_PROMOTED (:586 _promote_and_report, :696 reconcile). "
+                    "tools/future/wakeup.py:786 harvest_sealed_specimens "
+                    "classifies COMPLETED only when disk confirms; never a "
+                    "synthetic COMPLETED. Named in: " + ", ".join(outside)
+                )
             ),
             "status": "EXIT_MISSING" if not outside else "EXIT_EXISTS",
             "evidence_tier": "STATIC",
             "note": (
-                "git grep SEALED_SOURCE_READY on HEAD: every hit is inside "
-                "sleeping_specimens.py itself (definition, emit, receipt). "
-                "modellake_promote.promote() does not notify this wake "
-                "condition. A SLEEPING_SPECIMEN_WU can be entered and never "
-                "leave. Test files excluded from 'outside' by the same rule "
-                "as call sites."
+                "Disk is the wake event. modellake_watch fires the token after "
+                "a successful promote; wakeup.harvest_sealed_specimens is the "
+                "consumer. The triage engine naming the token is not a consumer "
+                "(tools/audit/ excluded). Test files and receipts/ excluded by "
+                "the same rule as call sites."
+                if outside
+                else (
+                    "git grep SEALED_SOURCE_READY on HEAD: every production hit "
+                    "is inside sleeping_specimens.py itself (definition, emit). "
+                    "A SLEEPING_SPECIMEN_WU can be entered and never leave."
+                )
             ),
             "defining_file_refs": sealed_refs,
             "outside_production_refs": outside,
@@ -1038,21 +1121,23 @@ def state_transition_sweep(
             "file": "tools/future/wakeup.py",
             "enter": (
                 "tools/future/wakeup.py:398 register(..., sleeping=True) "
-                "sets state=SLEEPING; emit_wakeup_workunits :822 wakeup_state=SLEEPING"
+                "sets state=SLEEPING; emit_wakeup_workunits :861 wakeup_state=SLEEPING"
             ),
             "exit": (
-                "tools/future/wakeup.py:415 harvest() -> _inspect :607-626: a "
+                "tools/future/wakeup.py:415 harvest() -> _inspect :597-626: a "
                 "sealed receipt at the expected path classifies COMPLETED and "
-                "harvest writes exp['state']=event.state. Selftest :1208 "
+                "harvest writes exp['state']=event.state. Selftest :1247 "
                 "proves SLEEPING without a receipt stays SLEEPING (no synthetic "
-                "COMPLETED)."
+                "COMPLETED). Distinct SEALED_SOURCE_READY exit: "
+                "harvest_sealed_specimens :786."
             ),
             "status": "EXIT_EXISTS",
             "evidence_tier": "STATIC",
             "note": (
                 "The exit is a disk receipt, not a caller. That is the module's "
                 "contract (completion wakes the graph). Distinct from "
-                "SLEEPING_SPECIMEN_WU, whose wake token has no consumer."
+                "SLEEPING_SPECIMEN_WU, whose wake token is SEALED_SOURCE_READY "
+                "and is consumed by harvest_sealed_specimens."
             ),
         }
     )
@@ -1282,12 +1367,17 @@ def assemble_inventory() -> dict[str, Any]:
         ]
         test_info = analyze_test(dotted, path, idx, test_sites)
 
-        hcli = dotted in reachable or any(
+        symbol_call_sites = _symbol_calls_for_module(dotted, shape, symbol_calls, rel_p)
+        invocations = hcli_invocations(symbol_call_sites, cap["call_sites"])
+        # Import-graph reachability is informational only. CONNECTED requires
+        # an HCLI AST Call/subprocess of an exported symbol — the auditor rule.
+        hcli_imported = dotted in reachable or any(
             str(s["file"]).startswith("hcli/") for s in cap["call_sites"]
         )
-        symbol_call_sites = _symbol_calls_for_module(dotted, shape, symbol_calls, rel_p)
+        hcli = bool(invocations)
         import_n = sum(1 for s in cap["call_sites"] if s.get("kind") == "import")
         call_n = len(symbol_call_sites)
+        has_subprocess = any(s.get("kind") == "subprocess" for s in cap["call_sites"])
         row: dict[str, Any] = {
             "module": rel_p,
             "dotted": dotted,
@@ -1297,12 +1387,17 @@ def assemble_inventory() -> dict[str, Any]:
             "call_sites": cap["call_sites"],
             "test_only_sites": cap["test_only_sites"],
             "symbol_call_sites": symbol_call_sites,
-            "called_outside_tests": bool(symbol_call_sites),
-            "import_only": bool(cap["callable"]) and not bool(symbol_call_sites),
+            "hcli_invocations": invocations,
+            "called_outside_tests": bool(symbol_call_sites) or has_subprocess,
+            "import_only": bool(cap["callable"]) and not bool(symbol_call_sites) and not has_subprocess,
             "n_import_sites": import_n,
             "n_symbol_call_sites": call_n,
             "hcli_reachable": bool(hcli),
-            "hcli_path": cite_hcli_path(dotted, cap["call_sites"], parent),
+            "hcli_imported": bool(hcli_imported),
+            "hcli_path": cite_hcli_path(
+                dotted, cap["call_sites"], parent, invocations=invocations
+            ),
+            "hcli_import_path": cite_hcli_import_path(dotted, cap["call_sites"], parent),
             "orchestration_bound": path.name in bindings,
             "has_main": shape["has_main"],
             "produces_receipt": shape["produces_receipt"],
@@ -1343,8 +1438,10 @@ def assemble_inventory() -> dict[str, Any]:
             "tools/headless. A definition is not a capability."
         ),
         "law": (
-            "A capability nothing calls does not exist. Grep for call sites, "
-            "not definitions. Own-test-only is not wired. receipts/ are data."
+            "A capability nothing calls does not exist. Grep for call sites of "
+            "the implementing symbol, not module imports, not definitions. "
+            "kind=import never justifies CONNECTED. Own-test-only is not wired. "
+            "receipts/ are data."
         ),
         "evidence_tier": "STATIC",
         "engine": {
@@ -1360,6 +1457,12 @@ def assemble_inventory() -> dict[str, Any]:
             "by_disposition": by_disp,
             "by_tree": by_tree,
             "hcli_reachable": sum(1 for r in modules.values() if r["hcli_reachable"]),
+            "hcli_imported": sum(1 for r in modules.values() if r.get("hcli_imported")),
+            "connected_import_only": sum(
+                1
+                for r in modules.values()
+                if r.get("disposition") == "CONNECTED" and r.get("import_only")
+            ),
             "callable_outside_tests": sum(
                 1 for r in modules.values() if r["callable_outside_tests"]
             ),
@@ -1395,11 +1498,14 @@ def assemble_inventory() -> dict[str, Any]:
         "modules": modules,
         "state_transitions": transitions,
         "method": (
-            "STATIC source analysis. AST import/call graph + subprocess path "
-            "sites + importlib.import_module literals, over every git-tracked "
-            "*.py file (sparse-missing files loaded from HEAD). Cannot see a "
-            "model-proposed WorkUnit.tool string; callable=false means no "
-            "deterministic path, not 'never invoked'."
+            "STATIC source analysis. AST Call/subprocess of an exported symbol "
+            "justifies CONNECTED (same rule as tools/roadmap/auditor.py: "
+            "kind=import never justifies BUILT). Import graph is recorded as "
+            "hcli_imported / hcli_import_path and cannot CONNECT. Subprocess "
+            "path sites + importlib.import_module literals are gathered over "
+            "every git-tracked *.py file (sparse-missing files loaded from "
+            "HEAD). Cannot see a model-proposed WorkUnit.tool string; "
+            "callable=false means no deterministic path, not 'never invoked'."
         ),
     }
     return doc
@@ -1535,8 +1641,14 @@ def run_spotchecks(doc: Mapping[str, Any]) -> dict[str, Any]:
         hcli_hits = [h for h in (out.splitlines() if out else []) if h.startswith("HEAD:hcli/")]
         if not modules[name].get("hcli_reachable"):
             raise AssertionError(f"{name} CONNECTED but hcli_reachable is false")
-        if not modules[name].get("call_sites"):
-            raise AssertionError(f"{name} CONNECTED with no call_sites")
+        inv = list(modules[name].get("hcli_invocations") or [])
+        if not inv:
+            raise AssertionError(
+                f"{name} CONNECTED with no HCLI symbol call/subprocess "
+                "(an import is not a call)"
+            )
+        if any(s.get("kind") == "import" for s in inv):
+            raise AssertionError(f"{name} CONNECTED invocation list includes kind=import")
         if not hits and not modules[name].get("hcli_path"):
             raise AssertionError(
                 f"{name} CONNECTED but git grep -nE found no production reference to {dotted}"
@@ -1548,6 +1660,7 @@ def run_spotchecks(doc: Mapping[str, Any]) -> dict[str, Any]:
                 "command": cmd,
                 "n_matches": len(out.splitlines()) if out else 0,
                 "hcli_path": modules[name].get("hcli_path"),
+                "hcli_invocations": inv[:8],
                 "hcli_hits": hcli_hits[:20],
                 "output_head": "\n".join((out.splitlines() if out else [])[:40]),
             }
@@ -1585,6 +1698,11 @@ def selftest() -> Path:
         )
     if int((doc.get("counts") or {}).get("undispositioned") or 0) != 0:
         raise AssertionError("counts.undispositioned is not 0")
+    if int((doc.get("counts") or {}).get("connected_import_only") or 0) != 0:
+        raise AssertionError(
+            "CONNECTED rows exist on import-only evidence "
+            "(kind=import never justifies CONNECTED)"
+        )
     for name, row in modules.items():
         if row.get("classification") not in CLASSIFICATIONS:
             raise AssertionError(f"{name} classification {row.get('classification')!r}")
@@ -1592,6 +1710,19 @@ def selftest() -> Path:
             raise AssertionError(f"{name} evidence_tier is not STATIC")
         if row["disposition"] == "CONNECTED" and not row.get("hcli_reachable"):
             raise AssertionError(f"{name} CONNECTED but not hcli_reachable")
+        if row["disposition"] == "CONNECTED":
+            inv = row.get("hcli_invocations") or []
+            if not inv:
+                raise AssertionError(
+                    f"{name} CONNECTED on import-only evidence "
+                    "(no HCLI AST Call/subprocess of an exported symbol)"
+                )
+            if any(s.get("kind") == "import" for s in inv):
+                raise AssertionError(
+                    f"{name} CONNECTED citation includes kind=import: {inv[:4]!r}"
+                )
+        if row.get("import_only") and row.get("disposition") == "CONNECTED":
+            raise AssertionError(f"{name} CONNECTED but import_only=true")
         if row["disposition"] == "PARKED" and not row.get("wake_condition"):
             raise AssertionError(f"{name} PARKED with no wake_condition")
         if row["disposition"] == "PARKED":

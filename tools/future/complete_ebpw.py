@@ -781,12 +781,55 @@ def _selftest() -> dict[str, Any]:
     }
 
 
+def _science_dataset_hook(
+    inc_cand: Mapping[str, Any], inc: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Plug-in surface for the science corpus / unlearned compiler.
+
+    CALL SITES (not imports): measurement_from_ebpw_bill, option_from_ebpw_bill,
+    physical_compiler_predict.predict. The billed figure is still `cost()`.
+    The learned compiler is unlearned and is never copied into complete_ebpw.
+    """
+    from tools.future.experiment_policy import POLICY_AUTHORITY, option_from_ebpw_bill
+    from tools.future.physical_compiler_predict import predict as learned_predict
+    from tools.future.science_corpus import measurement_from_ebpw_bill
+
+    measurement = measurement_from_ebpw_bill(inc)
+    opt = option_from_ebpw_bill(inc_cand, inc)
+    pred = learned_predict(
+        {
+            "organ": "mlp",
+            "backend": "metal",
+            "stored_bytes": inc.get("stored_bytes"),
+        }
+    )
+    return {
+        "measurement_record_id": measurement["record_id"],
+        "measurement_kind": measurement["kind"],
+        "policy_option_id": opt["option_id"],
+        "policy_learned": opt["learned"],
+        "policy_authority": POLICY_AUTHORITY,
+        "learned_compiler_prediction": pred,
+        "learned_compiler_value_used": False,
+        "cost_authority": (
+            "deterministic complete_ebpw arithmetic; the unlearned predictor "
+            "is not the billed figure"
+        ),
+        "call_sites": [
+            "tools.future.science_corpus.measurement_from_ebpw_bill",
+            "tools.future.experiment_policy.option_from_ebpw_bill",
+            "tools.future.physical_compiler_predict.predict",
+        ],
+    }
+
+
 def build() -> dict[str, Any]:
     mix = mix_report()
     rates = stream_rates()
     inc_cand = incumbent_candidate()
     inc = cost(inc_cand, rates=rates)
     selftest = _selftest()
+    science_dataset = _science_dataset_hook(inc_cand, inc)
     return {
         "schema": SCHEMA,
         "version": VERSION,
@@ -867,6 +910,7 @@ def build() -> dict[str, Any]:
             "q4_bytes is billed as one declared weight_codes part because "
             "MIX_REPORT does not split q4 codes from q4 scale."
         ),
+        "science_dataset": science_dataset,
         "load_bearing": [
             {
                 "id": "payload_bytes",

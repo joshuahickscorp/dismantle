@@ -1848,8 +1848,52 @@ def _invoke_ebpw_promote(arguments: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-# Stable ids. Typed signatures. These three are the end-to-end proof that
-# a dormant module can be discovered AND called through this adapter.
+def _invoke_tabula(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    from tools.future.tabula import ScoreVector, evaluate
+
+    if arguments.get("disposition"):
+        from tools.future.tabula import disposition as tabula_disposition
+
+        return {
+            "ok": True,
+            "value": tabula_disposition(),
+            "symbol": "evaluate",
+            "evidence_tier": EVIDENCE_TIER_STATIC,
+        }
+    raw = arguments.get("scores")
+    if not isinstance(raw, Mapping):
+        raise ValueError(
+            "scores must be an object with behavioral, capability, tool_use, "
+            "reasoning, instruction_following"
+        )
+    vec = ScoreVector.from_mapping(raw)
+    # WIRED_CALL future.tabula.evaluate
+    result = evaluate(vec)
+    return {
+        "ok": True,
+        "value": result.to_dict(),
+        "symbol": "evaluate",
+        "evidence_tier": EVIDENCE_TIER_INVOKE,
+    }
+
+
+def _invoke_vmcp(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    from tools.future.vmcp import compact_surface
+
+    act = str(arguments.get("act") or "disposition")
+    # WIRED_CALL future.vmcp.compact_surface
+    result = compact_surface(act, arguments)
+    tier = str(result.get("evidence_tier") or EVIDENCE_TIER_INVOKE)
+    return {
+        "ok": True,
+        "value": result,
+        "symbol": "compact_surface",
+        "evidence_tier": tier,
+    }
+
+
+# Stable ids. Typed signatures. The original three plus Tabula / VMCP
+# dispositions: a dormant module can be discovered AND called through this adapter.
 WIRED: dict[str, dict[str, Any]] = {
     "future.capacity_inference_rule": {
         "purpose": (
@@ -1922,6 +1966,69 @@ WIRED: dict[str, dict[str, Any]] = {
         "output_schema": {"type": "object"},
         "triage_classification": "DORMANT",
     },
+    "future.tabula": {
+        "purpose": (
+            "Tabula independent-evaluation floor: score a behavioral-surgery "
+            "child on the five-axis vector. Zero refusal is never the only score."
+        ),
+        "module": "tools/future/tabula.py",
+        "dotted": "tools.future.tabula",
+        "symbol": "evaluate",
+        "family": "science.tabula",
+        "handler": _invoke_tabula,
+        "input_schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "scores": {
+                    "type": "object",
+                    "required": [
+                        "behavioral",
+                        "capability",
+                        "tool_use",
+                        "reasoning",
+                        "instruction_following",
+                    ],
+                    "properties": {
+                        "behavioral": {"type": "number"},
+                        "capability": {"type": "number"},
+                        "tool_use": {"type": "number"},
+                        "reasoning": {"type": "number"},
+                        "instruction_following": {"type": "number"},
+                    },
+                },
+                "disposition": {"type": "boolean"},
+            },
+        },
+        "output_schema": {"type": "object"},
+        "triage_classification": "DORMANT",
+    },
+    "future.vmcp": {
+        "purpose": (
+            "VMCP compact E.14 surface: see/hold/know/check/prove of a local "
+            "file, plus disposition of every named organ. PARKED acts return a "
+            "wake, never an empty success."
+        ),
+        "module": "tools/future/vmcp.py",
+        "dotted": "tools.future.vmcp",
+        "symbol": "compact_surface",
+        "family": "perception.vmcp",
+        "handler": _invoke_vmcp,
+        "input_schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "act": {"type": "string"},
+                "path": {"type": "string"},
+                "other_path": {"type": "string"},
+                "expected_sha256": {"type": "string"},
+                "sha256": {"type": "string"},
+                "max_bytes": {"type": "integer"},
+            },
+        },
+        "output_schema": {"type": "object"},
+        "triage_classification": "UNREACHABLE",
+    },
 }
 
 
@@ -1955,6 +2062,8 @@ def family_of(module_rel: str, summary: str) -> str:
     blob = f"{rel} {(summary or '')}".lower()
     rules: tuple[tuple[tuple[str, ...], str], ...] = (
         (("ebpw", "bpw", "byte ledger"), "science.ebpw"),
+        (("tabula", "abliterat"), "science.tabula"),
+        (("vmcp", "visionmcp", "all-seeing"), "perception.vmcp"),
         (("fidelity", "claim_scope", "inference", "scar", "negative"), "science.rule"),
         (("resident", "wakeup", "workunit", "orchestration"), "resident"),
         (("fpga", "ane", "metal", "kernel", "hardware", "hwir"), "hardware.static"),

@@ -17,6 +17,12 @@ include = ["hcli*"]
 exclude = ["hcli.tests*", "tools*", "lab*"]
 
 [tool.pytest.ini_options]
+# Do NOT put `-n` / `--numprocesses` in addopts. addopts is injected into
+# every pytest invocation in this repo, including interpreters that are
+# not ~/.venvs/hawking-aider and do not have pytest-xdist. Parallelism is
+# opt-in:
+#   python3 tools/run_tools_pytest.py tools/roadmap
+#   python3 -m pytest -n 28 --dist worksteal tools/roadmap
 testpaths = ["tools/haider"]
 pythonpath = [
     ".",

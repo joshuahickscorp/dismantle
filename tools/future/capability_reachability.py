@@ -1178,17 +1178,28 @@ def _load_rust_facts() -> dict[str, Any] | None:
     return facts
 
 
+_ASSEMBLE_MEMO: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+
 def assemble() -> dict[str, Any]:
+    force_py = bool(_os.environ.get("HAWKING_REACHABILITY_FORCE_PYTHON"))
+    bin_hint = _os.environ.get("HAWKING_INDEX_BIN") or ""
+    key = (force_py, bin_hint, str(REPO))
+    cached = _ASSEMBLE_MEMO.get(key)
+    if cached is not None:
+        return cached
     facts = _load_rust_facts()
     if facts is not None:
         idx = repo_index_from_facts(facts)
         prefetch_texts([REPO / TOOL_REGISTRY_REL])
         doc = _assemble_from_index(idx)
         doc["facts_source"] = "hawking-index"
+        _ASSEMBLE_MEMO[key] = doc
         return doc
     idx = build_repo_index()
     doc = _assemble_from_index(idx)
     doc["facts_source"] = "python-ast"
+    _ASSEMBLE_MEMO[key] = doc
     return doc
 
 

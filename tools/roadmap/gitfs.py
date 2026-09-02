@@ -90,26 +90,45 @@ class SourceView:
         """Candidate files whose HEAD blob contains `needle`. Overlay files are always included."""
         if not needle:
             return []
-        if needle in self._grep_cache:
-            hits = list(self._grep_cache[needle])
-        else:
-            # Search HEAD, not the work tree: this checkout is sparse and a
-            # missing-on-disk file is not evidence of a missing caller.
-            # Pattern: git grep -F -e <needle> HEAD -- '*.py'
-            cp = _git("grep", "-l", "-F", "-e", needle, "HEAD", "--", "*.py", check=False)
-            hits = []
-            for line in cp.stdout.splitlines():
-                if not line:
-                    continue
-                # `git grep <tree> -l` prefixes each path with `<tree>:`.
-                if line.startswith("HEAD:"):
-                    line = line[len("HEAD:") :]
-                hits.append(line)
-            self._grep_cache[needle] = list(hits)
+        if needle not in self._grep_cache:
+            self.prefetch_grep([needle])
+        hits = list(self._grep_cache.get(needle) or [])
         for rel in self.overlay:
             if rel.endswith(".py") and rel not in hits:
                 hits.append(rel)
         return hits
+
+    def prefetch_grep(self, needles: list[str]) -> None:
+        """One `git grep -F` for many needles; fills `_grep_cache` (HEAD blobs)."""
+        pending = [n for n in needles if n and n not in self._grep_cache]
+        if not pending:
+            return
+        args = ["grep", "-n", "-F"]
+        for n in pending:
+            args.extend(["-e", n])
+        args.extend(["HEAD", "--", "*.py"])
+        cp = _git(*args, check=False)
+        hits: dict[str, list[str]] = {n: [] for n in pending}
+        seen: dict[str, set[str]] = {n: set() for n in pending}
+        for line in cp.stdout.splitlines():
+            if not line:
+                continue
+            if line.startswith("HEAD:"):
+                line = line[len("HEAD:") :]
+            # path:lineno:text — lineno is forced by -n.
+            rel, sep, rest = line.partition(":")
+            lineno, sep2, text = rest.partition(":")
+            if not sep or not sep2 or not lineno.isdigit():
+                rel, _, text = line.partition(":")
+            if not rel:
+                continue
+            blob = text if sep2 else line
+            for n in pending:
+                if n in blob and rel not in seen[n]:
+                    seen[n].add(rel)
+                    hits[n].append(rel)
+        for n in pending:
+            self._grep_cache[n] = hits[n]
 
     def path(self, rel: str) -> Path:
         return REPO / rel

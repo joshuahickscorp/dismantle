@@ -1,14 +1,31 @@
-"""HWIR v1 — hardware intermediate representation.
+"""HWIR v1 — hardware intermediate representation plus the pre-board stack.
 
 The FPGA/spatial school compiles into this IR. It consumes Noetic/PhysicalGraph
 semantics and real FPGA organ-map receipts. A graph that assumes it is
 multiplying original dense source weight matrices is invalid by construction.
 
-This is not an FPGA backend, HDL emitter, or bitstream path.
+This is not an FPGA backend, HDL emitter, or bitstream path. There is no U50
+board on this host. Every number this module emits is PREHARDWARE: STATIC,
+FUNCTIONAL_SIM, COST_MODEL, or CYCLE_APPROX. None of them is HARDWARE_MEASURED.
+
+What already lived here (v1 IR): seven node kinds, typed stream edges, physical
+attributes, byte-stable serdes, a validator that actually refuses, and lowering
+from Flash/Qwen27 FPGA organ maps.
+
+What the pre-board stack adds, by connecting existing implementations rather
+than rewriting them:
+
+* evidence-backed atlas primitives via tools.future.physical_primitives.instantiate
+* FUNCTIONAL_SIM of a qGEMV kernel by calling tools.future.fpga_engines.qgemv
+* CYCLE_APPROX critical-path modelled cycles (not a clock, not seconds)
+* COST_MODEL HBM traffic and host<->device transfer (bytes and modelled cycles)
+* STATIC LUT/DSP/BRAM/URAM estimator that refuses an over-budget engine
+* a synthetic U50-class device profile and a row-split partitioner
 
     python3 tools/future/hwir.py --selftest
     python3 tools/future/hwir.py --build
     python3 tools/future/hwir.py --lower receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json --organ expert_bank
+    python3 tools/future/hwir.py --qgemv
 """
 from __future__ import annotations
 
@@ -20,7 +37,7 @@ from tools.future._common import write_receipt, load_json, REPO, git, sha256_fil
 import argparse
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -63,6 +80,12 @@ TRANSFORMS = (
 )
 
 RESOURCE_CLASSES = ("BRAM", "DSP", "LUT", "URAM")
+
+# Closed evidence set for every pre-board output. HARDWARE_MEASURED is illegal
+# here: there is no FPGA, no U50, no synthesis, no board census.
+EVIDENCE_TIERS = ("STATIC", "FUNCTIONAL_SIM", "COST_MODEL", "CYCLE_APPROX")
+ILLEGAL_EVIDENCE_TIERS = frozenset({"HARDWARE_MEASURED"})
+PREHARDWARE = "PREHARDWARE"
 
 KIND_ALIASES = {
     "compute": "compute",
@@ -208,6 +231,93 @@ def apply_transform(frame: str, transform: str) -> str | None:
 
 def _zero_resources() -> dict[str, int]:
     return {k: 0 for k in RESOURCE_CLASSES}
+
+
+def _ceil_div(n: int, d: int) -> int:
+    if d <= 0:
+        raise ValueError("divisor must be positive")
+    n = int(n)
+    return (n + d - 1) // d if n > 0 else 0
+
+
+class IllegalEvidenceTier(ValueError):
+    """A code path tried to emit a tier this pre-board stack is not allowed to claim."""
+
+
+class ResourceOverBudget(ValueError):
+    """STATIC resource ESTIMATE exceeds a declared compiler budget. Not a synth result."""
+
+    def __init__(
+        self,
+        used: Mapping[str, int],
+        budget: Mapping[str, int],
+        overflow: Mapping[str, tuple[int, int]],
+        device_id: str,
+    ) -> None:
+        self.used = {k: int(v) for k, v in used.items()}
+        self.budget = {k: int(v) for k, v in budget.items()}
+        self.overflow = {k: (int(a), int(b)) for k, (a, b) in overflow.items()}
+        self.device_id = device_id
+        parts = [f"{k}:{a}>{b}" for k, (a, b) in sorted(self.overflow.items())]
+        super().__init__(
+            f"STATIC resource ESTIMATE exceeds declared budget on {device_id}: "
+            + ",".join(parts)
+        )
+
+
+class UnmeasuredConversionError(RuntimeError):
+    """Raised if modelled cycles are asked to become wall time. There is no clock."""
+
+
+def emit_evidence(tier: str, body: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Stamp a report with a legal evidence tier. The only legal producer of the field."""
+    t = str(tier)
+    if t in ILLEGAL_EVIDENCE_TIERS or t == "HARDWARE_MEASURED":
+        raise IllegalEvidenceTier(
+            f"refusing to emit evidence_tier={t!r}; no U50 board, no code path "
+            "may label an output HARDWARE_MEASURED"
+        )
+    if t not in EVIDENCE_TIERS:
+        raise IllegalEvidenceTier(
+            f"evidence_tier={t!r} is not one of {list(EVIDENCE_TIERS)}"
+        )
+    out = dict(body or {})
+    out["evidence_tier"] = t
+    out["prehardware"] = True
+    out["qualification"] = PREHARDWARE
+    out["hardware_measured"] = False
+    return out
+
+
+def assert_no_hardware_measured(node: Any, path: str = "$") -> None:
+    """Walk a report. HARDWARE_MEASURED as a produced tier/claim is illegal."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            here = f"{path}.{key}"
+            if key in {"evidence_tier", "measurement_state", "evidence_class", "tier"}:
+                if value == "HARDWARE_MEASURED":
+                    raise IllegalEvidenceTier(f"{here}={value!r}")
+            if key == "HARDWARE_MEASURED" and value not in {False, None, 0}:
+                raise IllegalEvidenceTier(f"{here}={value!r}")
+            if key == "hardware_measured" and value not in {False, None, 0}:
+                raise IllegalEvidenceTier(f"{here}={value!r} (must be false/absent)")
+            assert_no_hardware_measured(value, here)
+    elif isinstance(node, (list, tuple)):
+        for i, value in enumerate(node):
+            assert_no_hardware_measured(value, f"{path}[{i}]")
+
+
+def collect_evidence_tiers(node: Any) -> set[str]:
+    found: set[str] = set()
+    if isinstance(node, dict):
+        if "evidence_tier" in node and node["evidence_tier"] is not None:
+            found.add(str(node["evidence_tier"]))
+        for value in node.values():
+            found |= collect_evidence_tiers(value)
+    elif isinstance(node, (list, tuple)):
+        for value in node:
+            found |= collect_evidence_tiers(value)
+    return found
 
 
 def _norm_text(value: Any) -> str:
@@ -557,6 +667,9 @@ class DeviceBudget:
     def ceiling(self, klass: str) -> int:
         return int(getattr(self, klass))
 
+    def as_map(self) -> dict[str, int]:
+        return {k: int(getattr(self, k)) for k in RESOURCE_CLASSES}
+
 
 @dataclass
 class HwirNode:
@@ -576,21 +689,37 @@ class HwirNode:
     transport_policy: str | None = None
     assumes_source_tensor_identity: bool = False
     dense_weight_materialization: bool = False
+    evidence_tier: str = "STATIC"
+    memory_tier: str | None = None
+    backed_identity: str | None = None
 
     def __post_init__(self) -> None:
         self.kind = canon_kind(self.kind)
         self.inputs = {str(k): canon_frame(v) for k, v in sorted(self.inputs.items())}
         self.outputs = {str(k): canon_frame(v) for k, v in sorted(self.outputs.items())}
+        tier = str(self.evidence_tier or "STATIC")
+        if tier in ILLEGAL_EVIDENCE_TIERS or tier == "HARDWARE_MEASURED":
+            raise IllegalEvidenceTier(
+                f"node {self.id!r} cannot carry evidence_tier={tier!r}"
+            )
+        if tier not in EVIDENCE_TIERS:
+            raise IllegalEvidenceTier(
+                f"node {self.id!r} evidence_tier={tier!r} is not one of {list(EVIDENCE_TIERS)}"
+            )
+        self.evidence_tier = tier
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "assumes_source_tensor_identity": bool(self.assumes_source_tensor_identity),
+            "backed_identity": self.backed_identity,
             "dense_weight_materialization": bool(self.dense_weight_materialization),
+            "evidence_tier": self.evidence_tier,
             "id": self.id,
             "inputs": dict(sorted(self.inputs.items())),
             "kind": self.kind,
             "lifetime": self.lifetime,
             "mapping": self.mapping,
+            "memory_tier": self.memory_tier,
             "organ": self.organ,
             "outputs": dict(sorted(self.outputs.items())),
             "owner": self.owner,
@@ -622,6 +751,9 @@ class HwirNode:
             transport_policy=d.get("transport_policy"),
             assumes_source_tensor_identity=bool(d.get("assumes_source_tensor_identity")),
             dense_weight_materialization=bool(d.get("dense_weight_materialization")),
+            evidence_tier=str(d.get("evidence_tier") or "STATIC"),
+            memory_tier=d.get("memory_tier"),
+            backed_identity=d.get("backed_identity"),
         )
 
 
@@ -691,6 +823,7 @@ class HwirGraph:
     edges: list[HwirEdge] = field(default_factory=list)
     device_budget: DeviceBudget | None = None
     notes: list[str] = field(default_factory=list)
+    kernel: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         nodes = sorted((n.to_dict() for n in self.nodes), key=lambda n: n["id"])
@@ -701,6 +834,7 @@ class HwirGraph:
         body = {
             "device_budget": None if self.device_budget is None else self.device_budget.to_dict(),
             "edges": edges,
+            "kernel": None if self.kernel is None else json.loads(canon_dumps(self.kernel)),
             "model": self.model,
             "nodes": nodes,
             "notes": list(self.notes),
@@ -738,6 +872,7 @@ class HwirGraph:
             edges=[HwirEdge.from_dict(e) for e in (d.get("edges") or [])],
             device_budget=None if not budget_raw else DeviceBudget.from_dict(budget_raw),
             notes=[str(x) for x in (d.get("notes") or [])],
+            kernel=None if not d.get("kernel") else dict(d.get("kernel") or {}),
         )
 
     @classmethod
@@ -985,6 +1120,45 @@ def _rel(path: Path) -> str:
         return str(path)
 
 
+def _as_repo_rel(path: str | Path) -> str:
+    p = Path(path)
+    if not p.is_absolute():
+        return str(p).replace("\\", "/")
+    try:
+        return str(p.resolve().relative_to(REPO))
+    except ValueError:
+        return str(p)
+
+
+def _git_json(rel: str) -> tuple[dict[str, Any], str] | None:
+    """Load a JSON blob from git HEAD. Sparse checkouts leave receipts off disk."""
+    blob = git("show", f"HEAD:{rel}")
+    if not blob:
+        return None
+    try:
+        doc = json.loads(blob)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(doc, dict):
+        return None
+    digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    return doc, digest
+
+
+def _load_organ_doc(path: str | Path) -> tuple[dict[str, Any], str, str | None]:
+    """Disk first, then git show HEAD:<rel>. Returns (doc, repo-rel, sha256)."""
+    rel = _as_repo_rel(path)
+    disk = Path(path)
+    if not disk.is_file():
+        disk = REPO / rel
+    if disk.is_file():
+        return load_json(disk), rel, sha256_file(disk)
+    git_doc = _git_json(rel)
+    if git_doc is not None:
+        return git_doc[0], rel, git_doc[1]
+    raise FileNotFoundError(f"organ map not found on disk or in git HEAD: {path}")
+
+
 def _pick_organ(organs: list[Mapping[str, Any]], organ_id: str | None) -> dict[str, Any]:
     rows = [dict(o) for o in organs if isinstance(o, Mapping)]
     if not rows:
@@ -1044,8 +1218,7 @@ def _phys_for(organ_id: str, mapping: str, *, hbm_channel: int | None) -> Physic
 
 def from_organ_map(path: str | Path, organ_id: str | None = None) -> HwirGraph:
     """Lower one real Hawking organ from an FPGA organ-map receipt into HWIR."""
-    src = _resolve_path(path)
-    doc = load_json(src)
+    doc, src_rel, _digest = _load_organ_doc(path)
     organs = list(doc.get("organs") or [])
     chosen = _pick_organ(organs, organ_id)
     oid = str(chosen.get("organ") or chosen.get("id") or "unknown")
@@ -1239,7 +1412,7 @@ def from_organ_map(path: str | Path, organ_id: str | None = None) -> HwirGraph:
     return HwirGraph(
         model=model,
         organ=oid,
-        source_receipt=_rel(src),
+        source_receipt=src_rel,
         source_hwir_schema=str(stub.get("schema") or doc.get("schema") or ""),
         qualification="STATIC_ONLY",
         semantics_consumed="physical_graph_noetic_native",
@@ -1454,6 +1627,1004 @@ def graph_type_mismatch() -> HwirGraph:
 
 
 # ---------------------------------------------------------------------------
+# Pre-board stack. PREHARDWARE. No board, no bitstream, no synthesis.
+#
+# Found and connected, not rewritten:
+#   tools.future.fpga_engines.qgemv          — bit-exact FUNCTIONAL_SIM golden
+#   tools.future.physical_primitives.instantiate — atlas primitive identity
+#   DeviceBudget + validate() RESOURCE_OVER_BUDGET — already refused over-budget
+#   fpga_fidelity.StructuralGraph            — sibling stand-in; not imported
+#   hcli.agentos.fpga_preboard.HWIR          — schema-only; cannot edit
+# ---------------------------------------------------------------------------
+
+# Assumed coefficient table for STATIC resource estimates. Not a synth report,
+# not a place-and-route result, not a board census. K.1 arithmetic tournament
+# default: DSP MAC. Graded on ranking/refusal, not on invented Fmax.
+LUT_PER_MAC_LANE = 64
+LUT_DECODE_BASE = 512
+LUT_DMA_BASE = 256
+LUT_REDUCE_BASE = 128
+BRAM_BLOCK_BITS = 36 * 1024  # UltraScale+ RAMB36 class size; STATIC vendor literature
+URAM_BLOCK_BITS = 288 * 1024  # UltraRAM class size; STATIC vendor literature
+
+# COST_MODEL fabric beats. Not clocks. Never converted to seconds.
+# On-chip beat matches tools/future/fpga_fidelity.py MODEL_BYTES_PER_CYCLE = 64.
+FABRIC_BYTES_PER_MODELLED_CYCLE = 64
+# HBM beat is a declared planning coefficient, not a measured HBM2 rate.
+HBM_BYTES_PER_MODELLED_CYCLE = 1024
+# Host<->device beat is a USB4/Thunderbolt ~40 Gb/s CLASS prior from
+# H-ROADMAP.md §15.1, turned into bytes/cycle against a notional fabric beat.
+# It is a COST_MODEL prior. It is not a measurement of any cable.
+HOST_DEVICE_BYTES_PER_MODELLED_CYCLE = 16
+HOST_DEVICE_QUEUE_CYCLES = 32
+
+# §15.5 Apple/FPGA split is "only a measured-bandwidth prior". We store it as
+# a COST_MODEL prior and never call it a measurement.
+APPLE_FPGA_PRIOR_NUM = 65
+APPLE_FPGA_PRIOR_DEN = 100
+
+
+@dataclass(frozen=True)
+class DeviceProfile:
+    """Synthetic planning envelope. Declared, not measured, not a board census.
+
+    U50-class LUT/DSP/BRAM/URAM/HBM counts are vendor-literature envelopes
+    (AMD Alveo U50 / VU35P product brief class). They are STATIC planning
+    numbers. They are not HARDWARE_MEASURED and they are not a local census.
+    """
+
+    device_id: str
+    origin: str
+    LUT: int
+    DSP: int
+    BRAM: int
+    URAM: int
+    hbm_channels: int
+    hbm_capacity_bytes: int
+    mac_lanes_default: int = 8
+    pipeline_depth: int = 8
+    initiation_interval: int = 1
+    fabric_bytes_per_modelled_cycle: int = FABRIC_BYTES_PER_MODELLED_CYCLE
+    hbm_bytes_per_modelled_cycle: int = HBM_BYTES_PER_MODELLED_CYCLE
+    host_device_bytes_per_modelled_cycle: int = HOST_DEVICE_BYTES_PER_MODELLED_CYCLE
+    declared_not_measured: bool = True
+    vendor_literature: str = (
+        "AMD Alveo U50 / XCU50 / VU35P class envelope from public product "
+        "literature. SYNTHETIC planning profile. Not a local board census."
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return emit_evidence(
+            "STATIC",
+            {
+                "BRAM": int(self.BRAM),
+                "DSP": int(self.DSP),
+                "LUT": int(self.LUT),
+                "URAM": int(self.URAM),
+                "declared_not_measured": True,
+                "device_id": self.device_id,
+                "fabric_bytes_per_modelled_cycle": int(self.fabric_bytes_per_modelled_cycle),
+                "hbm_bytes_per_modelled_cycle": int(self.hbm_bytes_per_modelled_cycle),
+                "hbm_capacity_bytes": int(self.hbm_capacity_bytes),
+                "hbm_channels": int(self.hbm_channels),
+                "host_device_bytes_per_modelled_cycle": int(
+                    self.host_device_bytes_per_modelled_cycle
+                ),
+                "initiation_interval": int(self.initiation_interval),
+                "kind": "SYNTHETIC_DEVICE_PROFILE",
+                "mac_lanes_default": int(self.mac_lanes_default),
+                "origin": self.origin,
+                "pipeline_depth": int(self.pipeline_depth),
+                "vendor_literature": self.vendor_literature,
+            },
+        )
+
+    def budget(self) -> DeviceBudget:
+        return DeviceBudget(
+            BRAM=int(self.BRAM),
+            DSP=int(self.DSP),
+            LUT=int(self.LUT),
+            URAM=int(self.URAM),
+            device_id=self.device_id,
+            hbm_channels=int(self.hbm_channels),
+            declared_not_measured=True,
+            status="DECLARED_COMPILER_CONSTRAINT",
+        )
+
+    def resource_map(self) -> dict[str, int]:
+        return {k: int(getattr(self, k)) for k in RESOURCE_CLASSES}
+
+
+def synthetic_u50_class() -> DeviceProfile:
+    """Textbook U50-class envelope from §15. Not a board we have."""
+    return DeviceProfile(
+        device_id="synthetic-u50-class",
+        origin="SYNTHETIC_U50_CLASS_DECLARED_NOT_A_BOARD",
+        LUT=872_000,
+        DSP=9_024,
+        BRAM=2_016,
+        URAM=960,
+        hbm_channels=32,
+        hbm_capacity_bytes=8 * 1024 ** 3,
+    )
+
+
+def synthetic_device(
+    *,
+    lut: int,
+    dsp: int,
+    bram: int,
+    uram: int,
+    hbm_channels: int = 1,
+    hbm_capacity_bytes: int = 64 * 1024,
+    device_id: str = "synthetic-tiny-declared-not-a-board",
+    pipeline_depth: int = 8,
+    initiation_interval: int = 1,
+) -> DeviceProfile:
+    """Caller-declared planning envelope. Used by overflow tests. Not a board."""
+    return DeviceProfile(
+        device_id=device_id,
+        origin="SYNTHETIC_DECLARED_NOT_A_BOARD",
+        LUT=int(lut),
+        DSP=int(dsp),
+        BRAM=int(bram),
+        URAM=int(uram),
+        hbm_channels=int(hbm_channels),
+        hbm_capacity_bytes=int(hbm_capacity_bytes),
+        pipeline_depth=int(pipeline_depth),
+        initiation_interval=int(initiation_interval),
+        vendor_literature="caller-declared test/planning envelope; not vendor literature",
+    )
+
+
+@dataclass(frozen=True)
+class QGemvKernel:
+    """qGEMV-class kernel. Canonical first FPGA engine in §15.14 / APPENDIX K.2 L1."""
+
+    M: int
+    K: int
+    weight_bits: int = 4
+    group_size: int = 64
+    mac_lanes: int = 8
+    tile_m: int = 4
+    organ: str = "qgemv"
+    model: str = "qgemv-class"
+    engine_ladder_level: str = "L1"
+    arithmetic: str = "DSP_MAC"
+
+    def __post_init__(self) -> None:
+        if self.M < 1 or self.K < 1:
+            raise ValueError("qGEMV M and K must be >= 1")
+        if self.weight_bits < 1 or self.weight_bits > 8:
+            raise ValueError("weight_bits must be in 1..8")
+        if self.group_size < 1 or self.K % self.group_size != 0:
+            raise ValueError(f"K={self.K} must be a positive multiple of group_size={self.group_size}")
+        if self.mac_lanes < 1 or self.tile_m < 1:
+            raise ValueError("mac_lanes and tile_m must be >= 1")
+
+    def to_dict(self) -> dict[str, Any]:
+        return emit_evidence(
+            "STATIC",
+            {
+                "K": int(self.K),
+                "M": int(self.M),
+                "arithmetic": self.arithmetic,
+                "engine_ladder_level": self.engine_ladder_level,
+                "engine_ladder_meaning": (
+                    "APPENDIX K.2 L1 = correct low-bit. Not L5 HBM-channel-"
+                    "specialized, not a board engine."
+                ),
+                "group_size": int(self.group_size),
+                "mac_lanes": int(self.mac_lanes),
+                "model": self.model,
+                "organ": self.organ,
+                "tile_m": int(self.tile_m),
+                "weight_bits": int(self.weight_bits),
+            },
+        )
+
+    def weight_bytes(self) -> int:
+        return _ceil_div(self.M * self.K * self.weight_bits, 8)
+
+    def scale_bytes(self) -> int:
+        return self.M * (self.K // self.group_size) * 4
+
+    def activation_in_bytes(self) -> int:
+        return self.K * 4
+
+    def activation_out_bytes(self) -> int:
+        return self.M * 4
+
+
+def canonical_qgemv_kernel() -> QGemvKernel:
+    """Matches tools.future.fpga_engines.VECTORS qgemv_hand. Exact in float32."""
+    return QGemvKernel(
+        M=2,
+        K=4,
+        weight_bits=4,
+        group_size=4,
+        mac_lanes=2,
+        tile_m=2,
+        organ="qgemv",
+        model="qgemv-class",
+        engine_ladder_level="L1",
+        arithmetic="DSP_MAC",
+    )
+
+
+def canonical_qgemv_operands() -> dict[str, Any]:
+    """The qgemv_hand vector. Independent of the engine's own expected table."""
+    return {
+        "codes": [[1, -1, 2, 0], [3, 1, -2, 1]],
+        "scales": [[2.0], [0.5]],
+        "x": [1.0, 2.0, 3.0, 4.0],
+        "expected": [10.0, 1.5],
+        "source": "tools.future.fpga_engines.VECTORS[qgemv_hand]",
+    }
+
+
+def overflow_probe_kernel() -> QGemvKernel:
+    """Engine wide enough that a tiny declared DSP budget must refuse it."""
+    return QGemvKernel(
+        M=32,
+        K=256,
+        weight_bits=4,
+        group_size=64,
+        mac_lanes=64,
+        tile_m=16,
+        organ="qgemv",
+        model="qgemv-class",
+        engine_ladder_level="L1",
+        arithmetic="DSP_MAC",
+    )
+
+
+def _back_primitive(
+    name: str,
+    *,
+    memory_tier: str,
+    organ_class: str,
+    extra: Mapping[str, Any] | None = None,
+) -> Any:
+    """CALL SITE: tools.future.physical_primitives.instantiate (not a mere import)."""
+    from tools.future.physical_primitives import instantiate
+
+    return instantiate(
+        name,
+        memory_tier=memory_tier,
+        semantic_program_id="hwir.qgemv",
+        backend="FPGA",
+        organ_class=organ_class,
+        extra=dict(extra or {}) | {"prehardware": True, "evidence_tier": "STATIC"},
+    )
+
+
+def estimate_qgemv_resources(kernel: QGemvKernel) -> dict[str, Any]:
+    """STATIC LUT/DSP/BRAM/URAM ESTIMATE for a qGEMV engine. Not synthesis."""
+    dsp = int(kernel.mac_lanes) * int(kernel.tile_m)
+    lut = (
+        dsp * LUT_PER_MAC_LANE
+        + LUT_DECODE_BASE
+        + LUT_DMA_BASE * 2
+        + LUT_REDUCE_BASE
+        + int(kernel.mac_lanes) * 8
+    )
+    tile_bits = (
+        int(kernel.tile_m) * int(kernel.K) * int(kernel.weight_bits)
+        + int(kernel.tile_m) * (int(kernel.K) // int(kernel.group_size)) * 32
+    )
+    bram = max(1, _ceil_div(tile_bits, BRAM_BLOCK_BITS))
+    uram = 0
+    if tile_bits > 4 * BRAM_BLOCK_BITS:
+        uram = max(1, _ceil_div(tile_bits, URAM_BLOCK_BITS))
+        bram = min(bram, 4)
+    used = {"BRAM": int(bram), "DSP": int(dsp), "LUT": int(lut), "URAM": int(uram)}
+    return emit_evidence(
+        "STATIC",
+        {
+            "arithmetic": kernel.arithmetic,
+            "coefficient_table": "v1-assumed-not-synthesized",
+            "kind": "RESOURCE_ESTIMATE",
+            "note": (
+                "ESTIMATE from an assumed coefficient table. Not a synthesis "
+                "report, not place-and-route, not a board measurement."
+            ),
+            "tile_bits": int(tile_bits),
+            "used": used,
+        },
+    )
+
+
+def resource_overflow(used: Mapping[str, int], budget: Mapping[str, int]) -> dict[str, tuple[int, int]]:
+    overflow: dict[str, tuple[int, int]] = {}
+    for klass in RESOURCE_CLASSES:
+        have = int(used.get(klass) or 0)
+        ceiling = int(budget.get(klass) or 0)
+        if have > ceiling:
+            overflow[klass] = (have, ceiling)
+    return overflow
+
+
+def fit_kernel_to_device(kernel: QGemvKernel, device: DeviceProfile) -> dict[str, Any]:
+    """Refuse a kernel whose STATIC resource ESTIMATE exceeds the declared budget.
+
+    CALL SITE of estimate_qgemv_resources. This is the estimator's refusal path;
+    validate() RESOURCE_OVER_BUDGET remains the IR-level guard for filled graphs.
+    """
+    estimate = estimate_qgemv_resources(kernel)
+    used = dict(estimate["used"])
+    budget = device.resource_map()
+    overflow = resource_overflow(used, budget)
+    report = emit_evidence(
+        "STATIC",
+        {
+            "budget": budget,
+            "device_id": device.device_id,
+            "kind": "RESOURCE_FIT",
+            "ok": not overflow,
+            "overflow": {k: {"used": a, "budget": b} for k, (a, b) in overflow.items()},
+            "used": used,
+        },
+    )
+    report["estimate"] = estimate
+    if overflow:
+        raise ResourceOverBudget(used, budget, overflow, device.device_id)
+    return report
+
+
+def _node_resources_from_estimate(kernel: QGemvKernel, used: Mapping[str, int]) -> dict[str, dict[str, int]]:
+    """Split the engine estimate across IR nodes so validate() sees the same sum."""
+    dsp = int(used["DSP"])
+    lut_mac = dsp * LUT_PER_MAC_LANE + int(kernel.mac_lanes) * 8
+    zero = _zero_resources()
+
+    def pack(**kwargs: int) -> dict[str, int]:
+        out = dict(zero)
+        for k, v in kwargs.items():
+            out[k] = int(v)
+        return out
+
+    return {
+        "compute": pack(DSP=dsp, LUT=lut_mac),
+        "decoder": pack(LUT=LUT_DECODE_BASE),
+        "dma_in": pack(LUT=LUT_DMA_BASE),
+        "dma_out": pack(LUT=LUT_DMA_BASE),
+        "reduction": pack(LUT=LUT_REDUCE_BASE),
+        "memory": pack(BRAM=int(used["BRAM"]), URAM=int(used["URAM"])),
+    }
+
+
+def from_qgemv(
+    kernel: QGemvKernel | None = None,
+    device: DeviceProfile | None = None,
+    *,
+    bind_budget: bool = True,
+) -> HwirGraph:
+    """Lower a qGEMV-class kernel into HWIR with evidence-backed primitives.
+
+    CALL SITES:
+      physical_primitives.instantiate  (via _back_primitive)
+      estimate_qgemv_resources
+    """
+    kernel = kernel or canonical_qgemv_kernel()
+    device = device or synthetic_u50_class()
+    estimate = estimate_qgemv_resources(kernel)
+    used = dict(estimate["used"])
+    split = _node_resources_from_estimate(kernel, used)
+
+    def backed(
+        name: str,
+        *,
+        memory_tier: str,
+        organ_class: str,
+    ) -> tuple[str, str | None]:
+        inst = _back_primitive(name, memory_tier=memory_tier, organ_class=organ_class)
+        return inst.identity, inst.memory_tier
+
+    id_mem, tier_mem = backed("StationaryRepresentation", memory_tier="HBM", organ_class="mlp")
+    id_dec, tier_dec = backed("FusedDecodeCompute", memory_tier="ACCEL_SRAM", organ_class="mlp")
+    id_cmp, tier_cmp = backed("TiledProjection", memory_tier="ACCEL_SRAM", organ_class="mlp")
+    id_red, tier_red = backed("CollectiveRegion", memory_tier="ACCEL_SRAM", organ_class="multi_device")
+    id_dma, tier_dma = backed("SemanticTransportEdge", memory_tier="REMOTE", organ_class="fpga_partition")
+
+    dma_in = "dma.qgemv.in"
+    dma_out = "dma.qgemv.out"
+    mem_id = "mem.qgemv.packed"
+    dec_id = "dec.qgemv.native"
+    cmp_id = "cmp.qgemv.body"
+    red_id = "red.qgemv.partial"
+
+    def phys(rc: Mapping[str, int], *, hbm_channel: int | None = 0) -> PhysicalAttr:
+        return PhysicalAttr(
+            arithmetic_width="packed_low_bit",
+            tile_shape=[int(kernel.tile_m), int(kernel.K)],
+            banking=int(kernel.mac_lanes),
+            hbm_channel=hbm_channel,
+            resource_class=dict(rc),
+            dfx_module_boundary="qgemv",
+        )
+
+    nodes = [
+        HwirNode(
+            id=dma_in,
+            kind="dma-transport",
+            primitive="SemanticTransportEdge",
+            organ=kernel.organ,
+            mapping="token activation ingress; no weight body",
+            outputs={"out": "activation"},
+            physical=phys(split["dma_in"], hbm_channel=None),
+            lifetime="token",
+            per_token_transfer=True,
+            transport_policy="activations_and_partial_reductions_only",
+            evidence_tier="STATIC",
+            memory_tier=tier_dma,
+            backed_identity=id_dma,
+        ),
+        HwirNode(
+            id=dma_out,
+            kind="dma-transport",
+            primitive="SemanticTransportEdge",
+            organ=kernel.organ,
+            mapping="partial-reduction egress; no weight body",
+            inputs={"in": "partial_reduction"},
+            physical=phys(split["dma_out"], hbm_channel=None),
+            lifetime="token",
+            per_token_transfer=True,
+            transport_policy="activations_and_partial_reductions_only",
+            evidence_tier="STATIC",
+            memory_tier=tier_dma,
+            backed_identity=id_dma,
+        ),
+        HwirNode(
+            id=mem_id,
+            kind="memory",
+            primitive="StationaryRepresentation",
+            organ=kernel.organ,
+            mapping="resident packed-low-bit shards; not source-dense weights",
+            outputs={"out": "compact_representation_fragment"},
+            physical=phys(split["memory"], hbm_channel=0),
+            lifetime="persistent",
+            per_token_transfer=False,
+            resident_weight_policy="resident_shards_no_weight_body_per_token_transfer",
+            evidence_tier="STATIC",
+            memory_tier=tier_mem,
+            backed_identity=id_mem,
+        ),
+        HwirNode(
+            id=dec_id,
+            kind="representation-decoder",
+            primitive="FusedDecodeCompute",
+            organ=kernel.organ,
+            mapping="native decode of packed codes at the consumer; no_dense_rematerialization",
+            inputs={"in": "compact_representation_fragment"},
+            outputs={"out": "activation"},
+            physical=phys(split["decoder"]),
+            lifetime="token",
+            evidence_tier="STATIC",
+            memory_tier=tier_dec,
+            backed_identity=id_dec,
+        ),
+        HwirNode(
+            id=cmp_id,
+            kind="compute",
+            primitive="TiledProjection",
+            organ=kernel.organ,
+            mapping="low-bit qGEMV tiled projection; DSP MAC; no source-dense GEMM",
+            inputs={"in_act": "activation", "in_rep": "activation"},
+            outputs={"out": "partial_reduction"},
+            physical=phys(split["compute"]),
+            lifetime="token",
+            resident_weight_policy="resident_shards_no_weight_body_per_token_transfer",
+            evidence_tier="STATIC",
+            memory_tier=tier_cmp,
+            backed_identity=id_cmp,
+        ),
+        HwirNode(
+            id=red_id,
+            kind="reduction",
+            primitive="CollectiveRegion",
+            organ=kernel.organ,
+            mapping="partial reduction of native qGEMV fragments",
+            inputs={"in": "partial_reduction"},
+            outputs={"out": "partial_reduction"},
+            physical=phys(split["reduction"]),
+            lifetime="token",
+            evidence_tier="STATIC",
+            memory_tier=tier_red,
+            backed_identity=id_red,
+        ),
+    ]
+    edges = [
+        HwirEdge(
+            id="e.qgemv.act",
+            src=dma_in,
+            src_port="out",
+            dst=cmp_id,
+            dst_port="in_act",
+            frame_kind="activation",
+        ),
+        HwirEdge(
+            id="e.qgemv.compact",
+            src=mem_id,
+            src_port="out",
+            dst=dec_id,
+            dst_port="in",
+            frame_kind="compact_representation_fragment",
+        ),
+        HwirEdge(
+            id="e.qgemv.decoded",
+            src=dec_id,
+            src_port="out",
+            dst=cmp_id,
+            dst_port="in_rep",
+            frame_kind="activation",
+        ),
+        HwirEdge(
+            id="e.qgemv.partial",
+            src=cmp_id,
+            src_port="out",
+            dst=red_id,
+            dst_port="in",
+            frame_kind="partial_reduction",
+        ),
+        HwirEdge(
+            id="e.qgemv.egress",
+            src=red_id,
+            src_port="out",
+            dst=dma_out,
+            dst_port="in",
+            frame_kind="partial_reduction",
+        ),
+    ]
+    notes = [
+        "Lowered qGEMV-class kernel. PREHARDWARE. Not a bitstream and not a hardware timing claim.",
+        "Resident packed shards stay put; per-token transport is activation / partial reduction only.",
+        "Representation-decoder is FusedDecodeCompute: native decode, no dense rematerialization.",
+        "Primitive identities come from physical_primitives.instantiate (FPGA backend).",
+        "resource_class values are STATIC estimates from an assumed coefficient table, not synthesis.",
+        "Device profile is synthetic/declared; there is no U50 board on this host.",
+    ]
+    return HwirGraph(
+        model=kernel.model,
+        organ=kernel.organ,
+        source_receipt="tools.future.hwir.from_qgemv",
+        source_hwir_schema=SCHEMA,
+        qualification="STATIC_ONLY",
+        semantics_consumed="physical_graph_noetic_native",
+        nodes=nodes,
+        edges=edges,
+        device_budget=device.budget() if bind_budget else None,
+        notes=notes,
+        kernel=kernel.to_dict(),
+    )
+
+
+def simulate_qgemv_functional(
+    kernel: QGemvKernel | None = None,
+    operands: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """FUNCTIONAL_SIM of a qGEMV kernel.
+
+    CALL SITE: tools.future.fpga_engines.qgemv — the bit-exact golden. This
+    function does not reimplement the MAC loop.
+    """
+    from tools.future.fpga_engines import qgemv as qgemv_engine
+
+    kernel = kernel or canonical_qgemv_kernel()
+    ops = dict(operands or canonical_qgemv_operands())
+    y = qgemv_engine(
+        ops["codes"],
+        ops["scales"],
+        ops["x"],
+        weight_bits=kernel.weight_bits,
+        group_size=kernel.group_size,
+    )
+    y_list = [float(v) for v in list(y)]
+    expected = ops.get("expected")
+    match = None
+    if expected is not None:
+        exp = [float(v) for v in list(expected)]
+        match = len(exp) == len(y_list) and all(a == b for a, b in zip(y_list, exp))
+    return emit_evidence(
+        "FUNCTIONAL_SIM",
+        {
+            "engine": "tools.future.fpga_engines.qgemv",
+            "engine_symbol": "qgemv",
+            "expected": None if expected is None else [float(v) for v in list(expected)],
+            "kernel": kernel.to_dict(),
+            "matches_expected": match,
+            "note": (
+                "Host-CPU functional interpreter of the qGEMV numerical contract. "
+                "Not a cycle count, not a board run, not HARDWARE_MEASURED."
+            ),
+            "ok": True,
+            "y": y_list,
+        },
+    )
+
+
+def simulate_functional(
+    graph: HwirGraph,
+    operands: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """FUNCTIONAL_SIM dispatch. qGEMV-class graphs call fpga_engines.qgemv."""
+    report = validate(graph)
+    if not report.ok:
+        return emit_evidence(
+            "FUNCTIONAL_SIM",
+            {
+                "engine": None,
+                "engine_symbol": None,
+                "ok": False,
+                "validate": report.to_dict(),
+                "y": None,
+            },
+        )
+    kernel_doc = graph.kernel or {}
+    if graph.organ == "qgemv" or str(kernel_doc.get("organ") or "") == "qgemv":
+        kernel = QGemvKernel(
+            M=int(kernel_doc.get("M") or canonical_qgemv_kernel().M),
+            K=int(kernel_doc.get("K") or canonical_qgemv_kernel().K),
+            weight_bits=int(kernel_doc.get("weight_bits") or 4),
+            group_size=int(kernel_doc.get("group_size") or 4),
+            mac_lanes=int(kernel_doc.get("mac_lanes") or 2),
+            tile_m=int(kernel_doc.get("tile_m") or 2),
+            organ=str(kernel_doc.get("organ") or graph.organ or "qgemv"),
+            model=str(kernel_doc.get("model") or graph.model or "qgemv-class"),
+        )
+        sim = simulate_qgemv_functional(kernel, operands)
+        sim["graph_fingerprint"] = graph.fingerprint()
+        sim["validate"] = report.to_dict()
+        return sim
+    return emit_evidence(
+        "FUNCTIONAL_SIM",
+        {
+            "engine": None,
+            "engine_symbol": None,
+            "graph_fingerprint": graph.fingerprint(),
+            "note": "no functional engine wired for this organ; qGEMV is the canonical first",
+            "ok": False,
+            "organ": graph.organ,
+            "validate": report.to_dict(),
+            "y": None,
+        },
+    )
+
+
+def model_hbm_traffic(
+    kernel: QGemvKernel,
+    device: DeviceProfile | None = None,
+    *,
+    weights_resident: bool = True,
+    fpga_rows: int | None = None,
+) -> dict[str, Any]:
+    """COST_MODEL of HBM bytes moved. Not a measured HBM2 rate."""
+    device = device or synthetic_u50_class()
+    rows = int(kernel.M if fpga_rows is None else fpga_rows)
+    shard = replace(kernel, M=max(0, rows))
+    weight_bytes = shard.weight_bytes()
+    scale_bytes = shard.scale_bytes()
+    x_bytes = shard.activation_in_bytes()
+    y_bytes = shard.activation_out_bytes()
+    # Doctrine §15.4: resident weights do not move per token.
+    per_token = x_bytes + y_bytes
+    if not weights_resident:
+        per_token += weight_bytes + scale_bytes
+    channels = min(int(device.hbm_channels), max(1, int(kernel.mac_lanes) // 8 or 1))
+    modelled_cycles = _ceil_div(per_token, int(device.hbm_bytes_per_modelled_cycle))
+    return emit_evidence(
+        "COST_MODEL",
+        {
+            "assumed_bytes_per_modelled_cycle": int(device.hbm_bytes_per_modelled_cycle),
+            "channels_touched": int(channels),
+            "kind": "HBM_TRAFFIC_MODEL",
+            "note": (
+                "COST_MODEL. Bytes and modelled cycles from a declared HBM beat. "
+                "Not a measured HBM2 bandwidth, not HARDWARE_MEASURED."
+            ),
+            "per_token_bytes": int(per_token),
+            "resident_weight_bytes": int(weight_bytes + scale_bytes) if weights_resident else 0,
+            "scale_bytes": int(scale_bytes),
+            "weight_bytes": int(weight_bytes),
+            "weights_resident": bool(weights_resident),
+            "x_bytes": int(x_bytes),
+            "y_bytes": int(y_bytes),
+            "modelled_cycles": int(modelled_cycles),
+        },
+    )
+
+
+def model_host_device_transfer(
+    kernel: QGemvKernel,
+    device: DeviceProfile | None = None,
+    *,
+    fpga_rows: int | None = None,
+    weights_resident: bool = True,
+) -> dict[str, Any]:
+    """COST_MODEL of host<->device bytes. USB4-class prior, not a cable measurement.
+
+    Deliberately does not emit bandwidth_gbps: that field is a hardware-claim
+    key in tools.future._common and a number here would be a fabricated rate.
+    """
+    device = device or synthetic_u50_class()
+    rows = int(kernel.M if fpga_rows is None else fpga_rows)
+    rows = max(0, min(rows, kernel.M))
+    h2c = kernel.activation_in_bytes() if rows else 0
+    c2h = rows * 4  # partial reduction, float32
+    if not weights_resident and rows:
+        shard = replace(kernel, M=rows)
+        h2c += shard.weight_bytes() + shard.scale_bytes()
+    beat = int(device.host_device_bytes_per_modelled_cycle)
+    cycles_h2c = 0 if h2c == 0 else HOST_DEVICE_QUEUE_CYCLES + _ceil_div(h2c, beat)
+    cycles_c2h = 0 if c2h == 0 else HOST_DEVICE_QUEUE_CYCLES + _ceil_div(c2h, beat)
+    return emit_evidence(
+        "COST_MODEL",
+        {
+            "assumed_bytes_per_modelled_cycle": beat,
+            "bytes_c2h": int(c2h),
+            "bytes_h2c": int(h2c),
+            "fpga_rows": int(rows),
+            "kind": "HOST_DEVICE_TRANSFER_MODEL",
+            "modelled_cycles_c2h": int(cycles_c2h),
+            "modelled_cycles_h2c": int(cycles_h2c),
+            "modelled_cycles_total": int(cycles_h2c + cycles_c2h),
+            "note": (
+                "COST_MODEL. USB4/Thunderbolt ~40 Gb/s CLASS prior from "
+                "H-ROADMAP.md §15.1, expressed as a declared bytes/cycle beat. "
+                "Not a measurement of any cable, not HARDWARE_MEASURED. "
+                "bandwidth_gbps is intentionally absent."
+            ),
+            "queue_cycles_assumed": HOST_DEVICE_QUEUE_CYCLES,
+            "transport_class": "USB4_40G_CLASS",
+            "transport_class_source": "H-ROADMAP.md §15.1 initial ~40 Gb/s class; COST_MODEL prior",
+            "weights_resident": bool(weights_resident),
+        },
+    )
+
+
+def approximate_cycles(
+    kernel: QGemvKernel,
+    device: DeviceProfile | None = None,
+    hbm: Mapping[str, Any] | None = None,
+    xfer: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """CYCLE_APPROX critical path. Modelled cycles, not a clock, not seconds."""
+    device = device or synthetic_u50_class()
+    hbm = dict(hbm or model_hbm_traffic(kernel, device))
+    xfer = dict(xfer or model_host_device_transfer(kernel, device))
+    issue_width = max(1, int(kernel.mac_lanes) * int(kernel.tile_m))
+    macs = int(kernel.M) * int(kernel.K)
+    issue_beats = _ceil_div(macs, issue_width)
+    compute = int(device.pipeline_depth) + int(device.initiation_interval) * max(0, issue_beats - 1)
+    hbm_cycles = int(hbm.get("modelled_cycles") or 0)
+    h2c = int(xfer.get("modelled_cycles_h2c") or 0)
+    c2h = int(xfer.get("modelled_cycles_c2h") or 0)
+    # Conservative overlap: host H2C, then max(compute, HBM), then C2H.
+    modelled = h2c + max(compute, hbm_cycles) + c2h
+    return emit_evidence(
+        "CYCLE_APPROX",
+        {
+            "clock_hz": "UNKNOWN",
+            "compute_modelled_cycles": int(compute),
+            "conversion_reason": (
+                "a cycle approximation is not a duration without a real clock; "
+                "this host has no FPGA and no emulation seat"
+            ),
+            "conversion_to_seconds": "REFUSED",
+            "hbm_modelled_cycles": int(hbm_cycles),
+            "host_c2h_modelled_cycles": int(c2h),
+            "host_h2c_modelled_cycles": int(h2c),
+            "initiation_interval": int(device.initiation_interval),
+            "issue_beats": int(issue_beats),
+            "issue_width": int(issue_width),
+            "kind": "CYCLE_APPROXIMATION",
+            "modelled_cycles": int(modelled),
+            "note": (
+                "CYCLE_APPROX. Modelled critical-path cycles from declared II, "
+                "depth, and COST_MODEL beats. Not a measurement. Not seconds."
+            ),
+            "pipeline_depth": int(device.pipeline_depth),
+            "seconds": None,
+        },
+    )
+
+
+def cycles_to_seconds(cycles: int, clock_hz: Any = None) -> None:
+    """Refused. A cycle approximation is not a duration."""
+    raise UnmeasuredConversionError(
+        "CYCLE_APPROX cycles cannot be converted to seconds "
+        f"(cycles={cycles!r}, clock_hz={clock_hz!r}); no real clock, no U50 board"
+    )
+
+
+def floorplan_hints(kernel: QGemvKernel, device: DeviceProfile | None = None) -> dict[str, Any]:
+    """STATIC floorplan hints (APPENDIX K.4). Not place-and-route."""
+    device = device or synthetic_u50_class()
+    return emit_evidence(
+        "STATIC",
+        {
+            "bram_uram_locality": "tile_buffer_beside_mac_array",
+            "device_id": device.device_id,
+            "dfx_region": "qgemv_module",
+            "dsp_locality": "column_aligned_mac_array",
+            "engine_placement": "near_hbm_controller",
+            "hbm_controller_proximity": True,
+            "kind": "FLOORPLAN_HINTS",
+            "module_boundary": "qgemv",
+            "note": (
+                "STATIC hints from APPENDIX K.4. Not a floorplan, not P&R, "
+                "not a congestion map, not HARDWARE_MEASURED."
+            ),
+            "stream_topology": "dma_in -> decode+mac -> reduce -> dma_out",
+        },
+    )
+
+
+def partition_qgemv(
+    kernel: QGemvKernel,
+    device: DeviceProfile | None = None,
+    *,
+    weights_resident: bool = True,
+) -> dict[str, Any]:
+    """Row-split partitioner. FPGA shard must fit declared HBM capacity.
+
+    CALL SITES: estimate_qgemv_resources / fit_kernel_to_device (engine must
+    fit LUT/DSP/BRAM/URAM), model_host_device_transfer, model_hbm_traffic.
+
+    LUT/DSP are properties of the engine, not of M. The split is on M so the
+    resident packed shard fits hbm_capacity_bytes. §15.5 65/35 is recorded as
+    a COST_MODEL prior and is not applied as physics.
+    """
+    device = device or synthetic_u50_class()
+    engine = fit_kernel_to_device(kernel, device)
+    bytes_per_row = 0
+    if kernel.M > 0:
+        bytes_per_row = _ceil_div(kernel.weight_bytes() + kernel.scale_bytes(), kernel.M)
+    cap = int(device.hbm_capacity_bytes)
+    max_rows = kernel.M
+    if weights_resident and bytes_per_row > 0:
+        max_rows = min(kernel.M, cap // bytes_per_row)
+    fpga_rows = int(max_rows)
+    host_rows = int(kernel.M - fpga_rows)
+    xfer = model_host_device_transfer(
+        kernel, device, fpga_rows=fpga_rows, weights_resident=weights_resident
+    )
+    hbm = model_hbm_traffic(
+        kernel, device, weights_resident=weights_resident, fpga_rows=fpga_rows
+    )
+    return emit_evidence(
+        "COST_MODEL",
+        {
+            "apple_fpga_prior": {
+                "apple": APPLE_FPGA_PRIOR_NUM,
+                "den": APPLE_FPGA_PRIOR_DEN,
+                "fpga": APPLE_FPGA_PRIOR_DEN - APPLE_FPGA_PRIOR_NUM,
+                "note": (
+                    "H-ROADMAP.md §15.5 initial 65/35 Apple/FPGA is a COST_MODEL "
+                    "prior, not a measurement, and is not applied as physics."
+                ),
+            },
+            "axis": "within_organ_tensor_parallel_rows",
+            "bytes_per_resident_row": int(bytes_per_row),
+            "device_assignment": "APPLE_UMA_PLUS_FPGA_HBM_HYPOTHESIS",
+            "device_id": device.device_id,
+            "engine_fit": {k: engine[k] for k in ("ok", "used", "budget", "device_id", "evidence_tier")},
+            "fpga_rows": fpga_rows,
+            "hbm": hbm,
+            "hbm_capacity_bytes": cap,
+            "host_rows": host_rows,
+            "kind": "PARTITION",
+            "note": (
+                "COST_MODEL partition. Resident packed shards stay on the FPGA "
+                "shard; per-token transport is activation / partial reduction. "
+                "Not a board placement."
+            ),
+            "resident_weight_policy": "resident_shards_no_weight_body_per_token_transfer",
+            "transfer": xfer,
+            "transport_policy": "activations_and_partial_reductions_only",
+            "weights_resident": bool(weights_resident),
+        },
+    )
+
+
+def run_qgemv_preboard(
+    kernel: QGemvKernel | None = None,
+    device: DeviceProfile | None = None,
+    operands: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Lower, estimate, simulate, cost, approximate, partition. All PREHARDWARE."""
+    kernel = kernel or canonical_qgemv_kernel()
+    device = device or synthetic_u50_class()
+    operands = dict(operands or canonical_qgemv_operands())
+    graph = from_qgemv(kernel, device)
+    report = validate(graph)
+    resources = estimate_qgemv_resources(kernel)
+    overflow = resource_overflow(resources["used"], device.resource_map())
+    resource_fit: dict[str, Any]
+    if overflow:
+        resource_fit = emit_evidence(
+            "STATIC",
+            {
+                "budget": device.resource_map(),
+                "device_id": device.device_id,
+                "kind": "RESOURCE_FIT",
+                "ok": False,
+                "overflow": {k: {"used": a, "budget": b} for k, (a, b) in overflow.items()},
+                "used": resources["used"],
+            },
+        )
+        partition = emit_evidence(
+            "COST_MODEL",
+            {
+                "kind": "PARTITION",
+                "ok": False,
+                "reason": "engine resource ESTIMATE exceeds declared device budget",
+                "refused": True,
+            },
+        )
+        cycles = emit_evidence(
+            "CYCLE_APPROX",
+            {
+                "kind": "CYCLE_APPROXIMATION",
+                "modelled_cycles": None,
+                "note": "not produced; engine does not fit the declared budget",
+                "ok": False,
+                "seconds": None,
+            },
+        )
+        hbm = emit_evidence("COST_MODEL", {"kind": "HBM_TRAFFIC_MODEL", "ok": False, "refused": True})
+        xfer = emit_evidence(
+            "COST_MODEL", {"kind": "HOST_DEVICE_TRANSFER_MODEL", "ok": False, "refused": True}
+        )
+        functional = emit_evidence(
+            "FUNCTIONAL_SIM",
+            {
+                "engine": None,
+                "ok": False,
+                "reason": "engine resource ESTIMATE exceeds declared device budget",
+            },
+        )
+    else:
+        resource_fit = fit_kernel_to_device(kernel, device)
+        functional = simulate_functional(graph, operands)
+        hbm = model_hbm_traffic(kernel, device)
+        xfer = model_host_device_transfer(kernel, device)
+        cycles = approximate_cycles(kernel, device, hbm, xfer)
+        partition = partition_qgemv(kernel, device)
+    hints = floorplan_hints(kernel, device)
+    doc = emit_evidence(
+        "STATIC",
+        {
+            "claim_boundary": (
+                "PREHARDWARE qGEMV pre-board stack. No FPGA board, no bitstream, "
+                "no synthesis, no U50, no HARDWARE_MEASURED number. The resource "
+                "figure is an ESTIMATE. The cycle figure is an APPROXIMATION, "
+                "not a measurement."
+            ),
+            "cycle_approx": cycles,
+            "device_profile": device.to_dict(),
+            "floorplan_hints": hints,
+            "functional_sim": functional,
+            "graph_fingerprint": graph.fingerprint(),
+            "hbm_traffic": hbm,
+            "host_device_transfer": xfer,
+            "kernel": kernel.to_dict(),
+            "kind": "QGEMV_PREBOARD",
+            "organ_map_lowering": "from_qgemv",
+            "partition": partition,
+            "resource_estimate": resources,
+            "resource_fit": resource_fit,
+            "validate": report.to_dict(),
+        },
+    )
+    assert_no_hardware_measured(doc)
+    illegal = collect_evidence_tiers(doc) - set(EVIDENCE_TIERS)
+    if illegal:
+        raise IllegalEvidenceTier(f"illegal evidence tiers in preboard report: {sorted(illegal)}")
+    return doc
+
+
+# ---------------------------------------------------------------------------
 # Receipt
 # ---------------------------------------------------------------------------
 
@@ -1533,6 +2704,43 @@ def _run_proofs() -> dict[str, Any]:
     )
     proofs["lowered_qwen_fingerprint"] = None if lowered_qwen is None else lowered_qwen.fingerprint()
     proofs["lowered_state_fingerprint"] = lowered_state.fingerprint()
+
+    q_kernel = canonical_qgemv_kernel()
+    q_device = synthetic_u50_class()
+    q_graph = from_qgemv(q_kernel, q_device)
+    q_val = validate(q_graph)
+    q_sim = simulate_functional(q_graph, canonical_qgemv_operands())
+    q_fit = fit_kernel_to_device(q_kernel, q_device)
+    q_pre = run_qgemv_preboard(q_kernel, q_device)
+    assert_no_hardware_measured(q_pre)
+    q_tiers = collect_evidence_tiers(q_pre)
+    overflow_ok = False
+    try:
+        fit_kernel_to_device(
+            overflow_probe_kernel(),
+            synthetic_device(lut=4096, dsp=8, bram=2, uram=0, hbm_channels=1),
+        )
+    except ResourceOverBudget:
+        overflow_ok = True
+    proofs["qgemv_functional_matches"] = bool(q_sim.get("matches_expected"))
+    proofs["qgemv_functional_symbol"] = q_sim.get("engine_symbol")
+    proofs["qgemv_graph_valid"] = q_val.ok
+    proofs["qgemv_preboard_tiers"] = sorted(q_tiers)
+    proofs["qgemv_resource_fit"] = bool(q_fit.get("ok"))
+    proofs["qgemv_overflow_refused"] = overflow_ok
+    proofs["no_hardware_measured_emitted"] = True
+    if not q_val.ok:
+        raise RuntimeError(f"qGEMV graph failed validate: {q_val.errors}")
+    if not proofs["qgemv_functional_matches"]:
+        raise RuntimeError("qGEMV functional sim did not match qgemv_hand expected")
+    if q_sim.get("engine_symbol") != "qgemv":
+        raise RuntimeError("qGEMV functional sim did not call fpga_engines.qgemv")
+    if not overflow_ok:
+        raise RuntimeError("overflow probe was not refused")
+    if q_tiers - set(EVIDENCE_TIERS):
+        raise RuntimeError(f"illegal evidence tiers: {sorted(q_tiers)}")
+    if "HARDWARE_MEASURED" in q_tiers:
+        raise RuntimeError("HARDWARE_MEASURED leaked into the preboard report")
     return proofs
 
 
@@ -1555,8 +2763,17 @@ def build() -> Path:
     hyps, prims, hyp_source = load_atlas_hypotheses()
     proofs = _run_proofs()
     lowered = from_organ_map(REPO / FLASH_ORGAN_MAP, "expert_bank")
-    flash_sha = sha256_file(REPO / FLASH_ORGAN_MAP) if (REPO / FLASH_ORGAN_MAP).is_file() else None
-    qwen_sha = sha256_file(REPO / QWEN_ORGAN_MAP) if (REPO / QWEN_ORGAN_MAP).is_file() else None
+    try:
+        _flash_doc, _flash_rel, flash_sha = _load_organ_doc(FLASH_ORGAN_MAP)
+        del _flash_doc, _flash_rel
+    except FileNotFoundError:
+        flash_sha = None
+    try:
+        _qwen_doc, _qwen_rel, qwen_sha = _load_organ_doc(QWEN_ORGAN_MAP)
+        del _qwen_doc, _qwen_rel
+    except FileNotFoundError:
+        qwen_sha = None
+    qgemv_preboard = run_qgemv_preboard()
 
     doc = {
         "schema": SCHEMA,
@@ -1664,6 +2881,33 @@ def build() -> Path:
                 "adequate_as_ir": False,
                 "note": "Named the gap this module closes. Recovered via git show.",
             },
+            {
+                "path": "tools/future/fpga_engines.py",
+                "what": "qgemv bit-exact functional golden (sequential left-to-right float32)",
+                "adequate_as_ir": False,
+                "note": (
+                    "CALL SITE: simulate_qgemv_functional invokes fpga_engines.qgemv. "
+                    "Not forked, not reimplemented. FUNCTIONAL_SIM only."
+                ),
+            },
+            {
+                "path": "tools/future/physical_primitives.py",
+                "what": "atlas primitive contracts + instantiate/physical_identity",
+                "adequate_as_ir": False,
+                "note": (
+                    "CALL SITE: from_qgemv backs each node via instantiate(..., backend='FPGA'). "
+                    "An import of the module is not a call site; instantiate is."
+                ),
+            },
+            {
+                "path": "tools/future/fpga_fidelity.py",
+                "what": "multi-fidelity ladder over a local StructuralGraph stand-in",
+                "adequate_as_ir": False,
+                "note": (
+                    "Sibling. Explicitly asked not to import HWIR. Different graph type. "
+                    "Not imported here; HWIR owns the qGEMV preboard stack on HwirGraph."
+                ),
+            },
         ],
         "gaps_closed": [
             "seven node kinds with the attributes each actually needs",
@@ -1673,6 +2917,13 @@ def build() -> Path:
             "validate() rejects source-tensor identity / dense rematerialization, dangling and type-mismatched edges, over-budget footprints, unowned state",
             "from_organ_map() lowers a real Flash/Qwen27 organ into a valid HWIR graph",
             "negative controls that actually fire",
+            "from_qgemv() lowers a qGEMV-class kernel with evidence-backed atlas primitives (physical_primitives.instantiate)",
+            "FUNCTIONAL_SIM calls tools.future.fpga_engines.qgemv (not a reimplementation)",
+            "CYCLE_APPROX modelled cycles refuse conversion to seconds",
+            "COST_MODEL HBM traffic + host<->device transfer; bandwidth_gbps is not emitted",
+            "STATIC resource estimator refuses an engine that exceeds a declared device budget",
+            "synthetic U50-class device profile (declared, not a board census) and row-split partitioner",
+            "no code path emits HARDWARE_MEASURED",
         ],
         "negative_findings": [
             "ACCELERATOR_ARCHITECTURE_ATLAS.json is absent from this worktree HEAD and sparse disk",
@@ -1682,13 +2933,21 @@ def build() -> Path:
             "no FPGA board, no HDL, no bitstream; this module must not and did not emit any",
             "AIR exists and executes on Metal; it is not HWIR and was not reused as the spatial IR",
             "PhysicalGraph compile_physical_graph is too unresolved to lower into a resource-accurate HWIR without invention; organ maps are the reality connection",
+            "fpga_fidelity.StructuralGraph is a sibling stand-in and was not imported; HWIR owns the qGEMV preboard stack",
+            "hcli.agentos.fpga_preboard.HWIR remains schema-only (Codex/hcli surface; cannot edit)",
+            "no U50 board; every preboard number is PREHARDWARE",
         ],
         "not_an_fpga_backend": True,
         "claim_boundary": (
-            "Static sidecar HWIR artifact. No FPGA board, bitstream, timing, "
-            "or hardware measurement."
+            "PREHARDWARE sidecar HWIR artifact. No FPGA board, bitstream, "
+            "timing, or HARDWARE_MEASURED number. Resource figures are "
+            "ESTIMATES. Cycle figures are APPROXIMATIONS, not measurements."
         ),
+        "preboard": qgemv_preboard,
+        "evidence_tiers_legal": list(EVIDENCE_TIERS),
+        "evidence_tiers_illegal": sorted(ILLEGAL_EVIDENCE_TIERS),
     }
+    assert_no_hardware_measured(doc)
     return write_receipt(RECEIPT, doc, "tools/future/hwir.py")
 
 
@@ -1702,7 +2961,12 @@ def main() -> int:
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--lower", metavar="ORGAN_MAP")
     ap.add_argument("--organ")
+    ap.add_argument("--qgemv", action="store_true", help="run the PREHARDWARE qGEMV pre-board stack")
     a = ap.parse_args()
+    if a.qgemv:
+        doc = run_qgemv_preboard()
+        print(canon_dumps(doc))
+        return 0 if doc.get("functional_sim", {}).get("ok") else 1
     if a.lower:
         graph = from_organ_map(a.lower, a.organ)
         report = validate(graph)

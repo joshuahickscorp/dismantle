@@ -30,6 +30,7 @@ from tools.roadmap import catalog
 from tools.roadmap.gitfs import REPO, SourceView
 from tools.roadmap.hardware import probe, probe_all
 from tools.roadmap.parse import load_existing_state, parse_roadmap, span
+from tools.roadmap import index_client
 from tools.roadmap import reach
 
 _BUILT_KINDS = reach.BUILT_KINDS
@@ -392,6 +393,20 @@ def audit(
     road_file = parsed["roadmap_path"]
     hw_cache = probe_all()
     existing = load_existing_state()
+    index_meta = None
+    try:
+        dump = index_client.warmup(view)
+        if dump:
+            index_meta = {
+                "schema": dump.get("schema"),
+                "backend": "hawking-index-query python-facts",
+                "files_indexed": dump.get("file_count"),
+                "bin": dump.get("bin"),
+            }
+    except FileNotFoundError:
+        index_meta = {"backend": "ast", "reason": "hawking-index-query binary not built"}
+    if not index_meta or index_meta.get("backend") == "ast":
+        reach.prefetch_catalog(view, [catalog.GATES, catalog.GENES])
 
     gate_unique = reach.unique_code_paths(catalog.GATES)
     gene_unique = reach.unique_code_paths(catalog.GENES)
@@ -469,11 +484,14 @@ def audit(
         "hardware_probes": hw_cache,
         "built_gates": built,
         "reachability_snapshot": reachability,
+        "index": index_meta,
         "method": (
             "STATIC source analysis. Definitions via git cat-file; callers via "
-            "tools.future.capability_reachability AST Call/subprocess helpers over "
-            "git-backed text (sparse-checkout safe). kind=import never justifies "
-            "BUILT (SCAFFOLDED at most). Name-only matches are weak_signal and never "
+            "hawking-index python-facts (schema hawking.index.python_facts.v1) "
+            "built once from HEAD blobs (sparse-checkout safe), falling back to "
+            "tools.future.capability_reachability AST Call/subprocess helpers when "
+            "the index binary is absent. kind=import never justifies BUILT "
+            "(SCAFFOLDED at most). Name-only matches are weak_signal and never "
             "move status. Subprocess counts only an exact CLI path, not a suffix of "
             "another tree. Receipts are citations only. Hardware presence is an "
             "inventory probe, not a performance measurement."

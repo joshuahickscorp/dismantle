@@ -1,0 +1,121 @@
+"""Parity between the AST reachability path and hawking-index python-facts.
+
+A fast path that silently changes a verdict is worse than a slow one.
+These tests pin the index extractor to the same adversarial rules as
+capability_reachability, on a synthetic overlay that does not need a 45s
+repo walk.
+"""
+from __future__ import annotations
+
+import os
+
+import pytest
+
+from tools.roadmap.catalog import GATES
+from tools.roadmap.gitfs import REPO, SourceView
+from tools.roadmap import index_client
+from tools.roadmap import reach
+
+
+SYN_DEF = """\
+class Scheduler:
+    pass
+
+NO_PROGRESS = 3
+
+def abort():
+    pass
+"""
+
+SYN_CALLER = """\
+from syn.mod import Scheduler, abort
+import syn.mod as m
+
+def run():
+    s = Scheduler()
+    abort()
+    m.abort()
+    x = Scheduler  # name-only, not a call
+"""
+
+SYN_SUB = """\
+import subprocess
+subprocess.run(["syn/mod.py"])
+subprocess.run(["tools/haider/syn/mod.py"])
+"""
+
+
+@pytest.fixture
+def overlay_view():
+    view = SourceView()
+    view.overlay["syn/mod.py"] = SYN_DEF
+    view.overlay["syn/caller.py"] = SYN_CALLER
+    view.overlay["syn/launch.py"] = SYN_SUB
+    return view
+
+
+def _probe():
+    return {
+        "code_paths": ["syn/mod.py"],
+        "modules": ["syn.mod"],
+        "symbols": [{"module": "syn.mod", "symbol": "Scheduler"}],
+        "receipt_globs": [],
+    }
+
+
+def test_index_client_classifies_assignment_vs_class():
+    ff = {
+        "definitions": [
+            {"name": "NO_PROGRESS", "kind": "assignment", "line": 4, "scope": "module"},
+            {"name": "Scheduler", "kind": "class", "line": 1, "scope": "module"},
+            {"name": "abort", "kind": "function", "line": 6, "scope": "module"},
+        ]
+    }
+    kind, line = index_client.classify_from_facts(ff, "NO_PROGRESS")
+    assert kind == "assignment" and line == 4
+    kind, line = index_client.classify_from_facts(ff, "Scheduler")
+    assert kind == "class" and line == 1
+    kind, line = index_client.classify_from_facts(ff, "abort")
+    assert kind == "function" and line == 6
+
+
+def test_exact_cli_path_still_rejects_suffix():
+    assert reach.is_exact_cli_path("syn/mod.py", "syn/mod.py")
+    assert not reach.is_exact_cli_path("syn/mod.py", "tools/haider/syn/mod.py")
+
+
+@pytest.mark.skipif(index_client.find_index_bin() is None, reason="hawking-index-query not built")
+def test_index_and_ast_agree_on_synthetic_overlay(overlay_view):
+    probe = _probe()
+    unique = {"syn/mod.py"}
+    os.environ["ROADMAP_REACH_BACKEND"] = "ast"
+    try:
+        ast_look = reach.scan_probe_ast(overlay_view, probe, unique_paths=unique)
+        os.environ["ROADMAP_REACH_BACKEND"] = "index"
+        # Force a dump of just the overlay by invoking the binary without git-head
+        # via load_python_facts (--git-head still sees overlay).
+        overlay_view._python_facts = None  # type: ignore[attr-defined]
+        idx_look = reach.scan_probe(overlay_view, probe, unique_paths=unique)
+    finally:
+        os.environ.pop("ROADMAP_REACH_BACKEND", None)
+
+    ast_calls = {(s["file"], s["line"], s["kind"]) for s in ast_look["runtime_caller"]}
+    idx_calls = {(s["file"], s["line"], s["kind"]) for s in idx_look["runtime_caller"]}
+    assert ast_calls == idx_calls, (ast_look["runtime_caller"], idx_look["runtime_caller"])
+    assert ast_look["defined"] == idx_look["defined"]
+    ast_imp = {(s["file"], s["line"]) for s in ast_look["import_sites"]}
+    idx_imp = {(s["file"], s["line"]) for s in idx_look["import_sites"]}
+    assert ast_imp == idx_imp, (ast_look["import_sites"], idx_look["import_sites"])
+
+
+def test_catalog_still_has_71_gates():
+    assert len(GATES) == 71
+
+
+def test_sparse_hcli_absent_from_disk():
+    """This worktree is sparse; hcli/ must not be required on disk."""
+    assert not (REPO / "hcli").is_dir()
+    view = SourceView()
+    assert view.exists("hcli/scheduler.py"), "HEAD blob for hcli/scheduler.py must still count as defined"
+    text = view.read("hcli/scheduler.py")
+    assert "class Scheduler" in text or "Scheduler" in text

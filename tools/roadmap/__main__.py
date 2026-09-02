@@ -115,13 +115,106 @@ def mutation_check(prefer: str = "FLASH_COMPLETE_EBPW_LE_1") -> dict:
     }
 
 
+_COMPARE_KEYS = (
+    "status",
+    "evidence_refs",
+    "runtime_caller",
+    "import_sites",
+    "weak_signals",
+    "tests",
+    "code_refs",
+    "receipts_cited",
+)
+
+
+def _gate_slice(entry: dict) -> dict:
+    return {k: entry.get(k) for k in _COMPARE_KEYS}
+
+
+def parity_check() -> dict:
+    """AST path vs hawking-index path. Exact equality of 71 statuses + citations."""
+    import os
+
+    from tools.roadmap.gitfs import SourceView as _View
+
+    orig = os.environ.get("ROADMAP_REACH_BACKEND")
+    try:
+        os.environ["ROADMAP_REACH_BACKEND"] = "ast"
+        ast_doc = audit(view=_View(), include_assemble=False)
+        os.environ["ROADMAP_REACH_BACKEND"] = "index"
+        idx_doc = audit(view=_View(), include_assemble=False)
+    finally:
+        if orig is None:
+            os.environ.pop("ROADMAP_REACH_BACKEND", None)
+        else:
+            os.environ["ROADMAP_REACH_BACKEND"] = orig
+
+    mismatches: list[dict] = []
+    ast_counts = ast_doc["counts"]["gates_by_status"]
+    idx_counts = idx_doc["counts"]["gates_by_status"]
+    names = sorted(set(ast_doc["gates"]) | set(idx_doc["gates"]))
+    if len(names) != 71:
+        mismatches.append(
+            {
+                "gate": "<count>",
+                "field": "n_gates",
+                "ast": len(ast_doc["gates"]),
+                "index": len(idx_doc["gates"]),
+            }
+        )
+    for name in names:
+        a = ast_doc["gates"].get(name)
+        b = idx_doc["gates"].get(name)
+        if a is None or b is None:
+            mismatches.append({"gate": name, "field": "missing", "ast": a is not None, "index": b is not None})
+            continue
+        sa, sb = _gate_slice(a), _gate_slice(b)
+        if sa == sb:
+            continue
+        for key in _COMPARE_KEYS:
+            if sa.get(key) != sb.get(key):
+                mismatches.append(
+                    {
+                        "gate": name,
+                        "field": key,
+                        "ast": sa.get(key),
+                        "index": sb.get(key),
+                    }
+                )
+    status_ok = ast_counts == idx_counts and not any(
+        m.get("field") == "status" for m in mismatches
+    )
+    return {
+        "identical": not mismatches,
+        "status_counts_identical": ast_counts == idx_counts,
+        "n_gates": len(names),
+        "ast_counts": ast_counts,
+        "index_counts": idx_counts,
+        "n_mismatches": len(mismatches),
+        "mismatches": mismatches[:40],
+        "ast_index": ast_doc.get("index"),
+        "index_index": idx_doc.get("index"),
+        "status_ok": status_ok,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Roadmap IR + adversarial auditor")
     ap.add_argument("--build", action="store_true", help="write civilization/CAPABILITY_GRAPH.json")
     ap.add_argument("--audit", action="store_true", help="run auditor and print counts")
     ap.add_argument("--mutation-check", action="store_true", help="downgrade a BUILT gate by overlaying its callers")
     ap.add_argument("--assemble", action="store_true", help="also reuse capability_reachability.assemble()")
+    ap.add_argument(
+        "--parity",
+        action="store_true",
+        help="compare AST path vs hawking-index path on all 71 gates (statuses + evidence)",
+    )
     args = ap.parse_args(argv)
+
+    if args.parity:
+        result = parity_check()
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("identical") else 1
 
     if args.mutation_check:
         result = mutation_check()

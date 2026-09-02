@@ -1,0 +1,3 @@
+ROUND 1. Read receipts/runtime/CENSUS_2026_09_05.md.
+Pick the single limit with the largest measured gap and REMOVE it in code.
+Do not plan. Do not summarise. Change a file, run the check, report the exact output.

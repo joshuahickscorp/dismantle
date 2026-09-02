@@ -470,11 +470,32 @@ fn serve_request(
     let generated_count = generated.len();
     let split = result.prompt_len.min(result.gpu_ns.len());
     let dispatch_split = result.prompt_len.min(result.dispatches.len());
-    let prefill_gpu_ns = sum_optional(&result.gpu_ns[..split]);
-    let decode_gpu_ns = sum_optional(&result.gpu_ns[split..]);
-    let complete_gpu_ns = sum_optional(&result.gpu_ns);
-    let prefill_dispatches = sum_values(&result.dispatches[..dispatch_split]);
-    let decode_dispatches = sum_values(&result.dispatches[dispatch_split..]);
+    let prefill_gpu_ns = result.prefill_gpu_ns.or_else(|| {
+        if result.batched_prefill {
+            result.gpu_ns.first().copied().flatten()
+        } else {
+            sum_optional(&result.gpu_ns[..split])
+        }
+    });
+    let decode_gpu_ns = if result.batched_prefill {
+        sum_optional(&result.gpu_ns.get(1..).unwrap_or(&[]))
+    } else {
+        sum_optional(&result.gpu_ns[split..])
+    };
+    let complete_gpu_ns = match (prefill_gpu_ns, decode_gpu_ns) {
+        (Some(a), Some(b)) => a.checked_add(b),
+        _ => sum_optional(&result.gpu_ns),
+    };
+    let prefill_dispatches = if result.prefill_dispatches > 0 || result.batched_prefill {
+        result.prefill_dispatches
+    } else {
+        sum_values(&result.dispatches[..dispatch_split])
+    };
+    let decode_dispatches = if result.batched_prefill {
+        sum_values(&result.dispatches.get(1..).unwrap_or(&[]))
+    } else {
+        sum_values(&result.dispatches[dispatch_split..])
+    };
     let dispatches = sum_values(&result.dispatches);
     let active_weight_bytes_total = sum_values(&result.active_weight_bytes);
     let active_weight_bytes_per_generated_token = if generated_count > 0 {
@@ -540,6 +561,9 @@ fn serve_request(
         "wall_ns": wall_ns,
         "generation_wall_ns": result.wall_ns,
         "prefill_wall_ns": result.prefill_wall_ns,
+        "prefill_gpu_ns": prefill_gpu_ns,
+        "prefill_dispatches": prefill_dispatches,
+        "batched_prefill": result.batched_prefill,
         "decode_wall_ns": result.decode_wall_ns,
         "decode_steps": result.decode_steps,
         "complete_tps": complete_tps,
@@ -580,6 +604,10 @@ fn serve_request(
                 "wall_ns": result.prefill_wall_ns,
                 "gpu_ns": prefill_gpu_ns,
                 "dispatches": prefill_dispatches,
+                "batched": result.batched_prefill,
+                "tok_s": prefill_gpu_ns.filter(|&ns| ns > 0).map(|ns| {
+                    result.prompt_len as f64 / (ns as f64 / 1e9)
+                }),
                 "wall_ns_per_step": result.prefill_wall_ns as f64 / result.prompt_len.max(1) as f64,
             },
             "decode": {

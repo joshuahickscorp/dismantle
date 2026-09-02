@@ -1,5 +1,9 @@
 //! Native Qwen3.8 greedy generate on the language-only Q4 catalog.
 //!
+//! Prompt processing uses batched GEMM (`generate_greedy` default). Set
+//! `HAWKING_QWEN38_BATCH_PREFILL=0` to restore the historical per-token
+//! `step` loop. Decode is unchanged.
+//!
 //! ```text
 //! ./tools/gpu_lane_lock.sh qwen38-native-bringup \
 //!   workspace/ops/build/rust/release/examples/ascension_qwen38_hybrid_greedy \

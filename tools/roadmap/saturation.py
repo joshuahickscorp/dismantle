@@ -214,8 +214,11 @@ def main() -> int:
         a = json.loads(fresh)
         b = json.loads(RECEIPT.read_text())
         for doc in (a, b):
+            # Both blocks are git-derived and move with EVERY commit, so they
+            # can never be stable. Staleness is about the auditor-derived
+            # substance: statuses, blockers, gaps.
             doc.pop("derived_from", None)
-            doc.get("work", {}).pop("commits", None)
+            doc.pop("work", None)
         if a != b:
             print("STALE: regenerating changes the receipt")
             return 1

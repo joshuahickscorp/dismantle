@@ -21,6 +21,10 @@ than rewriting them:
 * COST_MODEL HBM traffic and host<->device transfer (bytes and modelled cycles)
 * STATIC LUT/DSP/BRAM/URAM estimator that refuses an over-budget engine
 * a synthetic U50-class device profile and a row-split partitioner
+* selectable Alveo U50-family variants (U50 / U50C / U50DD / U50LV) with
+  per-field provenance; UNPINNED where public literature does not pin a number
+* CarrierEnvelope: a host-side bound that DOWNGRADES a DeviceProfile (PCIe,
+  power, thermal/airflow, mechanical). The real comma-device carrier is UNPINNED.
 
     python3 tools/future/hwir.py --selftest
     python3 tools/future/hwir.py --build
@@ -86,6 +90,32 @@ RESOURCE_CLASSES = ("BRAM", "DSP", "LUT", "URAM")
 EVIDENCE_TIERS = ("STATIC", "FUNCTIONAL_SIM", "COST_MODEL", "CYCLE_APPROX")
 ILLEGAL_EVIDENCE_TIERS = frozenset({"HARDWARE_MEASURED"})
 PREHARDWARE = "PREHARDWARE"
+UNPINNED = "UNPINNED"
+
+# Document-class labels for STATIC vendor-literature fields. These are not
+# measurements. A field is either pinned with one of these, or explicitly
+# UNPINNED with a reason. Silent defaults are illegal on family variants.
+DOC_DS965 = "AMD_DATASHEET_DS965"
+DOC_UG1371 = "AMD_USER_GUIDE_UG1371"
+DOC_UG1120 = "AMD_PLATFORMS_USER_GUIDE_UG1120"
+DOC_BRIEF = "AMD_PRODUCT_BRIEF_U50"
+DOC_PSG = "AMD_PRODUCT_SELECTION_GUIDE"
+DOC_COST_MODEL = "DECLARED_COST_MODEL_COEFFICIENT"
+DOC_CARRIER_DOWNGRADE = "CARRIER_DOWNGRADE"
+DOC_EXAMPLE = "EXAMPLE_DECLARED_ENVELOPE"
+DOC_UNPINNED = "UNPINNED"
+
+REAL_CARRIER_NOTE = (
+    "The operator reports the inbound card will hang off a comma device. "
+    "That carrier is UNPINNED. Example envelopes are labeled examples, not "
+    "that carrier. Pin CarrierEnvelope in one constructor call when numbers "
+    "are known. Do not invent the comma-device specifications."
+)
+
+# Mutation target for the carrier-binding refusal test. Set False to ignore
+# carrier limits; the brochure-kernel-refused-under-constrained-carrier test
+# must then FAIL. Never leave this False in source.
+CARRIER_ENVELOPE_BINDING = True
 
 KIND_ALIASES = {
     "compute": "compute",
@@ -1655,8 +1685,17 @@ HBM_BYTES_PER_MODELLED_CYCLE = 1024
 # Host<->device beat is a USB4/Thunderbolt ~40 Gb/s CLASS prior from
 # H-ROADMAP.md §15.1, turned into bytes/cycle against a notional fabric beat.
 # It is a COST_MODEL prior. It is not a measurement of any cable.
+# U50-family profiles that pin PCIe gen/lanes derive this beat from a declared
+# payload-class mapping (Gen3 x16 = this unit). That mapping is also a
+# COST_MODEL coefficient, not a slot measurement and not GB/s.
 HOST_DEVICE_BYTES_PER_MODELLED_CYCLE = 16
 HOST_DEVICE_QUEUE_CYCLES = 32
+# Declared PCIe payload-class units relative to Gen3 x1. Gen4 is 2x Gen3
+# (16 GT/s vs 8 GT/s, same 128b/130b encoding in vendor PCIe literature).
+# Planning only: not a measured payload rate.
+PCIE_GEN_PAYLOAD_UNIT = {3: 1, 4: 2}
+PCIE_BEAT_REFERENCE_GEN = 3
+PCIE_BEAT_REFERENCE_LANES = 16
 
 # §15.5 Apple/FPGA split is "only a measured-bandwidth prior". We store it as
 # a COST_MODEL prior and never call it a measurement.
@@ -1671,6 +1710,11 @@ class DeviceProfile:
     U50-class LUT/DSP/BRAM/URAM/HBM counts are vendor-literature envelopes
     (AMD Alveo U50 / VU35P product brief class). They are STATIC planning
     numbers. They are not HARDWARE_MEASURED and they are not a local census.
+
+    Family variants (see u50_family_profile) add PCIe, power, cooling, and
+    form-factor fields with per-field provenance. A CarrierEnvelope can
+    DOWNGRADE this envelope; the result is a COST_MODEL overlay, not a
+    measurement of any slot.
     """
 
     device_id: str
@@ -1692,18 +1736,49 @@ class DeviceProfile:
         "AMD Alveo U50 / XCU50 / VU35P class envelope from public product "
         "literature. SYNTHETIC planning profile. Not a local board census."
     )
+    variant_id: str | None = None
+    sku: str | None = None
+    fpga_part: str | None = None
+    pcie_generation: int | None = None
+    pcie_lanes: int | None = None
+    power_envelope_w: int | None = None
+    cooling: str | None = None
+    form_factor: str | None = None
+    airflow_requirement: str | None = None
+    field_provenance: Mapping[str, Any] = field(default_factory=dict)
+    constrained_by_carrier: str | None = None
+    brochure_device_id: str | None = None
+    thermal_mismatch: bool = False
+    mechanically_inadmissible: bool = False
 
     def to_dict(self) -> dict[str, Any]:
+        tier = "COST_MODEL" if self.constrained_by_carrier else "STATIC"
+
+        def _opt_int(value: int | None) -> Any:
+            return UNPINNED if value is None else int(value)
+
+        def _opt_str(value: str | None) -> Any:
+            return UNPINNED if value is None else value
+
         return emit_evidence(
-            "STATIC",
+            tier,
             {
                 "BRAM": int(self.BRAM),
                 "DSP": int(self.DSP),
                 "LUT": int(self.LUT),
                 "URAM": int(self.URAM),
+                "airflow_requirement": _opt_str(self.airflow_requirement),
+                "brochure_device_id": self.brochure_device_id,
+                "constrained_by_carrier": self.constrained_by_carrier,
+                "cooling": _opt_str(self.cooling),
                 "declared_not_measured": True,
                 "device_id": self.device_id,
                 "fabric_bytes_per_modelled_cycle": int(self.fabric_bytes_per_modelled_cycle),
+                "field_provenance": {
+                    str(k): dict(v) for k, v in dict(self.field_provenance).items()
+                },
+                "form_factor": _opt_str(self.form_factor),
+                "fpga_part": _opt_str(self.fpga_part),
                 "hbm_bytes_per_modelled_cycle": int(self.hbm_bytes_per_modelled_cycle),
                 "hbm_capacity_bytes": int(self.hbm_capacity_bytes),
                 "hbm_channels": int(self.hbm_channels),
@@ -1713,8 +1788,17 @@ class DeviceProfile:
                 "initiation_interval": int(self.initiation_interval),
                 "kind": "SYNTHETIC_DEVICE_PROFILE",
                 "mac_lanes_default": int(self.mac_lanes_default),
+                "mechanically_inadmissible": bool(self.mechanically_inadmissible),
                 "origin": self.origin,
+                "pcie_generation": _opt_int(self.pcie_generation),
+                "pcie_lanes": _opt_int(self.pcie_lanes),
                 "pipeline_depth": int(self.pipeline_depth),
+                "power_envelope_w": _opt_int(self.power_envelope_w),
+                "real_carrier": UNPINNED,
+                "real_carrier_note": REAL_CARRIER_NOTE,
+                "sku": _opt_str(self.sku),
+                "thermal_mismatch": bool(self.thermal_mismatch),
+                "variant_id": self.variant_id,
                 "vendor_literature": self.vendor_literature,
             },
         )
@@ -1774,6 +1858,917 @@ def synthetic_device(
         pipeline_depth=int(pipeline_depth),
         initiation_interval=int(initiation_interval),
         vendor_literature="caller-declared test/planning envelope; not vendor literature",
+    )
+
+
+# ---------------------------------------------------------------------------
+# U50-family variants + CarrierEnvelope
+#
+# The generic synthetic_u50_class() envelope is unchanged (LUT 872000 / DSP
+# 9024 / BRAM 2016 / URAM 960 / 32 HBM channels / 8 GiB). That mixed class
+# figure is NOT rewritten. Family SKUs below are sourced per-field from
+# public vendor literature, or explicitly UNPINNED.
+# ---------------------------------------------------------------------------
+
+U50_FAMILY_VARIANT_IDS = ("u50", "u50c", "u50dd", "u50lv")
+
+# Fields that must be either sourced-with-provenance or explicitly UNPINNED
+# on every family variant. No silent defaults.
+U50_VARIANT_REQUIRED_FIELDS = (
+    "LUT",
+    "DSP",
+    "BRAM",
+    "URAM",
+    "hbm_channels",
+    "hbm_capacity_bytes",
+    "pcie_generation",
+    "pcie_lanes",
+    "power_envelope_w",
+    "cooling",
+    "form_factor",
+    "sku",
+    "fpga_part",
+)
+
+
+def sourced_field(
+    value: Any,
+    document_class: str,
+    citation: str,
+    note: str = "",
+    *,
+    evidence_tier: str = "STATIC",
+) -> dict[str, Any]:
+    """Pin a field to a public document class. STATIC vendor literature, not a measurement."""
+    if value is None or value == UNPINNED:
+        raise ValueError("sourced_field requires a pinned value; use unpinned_field otherwise")
+    if not document_class or document_class == UNPINNED:
+        raise ValueError("sourced_field requires a document class")
+    if not citation:
+        raise ValueError("sourced_field requires a citation")
+    if evidence_tier not in EVIDENCE_TIERS:
+        raise IllegalEvidenceTier(f"provenance evidence_tier={evidence_tier!r}")
+    if evidence_tier == "HARDWARE_MEASURED":
+        raise IllegalEvidenceTier("provenance must not claim HARDWARE_MEASURED")
+    return {
+        "citation": citation,
+        "document_class": document_class,
+        "evidence_tier": evidence_tier,
+        "hardware_measured": False,
+        "note": note,
+        "pinned": True,
+        "value": value,
+        "vendor_literature_not_measurement": True,
+    }
+
+
+def unpinned_field(reason: str, *, document_class: str = DOC_UNPINNED) -> dict[str, Any]:
+    """Explicit gap. A profile that names three unknown fields beats one that invents them."""
+    if not reason:
+        raise ValueError("unpinned_field requires a reason")
+    return {
+        "citation": "",
+        "document_class": document_class,
+        "evidence_tier": "STATIC",
+        "hardware_measured": False,
+        "note": reason,
+        "pinned": False,
+        "value": UNPINNED,
+        "vendor_literature_not_measurement": True,
+    }
+
+
+def assert_variant_provenance(profile: DeviceProfile) -> None:
+    """Every required family field is sourced-with-provenance or explicitly UNPINNED."""
+    prov = dict(profile.field_provenance)
+    missing = [n for n in U50_VARIANT_REQUIRED_FIELDS if n not in prov]
+    if missing:
+        raise ValueError(f"{profile.device_id}: missing provenance for {missing}")
+    for name in U50_VARIANT_REQUIRED_FIELDS:
+        meta = dict(prov[name])
+        pinned = bool(meta.get("pinned"))
+        value = meta.get("value")
+        if pinned:
+            if value is None or value == UNPINNED:
+                raise ValueError(f"{profile.device_id}.{name}: pinned field has no value")
+            if not meta.get("document_class") or meta.get("document_class") == UNPINNED:
+                raise ValueError(f"{profile.device_id}.{name}: pinned field needs a document class")
+            if not meta.get("citation"):
+                raise ValueError(f"{profile.device_id}.{name}: pinned field needs a citation")
+        else:
+            if value != UNPINNED:
+                raise ValueError(
+                    f"{profile.device_id}.{name}: unpinned field must be UNPINNED, not {value!r}"
+                )
+            if not meta.get("note"):
+                raise ValueError(f"{profile.device_id}.{name}: unpinned field needs a reason")
+        if meta.get("evidence_tier") == "HARDWARE_MEASURED":
+            raise IllegalEvidenceTier(f"{profile.device_id}.{name} claimed HARDWARE_MEASURED")
+        if meta.get("hardware_measured") not in {False, None, 0}:
+            raise IllegalEvidenceTier(f"{profile.device_id}.{name} hardware_measured must be false")
+
+
+def pcie_payload_beat(generation: int, lanes: int) -> int:
+    """COST_MODEL host<->device bytes/cycle from a declared PCIe payload class.
+
+    Gen3 x16 maps onto HOST_DEVICE_BYTES_PER_MODELLED_CYCLE so we do not
+    introduce a new invented rate. Smaller gen/lanes produce a strictly
+    smaller beat. Not GB/s, not a slot measurement, not HARDWARE_MEASURED.
+    """
+    gen = int(generation)
+    width = int(lanes)
+    unit = PCIE_GEN_PAYLOAD_UNIT.get(gen)
+    if unit is None:
+        raise ValueError(
+            f"no declared PCIe payload-class unit for generation={gen}; "
+            "planning mapping covers Gen3 and Gen4 only (DS965 PCIe table)"
+        )
+    if width < 1:
+        raise ValueError("pcie lanes must be >= 1")
+    return max(
+        1,
+        HOST_DEVICE_BYTES_PER_MODELLED_CYCLE
+        * unit
+        * width
+        // (PCIE_GEN_PAYLOAD_UNIT[PCIE_BEAT_REFERENCE_GEN] * PCIE_BEAT_REFERENCE_LANES),
+    )
+
+
+def _pinned_value(fields: Mapping[str, Mapping[str, Any]], name: str) -> Any:
+    meta = fields[name]
+    if not meta.get("pinned") or meta.get("value") == UNPINNED:
+        return None
+    return meta["value"]
+
+
+def _profile_from_fields(
+    *,
+    device_id: str,
+    origin: str,
+    variant_id: str,
+    fields: Mapping[str, Mapping[str, Any]],
+    vendor_literature: str,
+    mac_lanes_default: int = 8,
+    pipeline_depth: int = 8,
+    initiation_interval: int = 1,
+) -> DeviceProfile:
+    lut = _pinned_value(fields, "LUT")
+    dsp = _pinned_value(fields, "DSP")
+    bram = _pinned_value(fields, "BRAM")
+    uram = _pinned_value(fields, "URAM")
+    hbm_ch = _pinned_value(fields, "hbm_channels")
+    hbm_cap = _pinned_value(fields, "hbm_capacity_bytes")
+    gen = _pinned_value(fields, "pcie_generation")
+    lanes = _pinned_value(fields, "pcie_lanes")
+    if gen is not None and lanes is not None:
+        beat = pcie_payload_beat(int(gen), int(lanes))
+    else:
+        beat = HOST_DEVICE_BYTES_PER_MODELLED_CYCLE
+    profile = DeviceProfile(
+        device_id=device_id,
+        origin=origin,
+        LUT=0 if lut is None else int(lut),
+        DSP=0 if dsp is None else int(dsp),
+        BRAM=0 if bram is None else int(bram),
+        URAM=0 if uram is None else int(uram),
+        hbm_channels=0 if hbm_ch is None else int(hbm_ch),
+        hbm_capacity_bytes=0 if hbm_cap is None else int(hbm_cap),
+        mac_lanes_default=int(mac_lanes_default),
+        pipeline_depth=int(pipeline_depth),
+        initiation_interval=int(initiation_interval),
+        host_device_bytes_per_modelled_cycle=int(beat),
+        vendor_literature=vendor_literature,
+        variant_id=variant_id,
+        sku=_pinned_value(fields, "sku"),
+        fpga_part=_pinned_value(fields, "fpga_part"),
+        pcie_generation=None if gen is None else int(gen),
+        pcie_lanes=None if lanes is None else int(lanes),
+        power_envelope_w=(
+            None
+            if _pinned_value(fields, "power_envelope_w") is None
+            else int(_pinned_value(fields, "power_envelope_w"))
+        ),
+        cooling=_pinned_value(fields, "cooling"),
+        form_factor=_pinned_value(fields, "form_factor"),
+        airflow_requirement=_pinned_value(fields, "airflow_requirement")
+        if "airflow_requirement" in fields
+        else None,
+        field_provenance={str(k): dict(v) for k, v in fields.items()},
+        brochure_device_id=device_id,
+    )
+    assert_variant_provenance(profile)
+    assert_no_hardware_measured(profile.to_dict())
+    return profile
+
+
+def _u50_common_hbm_capacity() -> dict[str, Any]:
+    return sourced_field(
+        8 * 1024 ** 3,
+        DOC_DS965,
+        "DS965 Table 1 HBM2 total capacity 8 GB",
+        note=(
+            "STATIC vendor-literature capacity. Planning uses 8 * 1024**3 bytes "
+            "to match the existing synthetic_u50_class convention. Not a "
+            "measured occupancy. DS965 peak/nominal GB/s figures are vendor "
+            "literature and are NOT copied into a planning rate."
+        ),
+    )
+
+
+def _u50_common_resources_ds965(column: str) -> dict[str, dict[str, Any]]:
+    """LUT/DSP/BRAM/URAM shared by U50 production, U50LV, and U50DD ES in DS965."""
+    cite = f"DS965 Table 1, {column}"
+    return {
+        "LUT": sourced_field(872_000, DOC_DS965, cite + " Look-up tables (LUTs) 872K"),
+        "DSP": sourced_field(5_952, DOC_DS965, cite + " DSP slices 5,952"),
+        "BRAM": sourced_field(
+            1_344,
+            DOC_DS965,
+            cite + " 36 Kb block RAM 1344 (47.3 Mb)",
+        ),
+        "URAM": sourced_field(
+            640,
+            DOC_DS965,
+            cite + " 288 Kb UltraRAM 640 (180.0 Mb)",
+        ),
+        "hbm_capacity_bytes": _u50_common_hbm_capacity(),
+        "hbm_channels": sourced_field(
+            32,
+            DOC_UG1371,
+            "UG1371 HBM Memory / Card Features: 32 AXI interfaces; 32 channels of 256 MB",
+            note="STATIC vendor-literature channel count. Not a local census.",
+        ),
+        "power_envelope_w": sourced_field(
+            75,
+            DOC_DS965,
+            cite + " Total electrical card load 75W",
+            note=(
+                "STATIC datasheet total electrical card load. Not a measured "
+                "board wattage. DS965 also notes a 10W HBM rail limit from the "
+                "PCIe 3.3V rail; that rail is recorded as literature, not used "
+                "as a fabricated HBM GB/s derate."
+            ),
+        ),
+        "cooling": sourced_field(
+            "passive",
+            DOC_DS965,
+            cite + " Thermal cooling solution Passive",
+        ),
+        "form_factor": sourced_field(
+            "half_height_half_length_single_slot",
+            DOC_DS965,
+            cite + " Form factor Half height, half length; single slot low profile",
+        ),
+        "airflow_requirement": sourced_field(
+            "forced_server",
+            DOC_DS965,
+            "DS965 Summary: passively-cooled card designed for server deployment",
+            note=(
+                "Passive cards in this family expect server forced airflow. "
+                "A carrier with airflow_class='none' is a thermal mismatch; "
+                "the brochure 75W envelope is then not the planning envelope."
+            ),
+        ),
+    }
+
+
+def _u50_production_fields() -> dict[str, dict[str, Any]]:
+    fields = _u50_common_resources_ds965("U50 Production (A-U50-P00G-PQ-G)")
+    fields["sku"] = sourced_field(
+        "A-U50-P00G-PQ-G",
+        DOC_DS965,
+        "DS965 Table 1 Product SKU A-U50-P00G-PQ-G",
+    )
+    fields["fpga_part"] = sourced_field(
+        "XCU50-FSVH2104-2-E",
+        DOC_UG1371,
+        "UG1371 UltraScale+ Device: XCU50-FSVH2104-2-E for U50",
+    )
+    fields["pcie_generation"] = sourced_field(
+        3,
+        DOC_DS965,
+        "DS965 Table 1 PCIe interface Gen3 x16, Gen4 x8, CCIX",
+        note=(
+            "Planning pins Gen3 as the Table 1 generation used with x16. "
+            "Gen4 x8 is the same declared payload class (pcie_payload_beat). "
+            "Not a measured link training result."
+        ),
+    )
+    fields["pcie_lanes"] = sourced_field(
+        16,
+        DOC_DS965,
+        "DS965 Table 1 PCIe interface Gen3 x16, Gen4 x8, CCIX",
+        note="Planning uses the Gen3 x16 listing. Dual Gen4 x8 is the same payload class.",
+    )
+    return fields
+
+
+def _u50lv_fields() -> dict[str, dict[str, Any]]:
+    fields = _u50_common_resources_ds965("U50 LV Production (A-U50-P00G-LV-G)")
+    fields["sku"] = sourced_field(
+        "A-U50-P00G-LV-G",
+        DOC_DS965,
+        "DS965 Table 1 Product SKU A-U50-P00G-LV-G",
+    )
+    fields["fpga_part"] = sourced_field(
+        "XCU50-FSVH2104-2LV-E",
+        DOC_UG1371,
+        "UG1371 UltraScale+ Device: XCU50-FSVH2104-2LV-E for U50LV (VLOW 0.72V)",
+    )
+    fields["pcie_generation"] = sourced_field(
+        3,
+        DOC_DS965,
+        "DS965 Table 1 U50 LV PCIe interface Gen3 x16 (no Gen4 in that column)",
+        note="U50LV is VLOW; DS965 does not list Gen4 for this SKU.",
+    )
+    # Honest gap: Table 1 says Gen3 x16; a DS965 PCIe note and UG1120 Vitis
+    # platform say Gen3 x4 at VLOW. Do not pick one by interpolation.
+    fields["pcie_lanes"] = unpinned_field(
+        "DS965 Table 1 lists Gen3 x16 for U50 LV; DS965 PCIe section notes "
+        "the U50 LV card only supports PCIe Gen3 x4 with VCCINT set to VLOW; "
+        "UG1120 Vitis platform for U50LV is Gen3 x4 XDMA. Both figures are "
+        "public vendor literature. Lanes are UNPINNED rather than interpolated."
+    )
+    return fields
+
+
+def _u50dd_fields() -> dict[str, dict[str, Any]]:
+    # Older DS965 tables (v1.2 era) list a U50DD ES3 column alongside U50
+    # production. Later DS965 (v1.8) dropped that column. Numbers below are
+    # from the ES3 column, not copied from production by interpolation.
+    cite = "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G)"
+    fields = {
+        "LUT": sourced_field(872_000, DOC_DS965, cite + " Look-up tables (LUTs) 872K"),
+        "DSP": sourced_field(5_952, DOC_DS965, cite + " DSP slices 5,952"),
+        "BRAM": sourced_field(1_344, DOC_DS965, cite + " 36 Kb block RAM 1344"),
+        "URAM": sourced_field(640, DOC_DS965, cite + " 288 Kb UltraRAM 640"),
+        "hbm_capacity_bytes": sourced_field(
+            8 * 1024 ** 3,
+            DOC_DS965,
+            cite + " HBM2 total capacity 8 GB",
+            note="STATIC vendor-literature capacity. Not a measured occupancy.",
+        ),
+        "hbm_channels": sourced_field(
+            32,
+            DOC_UG1371,
+            "UG1371 Card Features (covers ES3 SKU in Table 1): 32 channels of 256 MB",
+        ),
+        "power_envelope_w": sourced_field(75, DOC_DS965, cite + " Total electrical card load 75W"),
+        "cooling": sourced_field("passive", DOC_DS965, cite + " Thermal cooling solution Passive"),
+        "form_factor": sourced_field(
+            "half_height_half_length_single_slot",
+            DOC_DS965,
+            cite + " Form factor Half height, half length",
+        ),
+        "airflow_requirement": sourced_field(
+            "forced_server",
+            DOC_DS965,
+            "DS965: passively-cooled card; ES3 listed in the same family table",
+        ),
+        "sku": sourced_field(
+            "A-U50DD-P00G-ES3-G",
+            DOC_DS965,
+            cite + " Product SKU; product selection guide: engineering sample, not volume production",
+        ),
+        "fpga_part": sourced_field(
+            "XCU50",
+            DOC_UG1371,
+            "UG1371 Card Features: UltraScale+ XCU50 FPGA (ES3 listed in the SKU table)",
+            note="Speed grade for the ES3 SKU is UNPINNED; not copied from production U50.",
+        ),
+        "pcie_generation": sourced_field(
+            3,
+            DOC_DS965,
+            cite + " PCIe interface Gen3 x16, Gen4 x8, CCIX",
+            note="Planning pins Gen3 with x16; Gen4 x8 is the same payload class.",
+        ),
+        "pcie_lanes": sourced_field(
+            16,
+            DOC_DS965,
+            cite + " PCIe interface Gen3 x16, Gen4 x8, CCIX",
+        ),
+    }
+    return fields
+
+
+def _u50c_fields() -> dict[str, dict[str, Any]]:
+    reason = (
+        "Public AMD/Xilinx U50-family literature sourced for this module "
+        "(DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product "
+        "selection guide) names U50, U50LV, and U50DD (ES SKU "
+        "A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM "
+        "capacity, PCIe listing, power, cooling, or form factor was found. "
+        "Not interpolated from U50. Not copied from Alveo U55C (different "
+        "card, 16 GB HBM in UG1120)."
+    )
+    return {name: unpinned_field(reason) for name in U50_VARIANT_REQUIRED_FIELDS} | {
+        "airflow_requirement": unpinned_field(reason),
+    }
+
+
+def u50_family_profile(variant: str) -> DeviceProfile:
+    """Selectable U50-family DeviceProfile. STATIC vendor literature, not a board."""
+    key = str(variant).strip().lower().replace("_", "").replace("-", "")
+    aliases = {
+        "u50": "u50",
+        "alveou50": "u50",
+        "au50p00gpqg": "u50",
+        "u50c": "u50c",
+        "alveou50c": "u50c",
+        "u50dd": "u50dd",
+        "alveou50dd": "u50dd",
+        "au50ddp00ges3g": "u50dd",
+        "u50lv": "u50lv",
+        "alveou50lv": "u50lv",
+        "au50p00glvg": "u50lv",
+    }
+    vid = aliases.get(key)
+    if vid is None:
+        raise ValueError(
+            f"unknown U50-family variant {variant!r}; "
+            f"known: {list(U50_FAMILY_VARIANT_IDS)}"
+        )
+    if vid == "u50":
+        return _profile_from_fields(
+            device_id="alveo-u50",
+            origin="U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+            variant_id="u50",
+            fields=_u50_production_fields(),
+            vendor_literature=(
+                "AMD Alveo U50 production SKU A-U50-P00G-PQ-G from public "
+                "DS965 / UG1371. STATIC vendor literature. Not a local board."
+            ),
+        )
+    if vid == "u50lv":
+        return _profile_from_fields(
+            device_id="alveo-u50lv",
+            origin="U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+            variant_id="u50lv",
+            fields=_u50lv_fields(),
+            vendor_literature=(
+                "AMD Alveo U50LV production SKU A-U50-P00G-LV-G from public "
+                "DS965 / UG1371. Identical to U50 except VCCINT VLOW. "
+                "STATIC vendor literature. Not a local board."
+            ),
+        )
+    if vid == "u50dd":
+        return _profile_from_fields(
+            device_id="alveo-u50dd",
+            origin="U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+            variant_id="u50dd",
+            fields=_u50dd_fields(),
+            vendor_literature=(
+                "AMD Alveo U50DD engineering sample SKU A-U50DD-P00G-ES3-G "
+                "from public DS965 ES3 column / UG1371. Not qualified for "
+                "volume deployment. STATIC vendor literature. Not a local board."
+            ),
+        )
+    return _profile_from_fields(
+        device_id="alveo-u50c",
+        origin="U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+        variant_id="u50c",
+        fields=_u50c_fields(),
+        vendor_literature=(
+            "No public AMD U50C SKU table was sourced. Profile exists so the "
+            "name is selectable; every required field is UNPINNED. Not U55C."
+        ),
+    )
+
+
+def list_u50_family_profiles() -> dict[str, DeviceProfile]:
+    return {vid: u50_family_profile(vid) for vid in U50_FAMILY_VARIANT_IDS}
+
+
+def select_device_profile(name: str) -> DeviceProfile:
+    """Select the generic class envelope or a U50-family variant."""
+    key = str(name).strip().lower().replace("_", "-")
+    if key in {"synthetic-u50-class", "u50-class", "synthetic_u50_class".replace("_", "-")}:
+        return synthetic_u50_class()
+    return u50_family_profile(name)
+
+
+@dataclass(frozen=True)
+class CarrierEnvelope:
+    """Host-side bound on a card. Declared planning envelope, not a board census.
+
+    A card is bounded by what its host can actually give it: PCIe generation
+    and lane count, sustained power delivery, thermal/airflow class, and any
+    mechanical limit. constrain() DOWNGRADES a DeviceProfile; the planner
+    must see the reduced envelope, not the brochure one.
+
+    The inbound comma-device carrier is UNPINNED. Labeled example envelopes
+    exist so the real one can be pinned in a single constructor call.
+    """
+
+    carrier_id: str
+    origin: str
+    pcie_generation: int | None
+    pcie_lanes: int | None
+    sustained_power_w: int | None
+    airflow_class: str | None
+    mechanical_limit: str | None
+    note: str
+    example: bool = False
+    field_provenance: Mapping[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        def _opt_int(value: int | None) -> Any:
+            return UNPINNED if value is None else int(value)
+
+        def _opt_str(value: str | None) -> Any:
+            return UNPINNED if value is None else value
+
+        return emit_evidence(
+            "STATIC",
+            {
+                "airflow_class": _opt_str(self.airflow_class),
+                "carrier_id": self.carrier_id,
+                "example": bool(self.example),
+                "field_provenance": {
+                    str(k): dict(v) for k, v in dict(self.field_provenance).items()
+                },
+                "kind": "CARRIER_ENVELOPE",
+                "mechanical_limit": _opt_str(self.mechanical_limit),
+                "note": self.note,
+                "origin": self.origin,
+                "pcie_generation": _opt_int(self.pcie_generation),
+                "pcie_lanes": _opt_int(self.pcie_lanes),
+                "real_carrier": UNPINNED,
+                "real_carrier_note": REAL_CARRIER_NOTE,
+                "sustained_power_w": _opt_int(self.sustained_power_w),
+            },
+        )
+
+    def constrain(self, device: DeviceProfile) -> DeviceProfile:
+        return constrain_device_profile(device, self)
+
+
+def _min_optional(left: int | None, right: int | None) -> int | None:
+    if left is None:
+        return right
+    if right is None:
+        return left
+    return left if left <= right else right
+
+
+def _scale_int(value: int, numerator: int, denominator: int) -> int:
+    if denominator <= 0:
+        raise ValueError("power derate denominator must be > 0")
+    if numerator < 0:
+        raise ValueError("power derate numerator must be >= 0")
+    return (int(value) * int(numerator)) // int(denominator)
+
+
+def _downgrade_provenance(
+    original: Mapping[str, Any],
+    *,
+    value: Any,
+    citation: str,
+    note: str,
+    evidence_tier: str,
+) -> dict[str, Any]:
+    base = dict(original) if original else {}
+    brochure = base.get("value", UNPINNED)
+    return {
+        "brochure_value": brochure,
+        "citation": citation,
+        "document_class": DOC_CARRIER_DOWNGRADE,
+        "evidence_tier": evidence_tier,
+        "hardware_measured": False,
+        "note": note,
+        "pinned": value != UNPINNED and value is not None,
+        "value": UNPINNED if value is None else value,
+        "vendor_literature_not_measurement": True,
+    }
+
+
+def constrain_device_profile(
+    device: DeviceProfile,
+    carrier: CarrierEnvelope,
+) -> DeviceProfile:
+    """DOWNGRADE a DeviceProfile to what the carrier can actually give it.
+
+    Load-bearing: host<->device beat falls when PCIe gen/lanes fall;
+    LUT/DSP/BRAM/URAM ceilings scale with delivered watts vs brochure watts
+    (COST_MODEL linear derate, not a thermal simulation). A carrier must
+    not raise any axis above the brochure envelope.
+
+    Mutation target: CARRIER_ENVELOPE_BINDING. When False this returns the
+    brochure profile unchanged and the refusal test must fail.
+    """
+    if not CARRIER_ENVELOPE_BINDING:
+        return device
+
+    brochure_id = device.brochure_device_id or device.device_id
+    orig_prov = dict(device.field_provenance)
+
+    eff_gen = _min_optional(device.pcie_generation, carrier.pcie_generation)
+    eff_lanes = _min_optional(device.pcie_lanes, carrier.pcie_lanes)
+    eff_power = _min_optional(device.power_envelope_w, carrier.sustained_power_w)
+
+    thermal_mismatch = bool(
+        device.cooling == "passive"
+        and carrier.airflow_class == "none"
+    )
+    mechanically_inadmissible = bool(
+        carrier.mechanical_limit == "incompatible"
+        or (
+            device.form_factor == "full_height_full_length"
+            and carrier.mechanical_limit == "low_profile_ok"
+        )
+    )
+
+    new_beat = int(device.host_device_bytes_per_modelled_cycle)
+    if eff_gen is not None and eff_lanes is not None and eff_gen in PCIE_GEN_PAYLOAD_UNIT:
+        derived = pcie_payload_beat(eff_gen, eff_lanes)
+        # Never upgrade the brochure beat.
+        new_beat = derived if derived <= new_beat else new_beat
+
+    lut, dsp, bram, uram = int(device.LUT), int(device.DSP), int(device.BRAM), int(device.URAM)
+    power_derated = False
+    if mechanically_inadmissible:
+        lut = dsp = bram = uram = 0
+        eff_power = 0 if eff_power is not None else 0
+    elif (
+        device.power_envelope_w is not None
+        and device.power_envelope_w > 0
+        and eff_power is not None
+        and eff_power < device.power_envelope_w
+    ):
+        lut = _scale_int(device.LUT, eff_power, device.power_envelope_w)
+        dsp = _scale_int(device.DSP, eff_power, device.power_envelope_w)
+        bram = _scale_int(device.BRAM, eff_power, device.power_envelope_w)
+        uram = _scale_int(device.URAM, eff_power, device.power_envelope_w)
+        power_derated = True
+    elif thermal_mismatch and carrier.sustained_power_w is None:
+        # Passive card, no forced airflow, carrier watts UNPINNED: refuse to
+        # claim the brochure envelope. Do not invent an unforced-airflow wattage.
+        lut = dsp = bram = uram = 0
+        eff_power = None
+
+    new_prov = dict(orig_prov)
+    if power_derated or mechanically_inadmissible or (thermal_mismatch and lut == 0):
+        derate_note = (
+            "COST_MODEL linear derate of brochure resources by "
+            "min(carrier.sustained_power_w, device.power_envelope_w) / "
+            "device.power_envelope_w. Not a synthesis result, not a thermal "
+            "CFD, not HARDWARE_MEASURED."
+        )
+        if mechanically_inadmissible:
+            derate_note = (
+                "Mechanical limit refuses the brochure envelope. Resources "
+                "zeroed rather than inventing a partial-fit. Not a measurement."
+            )
+        for name, val in (("LUT", lut), ("DSP", dsp), ("BRAM", bram), ("URAM", uram)):
+            new_prov[name] = _downgrade_provenance(
+                orig_prov.get(name, {}),
+                value=val,
+                citation="CarrierEnvelope.constrain COST_MODEL derate of STATIC brochure resources",
+                note=derate_note,
+                evidence_tier="COST_MODEL",
+            )
+        new_prov["power_envelope_w"] = _downgrade_provenance(
+            orig_prov.get("power_envelope_w", {}),
+            value=UNPINNED if eff_power is None else eff_power,
+            citation="min(device.power_envelope_w, carrier.sustained_power_w)",
+            note="Carrier power bound. Declared, not measured.",
+            evidence_tier="COST_MODEL",
+        )
+    if eff_gen is not None or eff_lanes is not None:
+        new_prov["pcie_generation"] = _downgrade_provenance(
+            orig_prov.get("pcie_generation", {}),
+            value=UNPINNED if eff_gen is None else eff_gen,
+            citation="min(device.pcie_generation, carrier.pcie_generation)",
+            note="Carrier PCIe generation bound. Not a trained link.",
+            evidence_tier="COST_MODEL",
+        )
+        new_prov["pcie_lanes"] = _downgrade_provenance(
+            orig_prov.get("pcie_lanes", {}),
+            value=UNPINNED if eff_lanes is None else eff_lanes,
+            citation="min(device.pcie_lanes, carrier.pcie_lanes)",
+            note="Carrier PCIe lane bound. Not a trained link.",
+            evidence_tier="COST_MODEL",
+        )
+
+    return replace(
+        device,
+        device_id=f"{device.device_id}@{carrier.carrier_id}",
+        origin="CARRIER_CONSTRAINED_DEVICE_PROFILE",
+        LUT=int(lut),
+        DSP=int(dsp),
+        BRAM=int(bram),
+        URAM=int(uram),
+        host_device_bytes_per_modelled_cycle=int(new_beat),
+        pcie_generation=eff_gen,
+        pcie_lanes=eff_lanes,
+        power_envelope_w=eff_power,
+        field_provenance=new_prov,
+        constrained_by_carrier=carrier.carrier_id,
+        brochure_device_id=brochure_id,
+        thermal_mismatch=thermal_mismatch,
+        mechanically_inadmissible=mechanically_inadmissible,
+        vendor_literature=(
+            device.vendor_literature
+            + " Constrained by CarrierEnvelope "
+            + carrier.carrier_id
+            + ". COST_MODEL overlay on STATIC brochure figures. Not a slot census. "
+            + REAL_CARRIER_NOTE
+        ),
+    )
+
+
+def _example_carrier_provenance(
+    *,
+    gen: int,
+    lanes: int,
+    watts: int,
+    airflow: str,
+    mechanical: str,
+) -> dict[str, dict[str, Any]]:
+    note = (
+        "LABELED EXAMPLE envelope, declared so a real carrier can be pinned "
+        "later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED."
+    )
+    cite = "declared example CarrierEnvelope in tools.future.hwir"
+    return {
+        "pcie_generation": sourced_field(gen, DOC_EXAMPLE, cite, note=note),
+        "pcie_lanes": sourced_field(lanes, DOC_EXAMPLE, cite, note=note),
+        "sustained_power_w": sourced_field(watts, DOC_EXAMPLE, cite, note=note),
+        "airflow_class": sourced_field(airflow, DOC_EXAMPLE, cite, note=note),
+        "mechanical_limit": sourced_field(mechanical, DOC_EXAMPLE, cite, note=note),
+    }
+
+
+def example_full_airflow_server_slot() -> CarrierEnvelope:
+    """Labeled EXAMPLE: a full-airflow 75W Gen4 x16 server slot.
+
+    Not the comma-device carrier. Declared so constrain() has an unconstrained
+    comparison point. STATIC example, not a measurement of any chassis.
+    """
+    return CarrierEnvelope(
+        carrier_id="example-full-airflow-server-slot",
+        origin="EXAMPLE_ENVELOPE_NOT_THE_REAL_CARRIER",
+        pcie_generation=4,
+        pcie_lanes=16,
+        sustained_power_w=75,
+        airflow_class="forced_server",
+        mechanical_limit="full_height_full_length_ok",
+        note=(
+            "LABELED EXAMPLE. Full-airflow server slot matching a 75W PCIe "
+            "card's own datasheet load. NOT the inbound comma-device carrier. "
+            + REAL_CARRIER_NOTE
+        ),
+        example=True,
+        field_provenance=_example_carrier_provenance(
+            gen=4,
+            lanes=16,
+            watts=75,
+            airflow="forced_server",
+            mechanical="full_height_full_length_ok",
+        ),
+    )
+
+
+def example_constrained_low_power_slot() -> CarrierEnvelope:
+    """Labeled EXAMPLE: a constrained low-power few-lane slot.
+
+    25W sustained, Gen3 x4, no forced airflow. NOT the comma-device carrier.
+    """
+    return CarrierEnvelope(
+        carrier_id="example-constrained-low-power-slot",
+        origin="EXAMPLE_ENVELOPE_NOT_THE_REAL_CARRIER",
+        pcie_generation=3,
+        pcie_lanes=4,
+        sustained_power_w=25,
+        airflow_class="none",
+        mechanical_limit="low_profile_ok",
+        note=(
+            "LABELED EXAMPLE. Constrained low-power / few-lane slot. NOT the "
+            "inbound comma-device carrier. "
+            + REAL_CARRIER_NOTE
+        ),
+        example=True,
+        field_provenance=_example_carrier_provenance(
+            gen=3,
+            lanes=4,
+            watts=25,
+            airflow="none",
+            mechanical="low_profile_ok",
+        ),
+    )
+
+
+def unpinned_real_carrier() -> CarrierEnvelope:
+    """The inbound comma-device carrier. Every axis UNPINNED on purpose."""
+    reason = REAL_CARRIER_NOTE
+    fields = {
+        name: unpinned_field(reason)
+        for name in (
+            "pcie_generation",
+            "pcie_lanes",
+            "sustained_power_w",
+            "airflow_class",
+            "mechanical_limit",
+        )
+    }
+    return CarrierEnvelope(
+        carrier_id="comma-device-real-carrier",
+        origin="REAL_CARRIER_UNPINNED",
+        pcie_generation=None,
+        pcie_lanes=None,
+        sustained_power_w=None,
+        airflow_class=None,
+        mechanical_limit=None,
+        note=REAL_CARRIER_NOTE,
+        example=False,
+        field_provenance=fields,
+    )
+
+
+def select_carrier_envelope(name: str) -> CarrierEnvelope:
+    key = str(name).strip().lower().replace("_", "-")
+    aliases = {
+        "full": example_full_airflow_server_slot,
+        "full-airflow-server": example_full_airflow_server_slot,
+        "example-full-airflow-server-slot": example_full_airflow_server_slot,
+        "constrained": example_constrained_low_power_slot,
+        "low-power": example_constrained_low_power_slot,
+        "constrained-low-power": example_constrained_low_power_slot,
+        "example-constrained-low-power-slot": example_constrained_low_power_slot,
+        "unpinned": unpinned_real_carrier,
+        "real": unpinned_real_carrier,
+        "comma": unpinned_real_carrier,
+        "comma-device": unpinned_real_carrier,
+        "comma-device-real-carrier": unpinned_real_carrier,
+    }
+    factory = aliases.get(key)
+    if factory is None:
+        raise ValueError(
+            f"unknown carrier envelope {name!r}; known: full, constrained, unpinned"
+        )
+    return factory()
+
+
+def admissible_plan(
+    kernel: "QGemvKernel",
+    device: DeviceProfile,
+    carrier: CarrierEnvelope | None = None,
+) -> dict[str, Any]:
+    """COST_MODEL comparison surface: constrained vs brochure envelopes.
+
+    Returns the reduced envelope, host<->device beat, and whether the kernel
+    is admitted. Not a board run.
+    """
+    profile = constrain_device_profile(device, carrier) if carrier is not None else device
+    overflow: dict[str, Any] | None = None
+    fit: dict[str, Any] | None = None
+    ok = True
+    try:
+        fit = fit_kernel_to_device(kernel, profile)
+    except ResourceOverBudget as exc:
+        ok = False
+        overflow = {
+            "budget": dict(exc.budget),
+            "device_id": exc.device_id,
+            "overflow": {k: {"used": a, "budget": b} for k, (a, b) in exc.overflow.items()},
+            "used": dict(exc.used),
+        }
+    xfer = None
+    part = None
+    if ok:
+        xfer = model_host_device_transfer(kernel, profile)
+        part = partition_qgemv(kernel, profile)
+    return emit_evidence(
+        "COST_MODEL",
+        {
+            "carrier_id": None if carrier is None else carrier.carrier_id,
+            "constrained_by_carrier": profile.constrained_by_carrier,
+            "device_id": profile.device_id,
+            "fpga_rows": None if part is None else part["fpga_rows"],
+            "host_device_bytes_per_modelled_cycle": int(
+                profile.host_device_bytes_per_modelled_cycle
+            ),
+            "kind": "ADMISSIBLE_PLAN",
+            "mechanically_inadmissible": bool(profile.mechanically_inadmissible),
+            "modelled_cycles_total": None if xfer is None else xfer["modelled_cycles_total"],
+            "note": (
+                "COST_MODEL / STATIC planning comparison. Not a board run, "
+                "not HARDWARE_MEASURED. Real comma-device carrier is UNPINNED."
+            ),
+            "ok": ok,
+            "overflow": overflow,
+            "pcie_generation": UNPINNED
+            if profile.pcie_generation is None
+            else int(profile.pcie_generation),
+            "pcie_lanes": UNPINNED if profile.pcie_lanes is None else int(profile.pcie_lanes),
+            "power_envelope_w": UNPINNED
+            if profile.power_envelope_w is None
+            else int(profile.power_envelope_w),
+            "real_carrier": UNPINNED,
+            "refused": not ok,
+            "resource_budget": profile.resource_map(),
+            "thermal_mismatch": bool(profile.thermal_mismatch),
+        },
     )
 
 
@@ -1872,6 +2867,27 @@ def overflow_probe_kernel() -> QGemvKernel:
         group_size=64,
         mac_lanes=64,
         tile_m=16,
+        organ="qgemv",
+        model="qgemv-class",
+        engine_ladder_level="L1",
+        arithmetic="DSP_MAC",
+    )
+
+
+def brochure_fit_kernel() -> QGemvKernel:
+    """Fits a sourced U50 brochure (5952 DSP / 75W); refused under a 25W derate.
+
+    STATIC estimate uses mac_lanes * tile_m DSP. 64*64 = 4096, which is below
+    DS965 U50 DSP 5952 and above 5952 * 25/75 = 1984. COST_MODEL derate of
+    the brochure, not a synthesis result.
+    """
+    return QGemvKernel(
+        M=32,
+        K=256,
+        weight_bits=4,
+        group_size=64,
+        mac_lanes=64,
+        tile_m=64,
         organ="qgemv",
         model="qgemv-class",
         engine_ladder_level="L1",
@@ -2357,6 +3373,30 @@ def model_host_device_transfer(
     beat = int(device.host_device_bytes_per_modelled_cycle)
     cycles_h2c = 0 if h2c == 0 else HOST_DEVICE_QUEUE_CYCLES + _ceil_div(h2c, beat)
     cycles_c2h = 0 if c2h == 0 else HOST_DEVICE_QUEUE_CYCLES + _ceil_div(c2h, beat)
+    pcie_gen = device.pcie_generation
+    pcie_lanes = device.pcie_lanes
+    if pcie_gen is not None and pcie_lanes is not None:
+        transport_class = f"PCIE_GEN{int(pcie_gen)}_X{int(pcie_lanes)}_CLASS"
+        transport_source = (
+            "COST_MODEL PCIe payload-class beat (Gen3 lane unit=1, Gen4=2) "
+            "scaled so Gen3 x16 equals HOST_DEVICE_BYTES_PER_MODELLED_CYCLE. "
+            "Not a trained link, not a slot measurement."
+        )
+        note = (
+            "COST_MODEL. Host<->device modelled cycles from a declared PCIe "
+            "payload-class beat on the (possibly carrier-downgraded) device "
+            "profile. Not a measurement of any cable or slot, not "
+            "HARDWARE_MEASURED. bandwidth_gbps is intentionally absent."
+        )
+    else:
+        transport_class = "USB4_40G_CLASS"
+        transport_source = "H-ROADMAP.md §15.1 initial ~40 Gb/s class; COST_MODEL prior"
+        note = (
+            "COST_MODEL. USB4/Thunderbolt ~40 Gb/s CLASS prior from "
+            "H-ROADMAP.md §15.1, expressed as a declared bytes/cycle beat. "
+            "Not a measurement of any cable, not HARDWARE_MEASURED. "
+            "bandwidth_gbps is intentionally absent."
+        )
     return emit_evidence(
         "COST_MODEL",
         {
@@ -2368,15 +3408,12 @@ def model_host_device_transfer(
             "modelled_cycles_c2h": int(cycles_c2h),
             "modelled_cycles_h2c": int(cycles_h2c),
             "modelled_cycles_total": int(cycles_h2c + cycles_c2h),
-            "note": (
-                "COST_MODEL. USB4/Thunderbolt ~40 Gb/s CLASS prior from "
-                "H-ROADMAP.md §15.1, expressed as a declared bytes/cycle beat. "
-                "Not a measurement of any cable, not HARDWARE_MEASURED. "
-                "bandwidth_gbps is intentionally absent."
-            ),
+            "note": note,
+            "pcie_generation": UNPINNED if pcie_gen is None else int(pcie_gen),
+            "pcie_lanes": UNPINNED if pcie_lanes is None else int(pcie_lanes),
             "queue_cycles_assumed": HOST_DEVICE_QUEUE_CYCLES,
-            "transport_class": "USB4_40G_CLASS",
-            "transport_class_source": "H-ROADMAP.md §15.1 initial ~40 Gb/s class; COST_MODEL prior",
+            "transport_class": transport_class,
+            "transport_class_source": transport_source,
             "weights_resident": bool(weights_resident),
         },
     )
@@ -2531,10 +3568,17 @@ def run_qgemv_preboard(
     kernel: QGemvKernel | None = None,
     device: DeviceProfile | None = None,
     operands: Mapping[str, Any] | None = None,
+    carrier: CarrierEnvelope | None = None,
 ) -> dict[str, Any]:
-    """Lower, estimate, simulate, cost, approximate, partition. All PREHARDWARE."""
+    """Lower, estimate, simulate, cost, approximate, partition. All PREHARDWARE.
+
+    If a CarrierEnvelope is supplied, the device is DOWNGRADED first. The
+    planner sees the reduced envelope, not the brochure one.
+    """
     kernel = kernel or canonical_qgemv_kernel()
     device = device or synthetic_u50_class()
+    if carrier is not None:
+        device = constrain_device_profile(device, carrier)
     operands = dict(operands or canonical_qgemv_operands())
     graph = from_qgemv(kernel, device)
     report = validate(graph)
@@ -2595,11 +3639,12 @@ def run_qgemv_preboard(
     doc = emit_evidence(
         "STATIC",
         {
+            "carrier_envelope": None if carrier is None else carrier.to_dict(),
             "claim_boundary": (
                 "PREHARDWARE qGEMV pre-board stack. No FPGA board, no bitstream, "
                 "no synthesis, no U50, no HARDWARE_MEASURED number. The resource "
                 "figure is an ESTIMATE. The cycle figure is an APPROXIMATION, "
-                "not a measurement."
+                "not a measurement. The real comma-device carrier is UNPINNED."
             ),
             "cycle_approx": cycles,
             "device_profile": device.to_dict(),
@@ -2612,6 +3657,8 @@ def run_qgemv_preboard(
             "kind": "QGEMV_PREBOARD",
             "organ_map_lowering": "from_qgemv",
             "partition": partition,
+            "real_carrier": UNPINNED,
+            "real_carrier_note": REAL_CARRIER_NOTE,
             "resource_estimate": resources,
             "resource_fit": resource_fit,
             "validate": report.to_dict(),
@@ -2741,6 +3788,38 @@ def _run_proofs() -> dict[str, Any]:
         raise RuntimeError(f"illegal evidence tiers: {sorted(q_tiers)}")
     if "HARDWARE_MEASURED" in q_tiers:
         raise RuntimeError("HARDWARE_MEASURED leaked into the preboard report")
+
+    u50 = u50_family_profile("u50")
+    full_slot = example_full_airflow_server_slot()
+    low_slot = example_constrained_low_power_slot()
+    real_slot = unpinned_real_carrier()
+    brochure_k = brochure_fit_kernel()
+    plan_full = admissible_plan(brochure_k, u50, full_slot)
+    plan_low = admissible_plan(brochure_k, u50, low_slot)
+    proofs["u50_family_ids"] = list(U50_FAMILY_VARIANT_IDS)
+    proofs["u50_brochure_fits_full_carrier"] = bool(plan_full.get("ok"))
+    proofs["u50_brochure_refused_constrained_carrier"] = bool(plan_low.get("refused"))
+    proofs["carrier_downgrade_reduces_host_device_beat"] = int(
+        constrain_device_profile(u50, low_slot).host_device_bytes_per_modelled_cycle
+    ) < int(constrain_device_profile(u50, full_slot).host_device_bytes_per_modelled_cycle)
+    proofs["real_carrier_unpinned"] = (
+        real_slot.origin == "REAL_CARRIER_UNPINNED"
+        and all(
+            (not dict(v).get("pinned"))
+            for v in dict(real_slot.field_provenance).values()
+        )
+    )
+    if not proofs["u50_brochure_fits_full_carrier"]:
+        raise RuntimeError("brochure-width kernel did not fit the full example carrier")
+    if not proofs["u50_brochure_refused_constrained_carrier"]:
+        raise RuntimeError("constrained carrier did not refuse the brochure-width kernel")
+    if not proofs["carrier_downgrade_reduces_host_device_beat"]:
+        raise RuntimeError("constrained carrier did not reduce host<->device beat")
+    if not proofs["real_carrier_unpinned"]:
+        raise RuntimeError("real comma-device carrier must stay UNPINNED")
+    for vid in U50_FAMILY_VARIANT_IDS:
+        assert_variant_provenance(u50_family_profile(vid))
+        assert_no_hardware_measured(u50_family_profile(vid).to_dict())
     return proofs
 
 
@@ -2923,6 +4002,8 @@ def build() -> Path:
             "COST_MODEL HBM traffic + host<->device transfer; bandwidth_gbps is not emitted",
             "STATIC resource estimator refuses an engine that exceeds a declared device budget",
             "synthetic U50-class device profile (declared, not a board census) and row-split partitioner",
+            "U50-family variants (U50/U50C/U50DD/U50LV) selectable with per-field provenance or explicit UNPINNED",
+            "CarrierEnvelope DOWNGRADES a DeviceProfile (PCIe beat, power-derated resources); constrained carrier refuses a brochure-fit kernel",
             "no code path emits HARDWARE_MEASURED",
         ],
         "negative_findings": [
@@ -2936,6 +4017,9 @@ def build() -> Path:
             "fpga_fidelity.StructuralGraph is a sibling stand-in and was not imported; HWIR owns the qGEMV preboard stack",
             "hcli.agentos.fpga_preboard.HWIR remains schema-only (Codex/hcli surface; cannot edit)",
             "no U50 board; every preboard number is PREHARDWARE",
+            "real comma-device carrier is UNPINNED; example envelopes are labeled examples, not that carrier",
+            "U50C has no sourced public SKU table; every required field is UNPINNED rather than interpolated",
+            "U50LV PCIe lane width is UNPINNED (DS965 Table 1 Gen3 x16 vs VLOW Gen3 x4 note / UG1120 Gen3 x4 XDMA)",
         ],
         "not_an_fpga_backend": True,
         "claim_boundary": (
@@ -2944,6 +4028,31 @@ def build() -> Path:
             "ESTIMATES. Cycle figures are APPROXIMATIONS, not measurements."
         ),
         "preboard": qgemv_preboard,
+        "u50_family": {
+            "generic_class_device_id": "synthetic-u50-class",
+            "generic_class_unchanged_envelope": {
+                "BRAM": 2016,
+                "DSP": 9024,
+                "LUT": 872000,
+                "URAM": 960,
+                "hbm_capacity_bytes": 8 * 1024 ** 3,
+                "hbm_channels": 32,
+                "note": (
+                    "The mixed class envelope is not rewritten. Family SKUs "
+                    "are separate selectable profiles."
+                ),
+            },
+            "real_carrier": UNPINNED,
+            "real_carrier_note": REAL_CARRIER_NOTE,
+            "variants": {
+                vid: u50_family_profile(vid).to_dict() for vid in U50_FAMILY_VARIANT_IDS
+            },
+            "example_carriers": {
+                "constrained_low_power": example_constrained_low_power_slot().to_dict(),
+                "full_airflow_server": example_full_airflow_server_slot().to_dict(),
+                "unpinned_real": unpinned_real_carrier().to_dict(),
+            },
+        },
         "evidence_tiers_legal": list(EVIDENCE_TIERS),
         "evidence_tiers_illegal": sorted(ILLEGAL_EVIDENCE_TIERS),
     }
@@ -2962,9 +4071,21 @@ def main() -> int:
     ap.add_argument("--lower", metavar="ORGAN_MAP")
     ap.add_argument("--organ")
     ap.add_argument("--qgemv", action="store_true", help="run the PREHARDWARE qGEMV pre-board stack")
+    ap.add_argument(
+        "--device",
+        default="synthetic-u50-class",
+        help="synthetic-u50-class | u50 | u50c | u50dd | u50lv",
+    )
+    ap.add_argument(
+        "--carrier",
+        default=None,
+        help="full | constrained | unpinned  (unpinned is the real comma-device carrier)",
+    )
     a = ap.parse_args()
     if a.qgemv:
-        doc = run_qgemv_preboard()
+        device = select_device_profile(a.device)
+        carrier = None if a.carrier is None else select_carrier_envelope(a.carrier)
+        doc = run_qgemv_preboard(device=device, carrier=carrier)
         print(canon_dumps(doc))
         return 0 if doc.get("functional_sim", {}).get("ok") else 1
     if a.lower:

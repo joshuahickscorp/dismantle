@@ -232,15 +232,22 @@ def probe_tolerance() -> dict[str, Any]:
     """The robustness number that makes fidelity bars the question.
 
     REFUSES if the probe receipt is missing or lacks robustness. The
-    0.0059 figure is not typed here.
+    0.0059 figure is not typed here. Sparse checkout: git show HEAD:rel
+    is a real receipt, not a missing one.
     """
     path = REPO / PROBE_REL
-    if not path.is_file():
-        raise ReevaluatorRefused(
-            f"{PROBE_REL} is not on disk; a scar reevaluator with no "
-            "robustness receipt would be inventing the capability tolerance"
-        )
-    doc = json.loads(path.read_text())
+    doc: dict[str, Any] | None = None
+    if path.is_file():
+        doc = json.loads(path.read_text())
+    else:
+        text, _origin = ni.read_text(PROBE_REL)
+        if text is None:
+            raise ReevaluatorRefused(
+                f"{PROBE_REL} is not on disk and not in git HEAD; a scar "
+                "reevaluator with no robustness receipt would be inventing "
+                "the capability tolerance"
+            )
+        doc = json.loads(text)
     rob = doc.get("robustness")
     if not isinstance(rob, dict):
         raise ReevaluatorRefused(f"{PROBE_REL} has no robustness block")
@@ -472,6 +479,40 @@ def _died_at(record: Mapping[str, Any], evidence: Mapping[str, Any]) -> dict[str
         out["summary"] = claim[:240]
         out["kind"] = "recorded_claim"
     return out
+
+
+def consult_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    """Ask the scoped scar registry whether this candidate is banned.
+
+    Calls tools.future.autonomy_scars.consult (the HCLI entry) and then
+    classify() on any in-scope block. An out-of-scope scar is not a ban
+    even when classify() would call it STRUCTURALLY_REFUTED.
+    """
+    from tools.future import autonomy_scars as asc
+
+    verdict = asc.consult(candidate)
+    classified: list[dict[str, Any]] = []
+    for hit in verdict.get("blocked_by") or []:
+        row = classify(hit)
+        classified.append(
+            {
+                "scar_id": hit.get("scar_id"),
+                "class": row.get("class"),
+                "tolerance_change_reopens": row.get("tolerance_change_reopens"),
+                "source_path": hit.get("source_path"),
+            }
+        )
+    return {
+        "blocked": bool(verdict.get("blocked")),
+        "blocked_by": list(verdict.get("blocked_by") or []),
+        "out_of_scope_not_blocked": list(verdict.get("out_of_scope_not_blocked") or []),
+        "classifications": classified,
+        "laws": list(verdict.get("laws") or []),
+        "laws_out_of_scope": list(verdict.get("laws_out_of_scope") or []),
+        "entry_point": "tools.future.scar_reevaluator.consult_candidate",
+        "consults": "tools.future.autonomy_scars.consult",
+        "evidence_class": "STATIC",
+    }
 
 
 def classify(
@@ -981,6 +1022,13 @@ def build(scars: list[Any] | None = None) -> Any:
         "evidence_class": EVIDENCE_CLASS,
         "gpu_authority": False,
         "n_scars_ingested": len(pool),
+        "scoped_consult": consult_candidate(
+            {
+                "model": "deepseek-v4-flash",
+                "organ": "gate",
+                "hypothesis_family": "cross_expert_structure",
+            }
+        ),
     }
     for key in HARDWARE_FIELDS:
         if key in doc and isinstance(doc[key], (int, float)):

@@ -12,7 +12,7 @@ import pytest
 
 from tools.roadmap import ALLOWED_STATUSES, GRAPH_REL
 from tools.roadmap import catalog
-from tools.roadmap.auditor import audit
+from tools.roadmap.auditor import audit, citation_bound_violations
 from tools.roadmap.gitfs import REPO, SourceView
 from tools.roadmap.parse import parse_roadmap
 from tools.roadmap.__main__ import mutation_check
@@ -80,7 +80,7 @@ def test_all_13_blocked_hardware_gates_have_wake_condition(graph):
 
 def test_built_gates_have_a_non_test_call_site(graph):
     built = [g for g in graph["gates"].values() if g["status"] == "BUILT"]
-    assert built, "auditor rated nothing BUILT; catalog/look-up is too timid or the tree is empty"
+    # Zero BUILT is a legal outcome: wired is not accepted.
     for g in built:
         callers = g.get("runtime_caller") or []
         assert callers, f"{g['id']} is BUILT with no runtime_caller"
@@ -91,6 +91,8 @@ def test_built_gates_have_a_non_test_call_site(graph):
         assert not kinds <= {"import"}, (
             f"{g['id']} is BUILT on exclusively import-kind runtime_caller"
         )
+        assert g.get("wired", {}).get("value") is True, f"{g['id']} BUILT but wired is not true"
+        assert g.get("accepted", {}).get("value") is True, f"{g['id']} BUILT but accepted is not true"
         for site in callers:
             from tools.roadmap.reach import is_test_path
 
@@ -152,10 +154,10 @@ def test_graph_keeps_71_gates_25_genes_with_source_spans(graph):
 
 def test_mutation_downgrades_a_built_gate():
     result = mutation_check()
-    assert result["before_status"] == "BUILT"
-    assert result["after_status"] != "BUILT", (
-        f"{result['gate']} stayed BUILT after overlaying {result['mutated_files']}; "
-        "the auditor is not adversarial"
+    assert result["before_status"] in {"BUILT", "WIRED"}
+    assert result["after_status"] not in {"BUILT", "WIRED"}, (
+        f"{result['gate']} stayed {result['after_status']} after overlaying "
+        f"{result['mutated_files']}; the auditor is not adversarial"
     )
     assert result["downgraded"] is True
     assert result["after_status"] in ALLOWED_STATUSES
@@ -248,7 +250,7 @@ def test_import_alone_cannot_justify_built():
     assert any(e.get("kind") == "import" for e in evidence)
 
 
-def test_call_of_implementing_symbol_justifies_built():
+def test_call_of_implementing_symbol_justifies_wired_not_built():
     from tools.roadmap.auditor import _local_status
 
     look = {
@@ -267,11 +269,63 @@ def test_call_of_implementing_symbol_justifies_built():
         "tests": [],
         "receipts": [],
     }
+    wired_evidence = [
+        {"file": "hcli/mission.py", "line": 245, "kind": "call", "note": "Scheduler"}
+    ]
     status, evidence, _hw, _sw = _local_status(
-        era="I", look=look, hw_id=None, hw_probe=None, ext=None
+        era="I",
+        look=look,
+        hw_id=None,
+        hw_probe=None,
+        ext=None,
+        wired=True,
+        accepted=False,
+        wired_evidence=wired_evidence,
+    )
+    assert status == "WIRED", status
+    assert any(e.get("kind") == "call" for e in evidence)
+
+
+def test_wired_and_accepted_together_justify_built():
+    from tools.roadmap.auditor import _local_status
+
+    look = {
+        "defined": True,
+        "defined_refs": [
+            {"file": "hcli/scheduler.py", "line": 72, "kind": "symbol", "note": "Scheduler"}
+        ],
+        "missing_paths": [],
+        "runtime_caller": [
+            {"file": "hcli/mission.py", "line": 245, "kind": "call", "symbol": "Scheduler"}
+        ],
+        "import_sites": [],
+        "weak_signals": [],
+        "tests": [],
+        "receipts": [],
+    }
+    status, _evidence, _hw, _sw = _local_status(
+        era="I",
+        look=look,
+        hw_id=None,
+        hw_probe=None,
+        ext=None,
+        wired=True,
+        accepted=True,
+        wired_evidence=[
+            {"file": "hcli/mission.py", "line": 245, "kind": "call", "note": "Scheduler"}
+        ],
+        accepted_evidence=[
+            {
+                "kind": "numeric_acceptance",
+                "file": "receipts/future/COMPLETE_EBPW.json",
+                "measured": 0.5,
+                "op": "<=",
+                "threshold": 1,
+                "note": "measured 0.5 against required <= 1",
+            }
+        ],
     )
     assert status == "BUILT", status
-    assert any(e.get("kind") == "call" for e in evidence)
 
 
 def test_weak_signal_never_moves_status():
@@ -332,3 +386,125 @@ def test_exact_cli_path_rejects_suffix_of_another_tree():
         "hcli/scheduler.py", "tools/haider/hcli/scheduler.py"
     )
     assert not is_exact_cli_path("hcli/scheduler.py", "MAX_REPAIR_DEPTH")
+
+
+def test_every_gate_carries_orthogonal_wired_and_accepted(graph):
+    for name, row in {**graph["gates"], **graph["genes"]}.items():
+        wired = row.get("wired")
+        accepted = row.get("accepted")
+        assert isinstance(wired, dict), f"{name} missing wired fact"
+        assert isinstance(accepted, dict), f"{name} missing accepted fact"
+        assert isinstance(wired.get("value"), bool), f"{name} wired.value is not bool"
+        assert isinstance(accepted.get("value"), bool), f"{name} accepted.value is not bool"
+        assert wired.get("evidence"), f"{name} wired has empty evidence"
+        assert accepted.get("evidence"), f"{name} accepted has empty evidence"
+
+
+def test_no_gate_is_built_on_wired_alone(graph):
+    """Load-bearing: wired without accepted must not produce BUILT.
+
+    Mutating _local_status so a caller returns BUILT must fail this test.
+    """
+    for name, row in graph["gates"].items():
+        wired = (row.get("wired") or {}).get("value")
+        accepted = (row.get("accepted") or {}).get("value")
+        if row["status"] == "BUILT":
+            assert wired is True, f"{name} is BUILT but wired is {wired}"
+            assert accepted is True, f"{name} is BUILT on wired alone (accepted={accepted})"
+        if wired and not accepted:
+            assert row["status"] != "BUILT", (
+                f"{name} is BUILT on wired alone; accepted evidence="
+                f"{(row.get('accepted') or {}).get('evidence')}"
+            )
+            if row["status"] not in {
+                "BLOCKED_HARDWARE",
+                "UNREACHABLE",
+                "BLOCKED_EXTERNAL",
+            }:
+                assert row["status"] == "WIRED", (name, row["status"])
+
+
+def test_flash_complete_ebpw_le_1_is_not_built_and_cites_measured_value(graph):
+    g = graph["gates"]["FLASH_COMPLETE_EBPW_LE_1"]
+    assert g["status"] != "BUILT", g["status"]
+    assert g["accepted"]["value"] is False
+    blob = json.dumps(g)
+    assert "3.139" in blob, blob[:2000]
+    notes = " ".join(
+        str(e.get("note"))
+        for e in list(g.get("evidence_refs") or [])
+        + list((g.get("accepted") or {}).get("evidence") or [])
+    )
+    assert "3.139" in notes, notes
+    assert "<= 1" in notes or "<=1" in notes, notes
+    measured = None
+    for e in (g.get("accepted") or {}).get("evidence") or []:
+        if e.get("kind") == "numeric_acceptance":
+            measured = e.get("measured")
+            assert e.get("op") == "<="
+            assert e.get("threshold") == 1
+    assert measured is not None
+    assert abs(float(measured) - 3.139300850311054) < 1e-9
+
+
+def test_no_citation_line_exceeds_file_length_at_emitting_commit(graph):
+    commit = graph.get("generated_from_commit")
+    assert commit, "graph missing generated_from_commit"
+    violations = citation_bound_violations(graph)
+    assert violations == [], "out-of-bounds citations:\n" + "\n".join(violations)
+    # Every repo-relative file:line citation is bound to that commit.
+    for name, row in {**graph["gates"], **graph["genes"]}.items():
+        for ref in list(row.get("evidence_refs") or []) + list(row.get("runtime_caller") or []):
+            rel = ref.get("file")
+            line = ref.get("line")
+            if not rel or str(rel).startswith("/") or not isinstance(line, int):
+                continue
+            assert ref.get("commit") == commit, (
+                f"{name} citation {rel}:{line} commit {ref.get('commit')!r} != {commit}"
+            )
+
+
+def test_numeric_acceptance_compares_ebpw_receipt_against_the_bar():
+    from tools.roadmap.auditor import _numeric_acceptance
+    from tools.roadmap.gitfs import SourceView
+
+    spec = {
+        "kind": "numeric",
+        "receipt": "receipts/future/COMPLETE_EBPW.json",
+        "field": "incumbent.complete_ebpw",
+        "op": "<=",
+        "threshold": 1,
+    }
+    fact = _numeric_acceptance(spec, SourceView())
+    assert fact["value"] is False
+    ev = fact["evidence"][0]
+    assert ev["measured"] == pytest.approx(3.139300850311054)
+    assert "3.139" in ev["note"]
+    assert "<= 1" in ev["note"]
+
+
+def test_accepted_without_wired_is_not_built():
+    from tools.roadmap.auditor import _local_status
+
+    look = {
+        "defined": True,
+        "defined_refs": [{"file": "hcli/scheduler.py", "line": 1, "kind": "definition"}],
+        "missing_paths": [],
+        "runtime_caller": [],
+        "import_sites": [],
+        "weak_signals": [],
+        "tests": [],
+        "receipts": ["receipts/future/COMPLETE_EBPW.json"],
+    }
+    status, _evidence, _hw, _sw = _local_status(
+        era="I",
+        look=look,
+        hw_id=None,
+        hw_probe=None,
+        ext=None,
+        wired=False,
+        accepted=True,
+        accepted_evidence=[{"kind": "numeric_acceptance", "note": "bar met"}],
+    )
+    assert status == "SCAFFOLDED", status
+    assert status != "BUILT"

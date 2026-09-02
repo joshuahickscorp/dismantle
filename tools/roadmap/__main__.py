@@ -26,6 +26,12 @@ def _print_counts(doc: dict) -> None:
         callers = g.get("runtime_caller") or []
         site = f"{callers[0]['file']}:{callers[0]['line']}" if callers else "(none)"
         print(f"  {g['id']} caller={site}")
+    wired = [g for g in doc["gates"].values() if g["status"] == "WIRED"]
+    print(f"WIRED={len(wired)}")
+    for g in wired:
+        callers = g.get("runtime_caller") or []
+        site = f"{callers[0]['file']}:{callers[0]['line']}" if callers else "(none)"
+        print(f"  {g['id']} caller={site}")
 
 
 def _strip_uses(text: str, needles: list[str]) -> str:
@@ -48,20 +54,21 @@ def _strip_uses(text: str, needles: list[str]) -> str:
 
 
 def mutation_check(prefer: str = "FLASH_COMPLETE_EBPW_LE_1") -> dict:
-    """Remove every production call site of a BUILT gate in an overlay and re-audit."""
+    """Remove every production call site of a WIRED/BUILT gate in an overlay and re-audit."""
     view = SourceView()
     before = audit(view=view, include_assemble=False)
     gates = before["gates"]
+    wired_statuses = {"BUILT", "WIRED"}
     target = None
-    if prefer in gates and gates[prefer]["status"] == "BUILT" and gates[prefer]["runtime_caller"]:
+    if prefer in gates and gates[prefer]["status"] in wired_statuses and gates[prefer]["runtime_caller"]:
         target = gates[prefer]
     if target is None:
         for g in gates.values():
-            if g["status"] == "BUILT" and g.get("runtime_caller"):
+            if g["status"] in wired_statuses and g.get("runtime_caller"):
                 target = g
                 break
     if target is None:
-        raise SystemExit("no BUILT gate with a production caller; auditor is not ready for mutation")
+        raise SystemExit("no WIRED/BUILT gate with a production caller; auditor is not ready for mutation")
 
     needles: list[str] = []
     from tools.roadmap.catalog import GATES
@@ -109,7 +116,7 @@ def mutation_check(prefer: str = "FLASH_COMPLETE_EBPW_LE_1") -> dict:
         "before_callers": target["runtime_caller"],
         "after_callers": after_row.get("runtime_caller") or [],
         "mutated_files": mutated_files,
-        "downgraded": after_row["status"] != "BUILT" and after_row["status"] in ALLOWED_STATUSES,
+        "downgraded": after_row["status"] not in wired_statuses and after_row["status"] in ALLOWED_STATUSES,
         "before_counts": before["counts"]["gates_by_status"],
         "after_counts": after["counts"]["gates_by_status"],
     }
@@ -150,9 +157,23 @@ def main(argv: list[str] | None = None) -> int:
         state_path = REPO / "civilization" / "ROADMAP_STATE.json"
         if state_path.is_file():
             state = json.loads(state_path.read_text())
+            law = (
+                "BUILT requires wired AND accepted. wired is a non-test call of the "
+                "implementing symbol. accepted is the gate's own acceptance criterion "
+                "demonstrably met by a receipt or measurement that meets the stated bar, "
+                "not merely a receipt on the topic. wired alone is WIRED, never BUILT."
+            )
+            dirty = False
             if state.get("capability_graph") != GRAPH_REL:
                 state["capability_graph"] = GRAPH_REL
+                dirty = True
+            if state.get("capability_graph_schema") != doc["schema"]:
                 state["capability_graph_schema"] = doc["schema"]
+                dirty = True
+            if state.get("capability_graph_law") != law:
+                state["capability_graph_law"] = law
+                dirty = True
+            if dirty:
                 state_path.write_text(json.dumps(state, indent=1) + "\n")
     return 0
 

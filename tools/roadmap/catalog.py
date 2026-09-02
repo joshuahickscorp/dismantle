@@ -51,6 +51,7 @@ def _p(
     ext: str | None = None,
     deps: tuple[str, ...] = (),
     acc: tuple[int, int] = (9455, 9528),
+    acceptance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "era": era,
@@ -63,6 +64,7 @@ def _p(
         "software_blocker": ext,
         "dependencies": list(deps),
         "acceptance_span": {"start_line": acc[0], "end_line": acc[1]},
+        "acceptance": acceptance,
     }
 
 
@@ -345,7 +347,17 @@ GATES: dict[str, dict[str, Any]] = {
         paths=("tools/future/complete_ebpw.py",),
         modules=("tools.future.complete_ebpw",),
         symbols=(("tools.future.complete_ebpw", "mix_report"),),
-        receipts=("receipts/headless/FLASH_COMPLETE_V0.BYTE_LEDGER.json",),
+        receipts=(
+            "receipts/headless/FLASH_COMPLETE_V0.BYTE_LEDGER.json",
+            "receipts/future/COMPLETE_EBPW.json",
+        ),
+        acceptance={
+            "kind": "numeric",
+            "receipt": "receipts/future/COMPLETE_EBPW.json",
+            "field": "incumbent.complete_ebpw",
+            "op": "<=",
+            "threshold": 1,
+        },
     ),
     "FLASH_ACCEPTED_TPS_GE_50": _p(
         era="I", gene=IC, acc=(478, 505),

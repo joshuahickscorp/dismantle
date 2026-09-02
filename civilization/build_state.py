@@ -521,6 +521,12 @@ def build():
         "generated_from": "disk truth: GOAL.md + receipts + git + a real pytest run",
         "capability_graph": "civilization/CAPABILITY_GRAPH.json",
         "capability_graph_schema": "hawking.roadmap.capability_graph.v1",
+        "capability_graph_law": (
+            "BUILT requires wired AND accepted. wired is a non-test call of the "
+            "implementing symbol. accepted is the gate's own acceptance criterion "
+            "demonstrably met by a receipt or measurement that meets the stated bar, "
+            "not merely a receipt on the topic. wired alone is WIRED, never BUILT."
+        ),
         "active_era": "I",
         "era_sovereignty": ("ERA I is sovereign. Later-era work is permitted ONLY when it "
                             "is already running, consumes an idle resource, produces "

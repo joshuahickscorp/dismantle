@@ -8,6 +8,10 @@
 //! `ast` module. The Python assembler keeps its verdict rules; this crate
 //! supplies the facts so it does not have to walk the tree itself.
 //!
+//! Git checkouts are read from commit blobs (default HEAD), never the working
+//! tree. Untracked and uncommitted files are invisible. The dump carries the
+//! resolved commit SHA so citations can be bounds-checked against that blob.
+//!
 //! Call-site semantics match the Python engine exactly:
 //! - a module import is not a function call
 //! - `name()` and `mod.name()` (Name / Attribute-of-Name) count; `a.b.c()` does not
@@ -21,13 +25,17 @@ use regex::Regex;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::Instant;
 use tree_sitter::{Node, Parser};
 
 pub const FACTS_SCHEMA: &str = "hawking.index.reachability_facts.v1";
-const CACHE_SCHEMA_VERSION: &str = "1";
+// Bumped when the source of truth moved from the working tree to commit blobs.
+// A v1 cache can hold facts parsed from dirty worktree bytes stored under the
+// HEAD blob SHA; reusing that would re-emit out-of-bounds citations.
+const CACHE_SCHEMA_VERSION: &str = "2";
 
 const SUBPROCESS_NAMES: &[&str] = &["run", "Popen", "check_call", "check_output", "call"];
 
@@ -111,6 +119,10 @@ pub struct IndexStats {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ReachabilityDump {
     pub schema: String,
+    /// Resolved commit SHA the blobs were parsed from. `None` when the
+    /// directory is not a git checkout (tests that walk a temp tree).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
     pub files: Vec<String>,
     pub import_sites: BTreeMap<String, Vec<Site>>,
     /// rel_path → [(local_name, fully_dotted_symbol_or_module), ...]
@@ -125,17 +137,28 @@ pub struct ReachabilityDump {
 pub struct CollectOptions {
     pub root: PathBuf,
     pub cache_dir: PathBuf,
+    /// Git revision to read. Default HEAD. Ignored when `root` is not a repo.
+    pub commit: String,
 }
 
 impl CollectOptions {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         let root = root.into();
         let cache_dir = root.join(".hide").join("reachability-index");
-        Self { root, cache_dir }
+        Self {
+            root,
+            cache_dir,
+            commit: "HEAD".to_string(),
+        }
     }
 
     pub fn with_cache_dir(mut self, cache_dir: impl Into<PathBuf>) -> Self {
         self.cache_dir = cache_dir.into();
+        self
+    }
+
+    pub fn with_commit(mut self, commit: impl Into<String>) -> Self {
+        self.commit = commit.into();
         self
     }
 }
@@ -583,22 +606,33 @@ fn python_str_constant(node: Node<'_>, src: &[u8]) -> Option<String> {
     }
 }
 
-/// Index every git-tracked `*.py` file (falling back to a directory walk when
-/// `root` is not a git checkout) and emit the aggregated JSON dump.
+/// Index every `*.py` blob at `opts.commit` (default HEAD), falling back to a
+/// directory walk when `root` is not a git checkout, and emit the aggregated
+/// JSON dump.
 ///
-/// Incremental: merkle-diff the py-file leaf set against the previous snapshot
-/// in `cache_dir`. Unchanged files reuse cached facts; only dirty files are
-/// reparsed.
+/// A git checkout is read from commit blobs only. Dirty worktree bytes, the
+/// index, and untracked files cannot contribute a fact. Incremental: blob-SHA
+/// cache hits skip cat-file and reparse.
 pub fn collect_reachability_facts(opts: &CollectOptions) -> Result<ReachabilityDump> {
     let t0 = Instant::now();
     std::fs::create_dir_all(&opts.cache_dir)?;
     let cache_path = opts.cache_dir.join("facts.sqlite");
     let conn = open_cache(&cache_path)?;
 
-    let files = list_py_files(&opts.root)?;
+    let commit_sha = git_rev_parse(&opts.root, &opts.commit);
+    let files = if let Some(sha) = &commit_sha {
+        git_ls_tree_py(&opts.root, sha).ok_or_else(|| {
+            HideError::Storage(format!("git ls-tree {} failed", sha))
+        })?
+    } else {
+        walk_py(&opts.root)
+    };
     let known: HashSet<String> = files.iter().cloned().collect();
-    let blob_map = git_ls_files_blobs(&opts.root).unwrap_or_default();
-    let dirty_from_git: HashSet<String> = git_diff_py(&opts.root).unwrap_or_default();
+    let blob_map = if let Some(sha) = &commit_sha {
+        git_ls_tree_blobs(&opts.root, sha).unwrap_or_default()
+    } else {
+        HashMap::new()
+    };
 
     let mut leaves: BTreeMap<PathBuf, MerkleNode> = BTreeMap::new();
     let mut contents: HashMap<String, String> = HashMap::new();
@@ -612,12 +646,12 @@ pub fn collect_reachability_facts(opts: &CollectOptions) -> Result<ReachabilityD
         let git_blob = blob_map.get(rel).cloned().unwrap_or_default();
         git_blobs.insert(rel.clone(), git_blob.clone());
         let cached = load_cached(&conn, rel);
-        let on_disk = abs.is_file();
-        let is_dirty = dirty_from_git.contains(rel) || (on_disk && git_blob.is_empty());
 
-        if !is_dirty {
+        // Cache hit is the commit blob SHA. A dirty worktree does not
+        // invalidate it — that is the point of reading HEAD, not disk.
+        if !git_blob.is_empty() {
             if let Some((cached_blob, cached_hash, _)) = cached.as_ref() {
-                if !git_blob.is_empty() && cached_blob == &git_blob {
+                if cached_blob == &git_blob {
                     hashes.insert(rel.clone(), cached_hash.clone());
                     leaves.insert(
                         abs.clone(),
@@ -636,7 +670,7 @@ pub fn collect_reachability_facts(opts: &CollectOptions) -> Result<ReachabilityD
         need_load.push(rel.clone());
     }
 
-    let loaded = load_sources(&opts.root, &need_load);
+    let loaded = load_sources(&opts.root, &need_load, commit_sha.as_deref());
     for (rel, text) in loaded {
         let hash = blake3::hash(text.as_bytes()).to_hex().to_string();
         hashes.insert(rel.clone(), hash.clone());
@@ -719,6 +753,7 @@ pub fn collect_reachability_facts(opts: &CollectOptions) -> Result<ReachabilityD
     store_merkle(&conn, &current)?;
 
     let mut dump = aggregate(files, per_file);
+    dump.commit = commit_sha.clone();
     let nfiles = dump.files.len();
     dump.index = IndexStats {
         merkle_dirty: if cold {
@@ -782,6 +817,7 @@ fn aggregate(files: Vec<String>, per_file: BTreeMap<String, FileFacts>) -> Reach
 
     ReachabilityDump {
         schema: FACTS_SCHEMA.to_string(),
+        commit: None,
         files,
         import_sites,
         bound_names,
@@ -900,16 +936,53 @@ fn load_merkle(conn: &Connection) -> Option<MerkleNode> {
     serde_json::from_str(&json).ok()
 }
 
-fn list_py_files(root: &Path) -> Result<Vec<String>> {
-    if let Some(files) = git_ls_py(root) {
-        return Ok(files);
+/// Resolve `rev` to a commit SHA only when `root` itself is the work tree.
+/// A tempdir that sits outside this repo must not inherit a parent `.git`.
+fn git_rev_parse(root: &Path, rev: &str) -> Option<String> {
+    let top = std::process::Command::new("git")
+        .args(["--no-optional-locks", "rev-parse", "--show-toplevel"])
+        .current_dir(root)
+        .output()
+        .ok()?;
+    if !top.status.success() {
+        return None;
     }
-    Ok(walk_py(root))
+    let top_s = String::from_utf8_lossy(&top.stdout).trim().to_string();
+    if top_s.is_empty() {
+        return None;
+    }
+    let top_path = PathBuf::from(&top_s).canonicalize().ok()?;
+    let root_path = root.canonicalize().ok()?;
+    if top_path != root_path {
+        return None;
+    }
+    let spec = format!("{rev}^{{commit}}");
+    let out = std::process::Command::new("git")
+        .args(["--no-optional-locks", "rev-parse", "--verify", &spec])
+        .current_dir(root)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let sha = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if sha.is_empty() {
+        None
+    } else {
+        Some(sha)
+    }
 }
 
-fn git_ls_py(root: &Path) -> Option<Vec<String>> {
+fn git_ls_tree_py(root: &Path, commit: &str) -> Option<Vec<String>> {
     let out = std::process::Command::new("git")
-        .args(["--no-optional-locks", "ls-files", "-z", "--", "*.py"])
+        .args([
+            "--no-optional-locks",
+            "ls-tree",
+            "-r",
+            "--name-only",
+            "-z",
+            commit,
+        ])
         .current_dir(root)
         .output()
         .ok()?;
@@ -921,18 +994,15 @@ fn git_ls_py(root: &Path) -> Option<Vec<String>> {
         .split(|b| *b == 0)
         .filter(|s| !s.is_empty())
         .filter_map(|s| String::from_utf8(s.to_vec()).ok())
-        .filter(|s| !s.contains("__pycache__"))
+        .filter(|s| s.ends_with(".py") && !s.contains("__pycache__"))
         .collect();
-    if files.is_empty() && !root.join(".git").exists() {
-        return None;
-    }
     files.sort();
     Some(files)
 }
 
-fn git_ls_files_blobs(root: &Path) -> Option<HashMap<String, String>> {
+fn git_ls_tree_blobs(root: &Path, commit: &str) -> Option<HashMap<String, String>> {
     let out = std::process::Command::new("git")
-        .args(["--no-optional-locks", "ls-files", "-s", "-z", "--", "*.py"])
+        .args(["--no-optional-locks", "ls-tree", "-r", "-z", commit])
         .current_dir(root)
         .output()
         .ok()?;
@@ -942,40 +1012,21 @@ fn git_ls_files_blobs(root: &Path) -> Option<HashMap<String, String>> {
     let mut map = HashMap::new();
     for rec in out.stdout.split(|b| *b == 0).filter(|s| !s.is_empty()) {
         let rec = std::str::from_utf8(rec).ok()?;
-        // "<mode> <sha> <stage>\t<path>"
+        // "<mode> blob <sha>\t<path>"
         let (meta, path) = rec.split_once('\t')?;
+        if !path.ends_with(".py") || path.contains("__pycache__") {
+            continue;
+        }
         let mut parts = meta.split_whitespace();
         let _mode = parts.next()?;
+        let kind = parts.next()?;
+        if kind != "blob" {
+            continue;
+        }
         let sha = parts.next()?.to_string();
         map.insert(path.to_string(), sha);
     }
     Some(map)
-}
-
-fn git_diff_py(root: &Path) -> Option<HashSet<String>> {
-    let out = std::process::Command::new("git")
-        .args([
-            "--no-optional-locks",
-            "diff",
-            "--name-only",
-            "-z",
-            "HEAD",
-            "--",
-            "*.py",
-        ])
-        .current_dir(root)
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    Some(
-        out.stdout
-            .split(|b| *b == 0)
-            .filter(|s| !s.is_empty())
-            .filter_map(|s| String::from_utf8(s.to_vec()).ok())
-            .collect(),
-    )
 }
 
 fn walk_py(root: &Path) -> Vec<String> {
@@ -1001,37 +1052,41 @@ fn walk_py(root: &Path) -> Vec<String> {
     out
 }
 
-fn load_sources(root: &Path, rels: &[String]) -> HashMap<String, String> {
+fn load_sources(
+    root: &Path,
+    rels: &[String],
+    commit: Option<&str>,
+) -> HashMap<String, String> {
+    if let Some(commit) = commit {
+        let mut out = git_cat_file_batch(root, commit, rels);
+        for rel in rels {
+            out.entry(rel.clone()).or_insert_with(String::new);
+        }
+        return out;
+    }
     let mut out = HashMap::new();
-    let mut missing = Vec::new();
     for rel in rels {
         let abs = root.join(rel);
         match std::fs::read_to_string(&abs) {
             Ok(text) => {
                 out.insert(rel.clone(), text);
             }
-            Err(_) => missing.push(rel.clone()),
-        }
-    }
-    if !missing.is_empty() {
-        for (rel, text) in git_cat_file_batch(root, &missing) {
-            out.insert(rel, text);
-        }
-        for rel in &missing {
-            out.entry(rel.clone()).or_insert_with(String::new);
+            Err(_) => {
+                out.insert(rel.clone(), String::new());
+            }
         }
     }
     out
 }
 
-fn git_cat_file_batch(root: &Path, rels: &[String]) -> HashMap<String, String> {
+fn git_cat_file_batch(root: &Path, commit: &str, rels: &[String]) -> HashMap<String, String> {
     let mut map = HashMap::new();
     if rels.is_empty() {
         return map;
     }
     let mut input = Vec::new();
     for rel in rels {
-        input.extend_from_slice(format!("HEAD:{rel}\n").as_bytes());
+        input.extend_from_slice(format!("{commit}:{rel}\n").as_bytes());
     }
     let output = match std::process::Command::new("git")
         .args(["--no-optional-locks", "cat-file", "--batch"])
@@ -1042,10 +1097,31 @@ fn git_cat_file_batch(root: &Path, rels: &[String]) -> HashMap<String, String> {
         .spawn()
         .and_then(|mut child| {
             use std::io::Write;
-            if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(&input)?;
-            }
-            child.wait_with_output()
+            let mut stdin = match child.stdin.take() {
+                Some(s) => s,
+                None => return child.wait_with_output(),
+            };
+            let mut stdout = match child.stdout.take() {
+                Some(s) => s,
+                None => return child.wait_with_output(),
+            };
+            // Write stdin on another thread so a blob larger than the OS
+            // pipe buffer cannot deadlock against unread stdout.
+            let writer = std::thread::spawn(move || {
+                let _ = stdin.write_all(&input);
+                drop(stdin);
+            });
+            let mut data = Vec::new();
+            let read_res = stdout.read_to_end(&mut data);
+            let _ = writer.join();
+            drop(stdout);
+            let status = child.wait()?;
+            read_res?;
+            Ok(std::process::Output {
+                status,
+                stdout: data,
+                stderr: Vec::new(),
+            })
         }) {
         Ok(o) if o.status.success() => o.stdout,
         _ => return map,
@@ -1089,6 +1165,7 @@ fn git_cat_file_batch(root: &Path, rels: &[String]) -> HashMap<String, String> {
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::Path;
 
     fn known(files: &[&str]) -> HashSet<String> {
         files.iter().map(|s| s.to_string()).collect()
@@ -1259,5 +1336,91 @@ mod tests {
         assert_eq!(after.index.parsed, 1, "only the edited file is reparsed");
         assert_eq!(after.index.reused, 1);
         assert!(after.calls.iter().any(|c| c.name == "helper"));
+    }
+
+    struct Scratch(std::path::PathBuf);
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn scratch_dir() -> Scratch {
+        let dir = std::env::temp_dir().join(format!(
+            "hawking-index-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        Scratch(dir)
+    }
+
+    fn git_in(repo: &Path, args: &[&str]) -> std::process::Output {
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .output()
+            .unwrap_or_else(|e| panic!("git {args:?}: {e}"))
+    }
+
+    fn init_git_repo(dir: &Path) {
+        let out = git_in(dir, &["init", "-b", "main"]);
+        assert!(
+            out.status.success(),
+            "git init: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        for (k, v) in [
+            ("user.email", "r5@test"),
+            ("user.name", "r5"),
+            ("commit.gpgsign", "false"),
+        ] {
+            assert!(git_in(dir, &["config", k, v]).status.success());
+        }
+    }
+
+    #[test]
+    fn git_commit_blobs_ignore_dirty_worktree() {
+        let tmp = scratch_dir();
+        let root = tmp.0.as_path();
+        init_git_repo(root);
+        fs::write(root.join("mod.py"), "def alpha():\n    return 1\n").unwrap();
+        assert!(git_in(root, &["add", "-A"]).status.success());
+        assert!(git_in(root, &["commit", "-m", "base"]).status.success());
+        let sha = String::from_utf8_lossy(&git_in(root, &["rev-parse", "HEAD"]).stdout)
+            .trim()
+            .to_string();
+
+        fs::write(
+            root.join("mod.py"),
+            "def alpha():\n    return 1\n\ndef extra_only_on_disk():\n    helper()\n",
+        )
+        .unwrap();
+        fs::write(root.join("untracked.py"), "def ghost():\n    return 3\n").unwrap();
+
+        let cache = root.join("cache");
+        let opts = CollectOptions::new(root).with_cache_dir(&cache);
+        let dump = collect_reachability_facts(&opts).unwrap();
+        assert_eq!(dump.commit.as_deref(), Some(sha.as_str()));
+        assert!(dump.files.iter().any(|f| f == "mod.py"));
+        assert!(
+            !dump.files.iter().any(|f| f == "untracked.py"),
+            "untracked must be invisible: {:?}",
+            dump.files
+        );
+        assert!(
+            !dump.calls.iter().any(|c| c.name == "helper"),
+            "dirty-worktree call leaked: {:?}",
+            dump.calls
+        );
+        assert!(
+            dump.calls.iter().all(|c| c.line <= 2),
+            "citation past HEAD blob: {:?}",
+            dump.calls
+        );
     }
 }

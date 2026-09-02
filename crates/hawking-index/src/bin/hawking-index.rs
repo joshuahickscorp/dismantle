@@ -20,13 +20,17 @@ enum Cmd {
     /// Emit Python reachability facts (imports, binds, calls, subprocess,
     /// tool-dispatch literals) as JSON on stdout.
     ///
-    /// Walks git-tracked `*.py` files, merkle-diffs against a local cache, and
-    /// reparses only changed files with the same tree-sitter Python grammar
-    /// the rest of hawking-index uses.
+    /// Walks `*.py` blobs at `--commit` (default HEAD), never the working
+    /// tree. Merkle-diffs against a local cache and reparses only blobs
+    /// whose SHA changed, using the same tree-sitter Python grammar the
+    /// rest of hawking-index uses.
     ReachabilityFacts {
         /// Repository root (default: cwd).
         #[arg(long)]
         root: Option<PathBuf>,
+        /// Git revision to read (default HEAD). Ignored if `root` is not a repo.
+        #[arg(long, default_value = "HEAD")]
+        commit: String,
         /// Cache directory (default: `<root>/.hide/reachability-index`).
         #[arg(long)]
         cache: Option<PathBuf>,
@@ -45,13 +49,14 @@ fn main() -> ExitCode {
     match cli.cmd {
         Cmd::ReachabilityFacts {
             root,
+            commit,
             cache,
             pretty,
             output,
         } => {
             let root = root
                 .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-            let mut opts = CollectOptions::new(&root);
+            let mut opts = CollectOptions::new(&root).with_commit(commit);
             if let Some(cache) = cache {
                 opts = opts.with_cache_dir(cache);
             } else if let Ok(env) = std::env::var("HAWKING_INDEX_CACHE") {

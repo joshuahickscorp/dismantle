@@ -9,7 +9,8 @@
 //! and the capability-reachability scan share one JSON surface.
 //!
 //! Schema: `hawking.index.python_facts.v1`
-//! CLI: `hawking-index-query python-facts [--git-head] [--repo DIR]`
+//! CLI: `hawking-index-query python-facts [--git-head] [--commit REV] [--repo DIR]`
+//! Git-backed dumps read commit blobs, never the working tree.
 //!
 //! r1 may later expose the same command on the `hawking-index` binary; the
 //! schema string and object shape are the merge contract.
@@ -83,6 +84,10 @@ pub struct DefFact {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct PythonFileFacts {
     pub path: String,
+    /// Git commit the blob was read from. `None` for overlay-only files
+    /// (mutation checks) and for dumps that never touched git.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
     pub unparseable: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub definitions: Vec<DefFact>,
@@ -99,6 +104,9 @@ pub struct PythonFileFacts {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PythonFactsDump {
     pub schema: String,
+    /// Resolved commit SHA the git-backed files were parsed from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
     pub files: Vec<PythonFileFacts>,
 }
 
@@ -106,6 +114,7 @@ impl Default for PythonFactsDump {
     fn default() -> Self {
         Self {
             schema: PYTHON_FACTS_SCHEMA.to_string(),
+            commit: None,
             files: Vec::new(),
         }
     }
@@ -804,6 +813,7 @@ pub fn read_overlay_ndjson<R: Read>(reader: R) -> Result<HashMap<String, String>
 
 fn git_stdout(repo: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
     let out = Command::new("git")
+        .arg("--no-optional-locks")
         .arg("-C")
         .arg(repo)
         .args(args)
@@ -819,22 +829,44 @@ fn git_stdout(repo: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
     Ok(out.stdout)
 }
 
-fn git_ls_py(repo: &Path) -> Result<Vec<String>, String> {
-    let raw = git_stdout(repo, &["ls-files", "--", "*.py"])?;
-    let text = String::from_utf8_lossy(&raw);
-    Ok(text
-        .lines()
-        .filter(|l| !l.is_empty() && !l.contains("__pycache__"))
-        .map(|s| s.to_string())
+fn git_rev_parse(repo: &Path, rev: &str) -> Result<String, String> {
+    let spec = format!("{rev}^{{commit}}");
+    let raw = git_stdout(repo, &["rev-parse", "--verify", &spec])?;
+    let sha = String::from_utf8_lossy(&raw).trim().to_string();
+    if sha.is_empty() {
+        return Err(format!("git rev-parse {rev} produced an empty sha"));
+    }
+    Ok(sha)
+}
+
+/// Enumerate `*.py` blobs in `commit`. `git ls-tree -- '*.py'` does not match
+/// nested paths, so this lists the whole tree and filters in-process.
+/// Untracked and index-only files are invisible: what is in the commit exists.
+fn git_ls_py_at(repo: &Path, commit: &str) -> Result<Vec<String>, String> {
+    let raw = git_stdout(repo, &["ls-tree", "-r", "--name-only", "-z", commit])?;
+    Ok(raw
+        .split(|b| *b == 0)
+        .filter(|s| !s.is_empty())
+        .filter_map(|s| String::from_utf8(s.to_vec()).ok())
+        .filter(|s| s.ends_with(".py") && !s.contains("__pycache__"))
         .collect())
 }
 
-/// Batch-load HEAD blobs. Missing objects become empty (same as `git show` miss).
-fn git_cat_file_batch(repo: &Path, paths: &[String]) -> Result<HashMap<String, String>, String> {
+/// Batch-load blobs at `commit:path`. Missing objects become empty (same as
+/// `git show` miss). Never reads the working tree.
+///
+/// Stdin is written on a helper thread so a blob larger than the OS pipe
+/// buffer cannot deadlock against unread stdout.
+fn git_cat_file_batch(
+    repo: &Path,
+    commit: &str,
+    paths: &[String],
+) -> Result<HashMap<String, String>, String> {
     if paths.is_empty() {
         return Ok(HashMap::new());
     }
     let mut child = Command::new("git")
+        .arg("--no-optional-locks")
         .arg("-C")
         .arg(repo)
         .args(["cat-file", "--batch"])
@@ -843,15 +875,32 @@ fn git_cat_file_batch(repo: &Path, paths: &[String]) -> Result<HashMap<String, S
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("git cat-file: {e}"))?;
-    {
-        let stdin = child
-            .stdin
-            .as_mut()
-            .ok_or_else(|| "git cat-file: no stdin".to_string())?;
-        for p in paths {
-            writeln!(stdin, "HEAD:{p}").map_err(|e| format!("git cat-file stdin: {e}"))?;
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| "git cat-file: no stdin".to_string())?;
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "git cat-file: no stdout".to_string())?;
+    let specs: Vec<String> = paths.iter().map(|p| format!("{commit}:{p}\n")).collect();
+    let writer = std::thread::spawn(move || -> Result<(), String> {
+        for spec in &specs {
+            stdin
+                .write_all(spec.as_bytes())
+                .map_err(|e| format!("git cat-file stdin: {e}"))?;
         }
-    }
+        drop(stdin);
+        Ok(())
+    });
+    let mut bytes = Vec::new();
+    stdout
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("git cat-file stdout: {e}"))?;
+    drop(stdout);
+    writer
+        .join()
+        .map_err(|_| "git cat-file stdin thread panicked".to_string())??;
     let output = child
         .wait_with_output()
         .map_err(|e| format!("git cat-file wait: {e}"))?;
@@ -861,7 +910,7 @@ fn git_cat_file_batch(repo: &Path, paths: &[String]) -> Result<HashMap<String, S
             String::from_utf8_lossy(&output.stderr)
         ));
     }
-    parse_cat_file_batch(&output.stdout, paths)
+    parse_cat_file_batch(&bytes, paths)
 }
 
 fn parse_cat_file_batch(bytes: &[u8], paths: &[String]) -> Result<HashMap<String, String>, String> {
@@ -899,42 +948,31 @@ fn parse_cat_file_batch(bytes: &[u8], paths: &[String]) -> Result<HashMap<String
     Ok(out)
 }
 
-/// Load Python sources the same way `tools.roadmap.gitfs.SourceView` does:
-/// overlay -> working tree -> `git cat-file HEAD`.
+/// Load Python sources from `commit` blobs, overlay winning.
+///
+/// Never reads the working tree. Untracked files are invisible. A dirty
+/// worktree cannot contribute a line number.
 pub fn load_python_sources(
     repo: &Path,
     overlay: &HashMap<String, String>,
+    commit: &str,
 ) -> Result<Vec<(String, String)>, String> {
-    let mut paths = git_ls_py(repo)?;
+    let mut paths = git_ls_py_at(repo, commit)?;
     for extra in overlay.keys() {
         if extra.ends_with(".py") && !paths.iter().any(|p| p == extra) {
             paths.push(extra.clone());
         }
     }
-    let mut disk_or_overlay: HashMap<String, String> = HashMap::new();
-    let mut need_git: Vec<String> = Vec::new();
-    for p in &paths {
-        if let Some(text) = overlay.get(p) {
-            disk_or_overlay.insert(p.clone(), text.clone());
-            continue;
-        }
-        let disk = repo.join(p);
-        if disk.is_file() {
-            match std::fs::read_to_string(&disk) {
-                Ok(text) => {
-                    disk_or_overlay.insert(p.clone(), text);
-                }
-                Err(_) => need_git.push(p.clone()),
-            }
-        } else {
-            need_git.push(p.clone());
-        }
-    }
-    let from_git = git_cat_file_batch(repo, &need_git)?;
+    let need_git: Vec<String> = paths
+        .iter()
+        .filter(|p| !overlay.contains_key(*p))
+        .cloned()
+        .collect();
+    let from_git = git_cat_file_batch(repo, commit, &need_git)?;
     let mut files = Vec::with_capacity(paths.len());
     for p in paths {
-        if let Some(text) = disk_or_overlay.remove(&p) {
-            files.push((p, text));
+        if let Some(text) = overlay.get(&p) {
+            files.push((p, text.clone()));
         } else if let Some(text) = from_git.get(&p) {
             files.push((p, text.clone()));
         } else {
@@ -944,18 +982,41 @@ pub fn load_python_sources(
     Ok(files)
 }
 
-/// Index every git-tracked `*.py` blob (HEAD + overlay + dirty worktree).
+/// Index every `*.py` blob at HEAD, overlay winning. See
+/// [`dump_python_facts_at_commit`].
 pub fn dump_python_facts_git_head(
     repo: &Path,
     overlay: &HashMap<String, String>,
     watch: &HashSet<String>,
 ) -> Result<PythonFactsDump, String> {
-    let files = load_python_sources(repo, overlay)?;
+    dump_python_facts_at_commit(repo, "HEAD", overlay, watch)
+}
+
+/// Index every `*.py` blob at `commit` (any rev `git rev-parse` accepts).
+/// Overlay content replaces the blob for that path and does not inherit
+/// the commit stamp.
+pub fn dump_python_facts_at_commit(
+    repo: &Path,
+    commit: &str,
+    overlay: &HashMap<String, String>,
+    watch: &HashSet<String>,
+) -> Result<PythonFactsDump, String> {
+    let sha = git_rev_parse(repo, commit)?;
+    let files = load_python_sources(repo, overlay, &sha)?;
     let pairs: Vec<(&str, &str)> = files
         .iter()
         .map(|(p, c)| (p.as_str(), c.as_str()))
         .collect();
-    Ok(extract_python_facts_many_watched(pairs, watch))
+    let mut dump = extract_python_facts_many_watched(pairs, watch);
+    dump.commit = Some(sha.clone());
+    for f in &mut dump.files {
+        if overlay.contains_key(&f.path) {
+            f.commit = None;
+        } else {
+            f.commit = Some(sha.clone());
+        }
+    }
+    Ok(dump)
 }
 
 /// Index only the files supplied as NDJSON (no git). Used by tests / overlays.
@@ -978,6 +1039,8 @@ pub fn default_repo() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
 
     fn facts(src: &str) -> PythonFileFacts {
         extract_python_facts("hcli/sample.py", src)
@@ -1159,5 +1222,155 @@ mod tests {
         let dump = extract_python_facts_many([("a.py", "x = 1\n")]);
         assert_eq!(dump.schema, PYTHON_FACTS_SCHEMA);
         assert_eq!(dump.files.len(), 1);
+        assert!(dump.commit.is_none());
+        assert!(dump.files[0].commit.is_none());
+    }
+
+    struct Scratch(PathBuf);
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn scratch_dir() -> Scratch {
+        let dir = std::env::temp_dir().join(format!(
+            "hawking-index-query-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        Scratch(dir)
+    }
+
+    fn git_in(repo: &Path, args: &[&str]) -> std::process::Output {
+        Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .output()
+            .unwrap_or_else(|e| panic!("git {args:?}: {e}"))
+    }
+
+    fn init_git_repo(dir: &Path) {
+        let out = git_in(dir, &["init", "-b", "main"]);
+        assert!(out.status.success(), "git init: {}", String::from_utf8_lossy(&out.stderr));
+        for (k, v) in [
+            ("user.email", "r5@test"),
+            ("user.name", "r5"),
+            ("commit.gpgsign", "false"),
+        ] {
+            let out = git_in(dir, &["config", k, v]);
+            assert!(out.status.success(), "git config {k}");
+        }
+    }
+
+    fn commit_all(dir: &Path, message: &str) {
+        let add = git_in(dir, &["add", "-A"]);
+        assert!(add.status.success(), "git add: {}", String::from_utf8_lossy(&add.stderr));
+        let commit = git_in(dir, &["commit", "-m", message]);
+        assert!(
+            commit.status.success(),
+            "git commit: {}",
+            String::from_utf8_lossy(&commit.stderr)
+        );
+    }
+
+    #[test]
+    fn git_head_ignores_dirty_worktree_and_untracked() {
+        let tmp = scratch_dir();
+        let repo = tmp.0.as_path();
+        init_git_repo(repo);
+        std::fs::write(repo.join("mod.py"), "def alpha():\n    return 1\n").unwrap();
+        commit_all(repo, "base");
+        let sha = String::from_utf8_lossy(&git_in(repo, &["rev-parse", "HEAD"]).stdout)
+            .trim()
+            .to_string();
+
+        // Dirtied committed file: extra def only exists on disk.
+        std::fs::write(
+            repo.join("mod.py"),
+            "def alpha():\n    return 1\n\ndef extra_only_on_disk():\n    return 2\n",
+        )
+        .unwrap();
+        // Untracked file.
+        std::fs::write(repo.join("untracked.py"), "def ghost():\n    return 3\n").unwrap();
+        // Staged-but-uncommitted new file.
+        std::fs::write(repo.join("staged.py"), "def staged():\n    return 4\n").unwrap();
+        let add = git_in(repo, &["add", "staged.py"]);
+        assert!(add.status.success());
+
+        let dump = dump_python_facts_at_commit(repo, "HEAD", &HashMap::new(), &HashSet::new())
+            .expect("dump");
+        assert_eq!(dump.commit.as_deref(), Some(sha.as_str()));
+        let paths: Vec<&str> = dump.files.iter().map(|f| f.path.as_str()).collect();
+        assert!(paths.contains(&"mod.py"), "paths={paths:?}");
+        assert!(
+            !paths.contains(&"untracked.py"),
+            "untracked must be invisible: {paths:?}"
+        );
+        assert!(
+            !paths.contains(&"staged.py"),
+            "index-only file must be invisible: {paths:?}"
+        );
+        let modf = dump.files.iter().find(|f| f.path == "mod.py").unwrap();
+        assert_eq!(modf.commit.as_deref(), Some(sha.as_str()));
+        let names: Vec<&str> = modf.definitions.iter().map(|d| d.name.as_str()).collect();
+        assert!(names.contains(&"alpha"), "{names:?}");
+        assert!(
+            !names.contains(&"extra_only_on_disk"),
+            "dirty worktree def leaked into dump: {names:?}"
+        );
+        let max_line = modf.definitions.iter().map(|d| d.line).max().unwrap_or(0);
+        assert!(
+            max_line <= 2,
+            "citation line {max_line} is past HEAD blob (2 lines)"
+        );
+    }
+
+    #[test]
+    fn cat_file_does_not_deadlock_on_blob_larger_than_pipe() {
+        let tmp = scratch_dir();
+        let repo = tmp.0.as_path();
+        init_git_repo(repo);
+        // OS pipe buffers are typically 64KiB. A blob well above that
+        // deadlocks if stdin is fully written before stdout is read.
+        let mut src = String::from("def alpha():\n    return 1\n");
+        src.push_str("# ");
+        src.push_str(&"a".repeat(200_000));
+        src.push('\n');
+        std::fs::write(repo.join("mod.py"), &src).unwrap();
+        commit_all(repo, "big");
+        let dump = dump_python_facts_at_commit(repo, "HEAD", &HashMap::new(), &HashSet::new())
+            .expect("dump");
+        let modf = dump.files.iter().find(|f| f.path == "mod.py").unwrap();
+        assert!(modf.definitions.iter().any(|d| d.name == "alpha"));
+    }
+
+    #[test]
+    fn overlay_wins_and_does_not_inherit_commit() {
+        let tmp = scratch_dir();
+        let repo = tmp.0.as_path();
+        init_git_repo(repo);
+        std::fs::write(repo.join("mod.py"), "def alpha():\n    return 1\n").unwrap();
+        commit_all(repo, "base");
+        let mut overlay = HashMap::new();
+        overlay.insert(
+            "mod.py".to_string(),
+            "def alpha():\n    return 1\n\ndef overlay_fn():\n    pass\n".to_string(),
+        );
+        let dump =
+            dump_python_facts_at_commit(repo, "HEAD", &overlay, &HashSet::new()).expect("dump");
+        assert!(dump.commit.is_some());
+        let modf = dump.files.iter().find(|f| f.path == "mod.py").unwrap();
+        assert!(
+            modf.commit.is_none(),
+            "overlay file must not carry the git commit"
+        );
+        let names: Vec<&str> = modf.definitions.iter().map(|d| d.name.as_str()).collect();
+        assert!(names.contains(&"overlay_fn"), "{names:?}");
     }
 }

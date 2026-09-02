@@ -1,14 +1,15 @@
-//! `hawking-index-query python-facts [--git-head] [--repo DIR]`
+//! `hawking-index-query python-facts [--git-head] [--commit REV] [--repo DIR]`
 //!
 //! stdin: optional overlay NDJSON, one `{"path":"...","content":"..."}` per line.
 //! stdout: one `hawking.index.python_facts.v1` document.
 //!
-//! `--git-head` reads blobs the same way `tools.roadmap.gitfs.SourceView` does:
-//! overlay -> working tree -> `git cat-file --batch` of HEAD. Sparse checkouts
-//! where `hcli/` is absent from disk still index those files.
+//! `--git-head` / `--commit` read blobs from a git commit (default HEAD), never
+//! the working tree. Overlay NDJSON still wins per path. Sparse checkouts
+//! where `hcli/` is absent from disk still index those files. Untracked
+//! files are invisible.
 
 use hawking_index_query::python_facts::{
-    default_repo, dump_python_facts_from_overlay, dump_python_facts_git_head, read_overlay_ndjson,
+    default_repo, dump_python_facts_at_commit, dump_python_facts_from_overlay, read_overlay_ndjson,
     PYTHON_FACTS_SCHEMA,
 };
 use std::collections::HashSet;
@@ -18,8 +19,9 @@ use std::process;
 
 fn usage() -> ! {
     eprintln!(
-        "Usage: hawking-index-query python-facts [--git-head] [--repo DIR] [--watch NAME]...\n\
+        "Usage: hawking-index-query python-facts [--git-head] [--commit REV] [--repo DIR] [--watch NAME]...\n\
          Schema: {PYTHON_FACTS_SCHEMA}\n\
+         git-backed dumps read commit blobs (default HEAD), never the working tree\n\
          stdin: overlay NDJSON {{\"path\",\"content\"}} (optional)\n\
          stdout: python-facts dump"
     );
@@ -41,12 +43,22 @@ fn main() {
     }
 
     let mut git_head = false;
+    let mut commit_rev: Option<String> = None;
     let mut repo = default_repo();
     let mut watch: HashSet<String> = HashSet::new();
     let mut i = 2;
     while i < args.len() {
         match args[i].as_str() {
             "--git-head" => git_head = true,
+            "--commit" => {
+                i += 1;
+                if i >= args.len() {
+                    eprintln!("--commit needs a revision");
+                    process::exit(2);
+                }
+                commit_rev = Some(args[i].clone());
+                git_head = true;
+            }
             "--repo" => {
                 i += 1;
                 if i >= args.len() {
@@ -84,7 +96,8 @@ fn main() {
     };
 
     let dump = if git_head {
-        match dump_python_facts_git_head(&repo, &overlay, &watch) {
+        let rev = commit_rev.as_deref().unwrap_or("HEAD");
+        match dump_python_facts_at_commit(&repo, rev, &overlay, &watch) {
             Ok(d) => d,
             Err(e) => {
                 eprintln!("{e}");

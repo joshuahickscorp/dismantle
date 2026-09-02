@@ -685,6 +685,7 @@ def audit(
                 "backend": "hawking-index-query python-facts",
                 "files_indexed": dump.get("file_count"),
                 "bin": dump.get("bin"),
+                "commit": dump.get("commit"),
             }
     except FileNotFoundError:
         index_meta = {"backend": "ast", "reason": "hawking-index-query binary not built"}
@@ -725,7 +726,7 @@ def audit(
             view=view,
         )
 
-    emit_commit = head_commit()
+    emit_commit = (index_meta or {}).get("commit") or head_commit()
     bound_violations: list[str] = []
     for entry in list(gates.values()) + list(genes.values()):
         bound_violations.extend(_bind_entry_citations(entry, view, emit_commit))

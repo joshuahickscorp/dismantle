@@ -3,13 +3,16 @@
 Lane r1 may later expose the same command on the `hawking-index` binary.
 This client accepts either:
 
-    hawking-index-query python-facts --git-head --repo <repo>
-    hawking-index python-facts --git-head --repo <repo>
+    hawking-index-query python-facts --git-head --commit <sha> --repo <repo>
+    hawking-index python-facts --git-head --commit <sha> --repo <repo>
 
 Schema: hawking.index.python_facts.v1
 
-The dump is built once per SourceView (overlay included) from HEAD blobs, so a
-sparse worktree where hcli/ is absent from disk still indexes those files.
+The dump is built once per SourceView (overlay included) from the named git
+commit's blobs (default HEAD), never the working tree. A sparse worktree
+where hcli/ is absent from disk still indexes those files. Untracked and
+uncommitted files are invisible. Every file fact carries the commit it was
+parsed from.
 """
 from __future__ import annotations
 
@@ -20,7 +23,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from tools.roadmap.gitfs import REPO, SourceView
+from tools.roadmap.gitfs import REPO, SourceView, head_commit
 
 SCHEMA = "hawking.index.python_facts.v1"
 
@@ -116,7 +119,16 @@ def load_python_facts(view: SourceView) -> dict[str, Any]:
     bin_path = find_index_bin()
     if bin_path is None:
         raise FileNotFoundError("hawking-index-query binary not found")
-    cmd = [str(bin_path), "python-facts", "--git-head", "--repo", str(REPO)]
+    commit = head_commit()
+    cmd = [
+        str(bin_path),
+        "python-facts",
+        "--git-head",
+        "--commit",
+        commit,
+        "--repo",
+        str(REPO),
+    ]
     for name in catalog_watch_names():
         cmd.extend(["--watch", name])
     overlay = _overlay_ndjson(view)
@@ -137,9 +149,11 @@ def load_python_facts(view: SourceView) -> dict[str, Any]:
             f"python-facts schema {dump.get('schema')!r} != {SCHEMA}; "
             "r1/r2 JSON surfaces drifted"
         )
+    dump_commit = dump.get("commit") or commit
     by_path = {f["path"]: f for f in dump.get("files") or [] if f.get("path")}
     wrapped = {
         "schema": dump["schema"],
+        "commit": dump_commit,
         "files": by_path,
         "file_count": len(by_path),
         "bin": str(bin_path),

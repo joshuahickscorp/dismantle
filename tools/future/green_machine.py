@@ -1,13 +1,15 @@
-"""GREEN_MACHINE — energy accounting that says UNKNOWN.
+"""GREEN_MACHINE — II-E / H-ROADMAP §24, with per-value evidence tiers.
 
-Energy is a missing axis of the dominance scoreboard. This sidecar defines the
-metric contract, probes what THIS Mac can measure without root and without a
-GPU lease, and exposes an energy-aware scheduler that is INERT while the
-measurement is untrustworthy.
+Roadmap §24: Green Machine becomes real only where power is measured.
+Utilization is not energy efficiency. Report J/token or J/accepted WorkUnit
+only when instrumentation supports it.
 
-This module produces STATIC_ONLY / bench state UNKNOWN. It emits neither
-DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE. A plausible invented joule would
-silently corrupt every later comparison; an honest UNKNOWN is the deliverable.
+II-E gene card root phenotype: measure useful work per energy without
+Goodharting. The eight SUBGENES are the categories this sidecar emits.
+Token-attributed joules (the existing metric contract) stay UNKNOWN: this
+process has no GPU lease and does not wrap TOKEN_NS. What THIS Apple M3
+Ultra can measure without root is labeled HARDWARE_MEASURED. What it cannot
+is modeled and labeled COST_MODEL. Tiers are never merged on one value.
 
     python3 tools/future/green_machine.py --build
     python3 tools/future/green_machine.py --probe
@@ -24,10 +26,12 @@ import argparse
 import ctypes
 import ctypes.util
 import json
+import os
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from tools.future._common import HARDWARE_FIELDS, HardwareClaimError, git
 
@@ -170,6 +174,41 @@ METRIC_CONTRACT: tuple[dict[str, Any], ...] = (
 )
 
 METRIC_IDS: tuple[str, ...] = tuple(m["id"] for m in METRIC_CONTRACT)
+
+# II-E gene card SUBGENES (H-ROADMAP.md lines 6040-6048) and §24. Exact strings.
+ROADMAP_SUBGENES: tuple[str, ...] = (
+    "GPU/CPU/FPGA power receipts",
+    "J/token",
+    "J/accepted-token",
+    "WU/kWh",
+    "thermal stability",
+    "idle-vs-active cost",
+    "energy-aware scheduler",
+    "power caps only when measured",
+)
+
+EVIDENCE_TIERS: tuple[str, ...] = (
+    "STATIC",
+    "FUNCTIONAL_SIM",
+    "COST_MODEL",
+    "CYCLE_APPROX",
+    "HARDWARE_MEASURED",
+)
+
+TIER_STATIC = "STATIC"
+TIER_FUNCTIONAL_SIM = "FUNCTIONAL_SIM"
+TIER_COST_MODEL = "COST_MODEL"
+TIER_CYCLE_APPROX = "CYCLE_APPROX"
+TIER_HARDWARE_MEASURED = "HARDWARE_MEASURED"
+
+# Standing finding from crates/hawking-core/src/token_ns/energy.rs (2026-08-16).
+# A citation, not a measurement this process took. Using it as watts is COST_MODEL.
+CITED_IDLE_GPU_WATTS_PRIOR = 0.98
+CITED_IDLE_GPU_WATTS_SOURCE = (
+    "crates/hawking-core/src/token_ns/energy.rs IoreportFinding::documented "
+    "(2026-08-16 this machine: GPU Energy nJ incremented ~0.98 W over 1 s idle)"
+)
+TOKEN_INTERVAL_RECEIPT = "receipts/future/TOKEN_NS_OBJECTIVE.json"
 
 HONESTY_RULE = (
     "Any metric that is not trustworthily measurable is UNKNOWN. Never an "
@@ -697,6 +736,13 @@ def _load_ioreport() -> tuple[Any, Any]:
     ]
     lib.IOReportChannelGetChannelName.restype = ctypes.c_void_p
     lib.IOReportChannelGetChannelName.argtypes = [ctypes.c_void_p]
+    lib.IOReportCreateSamples.restype = ctypes.c_void_p
+    lib.IOReportCreateSamples.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    lib.IOReportSimpleGetIntegerValue.restype = ctypes.c_uint64
+    lib.IOReportSimpleGetIntegerValue.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_int),
+    ]
     return cf, lib
 
 
@@ -739,6 +785,156 @@ def _ioreport_inprocess() -> dict[str, Any]:
         ),
         "subscription_obtained": obtained,
         "libioreport_dlopen_without_root": True,
+    }
+
+
+_ENERGY_SENTINEL = 1 << 63
+_ENERGY_CHANNEL_UNITS: dict[str, str] = {
+    "GPU Energy": "nJ",
+    "DIE_0_CPU Energy": "mJ",
+    "DIE_1_CPU Energy": "mJ",
+    "DRAM0_0": "mJ",
+    "DRAM0_1": "mJ",
+}
+
+
+def _ioreport_energy_snapshot(cf: Any, lib: Any) -> dict[str, Any]:
+    """One IOReport Energy Model snapshot. May crash; call via subprocess."""
+    group = _cfstr(cf, "Energy Model")
+    if not group:
+        return {"subscription_obtained": False, "error": "CFString Energy Model failed"}
+    channels = lib.IOReportCopyChannelsInGroup(group, None, 0, 0, 0)
+    cf.CFRelease(group)
+    if not channels:
+        return {
+            "subscription_obtained": False,
+            "error": "IOReportCopyChannelsInGroup(Energy Model) returned null",
+        }
+    subbed = ctypes.c_void_p()
+    sub = lib.IOReportCreateSubscription(None, channels, ctypes.byref(subbed), 0, None)
+    if not sub or not subbed:
+        return {
+            "subscription_obtained": False,
+            "error": "IOReportCreateSubscription returned null",
+        }
+    samples = lib.IOReportCreateSamples(sub, subbed)
+    if not samples:
+        return {
+            "subscription_obtained": True,
+            "error": "IOReportCreateSamples returned null",
+            "channels": {},
+        }
+    key = _cfstr(cf, "IOReportChannels")
+    arr = cf.CFDictionaryGetValue(samples, key)
+    cf.CFRelease(key)
+    if not arr:
+        return {
+            "subscription_obtained": True,
+            "error": "samples missing IOReportChannels",
+            "channels": {},
+        }
+    dict_tid = cf.CFDictionaryGetTypeID()
+    n = int(cf.CFArrayGetCount(arr))
+    wanted = set(_ENERGY_CHANNEL_UNITS)
+    out: dict[str, dict[str, Any]] = {}
+    for i in range(n):
+        item = cf.CFArrayGetValueAtIndex(arr, i)
+        if not item or cf.CFGetTypeID(item) != dict_tid:
+            continue
+        name = _cf_to_str(cf, lib.IOReportChannelGetChannelName(item))
+        if not name:
+            continue
+        if name not in wanted and not name.endswith("CPU Energy"):
+            continue
+        ok = ctypes.c_int(0)
+        raw = int(lib.IOReportSimpleGetIntegerValue(item, ctypes.byref(ok)))
+        valid = int(ok.value) > 0 and raw != _ENERGY_SENTINEL
+        out[name] = {
+            "raw": raw if valid else None,
+            "ok": int(ok.value),
+            "unit": _ENERGY_CHANNEL_UNITS.get(name, "unknown"),
+            "valid": valid,
+        }
+    return {"subscription_obtained": True, "error": None, "channels": out}
+
+
+def _cpu_burn(seconds: float) -> int:
+    """Tight CPU loop. Does not touch the GPU; will not disturb a resident."""
+    n = 0
+    end = time.perf_counter() + max(0.0, seconds)
+    while time.perf_counter() < end:
+        n += 1
+    return n
+
+
+def _delta_to_watts(delta_raw: int | None, unit: str, window_s: float) -> float | None:
+    if delta_raw is None or delta_raw <= 0 or window_s <= 0:
+        return None
+    if unit == "nJ":
+        joules = delta_raw / 1.0e9
+    elif unit == "mJ":
+        joules = delta_raw / 1.0e3
+    elif unit == "J":
+        joules = float(delta_raw)
+    else:
+        return None
+    return joules / window_s
+
+
+def _ioreport_sample_inprocess(idle_s: float, busy_s: float) -> dict[str, Any]:
+    """Idle then CPU-busy IOReport windows. GPU work is forbidden (no lease)."""
+    cf, lib = _load_ioreport()
+    t_wall0 = time.perf_counter()
+    s0 = _ioreport_energy_snapshot(cf, lib)
+    if not s0.get("subscription_obtained"):
+        return {
+            "subscription_obtained": False,
+            "error": s0.get("error"),
+            "idle": None,
+            "cpu_busy": None,
+        }
+    time.sleep(max(0.05, idle_s))
+    t_wall1 = time.perf_counter()
+    s1 = _ioreport_energy_snapshot(cf, lib)
+    iters = _cpu_burn(max(0.05, busy_s))
+    t_wall2 = time.perf_counter()
+    s2 = _ioreport_energy_snapshot(cf, lib)
+
+    def _window(a: dict[str, Any], b: dict[str, Any], dt: float, label: str) -> dict[str, Any]:
+        ch_a = a.get("channels") or {}
+        ch_b = b.get("channels") or {}
+        rows = []
+        for name in sorted(set(ch_a) | set(ch_b)):
+            ua = ch_a.get(name) or {}
+            ub = ch_b.get(name) or {}
+            raw0, raw1 = ua.get("raw"), ub.get("raw")
+            unit = ub.get("unit") or ua.get("unit") or "unknown"
+            delta = None if raw0 is None or raw1 is None else int(raw1) - int(raw0)
+            watts = _delta_to_watts(delta, unit, dt)
+            rows.append(
+                {
+                    "channel": name,
+                    "unit": unit,
+                    "raw_t0": raw0,
+                    "raw_t1": raw1,
+                    "delta": delta,
+                    "window_s": dt,
+                    "watts": watts,
+                    "increments": bool(delta is not None and delta > 0),
+                }
+            )
+        return {"label": label, "window_s": dt, "channels": rows}
+
+    return {
+        "subscription_obtained": True,
+        "error": None,
+        "cpu_burn_iters": iters,
+        "idle": _window(s0, s1, t_wall1 - t_wall0, "idle"),
+        "cpu_busy": _window(s1, s2, t_wall2 - t_wall1, "cpu_busy_gpu_untouched"),
+        "note": (
+            "GPU-token-active is not sampled: this sidecar has no GPU lease and "
+            "must not disturb the live resident. cpu_busy is CPU-only."
+        ),
     }
 
 
@@ -908,6 +1104,562 @@ def run_probes() -> list[dict[str, Any]]:
                 "sidecar has no GPU lease; token-energy trust forced False"
             )
     return rows
+
+
+class TierHonestyError(ValueError):
+    """A COST_MODEL (or absent-hardware) value was labeled HARDWARE_MEASURED."""
+
+
+def _cat_value(
+    vid: str,
+    value: Any,
+    *,
+    unit: str | None,
+    evidence_tier: str,
+    why: str,
+    **extra: Any,
+) -> dict[str, Any]:
+    if evidence_tier not in EVIDENCE_TIERS:
+        raise TierHonestyError(f"{vid}: unknown evidence_tier={evidence_tier!r}")
+    row: dict[str, Any] = {
+        "id": vid,
+        "value": value,
+        "unit": unit,
+        "evidence_tier": evidence_tier,
+        "why": why,
+    }
+    row.update(extra)
+    return row
+
+
+def measure_idle_vs_active_cpu(idle_s: float = 0.2, busy_s: float = 0.2) -> dict[str, Any]:
+    """Process CPU-seconds idle vs a CPU burn. Not joules. HARDWARE_MEASURED."""
+    p0, w0 = time.process_time(), time.perf_counter()
+    time.sleep(max(0.05, idle_s))
+    p1, w1 = time.process_time(), time.perf_counter()
+    iters = _cpu_burn(max(0.05, busy_s))
+    p2, w2 = time.process_time(), time.perf_counter()
+    return {
+        "idle_window_s": w1 - w0,
+        "idle_process_cpu_s": p1 - p0,
+        "active_window_s": w2 - w1,
+        "active_process_cpu_s": p2 - p1,
+        "cpu_burn_iters": iters,
+        "gpu_touched": False,
+        "evidence_tier": TIER_HARDWARE_MEASURED,
+        "why": (
+            "time.process_time() and time.perf_counter() on this process. "
+            "CPU-seconds, not joules. GPU was not touched."
+        ),
+    }
+
+
+def measure_host_identity() -> dict[str, Any]:
+    """sysctl / pmset observations of THIS machine. Not a joule integral."""
+    def _sysctl(key: str) -> str | None:
+        run = _run(["sysctl", "-n", key])
+        if run.get("returncode") == 0:
+            text = (run.get("stdout") or "").strip()
+            return text or None
+        return None
+
+    ncpu_s = _sysctl("hw.ncpu")
+    brand = _sysctl("machdep.cpu.brand_string")
+    mem_s = _sysctl("hw.memsize")
+    batt = probe_pmset_batt()
+    therm = probe_pmset_therm()
+    try:
+        load = os.getloadavg()
+    except (OSError, AttributeError):
+        load = None
+    ncpu = int(ncpu_s) if ncpu_s and ncpu_s.isdigit() else None
+    mem_bytes = int(mem_s) if mem_s and mem_s.isdigit() else None
+    power_source = None
+    obs = batt.get("observation")
+    if isinstance(obs, str) and "AC Power" in obs:
+        power_source = "AC Power"
+    elif isinstance(obs, str) and "Battery" in obs:
+        power_source = "Battery"
+    warning = None
+    therm_obs = therm.get("observation")
+    if isinstance(therm_obs, str):
+        if "No thermal warning level has been recorded" in therm_obs:
+            warning = False
+        else:
+            warning = "thermal warning" in therm_obs.lower()
+    return {
+        "chip": brand,
+        "ncpu": ncpu,
+        "mem_bytes": mem_bytes,
+        "power_source": power_source,
+        "thermal_warning_recorded": warning,
+        "thermal_warning_observation": therm_obs if isinstance(therm_obs, str) else None,
+        "loadavg": list(load) if load is not None else None,
+        "evidence_tier": TIER_HARDWARE_MEASURED,
+        "why": (
+            "sysctl hw.ncpu/brand/memsize, pmset -g batt, pmset -g therm, "
+            "os.getloadavg. Die temperature is not among these readings."
+        ),
+    }
+
+
+def sample_energy_rails(idle_s: float = 0.25, busy_s: float = 0.25) -> dict[str, Any]:
+    """IOReport Energy Model idle vs CPU-busy, isolated in a subprocess."""
+    if sys.platform != "darwin":
+        return {
+            "subscription_obtained": False,
+            "error": "macos-only",
+            "idle": None,
+            "cpu_busy": None,
+        }
+    env = dict(_os.environ)
+    env["HAWKING_GREEN_MACHINE_IOREPORT_SAMPLE"] = "1"
+    run = subprocess.run(
+        [
+            sys.executable,
+            __file__,
+            "--ioreport-sample",
+            f"--idle-s={idle_s}",
+            f"--busy-s={busy_s}",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=25,
+        check=False,
+        env=env,
+    )
+    if run.returncode != 0:
+        return {
+            "subscription_obtained": False,
+            "error": (
+                f"ioreport sample worker exit {run.returncode}: "
+                + _clip((run.stderr or "") + (run.stdout or ""), 400)
+            ),
+            "idle": None,
+            "cpu_busy": None,
+        }
+    try:
+        return json.loads(run.stdout.strip().splitlines()[-1])
+    except json.JSONDecodeError:
+        return {
+            "subscription_obtained": False,
+            "error": "ioreport sample worker produced non-JSON: " + _clip(run.stdout, 400),
+            "idle": None,
+            "cpu_busy": None,
+        }
+
+
+def _channel_watts(window: dict[str, Any] | None, channel: str) -> dict[str, Any] | None:
+    if not window:
+        return None
+    for row in window.get("channels") or []:
+        if row.get("channel") == channel:
+            return row
+    return None
+
+
+def cite_token_interval() -> dict[str, Any]:
+    """Cited ms/token from TOKEN_NS_OBJECTIVE. Not a wrap this sidecar took."""
+    rel = TOKEN_INTERVAL_RECEIPT
+    path = REPO / rel
+    if not path.is_file():
+        return _cat_value(
+            "cited_token_interval",
+            None,
+            unit="ms/token",
+            evidence_tier=TIER_STATIC,
+            why="TOKEN_NS_OBJECTIVE.json is not on disk in this worktree",
+            cited_from=rel,
+        )
+    doc = load_json(path)
+    current = doc.get("current") if isinstance(doc.get("current"), dict) else {}
+    ms = current.get("ms_per_token")
+    return _cat_value(
+        "cited_token_interval",
+        ms if isinstance(ms, (int, float)) else None,
+        unit="ms/token",
+        evidence_tier=TIER_STATIC,
+        why=(
+            "Cited from TOKEN_NS_OBJECTIVE.json current.ms_per_token. That "
+            "receipt is not a TOKEN_NS wrap by this sidecar; multiplying it "
+            "by a wattage to form J/token is COST_MODEL."
+        ),
+        cited_from=rel,
+        cited_evidence_class=doc.get("evidence_class") or doc.get("claim_boundary"),
+        token_ns_wrap=False,
+    )
+
+
+def decide_power_cap(
+    *,
+    proposed_cap_watts: float,
+    power_value: Mapping[str, Any],
+) -> dict[str, Any]:
+    """II-E subgene: power caps only when measured.
+
+    Call site: build() -> decide_power_cap. A COST_MODEL wattage is not a cap.
+    """
+    tier = power_value.get("evidence_tier")
+    watts = power_value.get("value")
+    if tier != TIER_HARDWARE_MEASURED or not isinstance(watts, (int, float)):
+        return {
+            "action": ACTION_REFUSE,
+            "reason_code": "POWER_CAP_REQUIRES_MEASUREMENT",
+            "detail": (
+                "power caps only when measured; "
+                f"power evidence_tier={tier!r} value={watts!r}"
+            ),
+            "evidence_tier": TIER_FUNCTIONAL_SIM,
+            "applied_cap_watts": None,
+            "proposed_cap_watts": proposed_cap_watts,
+            "numeric_cap_applied": False,
+        }
+    return {
+        "action": ACTION_REFUSE,
+        "reason_code": "NO_GPU_LEASE_FOR_ENFORCEMENT",
+        "detail": (
+            "power is HARDWARE_MEASURED but this sidecar has no GPU lease "
+            "and will not enforce a cap on the live machine"
+        ),
+        "evidence_tier": TIER_FUNCTIONAL_SIM,
+        "applied_cap_watts": None,
+        "proposed_cap_watts": proposed_cap_watts,
+        "numeric_cap_applied": False,
+        "measured_watts": watts,
+    }
+
+
+def collect_evidence_tiers(node: Any) -> set[str]:
+    found: set[str] = set()
+    if isinstance(node, dict):
+        if "evidence_tier" in node and node["evidence_tier"] is not None:
+            found.add(str(node["evidence_tier"]))
+        for value in node.values():
+            found |= collect_evidence_tiers(value)
+    elif isinstance(node, list):
+        for value in node:
+            found |= collect_evidence_tiers(value)
+    return found
+
+
+def assert_tier_honesty(categories: Mapping[str, Any]) -> None:
+    """Refuse COST_MODEL / absent-hardware labeled HARDWARE_MEASURED.
+
+    A guard nobody has watched fail is not a guard. Tests mutate a COST_MODEL
+    value to HARDWARE_MEASURED and require this to raise.
+    """
+    for cat_id, cat in categories.items():
+        values = cat.get("values") if isinstance(cat, dict) else None
+        if not isinstance(values, list):
+            raise TierHonestyError(f"{cat_id}: missing values[]")
+        for val in values:
+            if not isinstance(val, dict):
+                raise TierHonestyError(f"{cat_id}: value is not an object")
+            vid = val.get("id")
+            tier = val.get("evidence_tier")
+            if tier not in EVIDENCE_TIERS:
+                raise TierHonestyError(f"{vid}: evidence_tier={tier!r} is not a known tier")
+            extra = val.get("also_evidence_tier") or val.get("merged_tiers")
+            if extra:
+                raise TierHonestyError(f"{vid}: tiers must not be merged ({extra!r})")
+            name = f"{vid}".lower()
+            if "fpga" in name and tier == TIER_HARDWARE_MEASURED:
+                raise TierHonestyError(
+                    f"{vid}: FPGA/U50 is absent on this machine; COST_MODEL only"
+                )
+            if val.get("hardware_present") is False and tier == TIER_HARDWARE_MEASURED:
+                raise TierHonestyError(
+                    f"{vid}: absent hardware cannot be HARDWARE_MEASURED"
+                )
+            if vid in {"J/token", "J/accepted-token", "WU/kWh"} and tier == TIER_HARDWARE_MEASURED:
+                if not val.get("token_ns_wrap"):
+                    raise TierHonestyError(
+                        f"{vid} labeled HARDWARE_MEASURED without a TOKEN_NS wrap"
+                    )
+
+
+def _gpu_idle_watts_value(
+    rails: Mapping[str, Any],
+) -> dict[str, Any]:
+    idle = _channel_watts(rails.get("idle") if isinstance(rails, dict) else None, "GPU Energy")
+    if idle and idle.get("increments") and isinstance(idle.get("watts"), (int, float)):
+        return _cat_value(
+            "gpu_rail_watts_idle",
+            float(idle["watts"]),
+            unit="W",
+            evidence_tier=TIER_HARDWARE_MEASURED,
+            why=(
+                "IOReport Energy Model GPU Energy (nJ) delta over an idle window "
+                "in this process. GPU rail only, not DRAM, DIRTY if other lanes "
+                "ran. Not joules_per_token."
+            ),
+            token_ns_wrap=False,
+            channel="GPU Energy",
+            window_s=idle.get("window_s"),
+            delta=idle.get("delta"),
+        )
+    return _cat_value(
+        "gpu_rail_watts_idle",
+        CITED_IDLE_GPU_WATTS_PRIOR,
+        unit="W",
+        evidence_tier=TIER_COST_MODEL,
+        why=(
+            "IOReportCreateSubscription did not yield an incrementing GPU Energy "
+            "sample in this process. Watts are the standing-finding prior from "
+            "energy.rs, not a measurement this sidecar took."
+        ),
+        token_ns_wrap=False,
+        cited_from=CITED_IDLE_GPU_WATTS_SOURCE,
+        subscription_obtained=bool(rails.get("subscription_obtained")) if isinstance(rails, dict) else False,
+        sample_error=rails.get("error") if isinstance(rails, dict) else None,
+    )
+
+
+def roadmap_categories(
+    *,
+    probes: Sequence[Mapping[str, Any]] | None = None,
+    rails: Mapping[str, Any] | None = None,
+    cpu_cost: Mapping[str, Any] | None = None,
+    host: Mapping[str, Any] | None = None,
+    scheduler_decision: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """II-E SUBGENES as categories, each value carrying its own evidence tier."""
+    probes = list(probes) if probes is not None else run_probes()
+    rails = dict(rails) if rails is not None else sample_energy_rails()
+    cpu_cost = dict(cpu_cost) if cpu_cost is not None else measure_idle_vs_active_cpu()
+    host = dict(host) if host is not None else measure_host_identity()
+    if scheduler_decision is None:
+        scheduler_decision = EnergyAwareScheduler().schedule(
+            {"id": "green-machine-categories"}, unknown_metrics()
+        ).as_dict()
+
+    by_id = {p["id"]: p for p in probes if isinstance(p, dict) and "id" in p}
+    catalog = by_id.get("ioreport_energy_model_catalog") or {}
+    cat_obs = catalog.get("observation") if isinstance(catalog.get("observation"), dict) else {}
+    gpu_ch = bool(cat_obs.get("gpu_energy_channel_present"))
+    cpu_ch = list(cat_obs.get("cpu_energy_channels_present") or [])
+    catalog_ok = bool(catalog.get("succeeded"))
+
+    gpu_watts = _gpu_idle_watts_value(rails)
+    cited = cite_token_interval()
+    ms = cited.get("value")
+    watts = gpu_watts.get("value")
+    j_tok = None
+    if isinstance(ms, (int, float)) and isinstance(watts, (int, float)):
+        j_tok = float(watts) * (float(ms) / 1000.0)
+
+    power_cap = decide_power_cap(proposed_cap_watts=50.0, power_value=gpu_watts)
+
+    categories: dict[str, Any] = {
+        "GPU/CPU/FPGA power receipts": {
+            "id": "GPU/CPU/FPGA power receipts",
+            "values": [
+                _cat_value(
+                    "gpu_energy_channel_present",
+                    gpu_ch,
+                    unit="bool",
+                    evidence_tier=TIER_HARDWARE_MEASURED if catalog_ok else TIER_STATIC,
+                    why=(
+                        "IOReportCopyChannelsInGroup('Energy Model') on this Mac "
+                        "returned the GPU Energy channel name."
+                        if catalog_ok
+                        else "Energy Model catalog did not succeed in this process."
+                    ),
+                ),
+                _cat_value(
+                    "cpu_energy_channels_present",
+                    cpu_ch,
+                    unit="channel-names",
+                    evidence_tier=TIER_HARDWARE_MEASURED if catalog_ok else TIER_STATIC,
+                    why=(
+                        "IOReport Energy Model named DIE_*_CPU Energy channels "
+                        "on this Mac."
+                        if catalog_ok
+                        else "Energy Model catalog did not succeed in this process."
+                    ),
+                ),
+                gpu_watts,
+                _cat_value(
+                    "fpga_power_watts",
+                    None,
+                    unit="W",
+                    evidence_tier=TIER_COST_MODEL,
+                    why=(
+                        "FPGA/U50 is absent on this Apple M3 Ultra. Absent "
+                        "hardware is a model, never a measurement."
+                    ),
+                    hardware_present=False,
+                    token_ns_wrap=False,
+                ),
+            ],
+        },
+        "J/token": {
+            "id": "J/token",
+            "values": [
+                _cat_value(
+                    "J/token",
+                    j_tok,
+                    unit="J/token",
+                    evidence_tier=TIER_COST_MODEL,
+                    why=(
+                        "gpu_rail_watts_idle × cited_ms_per_token / 1000. Not a "
+                        "TOKEN_NS wrap, not joules_per_token. The contracted "
+                        "metric stays UNKNOWN in metrics[]."
+                    ),
+                    token_ns_wrap=False,
+                    model="gpu_rail_watts_idle * cited_ms_per_token / 1000",
+                    cited_ms_per_token=ms,
+                    cited_from=cited.get("cited_from"),
+                    watts_input_tier=gpu_watts.get("evidence_tier"),
+                ),
+            ],
+        },
+        "J/accepted-token": {
+            "id": "J/accepted-token",
+            "values": [
+                _cat_value(
+                    "J/accepted-token",
+                    j_tok,
+                    unit="J/accepted-token",
+                    evidence_tier=TIER_COST_MODEL,
+                    why=(
+                        "No accepted-token ledger is wrapped with energy here. "
+                        "Equals the J/token COST_MODEL under the assumption "
+                        "that speculation is off or every draft is accepted. "
+                        "Not a measurement."
+                    ),
+                    token_ns_wrap=False,
+                    assumption="speculation_off_or_accept_rate_1",
+                ),
+            ],
+        },
+        "WU/kWh": {
+            "id": "WU/kWh",
+            "values": [
+                _cat_value(
+                    "WU/kWh",
+                    None,
+                    unit="WorkUnits/kWh",
+                    evidence_tier=TIER_COST_MODEL,
+                    why=(
+                        "No WorkUnit completion count shares a closed wall with "
+                        "a joule integral. Formula WU / (J / 3.6e6) is defined; "
+                        "the numerator is missing, so the value is not filled."
+                    ),
+                    token_ns_wrap=False,
+                    model="work_units_completed / (joules / 3.6e6)",
+                ),
+            ],
+        },
+        "thermal stability": {
+            "id": "thermal stability",
+            "values": [
+                _cat_value(
+                    "thermal_warning_recorded",
+                    host.get("thermal_warning_recorded"),
+                    unit="bool",
+                    evidence_tier=TIER_HARDWARE_MEASURED,
+                    why=(
+                        "pmset -g therm ran on this Mac. This is the warning "
+                        "log, not a die temperature. 'No thermal warning "
+                        "recorded' is not thermal_state."
+                    ),
+                    observation=host.get("thermal_warning_observation"),
+                ),
+                _cat_value(
+                    "die_temperature_c",
+                    None,
+                    unit="C",
+                    evidence_tier=TIER_STATIC,
+                    why=(
+                        "sysctl machdep.xcpm.* / machdep.thermal oids are "
+                        "absent; powermetrics needs root; no die thermometer "
+                        "is readable in this process. No temperature is modeled."
+                    ),
+                ),
+            ],
+        },
+        "idle-vs-active cost": {
+            "id": "idle-vs-active cost",
+            "values": [
+                _cat_value(
+                    "idle_process_cpu_s",
+                    cpu_cost.get("idle_process_cpu_s"),
+                    unit="s",
+                    evidence_tier=TIER_HARDWARE_MEASURED,
+                    why=cpu_cost.get("why") or "process CPU-seconds over an idle sleep",
+                    window_s=cpu_cost.get("idle_window_s"),
+                ),
+                _cat_value(
+                    "active_process_cpu_s",
+                    cpu_cost.get("active_process_cpu_s"),
+                    unit="s",
+                    evidence_tier=TIER_HARDWARE_MEASURED,
+                    why="process CPU-seconds over a CPU-only burn; GPU untouched",
+                    window_s=cpu_cost.get("active_window_s"),
+                    cpu_burn_iters=cpu_cost.get("cpu_burn_iters"),
+                ),
+                _cat_value(
+                    "idle_vs_active_joules",
+                    None,
+                    unit="J",
+                    evidence_tier=TIER_COST_MODEL,
+                    why=(
+                        "Joule idle-vs-active needs incrementing energy rails "
+                        "over both windows. GPU-token-active is not sampled "
+                        "(no lease). CPU-seconds above are the measured cost "
+                        "axis; joules stay a model."
+                    ),
+                    token_ns_wrap=False,
+                ),
+            ],
+        },
+        "energy-aware scheduler": {
+            "id": "energy-aware scheduler",
+            "values": [
+                _cat_value(
+                    "scheduler_action",
+                    scheduler_decision.get("action"),
+                    unit="enum",
+                    evidence_tier=TIER_FUNCTIONAL_SIM,
+                    why=(
+                        "EnergyAwareScheduler.schedule was invoked. It refuses "
+                        "while token energy is UNKNOWN; there is no Admit path."
+                    ),
+                    reason_code=scheduler_decision.get("reason_code"),
+                    admit_implemented=scheduler_decision.get("admit_implemented"),
+                    numeric_energy_used=scheduler_decision.get("numeric_energy_used"),
+                ),
+            ],
+        },
+        "power caps only when measured": {
+            "id": "power caps only when measured",
+            "values": [
+                _cat_value(
+                    "power_cap_action",
+                    power_cap.get("action"),
+                    unit="enum",
+                    evidence_tier=TIER_FUNCTIONAL_SIM,
+                    why=power_cap.get("detail"),
+                    reason_code=power_cap.get("reason_code"),
+                    applied_cap_watts=power_cap.get("applied_cap_watts"),
+                    numeric_cap_applied=power_cap.get("numeric_cap_applied"),
+                    power_input_tier=gpu_watts.get("evidence_tier"),
+                ),
+            ],
+        },
+    }
+    assert_tier_honesty(categories)
+    return {
+        "categories": categories,
+        "gpu_watts": gpu_watts,
+        "cited_token_interval": cited,
+        "power_cap": power_cap,
+        "host": host,
+        "cpu_cost": cpu_cost,
+        "rails": rails,
+    }
 
 
 def _git_exists(rel: str) -> bool:
@@ -1093,6 +1845,10 @@ def _gaps_closed() -> list[str]:
         "Energy-aware scheduler refuses while untrustworthy and refuses numeric claims without authority; there is no Admit path.",
         "Named the scoreboard slot (JOULES_PER_TOKEN, JOULES_PER_ACCEPTED_TOKEN, WORK_UNITS_PER_KWH) as ABSENT/UNKNOWN cells.",
         "Cited recovered Codex energy.rs / orch scheduler / EnergyMode / accepted-token ledger so this is not a fork of them.",
+        "Emitted II-E SUBGENES as roadmap_categories with per-value evidence tiers (HARDWARE_MEASURED vs COST_MODEL vs STATIC vs FUNCTIONAL_SIM).",
+        "Measured what this M3 Ultra can: IOReport Energy Model catalog, pmset power source/thermal warning log, sysctl identity, process CPU-seconds idle vs busy.",
+        "Modeled what it cannot: FPGA power, J/token, J/accepted-token, WU/kWh, die temperature, GPU-token-active joules.",
+        "Power-cap policy refuses unless the wattage is HARDWARE_MEASURED; still does not enforce a cap without a GPU lease.",
     ]
 
 
@@ -1136,13 +1892,29 @@ def build() -> Any:
         ),
     )
 
+    packed = roadmap_categories(
+        probes=probes,
+        scheduler_decision=decision.as_dict(),
+    )
+    categories = packed["categories"]
+    assert_tier_honesty(categories)
+
     doc = {
         "schema": SCHEMA,
         "version": 1,
         "purpose": (
-            "Energy accounting contract and an honest probe of what this Mac "
-            "can measure without root and without a GPU lease."
+            "II-E Green Machine / H-ROADMAP §24: emit the gene-card SUBGENES "
+            "with per-value evidence tiers. Token-attributed joules stay "
+            "UNKNOWN; measurable M3 Ultra observations are HARDWARE_MEASURED; "
+            "the rest are COST_MODEL."
         ),
+        "roadmap": {
+            "section": "§24 GREEN MACHINE",
+            "gene": "II-E_GREEN_MACHINE",
+            "gene_card_lines": "5971-6050",
+            "root_phenotype": "Measure useful work per energy without Goodharting.",
+            "subgenes": list(ROADMAP_SUBGENES),
+        },
         "honesty_rule": HONESTY_RULE,
         "claim_class": CLAIM_CLASS,
         "gpu_authority": False,
@@ -1153,6 +1925,13 @@ def build() -> Any:
         "any_probe_declared_token_energy_trust": any_token_energy,
         "metric_contract": list(METRIC_CONTRACT),
         "metrics": metrics,
+        "roadmap_categories": categories,
+        "evidence_tiers_present": sorted(collect_evidence_tiers(categories)),
+        "host": packed["host"],
+        "cpu_cost": packed["cpu_cost"],
+        "rail_samples": packed["rails"],
+        "cited_token_interval": packed["cited_token_interval"],
+        "power_cap": packed["power_cap"],
         "probes": probes,
         "probes_succeeded": sorted(p["id"] for p in probes if p.get("succeeded")),
         "probes_failed": sorted(p["id"] for p in probes if not p.get("succeeded")),
@@ -1230,6 +2009,20 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}))
             return 1
+    if "--ioreport-sample" in sys.argv:
+        idle_s = 0.25
+        busy_s = 0.25
+        for arg in sys.argv:
+            if arg.startswith("--idle-s="):
+                idle_s = float(arg.split("=", 1)[1])
+            if arg.startswith("--busy-s="):
+                busy_s = float(arg.split("=", 1)[1])
+        try:
+            print(json.dumps(_ioreport_sample_inprocess(idle_s, busy_s), sort_keys=True))
+            return 0
+        except Exception as exc:  # noqa: BLE001
+            print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}))
+            return 1
     ap = argparse.ArgumentParser(
         description="Green Machine energy accounting (STATIC_ONLY / UNKNOWN)"
     )
@@ -1247,5 +2040,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     from _common import require_known_flags
-    require_known_flags(["--ioreport-worker"])
+    require_known_flags(
+        ["--ioreport-worker", "--ioreport-sample", "--idle-s", "--busy-s"]
+    )
     raise SystemExit(main())

@@ -258,11 +258,10 @@ def test_recovered_implementation_lists_codex_energy_and_does_not_claim_adequacy
     assert orch["adequate_for_this_lane"] is False
     assert "guess" in orch["why_not_adequate"].lower() or "heuristic" in orch["why_not_adequate"].lower()
     scoreboard = by_path["receipts/headless/ACCELERATOR_SCOREBOARD.json"]
-    assert scoreboard["in_git_head"] is False
-    # Environment-coupled: this file is uncommitted, so it is invisible from a
-    # sparse lane worktree and visible from the primary one. Its presence is a
-    # fact about the checkout, not about this module -- assert the module COPES
-    # either way rather than pinning the environment it was written in.
+    # Environment-coupled: this path has been both absent from HEAD (uncommitted
+    # campaign disk) and present (landed tree). The module must report whichever
+    # is true rather than pin one checkout.
+    assert isinstance(scoreboard["in_git_head"], bool)
     assert isinstance(scoreboard["on_disk_this_worktree"], bool)
 
 
@@ -289,3 +288,130 @@ def test_write_receipt_still_rejects_numeric_joules_per_token():
             "test_green_machine.py",
         )
     assert not (RECEIPTS / "GREEN_MACHINE_MUST_NOT_EXIST.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# II-E / §24 categories with per-value evidence tiers
+# ---------------------------------------------------------------------------
+
+def _values_by_id(categories: dict) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for cat in categories.values():
+        for val in cat["values"]:
+            out[val["id"]] = val
+    return out
+
+
+def test_roadmap_categories_are_the_ii_e_subgenes():
+    assert gm.ROADMAP_SUBGENES == (
+        "GPU/CPU/FPGA power receipts",
+        "J/token",
+        "J/accepted-token",
+        "WU/kWh",
+        "thermal stability",
+        "idle-vs-active cost",
+        "energy-aware scheduler",
+        "power caps only when measured",
+    )
+    packed = gm.roadmap_categories()
+    assert set(packed["categories"]) == set(gm.ROADMAP_SUBGENES)
+
+
+def test_receipt_emits_roadmap_categories_with_per_value_tiers():
+    doc = json.loads(gm.build().read_text())
+    cats = doc["roadmap_categories"]
+    assert set(cats) == set(gm.ROADMAP_SUBGENES)
+    for cat in cats.values():
+        assert cat["values"], cat["id"]
+        for val in cat["values"]:
+            assert val["evidence_tier"] in gm.EVIDENCE_TIERS, val
+            assert "why" in val
+    vals = _values_by_id(cats)
+    assert vals["J/token"]["evidence_tier"] == gm.TIER_COST_MODEL
+    assert vals["J/token"].get("token_ns_wrap") is False
+    assert vals["J/accepted-token"]["evidence_tier"] == gm.TIER_COST_MODEL
+    assert vals["WU/kWh"]["evidence_tier"] == gm.TIER_COST_MODEL
+    assert vals["fpga_power_watts"]["evidence_tier"] == gm.TIER_COST_MODEL
+    assert vals["fpga_power_watts"]["hardware_present"] is False
+    assert vals["idle_vs_active_joules"]["evidence_tier"] == gm.TIER_COST_MODEL
+    assert vals["thermal_warning_recorded"]["evidence_tier"] == gm.TIER_HARDWARE_MEASURED
+    assert vals["idle_process_cpu_s"]["evidence_tier"] == gm.TIER_HARDWARE_MEASURED
+    assert vals["active_process_cpu_s"]["evidence_tier"] == gm.TIER_HARDWARE_MEASURED
+    assert vals["scheduler_action"]["evidence_tier"] == gm.TIER_FUNCTIONAL_SIM
+    assert vals["power_cap_action"]["evidence_tier"] == gm.TIER_FUNCTIONAL_SIM
+    # Token-attributed contract is still UNKNOWN — we did not smuggle a number in.
+    assert doc["metrics"]["joules_per_token"]["value"] == "UNKNOWN"
+
+
+def test_hardware_measured_cpu_idle_vs_active_is_a_real_call():
+    cost = gm.measure_idle_vs_active_cpu(idle_s=0.05, busy_s=0.05)
+    assert cost["evidence_tier"] == gm.TIER_HARDWARE_MEASURED
+    assert cost["gpu_touched"] is False
+    assert cost["active_process_cpu_s"] > cost["idle_process_cpu_s"]
+    assert cost["cpu_burn_iters"] > 0
+
+
+def test_host_identity_is_hardware_measured_on_this_mac():
+    host = gm.measure_host_identity()
+    assert host["evidence_tier"] == gm.TIER_HARDWARE_MEASURED
+    assert host["ncpu"] and host["ncpu"] > 0
+    assert host["power_source"] in {"AC Power", "Battery"}
+    assert host["thermal_warning_recorded"] is False
+    assert "M3" in (host["chip"] or "") or "Apple" in (host["chip"] or "")
+
+
+def test_power_cap_refuses_cost_model_watts():
+    decision = gm.decide_power_cap(
+        proposed_cap_watts=50.0,
+        power_value={"value": 0.98, "evidence_tier": gm.TIER_COST_MODEL},
+    )
+    assert decision["action"] == gm.ACTION_REFUSE
+    assert decision["reason_code"] == "POWER_CAP_REQUIRES_MEASUREMENT"
+    assert decision["numeric_cap_applied"] is False
+    assert decision["applied_cap_watts"] is None
+
+
+def test_power_cap_still_refuses_to_enforce_without_a_lease():
+    decision = gm.decide_power_cap(
+        proposed_cap_watts=50.0,
+        power_value={"value": 1.2, "evidence_tier": gm.TIER_HARDWARE_MEASURED},
+    )
+    assert decision["action"] == gm.ACTION_REFUSE
+    assert decision["numeric_cap_applied"] is False
+    assert decision["measured_watts"] == 1.2
+
+
+def test_assert_tier_honesty_rejects_cost_model_labeled_hardware_measured():
+    packed = gm.roadmap_categories()
+    cats = packed["categories"]
+    gm.assert_tier_honesty(cats)
+    forged = json.loads(json.dumps(cats))
+    jtok = next(v for v in forged["J/token"]["values"] if v["id"] == "J/token")
+    assert jtok["evidence_tier"] == gm.TIER_COST_MODEL
+    jtok["evidence_tier"] = gm.TIER_HARDWARE_MEASURED
+    with pytest.raises(gm.TierHonestyError, match="HARDWARE_MEASURED without a TOKEN_NS wrap"):
+        gm.assert_tier_honesty(forged)
+
+
+def test_assert_tier_honesty_rejects_fpga_as_hardware_measured():
+    packed = gm.roadmap_categories()
+    forged = json.loads(json.dumps(packed["categories"]))
+    fpga = next(
+        v for v in forged["GPU/CPU/FPGA power receipts"]["values"] if v["id"] == "fpga_power_watts"
+    )
+    fpga["evidence_tier"] = gm.TIER_HARDWARE_MEASURED
+    with pytest.raises(gm.TierHonestyError, match="FPGA"):
+        gm.assert_tier_honesty(forged)
+
+
+def test_build_calls_decide_power_cap_and_roadmap_categories():
+    doc = json.loads(gm.build().read_text())
+    assert doc["power_cap"]["action"] == "REFUSE"
+    assert doc["power_cap"]["numeric_cap_applied"] is False
+    assert "COST_MODEL" in doc["evidence_tiers_present"]
+    assert "HARDWARE_MEASURED" in doc["evidence_tiers_present"]
+    assert "FUNCTIONAL_SIM" in doc["evidence_tiers_present"]
+    assert doc["roadmap"]["gene"] == "II-E_GREEN_MACHINE"
+    assert doc["cpu_cost"]["gpu_touched"] is False
+    _assert_no_hardware_claims(doc)
+

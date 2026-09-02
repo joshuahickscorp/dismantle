@@ -66,6 +66,24 @@ def test_hcli_reachable_is_connected():
     assert row["classification"] == "BUILT"
 
 
+def test_triage_hcli_invocations_ignore_imports():
+    """kind=import is never an HCLI invocation. Same rule as the auditor."""
+    import_site = {"file": "hcli/agentos/foo.py", "line": 10, "kind": "import"}
+    call_site = {"file": "hcli/agentos/foo.py", "line": 20, "kind": "call"}
+    sidecar_call = {"file": "tools/future/bar.py", "line": 3, "kind": "call"}
+    sub = {"file": "hcli/agentos_cli.py", "line": 50, "kind": "subprocess"}
+    assert rt.hcli_invocations([], [import_site]) == []
+    assert rt.hcli_invocations([sidecar_call], [import_site]) == []
+    assert rt.hcli_invocations([call_site], [import_site]) == [call_site]
+    assert rt.hcli_invocations([], [import_site, sub]) == [sub]
+    assert rt.cite_hcli_path(
+        "tools.future.widget", [import_site], {}, invocations=[]
+    ) is None
+    assert rt.cite_hcli_path(
+        "tools.future.widget", [import_site], {}, invocations=[call_site]
+    ) == "hcli/agentos/foo.py:20 (call)"
+
+
 def test_sidecar_only_caller_is_parked_dormant():
     row = _row(callable_outside_tests=True, hcli_reachable=False)
     assert row["disposition"] == "PARKED"
@@ -246,6 +264,13 @@ def test_live_status_causality_is_connected_from_hcli_gates(live_doc):
     files = {s["file"] for s in row["call_sites"]}
     assert any(f.startswith("hcli/agentos/") and f.endswith("_gate.py") for f in files), (
         f"expected an hcli/agentos/*_gate.py call site, got {sorted(files)}"
+    )
+    inv = row.get("hcli_invocations") or []
+    assert inv, "CONNECTED must cite an HCLI symbol Call, not an import"
+    assert all(s.get("kind") in {"call", "subprocess"} for s in inv)
+    inv_files = {s["file"] for s in inv}
+    assert any(f.startswith("hcli/agentos/") and f.endswith("_gate.py") for f in inv_files), (
+        f"expected an hcli/agentos/*_gate.py symbol call, got {sorted(inv_files)}"
     )
 
 

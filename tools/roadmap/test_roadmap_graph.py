@@ -181,9 +181,25 @@ def test_disk_truth_modules_are_present_in_git(graph):
         assert rows[path]["present_in_git"] is True, f"disk-truth module missing from git: {path}"
 
 
-def test_theia_is_absent_from_hawking_tree(graph):
+def test_theia_engine_is_present_and_its_model_ladder_is_blocked_not_absent(graph):
+    """Theia WAS absent. The bounty engine now exists; the model ladder does not.
+
+    Those are different facts and the graph must not collapse them. A trained
+    Theia model cannot be produced in this checkout, but the blocker and the
+    wake condition are both known, so the ladder is BLOCKED_EXTERNAL --
+    never ABSENT, which would mean nothing is known about it at all.
+    """
     claims = {c["claim"]: c for c in graph["verified_absent"]}
-    assert claims["theia"]["verdict"] == "ABSENT"
+    assert claims["theia"]["verdict"] == "PRESENT"
+    assert any(p.startswith("tools/theia/") for p in claims["theia"]["hawking_paths"])
+
+    gates = graph["gates"]
+    items = gates.items() if isinstance(gates, dict) else ((g["id"], g) for g in gates)
+    ladder = {k: v for k, v in items if k.startswith("THEIA_")}
+    assert ladder, "the THEIA gates disappeared from the catalog"
+    for name, entry in ladder.items():
+        assert entry["status"] == "BLOCKED_EXTERNAL", (name, entry["status"])
+        assert entry.get("software_blocker"), f"{name} is blocked with no stated blocker"
 
 
 def test_catalog_covers_every_appendix_o_gate(parsed):

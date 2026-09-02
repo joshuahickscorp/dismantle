@@ -616,3 +616,37 @@ ABSENT_CLAIMS: tuple[tuple[str, str], ...] = (
     ("transport", "no PhysicalGraph transport-edge compiler (hide-acp transport.rs is ACP, not II-C)"),
     ("placement", "no standalone placement compiler (hide-fleet fabric_placement.rs is fleet, not II-C)"),
 )
+
+
+# ---------------------------------------------------------------------------
+# Theia model-ladder external blockers.
+#
+# These seven gates all depend on a TRAINED Theia model, which does not exist
+# and cannot be produced in this checkout. That is not the same fact as ABSENT:
+# the blocker and the wake condition are both known. The bounty ENGINE that
+# surrounds them DOES exist (tools/theia/, 33 tests) — it is the model ladder,
+# not the laboratory, that is blocked.
+# ---------------------------------------------------------------------------
+
+_THEIA_EXTERNAL_BLOCKERS: dict[str, str] = {
+    "THEIA_T0_TRAIN_SUBSTRATE": (
+        "Hawking Train T0 substrate is not a live campaign here: no teacher "
+        "registry, data lake, trace store, curriculum or checkpoint authority "
+        "runs in this checkout. Wake: T0_TEACHER_REGISTRY_LIVE."
+    ),
+    "THEIA_MICRO": "needs a trained ~1B-3B student. Wake: THEIA_T0_TRAIN_SUBSTRATE=PASS.",
+    "THEIA_LAB": "needs a trained ~7B-14B student. Wake: THEIA_MICRO=PASS.",
+    "THEIA_WORKER": "needs a trained ~20B-40B student. Wake: THEIA_LAB=PASS.",
+    "THEIA_RESEARCH": "needs a trained ~30B-100B+ flagship. Wake: THEIA_WORKER=PASS.",
+    "THEIA_GRAVITY_EXECUTABLE": (
+        "needs a frozen Theia capability baseline to compress "
+        "(training-before-Gravity law, roadmap 19.10). Wake: THEIA_RESEARCH=PASS."
+    ),
+    "THEIA_BOUNTY_GENERALIST_QUALIFIED": (
+        "the bounty ENGINE exists at tools/theia/ but no qualified generalist "
+        "MODEL does. Wake: THEIA_RESEARCH=PASS."
+    ),
+}
+
+for _gate, _blocker in _THEIA_EXTERNAL_BLOCKERS.items():
+    GATES[_gate]["software_blocker"] = _blocker

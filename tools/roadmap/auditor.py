@@ -158,6 +158,13 @@ def _local_status(
                 "note": "no git-tracked definition for catalogued code_paths",
             }
         )
+        # A NAMED external blocker outranks ABSENT. "nothing exists" and
+        # "nothing exists, here is exactly what holds it and what would wake
+        # it" are different facts, and the roadmap tracks them as different
+        # states. Without this, the Theia model ladder read ABSENT even though
+        # its blocker and wake conditions are recorded.
+        if ext:
+            return "BLOCKED_EXTERNAL", evidence, None, ext
         if era in _LATER_ERAS:
             return "DORMANT", evidence, None, None
         return "ABSENT", evidence, None, None
@@ -326,7 +333,13 @@ def _verify_absent_claims(view: SourceView) -> list[dict[str, Any]]:
         hits = [
             p
             for p in ls
-            if name in Path(p).parts or Path(p).stem == name or Path(p).name == name
+            if name in Path(p).parts
+            or Path(p).stem == name
+            or Path(p).name == name
+            # A compound module name still IS the concept: semantic_transport.py
+            # is a transport edge compiler. Matching only the bare stem understated
+            # `transport` as ABSENT while tools/accelerator/semantic_transport.py existed.
+            or name in Path(p).stem.split("_")
         ]
         # Filter known false friends for transport/placement.
         if name == "transport":

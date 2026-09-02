@@ -519,6 +519,8 @@ def build():
         "legacy_frozen_plan": "HAWKING_SUPER_ROADMAP_FREEZE_V1_2026-08-25.md",
         "frozen_plan": "H-ROADMAP.md (canonical execution decree)",
         "generated_from": "disk truth: GOAL.md + receipts + git + a real pytest run",
+        "capability_graph": "civilization/CAPABILITY_GRAPH.json",
+        "capability_graph_schema": "hawking.roadmap.capability_graph.v1",
         "active_era": "I",
         "era_sovereignty": ("ERA I is sovereign. Later-era work is permitted ONLY when it "
                             "is already running, consumes an idle resource, produces "

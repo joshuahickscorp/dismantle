@@ -1,8 +1,10 @@
 """Call-site evidence, reused from tools.future.capability_reachability.
 
-This is not a second analyzer. It patches that module's reader so sparse-checkout
-holes and mutation overlays are visible, then calls its import/call/subprocess
-helpers (and assemble() when requested).
+This is not a second analyzer. It scopes that module's reader to a SourceView
+so sparse-checkout holes and mutation overlays are visible, then calls its
+import/call/subprocess helpers (and assemble() when requested). The reader is
+never replaced on the module: a later caller in the same process must still
+see HEAD/worktree bytes.
 
 Import sites are collected, but they are not invocations. A subprocess hit
 counts only when the string constant is exactly the gate's own path -- a
@@ -12,13 +14,14 @@ suffix match against a different tree (`tools/haider/hcli/scheduler.py` for
 from __future__ import annotations
 
 import ast
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Iterator, Sequence
 
 from tools.roadmap.gitfs import REPO, SourceView, classify_symbol
 from tools.roadmap import index_client
 
-# Imported lazily after the reader is patched so assemble() sees git-backed text.
+# Imported lazily so assemble() sees the SourceView-scoped reader.
 
 BUILT_KINDS = frozenset({"call", "subprocess"})
 _WEAK_KIND = "weak_signal"
@@ -30,22 +33,26 @@ def _load_cr():
     return cr
 
 
-def install_view(view: SourceView):
-    """Point capability_reachability.read_text at this SourceView and drop its cache."""
-    cr = _load_cr()
-    cr._TEXT_CACHE.clear()
+@contextmanager
+def install_view(view: SourceView) -> Iterator[Any]:
+    """Scope capability_reachability reads to this SourceView.
 
-    def read_text(path: Path) -> str:
+    Overlay and HEAD-backed bytes are visible only inside the ``with`` block.
+    ``capability_reachability.read_text`` is never replaced: assigning that
+    name leaked the last SourceView into every later caller in the process
+    (HCLI calls both surfaces; pytest collected both modules).
+    """
+    cr = _load_cr()
+
+    def reader(path: Path) -> str:
         try:
             rel = path.resolve().relative_to(REPO).as_posix()
         except ValueError:
             rel = str(path)
-        text = view.read(rel)
-        cr._TEXT_CACHE[path] = text
-        return text
+        return view.read(rel)
 
-    cr.read_text = read_text  # type: ignore[assignment]
-    return cr
+    with cr.using_reader(reader):
+        yield cr
 
 
 def _is_test(rel: str) -> bool:
@@ -79,38 +86,38 @@ def module_sites(
     def_rel: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Production and test sites for a module, using CR's AST import + subprocess helpers."""
-    cr = install_view(view)
-    needles = [module_dotted]
-    stem = module_dotted.rsplit(".", 1)[-1]
-    parent = module_dotted.rsplit(".", 1)[0] if "." in module_dotted else ""
-    # Relative imports (`from .scheduler import`) never mention the dotted
-    # name. Include the precise forms CR's AST resolver will accept.
-    needles.extend(
-        [
-            f"from .{stem} import",
-            f"from {module_dotted} import",
-            f"import {module_dotted}",
-        ]
-    )
-    if parent:
-        needles.append(f"from {parent} import {stem}")
-    if def_rel:
-        needles.append(def_rel)
-        needles.append(f"import {stem}")
-    files = _candidate_files(view, needles)
-    if def_rel:
-        def_path = REPO / def_rel
-        if def_path not in files:
-            files.append(def_path)
-    if not files:
-        return [], []
-    idx = cr.build_repo_index(files=files)
-    exclude = (REPO / def_rel,) if def_rel else ()
-    sites = list(cr.find_module_import_sites(idx, module_dotted, exclude_files=exclude))
-    if def_rel:
-        sites.extend(cr._subprocess_path_sites(def_rel, idx.files, exclude_files=exclude))
-    prod, test = cr._partition(sites)
-    return [s.to_dict() for s in prod], [s.to_dict() for s in test]
+    with install_view(view) as cr:
+        needles = [module_dotted]
+        stem = module_dotted.rsplit(".", 1)[-1]
+        parent = module_dotted.rsplit(".", 1)[0] if "." in module_dotted else ""
+        # Relative imports (`from .scheduler import`) never mention the dotted
+        # name. Include the precise forms CR's AST resolver will accept.
+        needles.extend(
+            [
+                f"from .{stem} import",
+                f"from {module_dotted} import",
+                f"import {module_dotted}",
+            ]
+        )
+        if parent:
+            needles.append(f"from {parent} import {stem}")
+        if def_rel:
+            needles.append(def_rel)
+            needles.append(f"import {stem}")
+        files = _candidate_files(view, needles)
+        if def_rel:
+            def_path = REPO / def_rel
+            if def_path not in files:
+                files.append(def_path)
+        if not files:
+            return [], []
+        idx = cr.build_repo_index(files=files)
+        exclude = (REPO / def_rel,) if def_rel else ()
+        sites = list(cr.find_module_import_sites(idx, module_dotted, exclude_files=exclude))
+        if def_rel:
+            sites.extend(cr._subprocess_path_sites(def_rel, idx.files, exclude_files=exclude))
+        prod, test = cr._partition(sites)
+        return [s.to_dict() for s in prod], [s.to_dict() for s in test]
 
 
 def symbol_sites(
@@ -119,45 +126,44 @@ def symbol_sites(
     symbol: str,
     def_rel: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    cr = install_view(view)
-    needles = [module_dotted, symbol]
-    if def_rel:
-        needles.append(def_rel)
-    files = _candidate_files(view, needles)
-    if def_rel:
-        def_path = REPO / def_rel
-        if def_path not in files:
-            files.append(def_path)
-    if not files:
-        return [], []
-    idx = cr.build_repo_index(files=files)
-    exclude = (REPO / def_rel,) if def_rel else ()
-    sites = cr.find_symbol_call_sites(idx, module_dotted, symbol, exclude_files=exclude)
-    prod, test = cr._partition(sites)
-    return [s.to_dict() for s in prod], [s.to_dict() for s in test]
+    with install_view(view) as cr:
+        needles = [module_dotted, symbol]
+        if def_rel:
+            needles.append(def_rel)
+        files = _candidate_files(view, needles)
+        if def_rel:
+            def_path = REPO / def_rel
+            if def_path not in files:
+                files.append(def_path)
+        if not files:
+            return [], []
+        idx = cr.build_repo_index(files=files)
+        exclude = (REPO / def_rel,) if def_rel else ()
+        sites = cr.find_symbol_call_sites(idx, module_dotted, symbol, exclude_files=exclude)
+        prod, test = cr._partition(sites)
+        return [s.to_dict() for s in prod], [s.to_dict() for s in test]
 
 
 def assemble_snapshot(view: SourceView) -> dict[str, Any]:
     """Reuse capability_reachability.assemble() against the current view."""
-    cr = install_view(view)
+    with install_view(view) as cr:
+        orig_repo_py = cr.repo_py_files
 
-    orig_repo_py = cr.repo_py_files
+        def repo_py_files() -> list[Path]:
+            return [REPO / rel for rel in view.tracked_py()]
 
-    def repo_py_files() -> list[Path]:
-        return [REPO / rel for rel in view.tracked_py()]
-
-    cr.repo_py_files = repo_py_files  # type: ignore[assignment]
-    try:
-        doc = cr.assemble()
-    finally:
-        cr.repo_py_files = orig_repo_py  # type: ignore[assignment]
-    return {
-        "schema": doc.get("schema"),
-        "counts": doc.get("counts"),
-        "dead_surface_count": len(doc.get("DEAD_SURFACE") or []),
-        "method": doc.get("method"),
-        "law": doc.get("law"),
-    }
+        cr.repo_py_files = repo_py_files  # type: ignore[assignment]
+        try:
+            doc = cr.assemble()
+        finally:
+            cr.repo_py_files = orig_repo_py  # type: ignore[assignment]
+        return {
+            "schema": doc.get("schema"),
+            "counts": doc.get("counts"),
+            "dead_surface_count": len(doc.get("DEAD_SURFACE") or []),
+            "method": doc.get("method"),
+            "law": doc.get("law"),
+        }
 
 
 def is_test_path(rel: str) -> bool:
@@ -786,173 +792,173 @@ def scan_probe_ast(
     unique_paths: set[str],
 ) -> dict[str, Any]:
     """Original AST path via tools.future.capability_reachability."""
-    cr = install_view(view)
-    pairs = _pairs(probe)
-    needles: list[str] = []
-    for module, path in pairs:
-        if module:
-            needles.extend(_import_needles(module, path))
-        elif path:
-            needles.append(path)
+    with install_view(view) as cr:
+        pairs = _pairs(probe)
+        needles: list[str] = []
+        for module, path in pairs:
+            if module:
+                needles.extend(_import_needles(module, path))
+            elif path:
+                needles.append(path)
 
-    catalog_symbols: list[dict[str, str]] = [dict(s) for s in (probe.get("symbols") or [])]
-    # Do not auto-discover every public name in a uniquely-owned module.
-    # BUILT binds to the catalogued implementing symbol (or an exact CLI
-    # launch of a uniquely-owned path). Guessing `main` is not a gate.
+        catalog_symbols: list[dict[str, str]] = [dict(s) for s in (probe.get("symbols") or [])]
+        # Do not auto-discover every public name in a uniquely-owned module.
+        # BUILT binds to the catalogued implementing symbol (or an exact CLI
+        # launch of a uniquely-owned path). Guessing `main` is not a gate.
 
-    files = _candidate_files(view, needles)
-    for _module, path in pairs:
-        if path:
-            def_path = REPO / path
-            if def_path not in files:
-                files.append(def_path)
+        files = _candidate_files(view, needles)
+        for _module, path in pairs:
+            if path:
+                def_path = REPO / path
+                if def_path not in files:
+                    files.append(def_path)
 
-    defined_refs: list[dict[str, Any]] = []
-    missing: list[str] = []
-    for _module, path in pairs:
-        if not path:
-            continue
-        if view.exists(path):
-            text = view.read(path)
-            defined_refs.append(
-                {"file": path, "line": 1 if text else None, "kind": "definition"}
+        defined_refs: list[dict[str, Any]] = []
+        missing: list[str] = []
+        for _module, path in pairs:
+            if not path:
+                continue
+            if view.exists(path):
+                text = view.read(path)
+                defined_refs.append(
+                    {"file": path, "line": 1 if text else None, "kind": "definition"}
+                )
+            else:
+                missing.append(path)
+
+        if not files:
+            return {
+                "defined": bool(defined_refs),
+                "defined_refs": defined_refs,
+                "missing_paths": missing,
+                "runtime_caller": [],
+                "import_sites": [],
+                "weak_signals": [],
+                "tests": [],
+                "symbols_scanned": [s.get("symbol") for s in catalog_symbols],
+            }
+
+        idx = cr.build_repo_index(files=files)
+
+        import_prod: list[dict[str, Any]] = []
+        tests: list[dict[str, Any]] = []
+        seen_imp: set[tuple[str, int, str]] = set()
+        seen_test: set[tuple[str, int, str]] = set()
+        for module, path in pairs:
+            if not module:
+                continue
+            exclude = (REPO / path,) if path else ()
+            sites = list(cr.find_module_import_sites(idx, module, exclude_files=exclude))
+            prod, test = cr._partition(sites)
+            for s in prod:
+                key = (s.file, s.line, s.kind)
+                if key in seen_imp:
+                    continue
+                seen_imp.add(key)
+                import_prod.append(_attach(s))
+            for s in test:
+                key = (s.file, s.line, s.kind)
+                if key in seen_test:
+                    continue
+                seen_test.add(key)
+                tests.append(_attach(s))
+
+        specs = catalog_symbols
+        runtime: list[dict[str, Any]] = []
+        weak: list[dict[str, Any]] = []
+        seen_run: set[tuple[str, int, str, str]] = set()
+        seen_weak: set[tuple[str, int, str]] = set()
+
+        for spec in specs:
+            module = spec["module"]
+            symbol = spec["symbol"]
+            def_rel = None
+            for m, p in pairs:
+                if m == module:
+                    def_rel = p
+                    break
+            kind = spec.get("kind")
+            line: int | None = None
+            if def_rel and view.exists(def_rel):
+                classified, line = classify_symbol(view.read(def_rel), symbol)
+                kind = classified or kind
+                if kind in ("function", "class") and line:
+                    defined_refs.append(
+                        {"file": def_rel, "line": line, "kind": "symbol", "note": symbol}
+                    )
+                elif kind == "assignment":
+                    key = (def_rel, int(line or 0), _WEAK_KIND)
+                    if key not in seen_weak:
+                        seen_weak.add(key)
+                        weak.append(
+                            {
+                                "file": def_rel,
+                                "line": line,
+                                "kind": _WEAK_KIND,
+                                "symbol": symbol,
+                                "note": "name-only assignment; not an invocable implementing symbol",
+                            }
+                        )
+                    continue
+
+            exclude = (REPO / def_rel,) if def_rel else ()
+            call_sites = cr.find_symbol_call_sites(
+                idx, module, symbol, exclude_files=exclude
             )
-        else:
-            missing.append(path)
+            prod, test = cr._partition(call_sites)
+            for s in prod:
+                key = (s.file, s.line, s.kind, symbol)
+                if key in seen_run:
+                    continue
+                seen_run.add(key)
+                runtime.append(_attach(s, symbol=symbol))
+            for s in test:
+                key = (s.file, s.line, s.kind)
+                if key in seen_test:
+                    continue
+                seen_test.add(key)
+                tests.append(_attach(s, symbol=symbol))
 
-    if not files:
+            weak_sites = _weak_name_sites(cr, idx, module, symbol, exclude_files=exclude)
+            weak_prod, _weak_test = cr._partition(weak_sites)
+            for s in weak_prod:
+                key = (s.file, s.line, s.kind)
+                if key in seen_weak:
+                    continue
+                seen_weak.add(key)
+                weak.append(_attach(s, symbol=symbol))
+
+        for module, path in pairs:
+            if not path or path not in unique_paths:
+                continue
+            exclude = (REPO / path,)
+            sub_sites = _strict_subprocess_sites(cr, path, idx.files, exclude_files=exclude)
+            prod, test = cr._partition(sub_sites)
+            for s in prod:
+                key = (s.file, s.line, s.kind, path)
+                if key in seen_run:
+                    continue
+                seen_run.add(key)
+                runtime.append(_attach(s, symbol=path))
+            for s in test:
+                key = (s.file, s.line, s.kind)
+                if key in seen_test:
+                    continue
+                seen_test.add(key)
+                tests.append(_attach(s, symbol=path))
+
+        runtime.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0, s.get("kind") or ""))
+        import_prod.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
+        weak.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
+        tests.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
+
         return {
             "defined": bool(defined_refs),
             "defined_refs": defined_refs,
             "missing_paths": missing,
-            "runtime_caller": [],
-            "import_sites": [],
-            "weak_signals": [],
-            "tests": [],
-            "symbols_scanned": [s.get("symbol") for s in catalog_symbols],
+            "runtime_caller": runtime,
+            "import_sites": import_prod,
+            "weak_signals": weak[:24],
+            "tests": tests,
+            "symbols_scanned": [s.get("symbol") for s in specs],
         }
-
-    idx = cr.build_repo_index(files=files)
-
-    import_prod: list[dict[str, Any]] = []
-    tests: list[dict[str, Any]] = []
-    seen_imp: set[tuple[str, int, str]] = set()
-    seen_test: set[tuple[str, int, str]] = set()
-    for module, path in pairs:
-        if not module:
-            continue
-        exclude = (REPO / path,) if path else ()
-        sites = list(cr.find_module_import_sites(idx, module, exclude_files=exclude))
-        prod, test = cr._partition(sites)
-        for s in prod:
-            key = (s.file, s.line, s.kind)
-            if key in seen_imp:
-                continue
-            seen_imp.add(key)
-            import_prod.append(_attach(s))
-        for s in test:
-            key = (s.file, s.line, s.kind)
-            if key in seen_test:
-                continue
-            seen_test.add(key)
-            tests.append(_attach(s))
-
-    specs = catalog_symbols
-    runtime: list[dict[str, Any]] = []
-    weak: list[dict[str, Any]] = []
-    seen_run: set[tuple[str, int, str, str]] = set()
-    seen_weak: set[tuple[str, int, str]] = set()
-
-    for spec in specs:
-        module = spec["module"]
-        symbol = spec["symbol"]
-        def_rel = None
-        for m, p in pairs:
-            if m == module:
-                def_rel = p
-                break
-        kind = spec.get("kind")
-        line: int | None = None
-        if def_rel and view.exists(def_rel):
-            classified, line = classify_symbol(view.read(def_rel), symbol)
-            kind = classified or kind
-            if kind in ("function", "class") and line:
-                defined_refs.append(
-                    {"file": def_rel, "line": line, "kind": "symbol", "note": symbol}
-                )
-            elif kind == "assignment":
-                key = (def_rel, int(line or 0), _WEAK_KIND)
-                if key not in seen_weak:
-                    seen_weak.add(key)
-                    weak.append(
-                        {
-                            "file": def_rel,
-                            "line": line,
-                            "kind": _WEAK_KIND,
-                            "symbol": symbol,
-                            "note": "name-only assignment; not an invocable implementing symbol",
-                        }
-                    )
-                continue
-
-        exclude = (REPO / def_rel,) if def_rel else ()
-        call_sites = cr.find_symbol_call_sites(
-            idx, module, symbol, exclude_files=exclude
-        )
-        prod, test = cr._partition(call_sites)
-        for s in prod:
-            key = (s.file, s.line, s.kind, symbol)
-            if key in seen_run:
-                continue
-            seen_run.add(key)
-            runtime.append(_attach(s, symbol=symbol))
-        for s in test:
-            key = (s.file, s.line, s.kind)
-            if key in seen_test:
-                continue
-            seen_test.add(key)
-            tests.append(_attach(s, symbol=symbol))
-
-        weak_sites = _weak_name_sites(cr, idx, module, symbol, exclude_files=exclude)
-        weak_prod, _weak_test = cr._partition(weak_sites)
-        for s in weak_prod:
-            key = (s.file, s.line, s.kind)
-            if key in seen_weak:
-                continue
-            seen_weak.add(key)
-            weak.append(_attach(s, symbol=symbol))
-
-    for module, path in pairs:
-        if not path or path not in unique_paths:
-            continue
-        exclude = (REPO / path,)
-        sub_sites = _strict_subprocess_sites(cr, path, idx.files, exclude_files=exclude)
-        prod, test = cr._partition(sub_sites)
-        for s in prod:
-            key = (s.file, s.line, s.kind, path)
-            if key in seen_run:
-                continue
-            seen_run.add(key)
-            runtime.append(_attach(s, symbol=path))
-        for s in test:
-            key = (s.file, s.line, s.kind)
-            if key in seen_test:
-                continue
-            seen_test.add(key)
-            tests.append(_attach(s, symbol=path))
-
-    runtime.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0, s.get("kind") or ""))
-    import_prod.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
-    weak.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
-    tests.sort(key=lambda s: (s.get("file") or "", s.get("line") or 0))
-
-    return {
-        "defined": bool(defined_refs),
-        "defined_refs": defined_refs,
-        "missing_paths": missing,
-        "runtime_caller": runtime,
-        "import_sites": import_prod,
-        "weak_signals": weak[:24],
-        "tests": tests,
-        "symbols_scanned": [s.get("symbol") for s in specs],
-    }

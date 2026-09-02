@@ -176,6 +176,69 @@ def test_tool_name_requires_dispatch_context_not_bare_string(tmp_path, monkeypat
     assert files_hit == {"gate.py"}
 
 
+def test_using_reader_does_not_leak_after_context(tmp_path, monkeypatch):
+    """An overlay reader is scoped: after the block, on-disk bytes win again."""
+    monkeypatch.setattr(cr, "REPO", tmp_path)
+    cr._TEXT_CACHE.clear()
+    cr._TRACKED_PY = None
+    cr._GIT_CHECKOUT = None
+    cr._REL_MEMO.clear()
+    path = _write(tmp_path, "notes.py", "hello from disk\n")
+
+    def stolen(_path):
+        return "STOLEN_OVERLAY"
+
+    with cr.using_reader(stolen):
+        assert cr.read_text(path) == "STOLEN_OVERLAY"
+    assert cr.read_text(path) == "hello from disk\n"
+    assert cr._reader_var.get() is None
+
+
+def test_roadmap_view_does_not_blind_later_fixture_reads(fixture_repo):
+    """tools.roadmap used to replace cr.read_text with a SourceView closure.
+
+    After that assignment, hermetic fixture files (not in the real repo HEAD)
+    read as empty, so the own-test call site vanished and
+    test_only_own_test_calls_it_is_not_callable failed whenever roadmap ran
+    first in the same process. HCLI is that same process for real callers.
+    """
+    from tools.roadmap import reach
+    from tools.roadmap.gitfs import SourceView
+
+    original = cr.read_text
+    view = SourceView()
+    view.overlay["syn/mod.py"] = "def abort():\n    pass\n"
+    view.overlay["syn/caller.py"] = (
+        "from syn.mod import abort\n\ndef run():\n    abort()\n"
+    )
+    look = reach.scan_probe_ast(
+        view,
+        {
+            "code_paths": ["syn/mod.py"],
+            "modules": ["syn.mod"],
+            "symbols": [{"module": "syn.mod", "symbol": "abort"}],
+        },
+        unique_paths={"syn/mod.py"},
+    )
+    assert look["defined"] is True
+    assert cr.read_text is original, (
+        "roadmap.install_view must not replace capability_reachability.read_text; "
+        "a long-lived process calls both surfaces"
+    )
+    assert cr._reader_var.get() is None
+
+    files = [fixture_repo["widget"], fixture_repo["own_test"]]
+    idx = cr.build_repo_index(files=files)
+    sites = cr.find_symbol_call_sites(idx, "tools.future.widget", "gadget")
+    cap = cr.build_capability(
+        "tools.future.widget.gadget", "function",
+        defined=True, registered=False, resident_visible=False, sites=sites,
+    )
+    assert cap["tested"] is True, "the own-test call site must still count toward tested"
+    assert cap["callable"] is False
+    assert len(cap["test_only_sites"]) == 1
+
+
 # --------------------------------------------------------------------------
 # Live-repo invariants: hold regardless of what code lands next.
 # --------------------------------------------------------------------------

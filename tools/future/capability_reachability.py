@@ -87,7 +87,7 @@ import subprocess
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 RECEIPT = "HCLI_CAPABILITY_REACHABILITY.json"
 SCHEMA = "hawking.future.capability_reachability.v1"
@@ -137,6 +137,29 @@ def using_source(source: str) -> Iterator[None]:
     finally:
         _source_var.reset(token)
         _TRACKED_PY = None
+
+
+# Optional external reader (a SourceView overlay, a test double). Scoped via
+# using_reader(); the `read_text` function object is never replaced. Assigning
+# `module.read_text = ...` is the leak that blinded later callers (HCLI calls
+# both this analyzer and tools.roadmap in one process).
+_reader_var: contextvars.ContextVar[Callable[[Path], str] | None] = contextvars.ContextVar(
+    "capability_reachability_reader", default=None
+)
+
+
+@contextmanager
+def using_reader(reader: Callable[[Path], str]) -> Iterator[None]:
+    """Pin file reads to `reader` for the duration of the block.
+
+    Does not write through `_TEXT_CACHE`, so overlay bytes cannot linger after
+    the block and a later assemble() still sees HEAD/worktree.
+    """
+    token = _reader_var.set(reader)
+    try:
+        yield
+    finally:
+        _reader_var.reset(token)
 
 
 def repo_is_git_checkout() -> bool:
@@ -263,6 +286,10 @@ def prefetch_texts(files: Sequence[Path], *, source: str | None = None) -> None:
     edits visible) and falls back to HEAD for sparse-missing paths.
     A non-git REPO always reads the filesystem.
     """
+    if _reader_var.get() is not None:
+        # An external reader owns bytes for this scope; do not fill the
+        # process-wide cache with HEAD-or-empty stand-ins for overlay paths.
+        return
     token = _source_var.set(source) if source is not None else None
     try:
         pending = [p for p in files if p not in _TEXT_CACHE]
@@ -293,6 +320,9 @@ def prefetch_texts(files: Sequence[Path], *, source: str | None = None) -> None:
 
 
 def read_text(path: Path) -> str:
+    reader = _reader_var.get()
+    if reader is not None:
+        return reader(path)
     if path not in _TEXT_CACHE:
         prefetch_texts([path])
     return _TEXT_CACHE.get(path, "")

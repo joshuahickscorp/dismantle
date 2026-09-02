@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T03:56:24Z",
+  "recorded_at": "2026-09-02T04:10:17Z",
   "recorded_by": "tools/audit/reachability_triage.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -121239,7 +121239,7 @@
  },
  "purpose": "Authoritative reachability inventory for every non-test Python module under tools/future, tools/accelerator, tools/odyssey, tools/headless. A definition is not a capability.",
  "schema": "hawking.audit.reachability_triage.v1",
- "seal_sha256": "69fe012254fa6e32f416ad4ed6f60066d9a7ff9c6f4d45dfd30025de971b543a",
+ "seal_sha256": "2fece092e8de00f039c0e00e42cea3f08f283e2b80f0ce27d82903931d751027",
  "state_transitions": [
   {
    "class": "complete_artifact_without_promotion",

@@ -113,7 +113,15 @@ def test_built_gates_keyset_identical(graph_json, graph_index):
     )
     print("BUILT_GATES", json.dumps(measured))
     assert measured["equal"] is True
-    assert measured["n"] == 26
+
+    # Count is derived from the graph, not frozen. Lane f1 split BUILT into
+    # wired+accepted, so BUILT legitimately went 26 -> 0; a hardcoded 26 was
+    # asserting yesterday's vocabulary. Fidelity ("equal") is what this guards.
+    doc = json.loads(graph_json.read_text())
+    gates = doc["gates"]
+    rows = gates.values() if isinstance(gates, dict) else gates
+    expected = sum(1 for g in rows if g.get("status") == "BUILT")
+    assert measured["n"] == expected
     assert measured["index_bytes"] < measured["full_bytes"]
 
 

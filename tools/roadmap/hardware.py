@@ -130,3 +130,28 @@ def probe(wake_id: str) -> dict[str, Any]:
 
 def probe_all() -> dict[str, dict[str, Any]]:
     return {name: probe(name) for name in WAKE_CONDITIONS}
+
+
+def blocked_hardware_wakes(gates: dict[str, Any]) -> list[tuple[str, str]]:
+    """Return (gate_id, wake_condition) for every BLOCKED_HARDWARE gate.
+
+    Raises if any such gate has an empty wake condition. The daemon uses the
+    wake id (U50_PRESENT, DGX_PRESENT, ...) to know what to activate when a
+    device arrives.
+    """
+    out: list[tuple[str, str]] = []
+    for gate in gates.values():
+        if not isinstance(gate, dict) or gate.get("status") != "BLOCKED_HARDWARE":
+            continue
+        gid = str(gate.get("id") or "")
+        wake = gate.get("wake_condition")
+        if not isinstance(wake, str) or not wake.strip():
+            raise ValueError(f"{gid or '<unknown>'} BLOCKED_HARDWARE with empty wake_condition")
+        wake = wake.strip()
+        if wake not in WAKE_CONDITIONS:
+            raise ValueError(
+                f"{gid} wake_condition {wake!r} is not a known hardware id; "
+                f"known={sorted(WAKE_CONDITIONS)}"
+            )
+        out.append((gid, wake))
+    return out

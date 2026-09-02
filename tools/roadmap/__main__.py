@@ -137,6 +137,12 @@ def main(argv: list[str] | None = None) -> int:
 
     doc = audit(include_assemble=args.assemble)
     _print_counts(doc)
+    from tools.lifecycle_events import on_hardware_profile_changed
+    hp = on_hardware_profile_changed(doc)
+    print(
+        f"hardware_profile_changed blocked={hp['n_blocked_hardware']} "
+        f"activable={len(hp['activable'])} wake_ids={hp['wake_ids']}"
+    )
     if args.build:
         path = write_graph(doc)
         print("wrote", path.relative_to(REPO) if path.is_relative_to(REPO) else path)

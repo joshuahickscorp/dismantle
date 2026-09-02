@@ -247,3 +247,65 @@ def test_no_hardware_measured_on_variants_or_carriers():
     low = hwir.example_constrained_low_power_slot()
     hwir.assert_no_hardware_measured(low.constrain(device).to_dict())
     assert hwir.CARRIER_ENVELOPE_BINDING is True
+
+
+# ---------------------------------------------------------------------------
+# comma Tiny Chestnut — the real inbound carrier, pinned 2026-09-02.
+# ---------------------------------------------------------------------------
+
+
+def test_chestnut_current_firmware_is_a_severe_downgrade_vs_a_full_slot():
+    u50dd = hwir.u50_family_profile("u50dd")
+    full = hwir.constrain_device_profile(u50dd, hwir.example_full_airflow_server_slot())
+    chestnut = hwir.constrain_device_profile(u50dd, hwir.chestnut_current_firmware())
+    assert chestnut.host_device_bytes_per_modelled_cycle < full.host_device_bytes_per_modelled_cycle
+
+
+def test_observed_completer_ceiling_outranks_the_lane_derivation():
+    """~1.68 GB/s is a completer property: x4 measures the same as x2.
+
+    So it cannot be derived from lane count and must cap independently.
+    """
+    u50dd = hwir.u50_family_profile("u50dd")
+    wide = hwir.CarrierEnvelope(
+        carrier_id="wide-but-capped",
+        origin="TEST",
+        pcie_generation=4,
+        pcie_lanes=4,
+        sustained_power_w=75,
+        airflow_class="forced",
+        mechanical_limit=None,
+        note="lane width says fast, completer says otherwise",
+        observed_payload_beat=2,
+        observed_payload_bytes_per_s=1_680_000_000,
+    )
+    assert hwir.constrain_device_profile(u50dd, wide).host_device_bytes_per_modelled_cycle == 2
+
+
+def test_unpinned_chestnut_mode_does_not_fail_open():
+    """An unmeasured carrier must not license MORE optimism than the measured one."""
+    u50dd = hwir.u50_family_profile("u50dd")
+    current = hwir.constrain_device_profile(u50dd, hwir.chestnut_current_firmware())
+    unpinned = hwir.constrain_device_profile(u50dd, hwir.chestnut_hawking_optimized())
+    assert unpinned.host_device_bytes_per_modelled_cycle <= current.host_device_bytes_per_modelled_cycle
+
+
+def test_chestnut_provides_no_airflow_for_a_passive_card():
+    assert hwir.u50_family_profile("u50dd").cooling == "passive"
+    for make in hwir.CHESTNUT_MODES.values():
+        assert make().airflow_class == "none"
+
+
+def test_residency_ratio_separates_viable_from_doomed():
+    assert hwir.residency_ratio(2 * 1024 ** 3, 4 * 1024 ** 2) > 100.0
+    assert hwir.residency_ratio(int(1.5 * 1024 ** 3), 1024 ** 3) < 2.0
+    with pytest.raises(ValueError):
+        hwir.residency_ratio(1024, 0)
+
+
+def test_chestnut_figures_are_third_party_reported_not_measured():
+    for make in hwir.CHESTNUT_MODES.values():
+        c = make()
+        hwir.assert_no_hardware_measured(c.to_dict())
+        for prov in dict(c.field_provenance).values():
+            assert dict(prov)["tier"] == hwir.CHESTNUT_THIRD_PARTY

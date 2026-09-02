@@ -2424,6 +2424,12 @@ class CarrierEnvelope:
     note: str
     example: bool = False
     field_provenance: Mapping[str, Any] = field(default_factory=dict)
+    # A bridge/completer can cap payload BELOW what its lane width implies.
+    # Chestnut measures ~the same at Gen3 x4 as at Gen3 x2, so the ceiling is a
+    # property of the ASM2464PD completer, not of the lane count -- it cannot be
+    # derived from pcie_generation/pcie_lanes and must be stated.
+    observed_payload_beat: int | None = None
+    observed_payload_bytes_per_s: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         def _opt_int(value: int | None) -> Any:
@@ -2449,6 +2455,8 @@ class CarrierEnvelope:
                 "pcie_lanes": _opt_int(self.pcie_lanes),
                 "real_carrier": UNPINNED,
                 "real_carrier_note": REAL_CARRIER_NOTE,
+                "observed_payload_beat": _opt_int(self.observed_payload_beat),
+                "observed_payload_bytes_per_s": _opt_int(self.observed_payload_bytes_per_s),
                 "sustained_power_w": _opt_int(self.sustained_power_w),
             },
         )
@@ -2496,6 +2504,145 @@ def _downgrade_provenance(
     }
 
 
+# ---------------------------------------------------------------------------
+# comma "Tiny Chestnut" — the REAL inbound carrier, pinned 2026-09-02.
+#
+# EVIDENCE PROVENANCE, and this distinction is load-bearing: these figures are
+# THIRD_PARTY_REPORTED (tinygrad's open ASM2464PD firmware source/README and
+# comma product pages). They are NOT AMD vendor literature and they are NOT a
+# Hawking measurement. Hardware Doctor overwrites them on U50_PRESENT; until
+# then nothing here may be emitted as HARDWARE_MEASURED.
+#
+# The decisive number: U50 HBM ~316 GB/s against a ~1.68 GB/s bridge is ~188x.
+# The FPGA drains local HBM ~188x faster than the bridge can refill it from the
+# Mac, which is why roadmap J.7 residency is not a preference but the only
+# viable thesis behind this carrier.
+# ---------------------------------------------------------------------------
+
+CHESTNUT_THIRD_PARTY = "THIRD_PARTY_REPORTED"
+CHESTNUT_BRIDGE = "ASMedia ASM2464PD"
+CHESTNUT_SOURCE = (
+    "tinygrad/asm2464pd-firmware source + README, and comma product pages. "
+    "Third-party reported; not vendor literature, not a Hawking measurement."
+)
+
+
+def _chestnut_provenance(pinned: bool, note: str) -> dict[str, Any]:
+    return {
+        "pinned": bool(pinned),
+        "tier": CHESTNUT_THIRD_PARTY,
+        "source": CHESTNUT_SOURCE,
+        "note": note,
+    }
+
+
+def chestnut_theoretical() -> CarrierEnvelope:
+    """USB4 headline class. NOT achievable payload -- the ceiling before overhead."""
+    return CarrierEnvelope(
+        carrier_id="chestnut-theoretical",
+        origin="CHESTNUT_THEORETICAL_THIRD_PARTY_REPORTED",
+        pcie_generation=4,
+        pcie_lanes=4,
+        sustained_power_w=75,
+        airflow_class="none",
+        mechanical_limit=None,
+        note=(
+            "USB4 40 Gb/s host class, ~5.0 GB/s RAW before protocol overhead. "
+            "Usable payload TBD. Do not plan against this number."
+        ),
+        example=False,
+        field_provenance={
+            "pcie": _chestnut_provenance(True, "ASM2464PD is Gen4-class, up to x4 in principle"),
+            "payload": _chestnut_provenance(False, "usable payload UNPINNED at this tier"),
+        },
+    )
+
+
+def chestnut_current_firmware() -> CarrierEnvelope:
+    """What the carrier actually delivers today. This is the planning default."""
+    return CarrierEnvelope(
+        carrier_id="chestnut-current-fw",
+        origin="CHESTNUT_CURRENT_FW_THIRD_PARTY_REPORTED",
+        pcie_generation=3,
+        pcie_lanes=2,
+        sustained_power_w=75,
+        airflow_class="none",
+        mechanical_limit=None,
+        note=(
+            "tinygrad firmware deliberately trains PCIe Gen3 x2. Observed payload "
+            "~1.66-1.68 GB/s, and ~the same at x4 because the ASM2464PD completer "
+            "caps there -- so the ceiling is a COMPLETER property, not a lane count. "
+            "12V/3.3V rails and PERST# are firmware-controlled; INA231 telemetry. "
+            "Carrier supplies power and mechanical support but NO airflow."
+        ),
+        example=False,
+        observed_payload_beat=2,
+        observed_payload_bytes_per_s=1_680_000_000,
+        field_provenance={
+            "pcie": _chestnut_provenance(True, "firmware trains Gen3 x2"),
+            "observed_payload": _chestnut_provenance(
+                True, "~1.68 GB/s completer ceiling; same at x4 as at x2"
+            ),
+            "airflow": _chestnut_provenance(True, "carrier provides none; external airflow required"),
+        },
+    )
+
+
+def chestnut_hawking_optimized() -> CarrierEnvelope:
+    """Reserved for Hawking's OWN measurements. Deliberately UNPINNED."""
+    return CarrierEnvelope(
+        carrier_id="chestnut-hawking-optimized",
+        origin="CHESTNUT_HAWKING_OPTIMIZED_UNPINNED",
+        pcie_generation=None,
+        pcie_lanes=None,
+        sustained_power_w=75,
+        airflow_class="none",
+        mechanical_limit=None,
+        note=(
+            "Downstream width, payload bandwidth, latency and queue depth are "
+            "BENCHMARK INPUTS to be written by Hardware Doctor on U50_PRESENT. "
+            "Gen3 x2 is a firmware choice, not a physical limit: the gap between "
+            "~1.68 GB/s observed and ~5.0 GB/s raw is open research. "
+            "UNTIL MEASURED this mode inherits the CURRENT-FIRMWARE ceiling. An "
+            "unpinned carrier must not license more optimism than the pinned one: "
+            "planning as if an unmeasured bridge were a full server slot is exactly "
+            "the fail-open default this envelope exists to prevent."
+        ),
+        example=False,
+        observed_payload_beat=2,
+        observed_payload_bytes_per_s=1_680_000_000,
+        field_provenance={
+            "everything": _chestnut_provenance(False, "awaiting Hawking measurement"),
+            "ceiling_until_measured": _chestnut_provenance(
+                True,
+                "inherits chestnut-current-fw ~1.68 GB/s; raised only by a real measurement",
+            ),
+        },
+    )
+
+
+CHESTNUT_MODES = {
+    "theoretical": chestnut_theoretical,
+    "current-fw": chestnut_current_firmware,
+    "hawking-optimized": chestnut_hawking_optimized,
+}
+
+
+def residency_ratio(local_bytes_consumed: int, carrier_bytes_transferred: int) -> float:
+    """R = FPGA-local bytes consumed / carrier bytes transferred.
+
+    The first-class admissibility metric behind a ~188x bandwidth cliff.
+    R ~ 500 (4 MB sent to enable 2 GB of local consumption) is attractive.
+    R ~ 1.5 (1 GB sent for 1.5 GB of local reads) means the architecture is
+    doomed behind this carrier -- the accelerator has become expensive storage,
+    which is exactly the failure roadmap J.7 names.
+    """
+    moved = int(carrier_bytes_transferred)
+    if moved <= 0:
+        raise ValueError("carrier_bytes_transferred must be > 0 to form a ratio")
+    return float(local_bytes_consumed) / float(moved)
+
+
 def constrain_device_profile(
     device: DeviceProfile,
     carrier: CarrierEnvelope,
@@ -2537,6 +2684,11 @@ def constrain_device_profile(
         derived = pcie_payload_beat(eff_gen, eff_lanes)
         # Never upgrade the brochure beat.
         new_beat = derived if derived <= new_beat else new_beat
+    # An explicitly observed completer ceiling OUTRANKS the lane derivation,
+    # because a bridge can cap below what its width implies. Cap only.
+    if carrier.observed_payload_beat is not None:
+        obs = int(carrier.observed_payload_beat)
+        new_beat = obs if obs <= new_beat else new_beat
 
     lut, dsp, bram, uram = int(device.LUT), int(device.DSP), int(device.BRAM), int(device.URAM)
     power_derated = False

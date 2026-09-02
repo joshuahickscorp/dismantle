@@ -1,0 +1,354 @@
+{
+ "bench": {
+  "gpu_authority": false,
+  "machine": "Apple host CPU; receipt/header metadata only",
+  "measurement_state": "STATIC_ONLY",
+  "recorded_at": "2026-09-02T02:06:49Z",
+  "recorded_by": "tools/theia/engine.py",
+  "rule": "no hardware measurement claim without hardware",
+  "state": "UNKNOWN"
+ },
+ "claim_boundary": "Bounty-engine sidecar. H.1 scores schedule work and do not declare a result true. No hardware measurement. No network egress, credential handling, scanning, payload generation, or ACTIVE_TEST. Model-ladder stages are BLOCKED_EXTERNAL.",
+ "definition": "Theia is Hawking's locally runnable generalist model trained to chase verified intellectual bounties: monetary or non-monetary problems where success can be grounded in artifacts, tests, proofs, measurements, reproductions or authorized program rules.",
+ "evidence_class": "STATIC_ONLY",
+ "halves": {
+  "bounty_engine": {
+   "path": "tools/theia",
+   "status": "LIVE"
+  },
+  "model_ladder": {
+   "stages": [
+    "THEIA_MICRO",
+    "THEIA_LAB",
+    "THEIA_WORKER",
+    "THEIA_RESEARCH"
+   ],
+   "status": "BLOCKED_EXTERNAL"
+  }
+ },
+ "model_ladder": [
+  {
+   "blocker": "Hawking Train T0 substrate is not a live campaign in this checkout: no teacher/data/trace/curriculum/checkpoint authority is running, and this engine must not train or stub a model",
+   "name": "THEIA_MICRO",
+   "purpose": "prove data/loss/tool/retention plumbing",
+   "size_hint": "~1B\u20133B",
+   "status": "BLOCKED_EXTERNAL",
+   "wake_condition": {
+    "all_of": [
+     "T0_TEACHER_REGISTRY_LIVE",
+     "T0_DATA_LICENSE_REGISTRY_LIVE",
+     "T0_TRACE_SCHEMA_SEALED",
+     "T0_CURRICULUM_DAG_SEALED",
+     "T0_CHECKPOINT_AUTHORITY_LIVE",
+     "T0_ADAPTERS_LIVE",
+     "T0_RETENTION_EVALUATOR_LIVE",
+     "T0_TRAINING_RECEIPT_AUTHORITY_LIVE",
+     "T0_ROLLBACK_EXISTS",
+     "D0_SOURCE_AND_TEACHER_QUALIFIED"
+    ],
+    "id": "WAKE.THEIA_MICRO",
+    "kind": "TRAINING_CAMPAIGN",
+    "not_sufficient": [
+     "tools/theia directory exists",
+     "import tools.theia succeeds",
+     "empty weight file",
+     "SCAFFOLDED status",
+     "ABSENT flipped to a label"
+    ],
+    "produces": "THEIA_MICRO (~1B-3B) checkpoint with measured training loss, tool plumbing, retention and compression-aware recovery",
+    "roadmap": "\u00a719.6 THEIA_MICRO; APPENDIX G.6 T0\u2192T1",
+    "status_if_unmet": "BLOCKED_EXTERNAL"
+   },
+   "wake_missing": [
+    "T0_TEACHER_REGISTRY_LIVE",
+    "T0_DATA_LICENSE_REGISTRY_LIVE",
+    "T0_TRACE_SCHEMA_SEALED",
+    "T0_CURRICULUM_DAG_SEALED",
+    "T0_CHECKPOINT_AUTHORITY_LIVE",
+    "T0_ADAPTERS_LIVE",
+    "T0_RETENTION_EVALUATOR_LIVE",
+    "T0_TRAINING_RECEIPT_AUTHORITY_LIVE",
+    "T0_ROLLBACK_EXISTS",
+    "D0_SOURCE_AND_TEACHER_QUALIFIED"
+   ],
+   "wake_satisfied": false
+  },
+  {
+   "blocker": "THEIA_MICRO has not been promoted; D1/D2 distillation receipts and a generalized-method tournament do not exist",
+   "name": "THEIA_LAB",
+   "purpose": "distillation/curriculum tournament",
+   "size_hint": "~7B\u201314B",
+   "status": "BLOCKED_EXTERNAL",
+   "wake_condition": {
+    "all_of": [
+     "THEIA_MICRO_PROMOTED",
+     "D1_SUPERVISED_FUNCTIONAL_DISTILLATION_RECEIPTED",
+     "D2_ON_POLICY_DISTILLATION_RECEIPTED",
+     "GENERALIZED_METHOD_TOURNAMENT_COMPLETE",
+     "COST_SAMPLE_EFFICIENCY_COMPARISON_RECEIPTED"
+    ],
+    "id": "WAKE.THEIA_LAB",
+    "kind": "TRAINING_CAMPAIGN",
+    "not_sufficient": [
+     "THEIA_MICRO directory stub",
+     "parameter count in range",
+     "SCAFFOLDED status"
+    ],
+    "produces": "THEIA_LAB (~7B-14B) with distillation/curriculum tournament evidence",
+    "roadmap": "\u00a719.6 THEIA_LAB; APPENDIX G.6 T2",
+    "status_if_unmet": "BLOCKED_EXTERNAL"
+   },
+   "wake_missing": [
+    "THEIA_MICRO_PROMOTED",
+    "D1_SUPERVISED_FUNCTIONAL_DISTILLATION_RECEIPTED",
+    "D2_ON_POLICY_DISTILLATION_RECEIPTED",
+    "GENERALIZED_METHOD_TOURNAMENT_COMPLETE",
+    "COST_SAMPLE_EFFICIENCY_COMPARISON_RECEIPTED"
+   ],
+   "wake_satisfied": false
+  },
+  {
+   "blocker": "THEIA_LAB has not been promoted; multi-lab bounty work with HCLI integration has not been receipted",
+   "name": "THEIA_WORKER",
+   "purpose": "serious local bounty/research agent",
+   "size_hint": "~20B\u201340B",
+   "status": "BLOCKED_EXTERNAL",
+   "wake_condition": {
+    "all_of": [
+     "THEIA_LAB_PROMOTED",
+     "MULTI_LAB_BOUNTY_WORK_RECEIPTED",
+     "HCLI_INTEGRATION_RECEIPTED",
+     "T3_SERIOUS_LOCAL_BOUNTY_AGENT_QUALIFIED"
+    ],
+    "id": "WAKE.THEIA_WORKER",
+    "kind": "TRAINING_CAMPAIGN",
+    "not_sufficient": [
+     "HCLI import succeeds",
+     "lab enum exists",
+     "SCAFFOLDED status"
+    ],
+    "produces": "THEIA_WORKER (~20B-40B) serious local multi-lab/bounty work with HCLI integration",
+    "roadmap": "\u00a719.6 THEIA_WORKER; APPENDIX G.6 T3",
+    "status_if_unmet": "BLOCKED_EXTERNAL"
+   },
+   "wake_missing": [
+    "THEIA_LAB_PROMOTED",
+    "MULTI_LAB_BOUNTY_WORK_RECEIPTED",
+    "HCLI_INTEGRATION_RECEIPTED",
+    "T3_SERIOUS_LOCAL_BOUNTY_AGENT_QUALIFIED"
+   ],
+   "wake_satisfied": false
+  },
+  {
+   "blocker": "THEIA_WORKER has not been promoted; size/architecture has not been chosen from evidence and no Gravity-ready baseline is frozen",
+   "name": "THEIA_RESEARCH",
+   "purpose": "flagship candidate, preferably sparse/low-active-compute if large",
+   "size_hint": "~30B\u2013100B+",
+   "status": "BLOCKED_EXTERNAL",
+   "wake_condition": {
+    "all_of": [
+     "THEIA_WORKER_PROMOTED",
+     "SIZE_ARCHITECTURE_CHOSEN_FROM_EVIDENCE",
+     "GRAVITY_READY_BASELINE_FROZEN",
+     "RETENTION_AND_BOUNTY_EVALUATION_PASSED",
+     "INDEPENDENT_CHALLENGE_PASSED",
+     "ROLLBACK_EXISTS"
+    ],
+    "id": "WAKE.THEIA_RESEARCH",
+    "kind": "TRAINING_CAMPAIGN",
+    "not_sufficient": [
+     "largest checkpoint on disk",
+     "name contains RESEARCH",
+     "SCAFFOLDED status"
+    ],
+    "produces": "THEIA_RESEARCH (~30B-100B+) flagship candidate frozen as Gravity-ready baseline",
+    "roadmap": "\u00a719.6 THEIA_RESEARCH; APPENDIX G.6 T4; APPENDIX G.7 promotion gate",
+    "status_if_unmet": "BLOCKED_EXTERNAL"
+   },
+   "wake_missing": [
+    "THEIA_WORKER_PROMOTED",
+    "SIZE_ARCHITECTURE_CHOSEN_FROM_EVIDENCE",
+    "GRAVITY_READY_BASELINE_FROZEN",
+    "RETENTION_AND_BOUNTY_EVALUATION_PASSED",
+    "INDEPENDENT_CHALLENGE_PASSED",
+    "ROLLBACK_EXISTS"
+   ],
+   "wake_satisfied": false
+  }
+ ],
+ "recorded_by": "tools/theia/engine.py",
+ "reuse": {
+  "could_not_reuse": [
+   "tools/odyssey/pareto_archive.py dominates()/composite_wus_per_hour_per_GB \u2014 axes are complete_ebpw, TPOT, TTFT, capability_passed, hcli_wus_per_hour for resident-body selection, not H.1 bounty factors",
+   "tools/future/complete_ebpw.py cost() \u2014 bills representation parts in bytes/ms/bpw, not verified_reward/information_gain/risk",
+   "tools/future/scar_reevaluator.py FAMILY_IMPL_COST_RANK \u2014 ordinal ranks over codec families, not H.1 cost terms",
+   "tools/gravity_cost_vector.py / tools/cost_vector_t.py \u2014 B/M/F/L/R/T representation vectors, not bounty value",
+   "tools/future/autonomy_scars.SCARS Python tuple as the artifact \u2014 the contract requires a receipts/ artifact; the JSON is the artifact, the module is only the independent verifier"
+  ],
+  "reused": [
+   "tools.future._common.write_receipt / REPO / RECEIPTS \u2014 receipt seal and write path",
+   "tools.future.autonomy_scars.scars() \u2014 independent check that AUTONOMY_SCARS.json agrees with the module that produced it",
+   "complete_ebpw missing-input doctrine \u2014 H.1 refuses a missing/zero factor rather than defaulting it to 1"
+  ]
+ },
+ "schema": "hawking.theia.bounty_engine.v1",
+ "seal_sha256": "0c1e916dca4e6cd2ef0a623067f1b8ae7482a834da16b1b4a11dc240dca5b3f2",
+ "security": {
+  "ACTIVE_TEST": "modeled; transition refused; cannot be forced",
+  "active_test": false,
+  "credential_handling": false,
+  "network_egress": false,
+  "payload_generation": false,
+  "scanning": false,
+  "scope": "immutable once pinned; loaded only from an operator-supplied authority file; never derived from bounty text; fail closed"
+ },
+ "self_bounty_run": {
+  "blocked": null,
+  "bounty_id": "self:AUTONOMY_SCARS:hawking.future.autonomy_scars.v1",
+  "exit_code": 0,
+  "final_stage": "TRAJECTORY + METHOD + NEGATIVE SCIENCE",
+  "lab": "HAWKING SELF-BOUNTY",
+  "notes": {
+   "artifacts": [
+    "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json"
+   ],
+   "authorization": {
+    "reason": "self-bounty; not a security class",
+    "status": "HAWKING_INTERNAL"
+   },
+   "discovered": "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json",
+   "known_solution": false,
+   "plan": {
+    "actions": [
+     "verify_receipt",
+     "score_schedule",
+     "stage"
+    ],
+    "kind": "negative science",
+    "lab": "HAWKING SELF-BOUNTY",
+    "not_actions": [
+     "train",
+     "ACTIVE_TEST",
+     "network",
+     "scan"
+    ]
+   },
+   "schedule_declares_result_true": false,
+   "screen_schema": "hawking.future.autonomy_scars.v1",
+   "submission": "stage into receipts/future; do not publish externally",
+   "trajectory": {
+    "laws": [
+     "a scheduler derives its lane vocabulary from the authority; it never restates it",
+     "negative science is keyed by hypothesis semantics, never by implementation identity",
+     "DECLARED CAPABILITY != EXECUTED CAPABILITY. Require invocation, a resulting receipt, and the link between them.",
+     "STATUS LABELS ARE HYPOTHESES UNTIL THEIR CAUSAL CLAIM IS VERIFIED. A failure receipt records the exact underlying error and the probes that would separate the candidate causes.",
+     "STATUS LABELS ARE HYPOTHESES UNTIL THEIR CAUSAL CLAIM IS VERIFIED."
+    ],
+    "method": "local receipt intake; no training; no active test",
+    "negative_science": true
+   },
+   "verifier": "tools.theia.intake.verify_receipt",
+   "workunits": [
+    {
+     "bound": 1,
+     "id": "self:AUTONOMY_SCARS:hawking.future.autonomy_scars.v1:ingest",
+     "lane": "CPU_ANALYSIS"
+    }
+   ]
+  },
+  "schedule_score": {
+   "declares_result_true": false,
+   "factors": {
+    "compute_cost": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "declared unit baseline so the H.1 denominator is defined; STATIC_ONLY; not a hardware measurement and not complete_ebpw (wrong axes)"
+    },
+    "human_cost": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "declared unit baseline so the H.1 denominator is defined; STATIC_ONLY; not a hardware measurement and not complete_ebpw (wrong axes)"
+    },
+    "information_gain": {
+     "denominator": 1,
+     "numerator": 4,
+     "source": "receipt n_scars (count of recorded defects)"
+    },
+    "opportunity_cost": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "declared unit baseline so the H.1 denominator is defined; STATIC_ONLY; not a hardware measurement and not complete_ebpw (wrong axes)"
+    },
+    "probability_of_success": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "artifact already on disk at /Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json; intake is local parse, not a search"
+    },
+    "risk": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "local readonly receipt; no network, no ACTIVE_TEST, no credentials"
+    },
+    "strategic_relevance": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "HAWKING SELF-BOUNTY laboratory, \u00a719.12: negative science"
+    },
+    "transfer_value": {
+     "denominator": 1,
+     "numerator": 4,
+     "source": "count of scars that state a law"
+    },
+    "verified_reward": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "H.1: verified_reward may include negative science; schema hawking.future.autonomy_scars.v1"
+    },
+    "wall_time": {
+     "denominator": 1,
+     "numerator": 1,
+     "source": "declared unit baseline so the H.1 denominator is defined; STATIC_ONLY; not a hardware measurement and not complete_ebpw (wrong axes)"
+    }
+   },
+   "formula": "verified_reward * probability_of_success * information_gain * transfer_value * strategic_relevance / (wall_time * compute_cost * human_cost * risk * opportunity_cost)",
+   "type": "ScheduleScore",
+   "value_denominator": 1,
+   "value_numerator": 16
+  },
+  "security_halt": null,
+  "self_bounty_kind": "negative science",
+  "source": "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json",
+  "stages_visited": [
+   "DISCOVER",
+   "AUTHORITY/SCOPE RESOLUTION",
+   "DUPLICATE / KNOWN-SOLUTION CHECK",
+   "VERIFIER DEFINITION",
+   "COST / VALUE ESTIMATE",
+   "CHEAP REPRODUCTION / SCREEN",
+   "PLAN",
+   "BOUNDED WORKUNITS",
+   "ARTIFACTS / TESTS / PROOFS / MEASUREMENTS",
+   "INDEPENDENT VERIFICATION",
+   "SUBMISSION / PROMOTION",
+   "TRAJECTORY + METHOD + NEGATIVE SCIENCE"
+  ],
+  "verified_result": {
+   "artifact": "/Users/scammermike/.claude-grok/worktrees/b1-theia-bounty-engine-20260901-215107/receipts/future/AUTONOMY_SCARS.json",
+   "detail": {
+    "independent_module": "tools.future.autonomy_scars.scars",
+    "n_scars": 4,
+    "scar_ids": [
+     "STATIC_LANE_TAXONOMY_DIVERGED_FROM_FRONTIER",
+     "SCAR_LOOKUP_ON_IMPLEMENTATION_NAMES",
+     "DECLARED_CAPABILITY_READ_AS_EXECUTED_CAPABILITY",
+     "STATUS_LABEL_LAUNDERED_AS_CAUSAL_CLAIM"
+    ],
+    "schema": "hawking.future.autonomy_scars.v1",
+    "seal_sha256": "b633eb0ca55f6924a48984047390dab565993c4329efc491cc7ae3bca6c81258"
+   },
+   "kind": "receipt_seal",
+   "type": "VerifiedResult"
+  }
+ },
+ "version": 1
+}

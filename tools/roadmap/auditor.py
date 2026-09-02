@@ -207,7 +207,28 @@ def _iter_citation_refs(entry: dict[str, Any]) -> Iterable[dict[str, Any]]:
                     yield ref
 
 
+# Bounds-checking every citation used to spawn one `git cat-file` PER CITATION:
+# 2447 subprocesses, 31s of a 61s audit, for a few dozen distinct files. The
+# blob for a (path, commit) pair is immutable, so the count is memoizable and
+# the cache is trivially correct.
+_LINE_COUNT_CACHE: dict[tuple[str, str], int | None] = {}
+
+
 def _line_count_at_commit(rel: str, commit: str, view: SourceView) -> int | None:
+    if not rel or str(rel).startswith("/"):
+        return None
+    # Overlay content is mutable within a run, so it is never cached.
+    if rel not in view.overlay:
+        key = (str(rel), str(commit))
+        if key in _LINE_COUNT_CACHE:
+            return _LINE_COUNT_CACHE[key]
+        value = _line_count_at_commit_uncached(rel, commit, view)
+        _LINE_COUNT_CACHE[key] = value
+        return value
+    return _line_count_at_commit_uncached(rel, commit, view)
+
+
+def _line_count_at_commit_uncached(rel: str, commit: str, view: SourceView) -> int | None:
     if not rel or str(rel).startswith("/"):
         return None
     if rel in view.overlay:

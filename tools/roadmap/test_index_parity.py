@@ -112,13 +112,47 @@ def test_catalog_still_has_71_gates():
     assert len(GATES) == 71
 
 
+def test_sibling_resolution_uses_known_files_not_disk():
+    """Sibling-import idiom must not stat the worktree (sparse hcli/ is absent)."""
+    imp = {
+        "form": "from",
+        "module": "_common",
+        "level": 0,
+        "names": [{"name": "REPO", "asname": None}],
+    }
+    targets, binds = index_client.import_targets_and_binds(
+        "syn/caller.py",
+        imp,
+        known_files={"syn/caller.py", "syn/_common.py"},
+    )
+    assert "syn._common" in targets
+    assert "syn._common.REPO" in targets
+    assert ("REPO", "syn._common.REPO") in binds
+    # A sibling that is not in known_files is not invented from disk.
+    targets_none, _ = index_client.import_targets_and_binds(
+        "syn/caller.py",
+        imp,
+        known_files={"syn/caller.py"},
+    )
+    assert "syn._common" not in targets_none
+
+
 def test_sparse_hcli_absent_from_disk():
-    """This worktree is sparse; hcli/ must not be required on disk."""
-    assert not (REPO / "hcli").is_dir()
+    """HEAD blob for hcli/scheduler.py counts as defined without a worktree file.
+
+    The first assertion used to require *this process's worktree* to be sparse
+    (`assert not (REPO / "hcli").is_dir()`). That is an environment check, not
+    a SourceView check: on a full checkout (the primary tree, CI) hcli/ is on
+    disk and the test failed even when HEAD-backed reads were correct. The
+    contract is the blob, not the cone.
+    """
+    rel = "hcli/scheduler.py"
     view = SourceView()
-    assert view.exists("hcli/scheduler.py"), "HEAD blob for hcli/scheduler.py must still count as defined"
-    text = view.read("hcli/scheduler.py")
+    assert view.exists(rel), "HEAD blob for hcli/scheduler.py must still count as defined"
+    text = view.read(rel)
     assert "class Scheduler" in text or "Scheduler" in text
+    if not (REPO / rel).is_file():
+        assert not (REPO / "hcli").is_dir()
 
 
 @pytest.mark.skipif(index_client.find_index_bin() is None, reason="hawking-index-query not built")

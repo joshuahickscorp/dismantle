@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T03:19:39Z",
+  "recorded_at": "2026-09-02T04:11:58Z",
   "recorded_by": "tools/future/complete_ebpw.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -158,7 +158,38 @@
   "weight_codes_ms_per_gb": 0.547282
  },
  "schema": "hawking.future.complete_ebpw.v1",
- "seal_sha256": "6c1245d717006a9ff4706e70204fadc563b78647e196920a90d5027af2ae8005",
+ "science_dataset": {
+  "call_sites": [
+   "tools.future.science_corpus.measurement_from_ebpw_bill",
+   "tools.future.experiment_policy.option_from_ebpw_bill",
+   "tools.future.physical_compiler_predict.predict"
+  ],
+  "cost_authority": "deterministic complete_ebpw arithmetic; the unlearned predictor is not the billed figure",
+  "learned_compiler_prediction": {
+   "authority": "deterministic complete_ebpw arithmetic remains the cost authority; this predictor is unlearned and is not consulted for a billed figure",
+   "confidence": null,
+   "evidence_tier": "STATIC",
+   "features_seen": true,
+   "model_ignored": false,
+   "model_supplied": false,
+   "schema_is_not_a_learned_compiler": true,
+   "statement": "A schema is not a learned compiler. No model is trained in this process. predict() refuses to fabricate a cost, latency or TPS.",
+   "status": "UNLEARNED",
+   "trained": false,
+   "uncertainty": {
+    "kind": "UNDEFINED",
+    "reason": "no trained model; uncertainty is not estimable"
+   },
+   "value": null
+  },
+  "learned_compiler_value_used": false,
+  "measurement_kind": "measurement",
+  "measurement_record_id": "measurement:complete_ebpw:incumbent_sealed_3_14",
+  "policy_authority": "The current deterministic/resident policy remains the authority. This module is a typed representation so a future learned policy can plug in. It does not rank, sample or select experiments.",
+  "policy_learned": false,
+  "policy_option_id": "ebpw:incumbent_sealed_3_14"
+ },
+ "seal_sha256": "d3f0772194a590b185e2d873e50d1a70f4536d519008df4fc3fb742f6ec9c6cc",
  "selftest": {
   "aux_only_cut_bytes_saved": 58176,
   "aux_only_cut_ms_saved": 0.0,

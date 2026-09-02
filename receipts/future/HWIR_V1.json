@@ -1,7 +1,7 @@
 {
  "atlas": {
   "git_head_has_file": false,
-  "on_disk": false,
+  "on_disk": true,
   "path": "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
   "recovered_fingerprint": "e763623e8a4ddcfc8350d6b5f680284a23db68f8bfbca53428e258d24adfc2ab",
   "recovered_from": "parent checkout /Users/scammermike/Downloads/hawking/receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
@@ -30,12 +30,12 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T05:25:36Z",
+  "recorded_at": "2026-09-02T05:34:51Z",
   "recorded_by": "tools/future/hwir.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
- "branch": "grok/h2-hardware-odyssey-sealed-predictions-20260902-011227",
+ "branch": "odyssey-i",
  "claim_boundary": "PREHARDWARE sidecar HWIR artifact. No FPGA board, bitstream, timing, or HARDWARE_MEASURED number. Resource figures are ESTIMATES. Cycle figures are APPROXIMATIONS, not measurements.",
  "evidence_tiers_illegal": [
   "HARDWARE_MEASURED"
@@ -68,23 +68,24 @@
   "COST_MODEL HBM traffic + host<->device transfer; bandwidth_gbps is not emitted",
   "STATIC resource estimator refuses an engine that exceeds a declared device budget",
   "synthetic U50-class device profile (declared, not a board census) and row-split partitioner",
+  "U50-family variants (U50/U50C/U50DD/U50LV) selectable with per-field provenance or explicit UNPINNED",
+  "CarrierEnvelope DOWNGRADES a DeviceProfile (PCIe beat, power-derated resources); constrained carrier refuses a brochure-fit kernel",
   "no code path emits HARDWARE_MEASURED",
   "sealed predictions: content-hashed, refused without a falsification condition, keyed to U50_PRESENT",
   "synthetic-arrival rehearsal grades divergent predictions FALSIFIED and names the implicated coefficient; not an arrival",
   "tampered sealed predictions are detected and rejected"
  ],
- "head": "d13fc1d6e84a2cdae822b9e8920b765eabac1091",
+ "head": "fde672fecfb54dd26ff22f7c804e25f65bd19b02",
  "hwir_hypotheses": [
   {
    "behavior_id": "move_or_recompute",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "costed_dependency_queries",
@@ -94,22 +95,21 @@
    "primitive": "MoveOrRecompute",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "persistent_physical_region",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "persistent-pipeline",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy.process": "long_lived_executor",
@@ -119,22 +119,21 @@
    "primitive": "PersistentPhysicalRegion",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "fused_decode_compute",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "spatial_region",
-   "ir_node_kind": "representation-decoder",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "projection_plus_decode",
@@ -144,22 +143,21 @@
    "primitive": "FusedDecodeCompute",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "local_state_machine",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "spatial_region",
-   "ir_node_kind": "state",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy": "fixed_state_transitions",
@@ -169,22 +167,21 @@
    "primitive": "LocalStateMachine",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "graph_replay",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "persistent-pipeline",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy.dynamic_slots": [
@@ -198,22 +195,21 @@
    "primitive": "GraphReplay",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "layout_algebra",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "tile_and_lane_mapping",
@@ -223,22 +219,21 @@
    "primitive": "LayoutTransform",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "static_dynamic_skeleton",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "precomputed",
@@ -248,22 +243,21 @@
    "primitive": "ConditionalPhysicalProgram",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "stationary_representation",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "memory",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "memory": "tier_is_executable_identity",
@@ -273,22 +267,21 @@
    "primitive": "StationaryRepresentation",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "semantic_transport",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "dma-transport",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "typed_transport_edges",
@@ -298,22 +291,21 @@
    "primitive": "SemanticTransportEdge",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "collective_region",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "reduction",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "semantic_transport",
@@ -323,22 +315,21 @@
    "primitive": "CollectiveRegion",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "async_double_buffer",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "memory",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "execution_policy": "overlap_when_measured",
@@ -348,22 +339,21 @@
    "primitive": "DoubleBufferedTile",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "spatial_local_pipeline",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "spatial_region",
-   "ir_node_kind": "persistent-pipeline",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "spatial_regions",
@@ -373,22 +363,21 @@
    "primitive": "SpatialPipeline",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "direct_routed_accumulate",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "route_then_native_expert",
@@ -398,22 +387,21 @@
    "primitive": "DirectRoutedAccumulate",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "sparse_conditional_execution",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "computation": "conditional_regions",
@@ -423,22 +411,21 @@
    "primitive": "SparseSkip",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   },
   {
    "behavior_id": "npu_regular_island",
    "buffers": [
-    "partial_reduction",
-    "persistent_state",
     "resident_representation",
-    "token_activation"
+    "token_activation",
+    "partial_reduction",
+    "persistent_state"
    ],
    "hwir_node_kind": "dataflow_region",
-   "ir_node_kind": "compute",
    "label": "[D] hypothesis; no board or hardware timing claim",
    "placement_constraint": {
     "dependencies": "explicit_transfer_edges",
@@ -448,14 +435,14 @@
    "primitive": "ConditionalPhysicalProgram",
    "semantic_edges": [
     "activation",
+    "state",
     "compact_representation",
-    "partial_reduction",
-    "state"
+    "partial_reduction"
    ],
    "status": "CANDIDATE"
   }
  ],
- "hypotheses_source": "embedded_recovery_atlas_absent_from_worktree",
+ "hypotheses_source": "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json",
  "in_transit_transforms": [
   "identity",
   "quantize",
@@ -787,7 +774,10 @@
   "PhysicalGraph compile_physical_graph is too unresolved to lower into a resource-accurate HWIR without invention; organ maps are the reality connection",
   "fpga_fidelity.StructuralGraph is a sibling stand-in and was not imported; HWIR owns the qGEMV preboard stack",
   "hcli.agentos.fpga_preboard.HWIR remains schema-only (Codex/hcli surface; cannot edit)",
-  "no U50 board; every preboard number is PREHARDWARE"
+  "no U50 board; every preboard number is PREHARDWARE",
+  "real comma-device carrier is UNPINNED; example envelopes are labeled examples, not that carrier",
+  "U50C has no sourced public SKU table; every required field is UNPINNED rather than interpolated",
+  "U50LV PCIe lane width is UNPINNED (DS965 Table 1 Gen3 x16 vs VLOW Gen3 x4 note / UG1120 Gen3 x4 XDMA)"
  ],
  "node_kinds": [
   "compute",
@@ -803,12 +793,12 @@
   "flash": {
    "path": "receipts/headless/FLASH_NEXT_FPGA_ORGAN_MAP.json",
    "present": true,
-   "sha256": "a31e3a548f5ce955131bc9e6c04a812ad212ea2dd31e669e93328b33f84c98d0"
+   "sha256": "fb7ca577696f3dbbd783e6a3d7b5986a30e7f1cbec7a30ed522fc45b3cf88011"
   },
   "qwen27": {
    "path": "receipts/headless/QWEN27_FPGA_ORGAN_MAP.json",
    "present": true,
-   "sha256": "790c7356c757cf0ad1186acb16dff1f0fb053b0d146d06582f0b1452bebcf655"
+   "sha256": "66a606e5ce0319ef828bfed3ec4a49f2904289692bd447bbffcb1f1cbf841aec"
   }
  },
  "physical_graph_semantics_consumed": [
@@ -825,7 +815,8 @@
   "qualification"
  ],
  "preboard": {
-  "claim_boundary": "PREHARDWARE qGEMV pre-board stack. No FPGA board, no bitstream, no synthesis, no U50, no HARDWARE_MEASURED number. The resource figure is an ESTIMATE. The cycle figure is an APPROXIMATION, not a measurement.",
+  "carrier_envelope": null,
+  "claim_boundary": "PREHARDWARE qGEMV pre-board stack. No FPGA board, no bitstream, no synthesis, no U50, no HARDWARE_MEASURED number. The resource figure is an ESTIMATE. The cycle figure is an APPROXIMATION, not a measurement. The real comma-device carrier is UNPINNED.",
   "cycle_approx": {
    "clock_hz": "UNKNOWN",
    "compute_modelled_cycles": 9,
@@ -852,10 +843,17 @@
    "DSP": 9024,
    "LUT": 872000,
    "URAM": 960,
+   "airflow_requirement": "UNPINNED",
+   "brochure_device_id": null,
+   "constrained_by_carrier": null,
+   "cooling": "UNPINNED",
    "declared_not_measured": true,
    "device_id": "synthetic-u50-class",
    "evidence_tier": "STATIC",
    "fabric_bytes_per_modelled_cycle": 64,
+   "field_provenance": {},
+   "form_factor": "UNPINNED",
+   "fpga_part": "UNPINNED",
    "hardware_measured": false,
    "hbm_bytes_per_modelled_cycle": 1024,
    "hbm_capacity_bytes": 8589934592,
@@ -864,10 +862,19 @@
    "initiation_interval": 1,
    "kind": "SYNTHETIC_DEVICE_PROFILE",
    "mac_lanes_default": 8,
+   "mechanically_inadmissible": false,
    "origin": "SYNTHETIC_U50_CLASS_DECLARED_NOT_A_BOARD",
+   "pcie_generation": "UNPINNED",
+   "pcie_lanes": "UNPINNED",
    "pipeline_depth": 8,
+   "power_envelope_w": "UNPINNED",
    "prehardware": true,
    "qualification": "PREHARDWARE",
+   "real_carrier": "UNPINNED",
+   "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+   "sku": "UNPINNED",
+   "thermal_mismatch": false,
+   "variant_id": null,
    "vendor_literature": "AMD Alveo U50 / XCU50 / VU35P class envelope from public product literature. SYNTHETIC planning profile. Not a local board census."
   },
   "evidence_tier": "STATIC",
@@ -960,6 +967,8 @@
    "modelled_cycles_h2c": 33,
    "modelled_cycles_total": 66,
    "note": "COST_MODEL. USB4/Thunderbolt ~40 Gb/s CLASS prior from H-ROADMAP.md \u00a715.1, expressed as a declared bytes/cycle beat. Not a measurement of any cable, not HARDWARE_MEASURED. bandwidth_gbps is intentionally absent.",
+   "pcie_generation": "UNPINNED",
+   "pcie_lanes": "UNPINNED",
    "prehardware": true,
    "qualification": "PREHARDWARE",
    "queue_cycles_assumed": 32,
@@ -1054,6 +1063,8 @@
     "modelled_cycles_h2c": 33,
     "modelled_cycles_total": 66,
     "note": "COST_MODEL. USB4/Thunderbolt ~40 Gb/s CLASS prior from H-ROADMAP.md \u00a715.1, expressed as a declared bytes/cycle beat. Not a measurement of any cable, not HARDWARE_MEASURED. bandwidth_gbps is intentionally absent.",
+    "pcie_generation": "UNPINNED",
+    "pcie_lanes": "UNPINNED",
     "prehardware": true,
     "qualification": "PREHARDWARE",
     "queue_cycles_assumed": 32,
@@ -1066,6 +1077,8 @@
   },
   "prehardware": true,
   "qualification": "PREHARDWARE",
+  "real_carrier": "UNPINNED",
+  "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
   "resource_estimate": {
    "arithmetic": "DSP_MAC",
    "coefficient_table": "v1-assumed-not-synthesized",
@@ -1148,6 +1161,7 @@
  },
  "proofs": {
   "all_seven_kinds_exercised": true,
+  "carrier_downgrade_reduces_host_device_beat": true,
   "dangling_codes": [
    "DANGLING_EDGE"
   ],
@@ -1166,7 +1180,7 @@
    "reduction",
    "representation-decoder"
   ],
-  "lowered_qwen_fingerprint": null,
+  "lowered_qwen_fingerprint": "4d3e58f334a4a13406658beef6f9f5506a00927221ab9a872b6300c3ac42fce6",
   "lowered_state_fingerprint": "cd03dac5abe5f898b119e9e4f5f4d6943042d0ba931230cebf8f43b7d617d1ca",
   "lowered_state_kinds": [
    "compute",
@@ -1193,7 +1207,8 @@
    "STATIC"
   ],
   "qgemv_resource_fit": true,
-  "qwen_lowered_valid": null,
+  "qwen_lowered_valid": true,
+  "real_carrier_unpinned": true,
   "real_scoring_refused_without_u50": true,
   "resource_over_budget_rejected": true,
   "round_trip_bytes": 6357,
@@ -1211,6 +1226,14 @@
   "synthetic_rehearsal_not_an_arrival": true,
   "tampered_prediction_rejected": true,
   "type_mismatch_rejected": true,
+  "u50_brochure_fits_full_carrier": true,
+  "u50_brochure_refused_constrained_carrier": true,
+  "u50_family_ids": [
+   "u50",
+   "u50c",
+   "u50dd",
+   "u50lv"
+  ],
   "wall_clock_in_hashed_content": false
  },
  "purpose": "Hardware IR a future physical compiler uses to decide what an FPGA should become. Not a backend, not HDL, not a bitstream.",
@@ -1295,7 +1318,7 @@
   "URAM"
  ],
  "schema": "hawking.future.hwir.v1",
- "seal_sha256": "9e2e69e710d7846e54c46308862ca637e6a49803f1772711fd90cf36eec5baf0",
+ "seal_sha256": "2b5743348f8e60229db79b39afbdef9fd7240b18e58f3f6a72ba00852b70de91",
  "sealed_predictions": {
   "count": 12,
   "ids": [
@@ -1351,6 +1374,954 @@
   "not_an_arrival": true,
   "prediction_set_sha256": "e7e77cc29b33a0ff2f47db34867368ab51070cae1da87494777882994ec6e15e",
   "receipt": "HWIR_SYNTHETIC_ARRIVAL_REHEARSAL.json"
+ },
+ "u50_family": {
+  "example_carriers": {
+   "constrained_low_power": {
+    "airflow_class": "none",
+    "carrier_id": "example-constrained-low-power-slot",
+    "evidence_tier": "STATIC",
+    "example": true,
+    "field_provenance": {
+     "airflow_class": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": "none",
+      "vendor_literature_not_measurement": true
+     },
+     "mechanical_limit": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": "low_profile_ok",
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_generation": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": 3,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_lanes": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": 4,
+      "vendor_literature_not_measurement": true
+     },
+     "sustained_power_w": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": 25,
+      "vendor_literature_not_measurement": true
+     }
+    },
+    "hardware_measured": false,
+    "kind": "CARRIER_ENVELOPE",
+    "mechanical_limit": "low_profile_ok",
+    "note": "LABELED EXAMPLE. Constrained low-power / few-lane slot. NOT the inbound comma-device carrier. The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "origin": "EXAMPLE_ENVELOPE_NOT_THE_REAL_CARRIER",
+    "pcie_generation": 3,
+    "pcie_lanes": 4,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "real_carrier": "UNPINNED",
+    "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "sustained_power_w": 25
+   },
+   "full_airflow_server": {
+    "airflow_class": "forced_server",
+    "carrier_id": "example-full-airflow-server-slot",
+    "evidence_tier": "STATIC",
+    "example": true,
+    "field_provenance": {
+     "airflow_class": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": "forced_server",
+      "vendor_literature_not_measurement": true
+     },
+     "mechanical_limit": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": "full_height_full_length_ok",
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_generation": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": 4,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_lanes": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": 16,
+      "vendor_literature_not_measurement": true
+     },
+     "sustained_power_w": {
+      "citation": "declared example CarrierEnvelope in tools.future.hwir",
+      "document_class": "EXAMPLE_DECLARED_ENVELOPE",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "LABELED EXAMPLE envelope, declared so a real carrier can be pinned later. Not a host census, not the comma-device carrier, not HARDWARE_MEASURED.",
+      "pinned": true,
+      "value": 75,
+      "vendor_literature_not_measurement": true
+     }
+    },
+    "hardware_measured": false,
+    "kind": "CARRIER_ENVELOPE",
+    "mechanical_limit": "full_height_full_length_ok",
+    "note": "LABELED EXAMPLE. Full-airflow server slot matching a 75W PCIe card's own datasheet load. NOT the inbound comma-device carrier. The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "origin": "EXAMPLE_ENVELOPE_NOT_THE_REAL_CARRIER",
+    "pcie_generation": 4,
+    "pcie_lanes": 16,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "real_carrier": "UNPINNED",
+    "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "sustained_power_w": 75
+   },
+   "unpinned_real": {
+    "airflow_class": "UNPINNED",
+    "carrier_id": "comma-device-real-carrier",
+    "evidence_tier": "STATIC",
+    "example": false,
+    "field_provenance": {
+     "airflow_class": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "mechanical_limit": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_generation": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_lanes": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "sustained_power_w": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     }
+    },
+    "hardware_measured": false,
+    "kind": "CARRIER_ENVELOPE",
+    "mechanical_limit": "UNPINNED",
+    "note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "origin": "REAL_CARRIER_UNPINNED",
+    "pcie_generation": "UNPINNED",
+    "pcie_lanes": "UNPINNED",
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "real_carrier": "UNPINNED",
+    "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "sustained_power_w": "UNPINNED"
+   }
+  },
+  "generic_class_device_id": "synthetic-u50-class",
+  "generic_class_unchanged_envelope": {
+   "BRAM": 2016,
+   "DSP": 9024,
+   "LUT": 872000,
+   "URAM": 960,
+   "hbm_capacity_bytes": 8589934592,
+   "hbm_channels": 32,
+   "note": "The mixed class envelope is not rewritten. Family SKUs are separate selectable profiles."
+  },
+  "real_carrier": "UNPINNED",
+  "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+  "variants": {
+   "u50": {
+    "BRAM": 1344,
+    "DSP": 5952,
+    "LUT": 872000,
+    "URAM": 640,
+    "airflow_requirement": "forced_server",
+    "brochure_device_id": "alveo-u50",
+    "constrained_by_carrier": null,
+    "cooling": "passive",
+    "declared_not_measured": true,
+    "device_id": "alveo-u50",
+    "evidence_tier": "STATIC",
+    "fabric_bytes_per_modelled_cycle": 64,
+    "field_provenance": {
+     "BRAM": {
+      "citation": "DS965 Table 1, U50 Production (A-U50-P00G-PQ-G) 36 Kb block RAM 1344 (47.3 Mb)",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 1344,
+      "vendor_literature_not_measurement": true
+     },
+     "DSP": {
+      "citation": "DS965 Table 1, U50 Production (A-U50-P00G-PQ-G) DSP slices 5,952",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 5952,
+      "vendor_literature_not_measurement": true
+     },
+     "LUT": {
+      "citation": "DS965 Table 1, U50 Production (A-U50-P00G-PQ-G) Look-up tables (LUTs) 872K",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 872000,
+      "vendor_literature_not_measurement": true
+     },
+     "URAM": {
+      "citation": "DS965 Table 1, U50 Production (A-U50-P00G-PQ-G) 288 Kb UltraRAM 640 (180.0 Mb)",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 640,
+      "vendor_literature_not_measurement": true
+     },
+     "airflow_requirement": {
+      "citation": "DS965 Summary: passively-cooled card designed for server deployment",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Passive cards in this family expect server forced airflow. A carrier with airflow_class='none' is a thermal mismatch; the brochure 75W envelope is then not the planning envelope.",
+      "pinned": true,
+      "value": "forced_server",
+      "vendor_literature_not_measurement": true
+     },
+     "cooling": {
+      "citation": "DS965 Table 1, U50 Production (A-U50-P00G-PQ-G) Thermal cooling solution Passive",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "passive",
+      "vendor_literature_not_measurement": true
+     },
+     "form_factor": {
+      "citation": "DS965 Table 1, U50 Production (A-U50-P00G-PQ-G) Form factor Half height, half length; single slot low profile",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "half_height_half_length_single_slot",
+      "vendor_literature_not_measurement": true
+     },
+     "fpga_part": {
+      "citation": "UG1371 UltraScale+ Device: XCU50-FSVH2104-2-E for U50",
+      "document_class": "AMD_USER_GUIDE_UG1371",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "XCU50-FSVH2104-2-E",
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_capacity_bytes": {
+      "citation": "DS965 Table 1 HBM2 total capacity 8 GB",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "STATIC vendor-literature capacity. Planning uses 8 * 1024**3 bytes to match the existing synthetic_u50_class convention. Not a measured occupancy. DS965 peak/nominal GB/s figures are vendor literature and are NOT copied into a planning rate.",
+      "pinned": true,
+      "value": 8589934592,
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_channels": {
+      "citation": "UG1371 HBM Memory / Card Features: 32 AXI interfaces; 32 channels of 256 MB",
+      "document_class": "AMD_USER_GUIDE_UG1371",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "STATIC vendor-literature channel count. Not a local census.",
+      "pinned": true,
+      "value": 32,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_generation": {
+      "citation": "DS965 Table 1 PCIe interface Gen3 x16, Gen4 x8, CCIX",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Planning pins Gen3 as the Table 1 generation used with x16. Gen4 x8 is the same declared payload class (pcie_payload_beat). Not a measured link training result.",
+      "pinned": true,
+      "value": 3,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_lanes": {
+      "citation": "DS965 Table 1 PCIe interface Gen3 x16, Gen4 x8, CCIX",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Planning uses the Gen3 x16 listing. Dual Gen4 x8 is the same payload class.",
+      "pinned": true,
+      "value": 16,
+      "vendor_literature_not_measurement": true
+     },
+     "power_envelope_w": {
+      "citation": "DS965 Table 1, U50 Production (A-U50-P00G-PQ-G) Total electrical card load 75W",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "STATIC datasheet total electrical card load. Not a measured board wattage. DS965 also notes a 10W HBM rail limit from the PCIe 3.3V rail; that rail is recorded as literature, not used as a fabricated HBM GB/s derate.",
+      "pinned": true,
+      "value": 75,
+      "vendor_literature_not_measurement": true
+     },
+     "sku": {
+      "citation": "DS965 Table 1 Product SKU A-U50-P00G-PQ-G",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "A-U50-P00G-PQ-G",
+      "vendor_literature_not_measurement": true
+     }
+    },
+    "form_factor": "half_height_half_length_single_slot",
+    "fpga_part": "XCU50-FSVH2104-2-E",
+    "hardware_measured": false,
+    "hbm_bytes_per_modelled_cycle": 1024,
+    "hbm_capacity_bytes": 8589934592,
+    "hbm_channels": 32,
+    "host_device_bytes_per_modelled_cycle": 16,
+    "initiation_interval": 1,
+    "kind": "SYNTHETIC_DEVICE_PROFILE",
+    "mac_lanes_default": 8,
+    "mechanically_inadmissible": false,
+    "origin": "U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+    "pcie_generation": 3,
+    "pcie_lanes": 16,
+    "pipeline_depth": 8,
+    "power_envelope_w": 75,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "real_carrier": "UNPINNED",
+    "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "sku": "A-U50-P00G-PQ-G",
+    "thermal_mismatch": false,
+    "variant_id": "u50",
+    "vendor_literature": "AMD Alveo U50 production SKU A-U50-P00G-PQ-G from public DS965 / UG1371. STATIC vendor literature. Not a local board."
+   },
+   "u50c": {
+    "BRAM": 0,
+    "DSP": 0,
+    "LUT": 0,
+    "URAM": 0,
+    "airflow_requirement": "UNPINNED",
+    "brochure_device_id": "alveo-u50c",
+    "constrained_by_carrier": null,
+    "cooling": "UNPINNED",
+    "declared_not_measured": true,
+    "device_id": "alveo-u50c",
+    "evidence_tier": "STATIC",
+    "fabric_bytes_per_modelled_cycle": 64,
+    "field_provenance": {
+     "BRAM": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "DSP": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "LUT": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "URAM": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "airflow_requirement": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "cooling": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "form_factor": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "fpga_part": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_capacity_bytes": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_channels": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_generation": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_lanes": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "power_envelope_w": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "sku": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Public AMD/Xilinx U50-family literature sourced for this module (DS965 Table 1, UG1371, Alveo U50 product brief, Alveo product selection guide) names U50, U50LV, and U50DD (ES SKU A-U50DD-P00G-ES3-G). No distinct U50C SKU, resource table, HBM capacity, PCIe listing, power, cooling, or form factor was found. Not interpolated from U50. Not copied from Alveo U55C (different card, 16 GB HBM in UG1120).",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     }
+    },
+    "form_factor": "UNPINNED",
+    "fpga_part": "UNPINNED",
+    "hardware_measured": false,
+    "hbm_bytes_per_modelled_cycle": 1024,
+    "hbm_capacity_bytes": 0,
+    "hbm_channels": 0,
+    "host_device_bytes_per_modelled_cycle": 16,
+    "initiation_interval": 1,
+    "kind": "SYNTHETIC_DEVICE_PROFILE",
+    "mac_lanes_default": 8,
+    "mechanically_inadmissible": false,
+    "origin": "U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+    "pcie_generation": "UNPINNED",
+    "pcie_lanes": "UNPINNED",
+    "pipeline_depth": 8,
+    "power_envelope_w": "UNPINNED",
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "real_carrier": "UNPINNED",
+    "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "sku": "UNPINNED",
+    "thermal_mismatch": false,
+    "variant_id": "u50c",
+    "vendor_literature": "No public AMD U50C SKU table was sourced. Profile exists so the name is selectable; every required field is UNPINNED. Not U55C."
+   },
+   "u50dd": {
+    "BRAM": 1344,
+    "DSP": 5952,
+    "LUT": 872000,
+    "URAM": 640,
+    "airflow_requirement": "forced_server",
+    "brochure_device_id": "alveo-u50dd",
+    "constrained_by_carrier": null,
+    "cooling": "passive",
+    "declared_not_measured": true,
+    "device_id": "alveo-u50dd",
+    "evidence_tier": "STATIC",
+    "fabric_bytes_per_modelled_cycle": 64,
+    "field_provenance": {
+     "BRAM": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) 36 Kb block RAM 1344",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 1344,
+      "vendor_literature_not_measurement": true
+     },
+     "DSP": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) DSP slices 5,952",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 5952,
+      "vendor_literature_not_measurement": true
+     },
+     "LUT": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) Look-up tables (LUTs) 872K",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 872000,
+      "vendor_literature_not_measurement": true
+     },
+     "URAM": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) 288 Kb UltraRAM 640",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 640,
+      "vendor_literature_not_measurement": true
+     },
+     "airflow_requirement": {
+      "citation": "DS965: passively-cooled card; ES3 listed in the same family table",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "forced_server",
+      "vendor_literature_not_measurement": true
+     },
+     "cooling": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) Thermal cooling solution Passive",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "passive",
+      "vendor_literature_not_measurement": true
+     },
+     "form_factor": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) Form factor Half height, half length",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "half_height_half_length_single_slot",
+      "vendor_literature_not_measurement": true
+     },
+     "fpga_part": {
+      "citation": "UG1371 Card Features: UltraScale+ XCU50 FPGA (ES3 listed in the SKU table)",
+      "document_class": "AMD_USER_GUIDE_UG1371",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Speed grade for the ES3 SKU is UNPINNED; not copied from production U50.",
+      "pinned": true,
+      "value": "XCU50",
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_capacity_bytes": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) HBM2 total capacity 8 GB",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "STATIC vendor-literature capacity. Not a measured occupancy.",
+      "pinned": true,
+      "value": 8589934592,
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_channels": {
+      "citation": "UG1371 Card Features (covers ES3 SKU in Table 1): 32 channels of 256 MB",
+      "document_class": "AMD_USER_GUIDE_UG1371",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 32,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_generation": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) PCIe interface Gen3 x16, Gen4 x8, CCIX",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Planning pins Gen3 with x16; Gen4 x8 is the same payload class.",
+      "pinned": true,
+      "value": 3,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_lanes": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) PCIe interface Gen3 x16, Gen4 x8, CCIX",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 16,
+      "vendor_literature_not_measurement": true
+     },
+     "power_envelope_w": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) Total electrical card load 75W",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 75,
+      "vendor_literature_not_measurement": true
+     },
+     "sku": {
+      "citation": "DS965 (v1.2-era Table 1) U50DD ES3 column (A-U50DD-P00G-ES3-G) Product SKU; product selection guide: engineering sample, not volume production",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "A-U50DD-P00G-ES3-G",
+      "vendor_literature_not_measurement": true
+     }
+    },
+    "form_factor": "half_height_half_length_single_slot",
+    "fpga_part": "XCU50",
+    "hardware_measured": false,
+    "hbm_bytes_per_modelled_cycle": 1024,
+    "hbm_capacity_bytes": 8589934592,
+    "hbm_channels": 32,
+    "host_device_bytes_per_modelled_cycle": 16,
+    "initiation_interval": 1,
+    "kind": "SYNTHETIC_DEVICE_PROFILE",
+    "mac_lanes_default": 8,
+    "mechanically_inadmissible": false,
+    "origin": "U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+    "pcie_generation": 3,
+    "pcie_lanes": 16,
+    "pipeline_depth": 8,
+    "power_envelope_w": 75,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "real_carrier": "UNPINNED",
+    "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "sku": "A-U50DD-P00G-ES3-G",
+    "thermal_mismatch": false,
+    "variant_id": "u50dd",
+    "vendor_literature": "AMD Alveo U50DD engineering sample SKU A-U50DD-P00G-ES3-G from public DS965 ES3 column / UG1371. Not qualified for volume deployment. STATIC vendor literature. Not a local board."
+   },
+   "u50lv": {
+    "BRAM": 1344,
+    "DSP": 5952,
+    "LUT": 872000,
+    "URAM": 640,
+    "airflow_requirement": "forced_server",
+    "brochure_device_id": "alveo-u50lv",
+    "constrained_by_carrier": null,
+    "cooling": "passive",
+    "declared_not_measured": true,
+    "device_id": "alveo-u50lv",
+    "evidence_tier": "STATIC",
+    "fabric_bytes_per_modelled_cycle": 64,
+    "field_provenance": {
+     "BRAM": {
+      "citation": "DS965 Table 1, U50 LV Production (A-U50-P00G-LV-G) 36 Kb block RAM 1344 (47.3 Mb)",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 1344,
+      "vendor_literature_not_measurement": true
+     },
+     "DSP": {
+      "citation": "DS965 Table 1, U50 LV Production (A-U50-P00G-LV-G) DSP slices 5,952",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 5952,
+      "vendor_literature_not_measurement": true
+     },
+     "LUT": {
+      "citation": "DS965 Table 1, U50 LV Production (A-U50-P00G-LV-G) Look-up tables (LUTs) 872K",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 872000,
+      "vendor_literature_not_measurement": true
+     },
+     "URAM": {
+      "citation": "DS965 Table 1, U50 LV Production (A-U50-P00G-LV-G) 288 Kb UltraRAM 640 (180.0 Mb)",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": 640,
+      "vendor_literature_not_measurement": true
+     },
+     "airflow_requirement": {
+      "citation": "DS965 Summary: passively-cooled card designed for server deployment",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "Passive cards in this family expect server forced airflow. A carrier with airflow_class='none' is a thermal mismatch; the brochure 75W envelope is then not the planning envelope.",
+      "pinned": true,
+      "value": "forced_server",
+      "vendor_literature_not_measurement": true
+     },
+     "cooling": {
+      "citation": "DS965 Table 1, U50 LV Production (A-U50-P00G-LV-G) Thermal cooling solution Passive",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "passive",
+      "vendor_literature_not_measurement": true
+     },
+     "form_factor": {
+      "citation": "DS965 Table 1, U50 LV Production (A-U50-P00G-LV-G) Form factor Half height, half length; single slot low profile",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "half_height_half_length_single_slot",
+      "vendor_literature_not_measurement": true
+     },
+     "fpga_part": {
+      "citation": "UG1371 UltraScale+ Device: XCU50-FSVH2104-2LV-E for U50LV (VLOW 0.72V)",
+      "document_class": "AMD_USER_GUIDE_UG1371",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "XCU50-FSVH2104-2LV-E",
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_capacity_bytes": {
+      "citation": "DS965 Table 1 HBM2 total capacity 8 GB",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "STATIC vendor-literature capacity. Planning uses 8 * 1024**3 bytes to match the existing synthetic_u50_class convention. Not a measured occupancy. DS965 peak/nominal GB/s figures are vendor literature and are NOT copied into a planning rate.",
+      "pinned": true,
+      "value": 8589934592,
+      "vendor_literature_not_measurement": true
+     },
+     "hbm_channels": {
+      "citation": "UG1371 HBM Memory / Card Features: 32 AXI interfaces; 32 channels of 256 MB",
+      "document_class": "AMD_USER_GUIDE_UG1371",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "STATIC vendor-literature channel count. Not a local census.",
+      "pinned": true,
+      "value": 32,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_generation": {
+      "citation": "DS965 Table 1 U50 LV PCIe interface Gen3 x16 (no Gen4 in that column)",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "U50LV is VLOW; DS965 does not list Gen4 for this SKU.",
+      "pinned": true,
+      "value": 3,
+      "vendor_literature_not_measurement": true
+     },
+     "pcie_lanes": {
+      "citation": "",
+      "document_class": "UNPINNED",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "DS965 Table 1 lists Gen3 x16 for U50 LV; DS965 PCIe section notes the U50 LV card only supports PCIe Gen3 x4 with VCCINT set to VLOW; UG1120 Vitis platform for U50LV is Gen3 x4 XDMA. Both figures are public vendor literature. Lanes are UNPINNED rather than interpolated.",
+      "pinned": false,
+      "value": "UNPINNED",
+      "vendor_literature_not_measurement": true
+     },
+     "power_envelope_w": {
+      "citation": "DS965 Table 1, U50 LV Production (A-U50-P00G-LV-G) Total electrical card load 75W",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "STATIC datasheet total electrical card load. Not a measured board wattage. DS965 also notes a 10W HBM rail limit from the PCIe 3.3V rail; that rail is recorded as literature, not used as a fabricated HBM GB/s derate.",
+      "pinned": true,
+      "value": 75,
+      "vendor_literature_not_measurement": true
+     },
+     "sku": {
+      "citation": "DS965 Table 1 Product SKU A-U50-P00G-LV-G",
+      "document_class": "AMD_DATASHEET_DS965",
+      "evidence_tier": "STATIC",
+      "hardware_measured": false,
+      "note": "",
+      "pinned": true,
+      "value": "A-U50-P00G-LV-G",
+      "vendor_literature_not_measurement": true
+     }
+    },
+    "form_factor": "half_height_half_length_single_slot",
+    "fpga_part": "XCU50-FSVH2104-2LV-E",
+    "hardware_measured": false,
+    "hbm_bytes_per_modelled_cycle": 1024,
+    "hbm_capacity_bytes": 8589934592,
+    "hbm_channels": 32,
+    "host_device_bytes_per_modelled_cycle": 16,
+    "initiation_interval": 1,
+    "kind": "SYNTHETIC_DEVICE_PROFILE",
+    "mac_lanes_default": 8,
+    "mechanically_inadmissible": false,
+    "origin": "U50_FAMILY_VARIANT_DECLARED_NOT_A_BOARD",
+    "pcie_generation": 3,
+    "pcie_lanes": "UNPINNED",
+    "pipeline_depth": 8,
+    "power_envelope_w": 75,
+    "prehardware": true,
+    "qualification": "PREHARDWARE",
+    "real_carrier": "UNPINNED",
+    "real_carrier_note": "The operator reports the inbound card will hang off a comma device. That carrier is UNPINNED. Example envelopes are labeled examples, not that carrier. Pin CarrierEnvelope in one constructor call when numbers are known. Do not invent the comma-device specifications.",
+    "sku": "A-U50-P00G-LV-G",
+    "thermal_mismatch": false,
+    "variant_id": "u50lv",
+    "vendor_literature": "AMD Alveo U50LV production SKU A-U50-P00G-LV-G from public DS965 / UG1371. Identical to U50 except VCCINT VLOW. STATIC vendor literature. Not a local board."
+   }
+  }
  },
  "validator_rules": [
   "SOURCE_TENSOR_IDENTITY: node.semantics or assumes_source_tensor_identity",

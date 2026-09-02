@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T21:06:53Z",
+  "recorded_at": "2026-09-02T04:21:56Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -144,6 +144,11 @@
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "LiquidAI/LFM2.5-1.2B-Instruct",
+      "revision": "0f604ada3f76"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "LiquidAI/LFM2.5-2.6B-Base",
       "revision": "c57bdaed1ef1"
      },
@@ -271,6 +276,11 @@
       "reason": "present in ModelLake, not a first-wave curriculum role",
       "repo": "lerobot/pi0_base",
       "revision": "25c379b52ba2"
+     },
+     {
+      "reason": "present in ModelLake, not a first-wave curriculum role",
+      "repo": "microsoft/Phi-4-mini-instruct",
+      "revision": "cfbefacb9925"
      },
      {
       "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -538,9 +548,9 @@
        "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",
        "stale_partial": {
         "action": "REPORT_ONLY_NO_DELETE",
-        "active_process_evidence": false,
-        "age_s": 129994.4,
-        "candidate_stale": true,
+        "active_process_evidence": true,
+        "age_s": 230063.6,
+        "candidate_stale": false,
         "path": "/Volumes/corpdrive/hawking-modellake/partial/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
        },
        "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
@@ -1991,16 +2001,16 @@
     "would_lower": "a demonstration that the observation is consistent with the claim being false",
     "would_raise": "independent replication of the same probe"
    },
-   "direct_observation": "dir_present=True n_json=317 path=/Users/scammermike/Downloads/hawking/receipts/future flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
+   "direct_observation": "dir_present=True n_json=324 path=/Users/scammermike/Downloads/hawking/receipts/future flags={'discover': True, 'invoke': True, 'schedule': True, 'verify': True, 'frontier': True, 'persist': True, 'refill': True}",
    "evidence": [
     {
-     "n_json": 317,
+     "n_json": 324,
      "receipts_future": "/Users/scammermike/Downloads/hawking/receipts/future"
     }
    ],
    "falsifier": "an independent probe of the same object the status names, not a reread of the status",
    "id": "receipts",
-   "interpretation": "receipts/future is present with n_json=317 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields",
+   "interpretation": "receipts/future is present with n_json=324 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields",
    "met": true,
    "operational": {
     "cli_is_not_enough": true,
@@ -2021,7 +2031,7 @@
    },
    "probe_kind": "measured_flags",
    "probe_performed": "Path.is_dir() and glob('*.json') on receipts/future; write_receipt seals STATIC_ONLY and raises on hardware fields",
-   "reason": "receipts/future is present with n_json=317 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
+   "reason": "receipts/future is present with n_json=324 (derived); write_receipt seals STATIC_ONLY and raises on hardware fields"
   }
  ],
  "criterion_ids": [
@@ -2772,7 +2782,7 @@
   "workspace": "repo-root"
  },
  "gpu_authority": false,
- "head": "dd7640a72f2569b0bd2c0c433dab329f9a9248b5",
+ "head": "b76580b272ed17cc5b178a3fe438763699716ff8",
  "integration_points": {
   "autonomy_trial": "tools/future/autonomy_trial.py \u2014 persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
   "dirty_measure": "tools/future/dirty_measure.py \u2014 dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -2924,6 +2934,11 @@
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "LiquidAI/LFM2.5-1.2B-Instruct",
+     "revision": "0f604ada3f76"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "LiquidAI/LFM2.5-2.6B-Base",
      "revision": "c57bdaed1ef1"
     },
@@ -3051,6 +3066,11 @@
      "reason": "present in ModelLake, not a first-wave curriculum role",
      "repo": "lerobot/pi0_base",
      "revision": "25c379b52ba2"
+    },
+    {
+     "reason": "present in ModelLake, not a first-wave curriculum role",
+     "repo": "microsoft/Phi-4-mini-instruct",
+     "revision": "cfbefacb9925"
     },
     {
      "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -3318,9 +3338,9 @@
       "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",
       "stale_partial": {
        "action": "REPORT_ONLY_NO_DELETE",
-       "active_process_evidence": false,
-       "age_s": 129994.4,
-       "candidate_stale": true,
+       "active_process_evidence": true,
+       "age_s": 230063.6,
+       "candidate_stale": false,
        "path": "/Volumes/corpdrive/hawking-modellake/partial/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
       },
       "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
@@ -5007,7 +5027,7 @@
   "unmet_not_from_this_rewire": []
  },
  "schema": "hawking.future.odyssey_launch.v1",
- "seal_sha256": "d2b2db9739cb5e493989c80d49f3af54f5f531495c6e3a71db7057ae2c8d6dce",
+ "seal_sha256": "17670cf15f392c46844fc298303e625a4b46723a1a66f6f2064638bccee09f63",
  "sleeping_workunits": [
   {
    "assigned_backend": null,
@@ -5252,6 +5272,11 @@
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "LiquidAI/LFM2.5-1.2B-Instruct",
+    "revision": "0f604ada3f76"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "LiquidAI/LFM2.5-2.6B-Base",
     "revision": "c57bdaed1ef1"
    },
@@ -5379,6 +5404,11 @@
     "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "lerobot/pi0_base",
     "revision": "25c379b52ba2"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "microsoft/Phi-4-mini-instruct",
+    "revision": "cfbefacb9925"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -5646,9 +5676,9 @@
      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",
      "stale_partial": {
       "action": "REPORT_ONLY_NO_DELETE",
-      "active_process_evidence": false,
-      "age_s": 129994.4,
-      "candidate_stale": true,
+      "active_process_evidence": true,
+      "age_s": 230063.6,
+      "candidate_stale": false,
       "path": "/Volumes/corpdrive/hawking-modellake/partial/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
      },
      "verification_source": "tools/future/specimen_verify.py (offline recomputation)",

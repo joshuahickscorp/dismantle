@@ -117,7 +117,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T21:17:57Z",
+  "recorded_at": "2026-09-02T04:17:16Z",
   "recorded_by": "tools/future/fpga_fidelity.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -470,7 +470,7 @@
   "Four adaptation clocks with identity, compatibility predicate, cost class, cache key, footprint.",
   "Local StructuralGraph stand-in so this lane does not import in-flight hwir.py."
  ],
- "head": "dd7640a72f2569b0bd2c0c433dab329f9a9248b5",
+ "head": "b76580b272ed17cc5b178a3fe438763699716ff8",
  "negative_findings": [
   "receipts/headless/ACCELERATOR_ARCHITECTURE_ATLAS.json is not in git HEAD and is not on disk here; the 15 hwir_hypotheses were not readable. Node kinds are a local catalog, not atlas-derived.",
   "hcli/agentos/test_fpga_preboard.py does not exist in git HEAD.",
@@ -495,7 +495,7 @@
   {
    "in_git_head": true,
    "loaded_keys": [
-    "bench",
+    "architecture_repatriation",
     "claim_boundary",
     "device_genome",
     "driverkit_bridge_design",
@@ -516,7 +516,7 @@
   {
    "in_git_head": true,
    "loaded_keys": [
-    "bench",
+    "architecture_repatriation",
     "claim_boundary",
     "device_genome",
     "driverkit_bridge_design",
@@ -628,7 +628,7 @@
   }
  ],
  "schema": "hawking.future.fpga_fidelity.v1",
- "seal_sha256": "5f08b741c633fa65c8672a1acd0cf6eeb2ef18e20ec3154a34f4d638ca9c1f9e",
+ "seal_sha256": "10d361b3f66bb09f7a6f190470a8219b0e8d708915cba9b47b714e403c249c47",
  "search_ladder": {
   "evidence_class": "STATIC_ONLY",
   "highest_available_level": "CYCLE_MODEL",

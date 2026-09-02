@@ -3,7 +3,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T03:38:52Z",
+  "recorded_at": "2026-09-02T04:00:41Z",
   "recorded_by": "tools/audit/reachability_triage.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -58,20 +58,20 @@
     {
      "file": "hcli/agentos_cli.py",
      "kind": "call",
-     "line": 1042
+     "line": 1049
     },
     {
      "file": "hcli/agentos_cli.py",
      "kind": "call",
-     "line": 1044
+     "line": 1051
     },
     {
      "file": "hcli/agentos_cli.py",
      "kind": "call",
-     "line": 1050
+     "line": 1057
     }
    ],
-   "hcli_path": "hcli/agentos_cli.py:1042 (call)",
+   "hcli_path": "hcli/agentos_cli.py:1049 (call)",
    "module": "tools/accelerator/accelerator_runner.py",
    "n_matches": 3,
    "output_head": "HEAD:hcli/agentos_cli.py:1033:            from tools.accelerator.accelerator_runner import (\nHEAD:tools/accelerator/repatriation_audit.py:17:from tools.accelerator.accelerator_runner import (\nHEAD:tools/future/workunit_species.py:1236:            \"tools.accelerator.accelerator_runner.workunits_for_specs\": (",
@@ -145,8 +145,8 @@
    ],
    "hcli_path": "hcli/acquisition.py:120 (call)",
    "module": "tools/odyssey/modellake_promote.py",
-   "n_matches": 4,
-   "output_head": "HEAD:tools/odyssey/modellake_watch.py:36:# tools.odyssey.modellake_promote.PARTIAL_ROOT would silently not affect the\nHEAD:tools/odyssey/test_modellake_watch.py:344:    tools.odyssey.modellake_promote -- a test (or future caller) patching\nHEAD:tools/roadmap/catalog.py:285:        modules=(\"tools.odyssey.modellake_promote\",),\nHEAD:tools/roadmap/catalog.py:286:        symbols=((\"tools.odyssey.modellake_promote\", \"promote\"),),",
+   "n_matches": 5,
+   "output_head": "HEAD:tools/odyssey/modellake_watch.py:37:# tools.odyssey.modellake_promote.PARTIAL_ROOT would silently not affect the\nHEAD:tools/odyssey/product_boundary.py:313:            \"promote is tools.odyssey.modellake_promote.promote; this plan \"\nHEAD:tools/odyssey/test_modellake_watch.py:363:    tools.odyssey.modellake_promote -- a test (or future caller) patching\nHEAD:tools/roadmap/catalog.py:285:        modules=(\"tools.odyssey.modellake_promote\",),\nHEAD:tools/roadmap/catalog.py:286:        symbols=((\"tools.odyssey.modellake_promote\", \"promote\"),),",
    "verdict": "CONNECTED"
   },
   {
@@ -161,25 +161,25 @@
     {
      "file": "hcli/agentos_cli.py",
      "kind": "call",
-     "line": 1022
+     "line": 1029
     },
     {
      "file": "hcli/agentos_cli.py",
      "kind": "call",
-     "line": 1024
+     "line": 1031
     },
     {
      "file": "hcli/agentos_cli.py",
      "kind": "call",
-     "line": 1028
+     "line": 1035
     },
     {
      "file": "hcli/tool_registry.py",
      "kind": "call",
-     "line": 1333
+     "line": 1423
     }
    ],
-   "hcli_path": "hcli/agentos_cli.py:1022 (call)",
+   "hcli_path": "hcli/agentos_cli.py:1029 (call)",
    "module": "tools/accelerator/architecture_atlas.py",
    "n_matches": 7,
    "output_head": "HEAD:hcli/agentos/test_fpga_preboard.py:9:from tools.accelerator.architecture_atlas import build_atlas\nHEAD:hcli/agentos_cli.py:1017:            from tools.accelerator.architecture_atlas import build_atlas, emit_atlas, validate_atlas\nHEAD:hcli/test_architecture.py:4:from tools.accelerator.architecture_atlas import build_atlas\nHEAD:hcli/tool_registry.py:1331:            from tools.accelerator.architecture_atlas import validate_atlas\nHEAD:tools/accelerator/accelerator_runner.py:33:from tools.accelerator.architecture_atlas import (\nHEAD:tools/accelerator/repatriation_audit.py:21:from tools.accelerator.architecture_atlas import (\nHEAD:tools/accelerator/repatriation_effects.py:22:from tools.accelerator.architecture_atlas import (",
@@ -221,7 +221,7 @@
  "evidence_tier": "STATIC",
  "purpose": "Mandatory 5 UNREACHABLE + 5 CONNECTED hand verification via git grep -nE",
  "schema": "hawking.audit.reachability_triage_spotchecks.v1",
- "seal_sha256": "cf0c5f70b62ea158b6ddc59b7972af3c23b79976812599fc24387fdba5aec309",
+ "seal_sha256": "5aca8fa5373e05000c33f3f43ae25297c8d57bc65b96aa3fe83207cb602ba8c2",
  "unreachable": [
   "tools/accelerator/ane_micrograph_author.py",
   "tools/future/abi_verdicts.py",

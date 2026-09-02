@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T03:37:41Z",
+  "recorded_at": "2026-09-02T05:33:09Z",
   "recorded_by": "tools/future/modellake_events.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -15,7 +15,7 @@
  "detection": {
   "authority": "a lake manifest with resolved_sha and bytes",
   "complete_unsealed_do_not_emit": true,
-  "n_complete_unsealed": 35,
+  "n_complete_unsealed": 36,
   "n_sealed_on_disk": 8,
   "n_sealed_registry": 8,
   "not_authority": "a watcher download_exit or already_complete claim, a lifecycle label, or a human saying the model is ready",
@@ -2500,10 +2500,13 @@
  "is_this_wired": true,
  "log_tail": {
   "a_claim_is_not_a_seal": "download_exit and already_complete mean the watcher thinks bytes landed. Schedulable material requires the manifest.",
-  "claims_without_seal": [],
-  "n_claims_without_seal": 0,
-  "n_completion_claims": 0,
-  "n_parseable_events": 175
+  "claims_without_seal": [
+   "moonshotai--Kimi-K3@9f62e4e9fffb",
+   "zai-org--GLM-4.5-Air@a24ceef6ce4f"
+  ],
+  "n_claims_without_seal": 2,
+  "n_completion_claims": 2,
+  "n_parseable_events": 162
  },
  "n_emitted_specimens": 8,
  "n_emitted_units": 48,
@@ -2512,7 +2515,7 @@
  "obligation": "G101",
  "question": "When a model seals, does anything happen without a human noticing?",
  "schema": "hawking.future.modellake_events.v1",
- "seal_sha256": "02058184550c6118759d3a680fc2c651529505142777ff8beb017e7902e77b52",
+ "seal_sha256": "0d75d0c75cd3a83079a2c236c48636aa3929162b717728fee6cf2ae8e1539924",
  "seal_triggers": [
   "fingerprint",
   "role evaluation",

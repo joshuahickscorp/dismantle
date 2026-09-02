@@ -87,7 +87,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-01T21:06:53Z",
+  "recorded_at": "2026-09-02T04:21:56Z",
   "recorded_by": "tools/future/odyssey_launch.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -139,6 +139,11 @@
     "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "LiquidAI/LFM2-24B-A2B",
     "revision": "a3bbacd91a67"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "LiquidAI/LFM2.5-1.2B-Instruct",
+    "revision": "0f604ada3f76"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -269,6 +274,11 @@
     "reason": "present in ModelLake, not a first-wave curriculum role",
     "repo": "lerobot/pi0_base",
     "revision": "25c379b52ba2"
+   },
+   {
+    "reason": "present in ModelLake, not a first-wave curriculum role",
+    "repo": "microsoft/Phi-4-mini-instruct",
+    "revision": "cfbefacb9925"
    },
    {
     "reason": "present in ModelLake, not a first-wave curriculum role",
@@ -536,9 +546,9 @@
      "specimen_path": "/Volumes/corpdrive/hawking-modellake/specimens/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618",
      "stale_partial": {
       "action": "REPORT_ONLY_NO_DELETE",
-      "active_process_evidence": false,
-      "age_s": 129994.4,
-      "candidate_stale": true,
+      "active_process_evidence": true,
+      "age_s": 230063.6,
+      "candidate_stale": false,
       "path": "/Volumes/corpdrive/hawking-modellake/partial/mistralai--Mistral-Small-3.1-24B-Instruct-2503@68faf511d618"
      },
      "verification_source": "tools/future/specimen_verify.py (offline recomputation)",
@@ -1858,7 +1868,7 @@
   "unbound_reason": null
  },
  "schema": "hawking.future.odyssey_i_launch.v1",
- "seal_sha256": "1152ad3da2fd6c077859d030c410878b4cd07d2766274e9f011d121b916028cf",
+ "seal_sha256": "c6dadde49d2673dfc551a9f619c535efb73114760de0b05da4301cf15b7ab2ed",
  "verdict": {
   "allowed": true,
   "met": [

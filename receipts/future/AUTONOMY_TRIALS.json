@@ -1288,7 +1288,7 @@
    "path_taken": "disk:receipts/future/HCLI_AUTONOMY_BUILD.json",
    "substrate_verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
    "trial": "15m",
-   "why": "2 code path(s) moved"
+   "why": "4 code path(s) moved"
   },
   "frozen_build_manifest_digest": "049db0abed2fbdad39f6508207989dd0ca40bd513ff3c78816ce4c3ad4704ca9",
   "gpu_authority": false,
@@ -1310,7 +1310,7 @@
    "why": "timeline has no internal seal_sha256; file digest is the transcript seal"
   },
   "timeline_not_rewritten": true,
-  "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-2604/test_cli_verify_exit_codes0/bad.json",
+  "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-2912/test_cli_verify_exit_codes0/bad.json",
   "timeline_seal_digest": "7d1f761ef6230cda5d7bfb9195a57087c3766a1a7d2a737d3ed5357aa4623484",
   "trial": "15m",
   "verdict": "FAIL"
@@ -1467,7 +1467,7 @@
     "path_taken": "disk:receipts/future/HCLI_AUTONOMY_BUILD.json",
     "substrate_verdict": "INVALIDATED_BY_SUBSTRATE_MUTATION",
     "trial": "15m",
-    "why": "2 code path(s) moved"
+    "why": "4 code path(s) moved"
    },
    "frozen_build_manifest_digest": "049db0abed2fbdad39f6508207989dd0ca40bd513ff3c78816ce4c3ad4704ca9",
    "gpu_authority": false,
@@ -1489,7 +1489,7 @@
     "why": "timeline has no internal seal_sha256; file digest is the transcript seal"
    },
    "timeline_not_rewritten": true,
-   "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-2604/test_cli_verify_exit_codes0/bad.json",
+   "timeline_path": "/private/var/folders/yc/1c930rns2rz1_trh4xcd9_m00000gq/T/pytest-of-scammermike/pytest-2912/test_cli_verify_exit_codes0/bad.json",
    "timeline_seal_digest": "7d1f761ef6230cda5d7bfb9195a57087c3766a1a7d2a737d3ed5357aa4623484",
    "trial": "15m",
    "verdict": "FAIL"
@@ -1727,7 +1727,7 @@
   ]
  },
  "schema": "hawking.future.autonomy_trial.v1",
- "seal_sha256": "6f95205274c387841b2140eca9258ab9d20af55263f800322607545ba1339282",
+ "seal_sha256": "dfd097429cf68c776d55b5916f28e81e752d67ced62368d02f0d6b0d1428704e",
  "thirteen_acceptance_conditions": [
   "recover_state",
   "identify_live_frontier",

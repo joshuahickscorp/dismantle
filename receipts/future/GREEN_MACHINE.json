@@ -4,12 +4,12 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-02T03:38:54Z",
+  "recorded_at": "2026-09-02T04:19:18Z",
   "recorded_by": "tools/future/green_machine.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
  },
- "branch": "grok/d3-green-machine-capability-eval-20260901-231807",
+ "branch": "odyssey-i",
  "cited_token_interval": {
   "cited_evidence_class": "STATIC_ONLY",
   "cited_from": "receipts/future/TOKEN_NS_OBJECTIVE.json",
@@ -23,13 +23,13 @@
  "claim_boundary": "Static sidecar artifact. No hardware measurement.",
  "claim_class": "STATIC_ONLY",
  "cpu_cost": {
-  "active_process_cpu_s": 0.19955900000000001,
-  "active_window_s": 0.2000139580341056,
-  "cpu_burn_iters": 5115779,
+  "active_process_cpu_s": 0.19950200000005225,
+  "active_window_s": 0.2000090000219643,
+  "cpu_burn_iters": 5066798,
   "evidence_tier": "HARDWARE_MEASURED",
   "gpu_touched": false,
-  "idle_process_cpu_s": 4.399999999998849e-05,
-  "idle_window_s": 0.20455962501000613,
+  "idle_process_cpu_s": 3.800000001774606e-05,
+  "idle_window_s": 0.20421266602352262,
   "why": "time.process_time() and time.perf_counter() on this process. CPU-seconds, not joules. GPU was not touched."
  },
  "evidence_tiers_present": [
@@ -51,15 +51,15 @@
   "Power-cap policy refuses unless the wattage is HARDWARE_MEASURED; still does not enforce a cap without a GPU lease."
  ],
  "gpu_authority": false,
- "head": "f3e4676f0172dda190eaed5878783fc02ef1788b",
+ "head": "b76580b272ed17cc5b178a3fe438763699716ff8",
  "honesty_rule": "Any metric that is not trustworthily measurable is UNKNOWN. Never an estimate, never a TDP-derived guess, never a FLOP-derived CMOS guess, never an idle GPU-rail sample presented as joules_per_token, never a number with invented precision. write_receipt already refuses a numeric joules_per_token. This module does not catch that error, does not add fields to HARDWARE_FIELDS, and does not convert UNKNOWN into 0 or into a datasheet watt. Saying UNKNOWN clearly is the deliverable. This sidecar produces STATIC_ONLY with bench state UNKNOWN; it produces neither DIAGNOSTIC_RELATIVE nor PROTECTED_ABSOLUTE.",
  "host": {
   "chip": "Apple M3 Ultra",
   "evidence_tier": "HARDWARE_MEASURED",
   "loadavg": [
-   13.576171875,
-   12.02734375,
-   10.05712890625
+   12.6494140625,
+   8.7412109375,
+   8.5771484375
   ],
   "mem_bytes": 103079215104,
   "ncpu": 28,
@@ -204,10 +204,9 @@
   "Cannot wrap TOKEN_NS: no complete-token interval is available to this process.",
   "Cannot run cargo test on hawking-core energy.rs (crates/ is Codex-owned; GPU touch forbidden).",
   "powermetrics without root failed: powermetrics must be invoked as the superuser",
-  "sudo -n powermetrics is not available (no password prompt was issued): [Errno 1] Operation not permitted: 'sudo'",
+  "sudo -n powermetrics is not available (no password prompt was issued): sudo: a password is required",
   "pmset -g therm ran but is not a thermal_state measurement: Note: No thermal warning level has been recorded Note: No performance warning level has been recorded Note: No CPU power status has been recorded",
   "sysctl thermal oids (machdep.xcpm.* / machdep.thermal) are absent on this Darwin.",
-  "IOReportCreateSubscription returned null in this process; live GPU Energy nJ was not read.",
   "ioreg AppleSmartBattery PowerTelemetryData is named Estimate and was not recorded as a joule."
  ],
  "power_cap": {
@@ -233,10 +232,10 @@
   {
    "command_ok": false,
    "id": "sudo_n_powermetrics",
-   "invoked": false,
-   "missing_dependency": "permission",
+   "invoked": true,
+   "missing_dependency": "root",
    "numeric_sample_recorded": false,
-   "observation": "[Errno 1] Operation not permitted: 'sudo'",
+   "observation": "sudo: a password is required",
    "succeeded": false,
    "trustworthy_for_token_energy": false
   },
@@ -309,14 +308,13 @@
    "command_ok": true,
    "id": "ioreport_energy_model_subscription",
    "invoked": true,
-   "missing_dependency": "IOReportCreateSubscription",
+   "missing_dependency": null,
    "numeric_sample_recorded": false,
    "observation": {
-    "error": "IOReportCreateSubscription returned null",
-    "note": "crates/hawking-core/src/token_ns/energy.rs documents a 2026-08-16 standing finding that GPU Energy (nJ) incremented without root. This sidecar process cannot obtain a subscription, so live samples are not reproduced here. Channel catalog (probe ioreport_energy_model_catalog) is the part that still holds.",
-    "subscription_obtained": false
+    "note": "Live samples would still not be joules_per_token: this sidecar has no GPU lease and does not wrap TOKEN_NS. Numeric nJ is deliberately not recorded.",
+    "subscription_obtained": true
    },
-   "succeeded": false,
+   "succeeded": true,
    "trustworthy_for_token_energy": false
   },
   {
@@ -336,7 +334,6 @@
  ],
  "probes_failed": [
   "ioreg_power_telemetry",
-  "ioreport_energy_model_subscription",
   "pmset_therm",
   "powermetrics_without_root",
   "sudo_n_powermetrics",
@@ -344,6 +341,7 @@
  ],
  "probes_succeeded": [
   "ioreport_energy_model_catalog",
+  "ioreport_energy_model_subscription",
   "pmset_batt"
  ],
  "produces_diagnostic_relative": false,
@@ -351,10 +349,122 @@
  "protected_lease": false,
  "purpose": "II-E Green Machine / H-ROADMAP \u00a724: emit the gene-card SUBGENES with per-value evidence tiers. Token-attributed joules stay UNKNOWN; measurable M3 Ultra observations are HARDWARE_MEASURED; the rest are COST_MODEL.",
  "rail_samples": {
-  "cpu_busy": null,
-  "error": "IOReportCreateSubscription returned null",
-  "idle": null,
-  "subscription_obtained": false
+  "cpu_burn_iters": 6378176,
+  "cpu_busy": {
+   "channels": [
+    {
+     "channel": "DIE_0_CPU Energy",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.3266487920191139
+    },
+    {
+     "channel": "DIE_1_CPU Energy",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.3266487920191139
+    },
+    {
+     "channel": "DRAM0_0",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.3266487920191139
+    },
+    {
+     "channel": "DRAM0_1",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.3266487920191139
+    },
+    {
+     "channel": "GPU Energy",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "nJ",
+     "watts": null,
+     "window_s": 0.3266487920191139
+    }
+   ],
+   "label": "cpu_busy_gpu_untouched",
+   "window_s": 0.3266487920191139
+  },
+  "error": null,
+  "idle": {
+   "channels": [
+    {
+     "channel": "DIE_0_CPU Energy",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.33406241599004716
+    },
+    {
+     "channel": "DIE_1_CPU Energy",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.33406241599004716
+    },
+    {
+     "channel": "DRAM0_0",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.33406241599004716
+    },
+    {
+     "channel": "DRAM0_1",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "mJ",
+     "watts": null,
+     "window_s": 0.33406241599004716
+    },
+    {
+     "channel": "GPU Energy",
+     "delta": null,
+     "increments": false,
+     "raw_t0": null,
+     "raw_t1": null,
+     "unit": "nJ",
+     "watts": null,
+     "window_s": 0.33406241599004716
+    }
+   ],
+   "label": "idle",
+   "window_s": 0.33406241599004716
+  },
+  "note": "GPU-token-active is not sampled: this sidecar has no GPU lease and must not disturb the live resident. cpu_busy is CPU-only.",
+  "subscription_obtained": true
  },
  "recovered_implementation": [
   {
@@ -424,7 +534,7 @@
   {
    "adequate_for_this_lane": false,
    "in_git_head": true,
-   "on_disk_this_worktree": false,
+   "on_disk_this_worktree": true,
    "path": "hcli/machine.py",
    "what": "MemGate / Metal working-set admission. Host snapshot is RAM/swap/pressure.",
    "why_not_adequate": "memory admission, not energy."
@@ -440,7 +550,7 @@
   {
    "adequate_for_this_lane": false,
    "in_git_head": true,
-   "on_disk_this_worktree": false,
+   "on_disk_this_worktree": true,
    "path": "workspace/campaign/evidence/models/glm52/GLM52_FUNCTIONAL_FLOP_BYTE_JOULE.json",
    "what": "joule.status = UNAVAILABLE; 'no accepted on-device energy source is wired; no joules are inferred from FLOPs or bytes'.",
    "why_not_adequate": "one model's honest UNAVAILABLE, not a civilization-wide contract."
@@ -511,8 +621,8 @@
      "cited_from": "crates/hawking-core/src/token_ns/energy.rs IoreportFinding::documented (2026-08-16 this machine: GPU Energy nJ incremented ~0.98 W over 1 s idle)",
      "evidence_tier": "COST_MODEL",
      "id": "gpu_rail_watts_idle",
-     "sample_error": "IOReportCreateSubscription returned null",
-     "subscription_obtained": false,
+     "sample_error": null,
+     "subscription_obtained": true,
      "token_ns_wrap": false,
      "unit": "W",
      "value": 0.98,
@@ -596,18 +706,18 @@
      "evidence_tier": "HARDWARE_MEASURED",
      "id": "idle_process_cpu_s",
      "unit": "s",
-     "value": 4.399999999998849e-05,
+     "value": 3.800000001774606e-05,
      "why": "time.process_time() and time.perf_counter() on this process. CPU-seconds, not joules. GPU was not touched.",
-     "window_s": 0.20455962501000613
+     "window_s": 0.20421266602352262
     },
     {
-     "cpu_burn_iters": 5115779,
+     "cpu_burn_iters": 5066798,
      "evidence_tier": "HARDWARE_MEASURED",
      "id": "active_process_cpu_s",
      "unit": "s",
-     "value": 0.19955900000000001,
+     "value": 0.19950200000005225,
      "why": "process CPU-seconds over a CPU-only burn; GPU untouched",
-     "window_s": 0.2000139580341056
+     "window_s": 0.2000090000219643
     },
     {
      "evidence_tier": "COST_MODEL",
@@ -713,6 +823,6 @@
    "path": "receipts/headless/NOETIC_SCOREBOARD.json"
   }
  },
- "seal_sha256": "bc410fab1cb7c51d29383b42dae70a08b74a3b7fb0f9e5df9c1900b3c4726522",
+ "seal_sha256": "5d5d33bb1d2d999e3ed20d37b4856875237743fc1a2cb57b8e25f2f7431717f1",
  "version": 1
 }

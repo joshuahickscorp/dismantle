@@ -10,49 +10,61 @@ catalog via `affine()`, all 64 layers are encoded, and each arm sits in one comm
 same instrument that produced the production organ number. Zero loaded residents, 50.8 GB free,
 noop control 208 ns.
 
-## The headline the harness printed was wrong, and the roof says so
+## The first run's baseline was broken, and the roof is what caught it
 
-The harness reported **0.226x** against its fusion-matched pair baseline. That baseline is
-invalid. `gate_up` across 64 layers is 3.565 GB of codes, scales and biases, and the machine's
-measured roof is 778.8 GB/s, so **no arm that reads those weights can finish under 4.578 ms**:
+The first pass reported **0.226x**. `gate_up` across 64 layers is 3.565 GB and the machine's
+measured roof is 778.8 GB/s, so no arm reading those weights can finish under 4.578 ms. That
+run's pair baseline claimed 866,874 ns — **4112.7 GB/s, 5.3x a physical ceiling**. It was not
+reading the weights.
 
-| arm | GPU ns | positions | weights read | implied GB/s |
+The cause was a real defect, not a benchmark artifact, and it is fixed in
+`qwen38_affine_gate_up_launch`: `Affine2Geo::Bitcast` has no unfused kernel and its arm fell
+back to the production **SwiGLU** kernel, whose buffer layout the unfused caller does not bind —
+`rows` was read from the up-output buffer, so `row < rows` failed for nearly every thread and
+the dispatch returned fast and wrong. See the commit for the guard: no geo may resolve a
+`with_swiglu=false` request to a swiglu-named kernel.
+
+Without an independent physical bound, 0.226x would have read as a clean refutation of the whole
+campaign.
+
+## The measurement, with a baseline that reads the weights
+
+All three arms are now under the roof:
+
+| arm | GPU ns | positions | GB/s | per position |
 |---|---|---|---|---|
-| fused production | 7,248,624 | 1 | 3.565 GB | 491.8 |
-| chunked r4k4 | 15,323,125 | 4 | 3.565 GB | 232.7 |
-| **pair baseline** | **866,874** | 1 | 3.565 GB | **4112.7 — 5.3x the roof** |
+| pair baseline (unfused, fixed) | 9,321,041 | 1 | 382.5 | 9,321,041 ns |
+| SwiGLU-fused production | 7,183,124 | 1 | 496.3 | 7,183,124 ns |
+| chunked r4k4 | 15,348,083 | 4 | 232.3 | 3,837,021 ns |
 
-A number 5.3x above a measured physical ceiling is not a fast baseline, it is an arm that is not
-doing the work. `encode_fused_gate_up(layer, with_swiglu=false)` on this catalog does not read
-the weight set, and every ratio computed against it is meaningless. **The 0.226x is discarded.**
+    fusion-matched, pair vs chunked      2.429x   <- what BATCHING alone buys
+    against the fused path that runs     1.872x
 
-That the roof caught it is the point. Without an independent physical bound, 0.226x would have
-read as a clean refutation of the whole campaign.
+**2.429x is the honest batching number** — same unfused pair kernel on both sides, one position
+against four, on real catalog weights across all 64 layers, with weight traffic cut exactly 4x.
 
-## What the measurement actually says
+**1.872x is what you would get today** by replacing the fused production path with the batched
+unfused kernel.
 
-Against the SwiGLU-fused production baseline, which is the path that really runs:
+## The gap between them is the lever
 
-    fused production   7,248,624 ns  ->  1 position,  3.565 GB read
-    chunked r4k4      15,323,125 ns  ->  4 positions, 3.565 GB read
+Production's SwiGLU fusion plus its bitcast unpack are worth **1.298x** on their own
+(9,321,041 → 7,183,124 ns). The multi-position kernel has neither. So:
 
-    per position:      7,248,624  ->  3,830,781 ns        1.892x
-    per position:          3.565 GB  ->  0.891 GB         4x less traffic
+    batching alone                          2.429x
+    production's fusion + bitcast alone      1.298x
+    batching, minus what it gives up         1.872x
 
-**1.892x per position on real catalog weights across all 64 layers**, with the weight traffic cut
-exactly 4x — which is the mechanism the whole campaign predicted: read the weights once, emit K
-positions.
+**A SwiGLU-fused, bitcast multi-position kernel is the thing that turns 1.872x into ~2.4x in
+production.** That is a concrete next kernel, not a hope: both halves are already written
+separately.
 
-## Why it is 1.892x here and 2.49x in CP4
+The chunked arm runs at 232.3 GB/s against a 778.8 roof — 30%, where production reaches 63%.
+Having cut traffic 4x it is no longer bandwidth-bound, so more positions will not help it and
+the remaining headroom is arithmetic, which is exactly what fusion buys.
 
-CP4 measured 2.49x on one layer's worth of gate_up at the same shape. Here the same kernel over
-64 real layers gives 1.892x, and the bandwidth column says why: the chunked arm runs at **232.7
-GB/s** against a 778.8 GB/s roof. It is no longer bandwidth-bound. Having cut traffic 4x it has
-made itself compute- and register-bound, so the remaining win is smaller than the traffic
-saving. CP4 saw the same shape — its r4k4 arm managed ~136 GB/s against a 219 GB/s baseline.
-
-The production path at 491.8 GB/s is at 63% of roof; the chunked path at 232.7 GB/s is at 30%.
-**The next lever on this organ is arithmetic efficiency, not more batching.**
+Stability: the fused baseline measured 7,248,624 ns in the first pass and 7,183,124 ns here,
+0.9% apart, on separate quiet lanes.
 
 ## Caveats, stated rather than buried
 
@@ -68,13 +80,20 @@ The production path at 491.8 GB/s is at 63% of roof; the chunked path at 232.7 G
 
 ## What this changes on the frontier
 
-The claim "batching wins on the real weights" is now measured rather than projected, at 1.892x
-for the largest organ. The projection in `CP5_DECOMPOSITION.md` used 2.49x for gate_up; on real
-layers that term should read 1.892x, which lowers the projected step-level gain and is the more
-honest input for CP6 stage 1.
+The claim "batching wins on the real weights" is measured rather than projected: **2.429x**
+fusion-matched for the largest organ, on the session's own catalog across all 64 layers.
 
-Two new items for the frontier, both found here:
-1. `encode_fused_gate_up(..., with_swiglu=false)` does not read the weight set on this catalog.
-   That is a live defect in a production-reachable code path, not just in a benchmark arm.
-2. The chunked organ is compute-bound at 30% of roof. More positions will not help it; better
-   arithmetic per weight will.
+`CP5_DECOMPOSITION.md` used 2.49x for gate_up, taken from CP4's single-layer harness. The
+real-weight fusion-matched figure is 2.429x, so that projection holds almost exactly — but the
+number that would apply to a drop-in replacement of the production path today is **1.872x**,
+because the multi-position kernel gives up the SwiGLU fusion and bitcast unpack that production
+already has.
+
+Frontier items found here:
+1. **Fixed:** `Affine2Geo::Bitcast` resolved an unfused gate_up request to a SwiGLU kernel with
+   a mismatched ABI — production-reachable via `HAWKING_QWEN38_FUSE_MLP=pair`, and any past A/B
+   run in that mode on a bitcast-geo catalog was measuring garbage.
+2. **A SwiGLU-fused, bitcast multi-position gate_up kernel.** Worth 1.298x on top of the 1.872x,
+   and both halves already exist separately. This is the highest-value next kernel.
+3. The chunked organ is compute-bound at 30% of roof, so more positions will not help it — which
+   is the same finding from the other direction.

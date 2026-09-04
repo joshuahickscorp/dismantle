@@ -39,7 +39,7 @@ from tools.future import repro_science as rs
 from tools.future import static_kernel_verify as skv
 from tools.future import workunit_species as ws
 from tools.future._common import HARDWARE_FIELDS, git
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 
 RECEIPT = "QUALIFICATION_PIPELINE.json"
 SCHEMA = "hawking.future.qualification_pipeline.v1"

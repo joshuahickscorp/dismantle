@@ -126,7 +126,7 @@ def test_built_gates_keyset_identical(graph_json, graph_index):
 
 
 def test_one_module_bytes_and_time(triage_json, triage_index):
-    key = "tools/future/status_causality.py"
+    key = "tools/verify/status_causality.py"
     measured = ai.measure_one(triage_json, "modules", key, index_path=triage_index)
     print("MEASURE_ONE", json.dumps(measured))
     assert measured["equal"] is True
@@ -241,7 +241,7 @@ def test_inspect_fast_path_matches_full_parse(triage_json, triage_index, monkeyp
     monkeypatch.setenv("HCLI_TRIAGE_FULLPARSE", "1")
     # load_triage still hits HEAD/live, not triage_json. Compare via get vs full_parse.
     doc, _, _ = ai.full_parse(triage_json)
-    row = doc["modules"]["tools/future/status_causality.py"]
+    row = doc["modules"]["tools/verify/status_causality.py"]
     assert fast["ok"] is True
     assert fast["value"]["disposition"] == row["disposition"]
     assert fast["value"]["classification"] == row["classification"]

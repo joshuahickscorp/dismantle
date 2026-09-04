@@ -8,7 +8,7 @@ import pathlib
 import pytest
 
 from tools.future import contamination as C
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import HARDWARE_FIELDS, RECEIPTS
 
 

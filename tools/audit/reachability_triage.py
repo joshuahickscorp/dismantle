@@ -8,7 +8,7 @@ from grep/AST evidence only.
 
 Engine
 ------
-The analyzer is tools/future/capability_reachability.py. This module does
+The analyzer is tools/roadmap/capability_reachability.py. This module does
 not write a second one. It calls assemble() and the RepoIndex primitives
 (find_module_import_sites, _subprocess_path_sites, build_capability,
 _partition). Two holes in this sparse worktree made the engine insufficient;
@@ -25,7 +25,7 @@ both are patched in-process before any index is built:
     python3 tools/audit/reachability_triage.py --selftest
     python3 tools/audit/reachability_triage.py --discover
     python3 tools/audit/reachability_triage.py --invoke future.capacity_inference_rule --args '{"levels":[{"concurrency":1,"aggregate_decode_tps":36.6},{"concurrency":2,"aggregate_decode_tps":51.2}],"semantics_comparable":true}'
-    python3 tools/audit/reachability_triage.py --module tools/future/status_causality.py
+    python3 tools/audit/reachability_triage.py --module tools/verify/status_causality.py
     python3 tools/audit/reachability_triage.py --classification UNREACHABLE
     python3 tools/audit/reachability_triage.py --status BUILT
     python3 tools/audit/reachability_triage.py --parity
@@ -47,7 +47,7 @@ from tools.future._common import (
     require_known_flags,
     write_receipt,
 )
-from tools.future import capability_reachability as cr
+from tools.roadmap import capability_reachability as cr
 
 import argparse
 import json
@@ -1450,7 +1450,7 @@ def assemble_inventory() -> dict[str, Any]:
         ),
         "evidence_tier": "STATIC",
         "engine": {
-            "analyzer": "tools/future/capability_reachability.py",
+            "analyzer": "tools/roadmap/capability_reachability.py",
             "assemble_used": True,
             "extensions": extension_notes,
             "sidecar_counts": engine_doc.get("counts"),
@@ -1857,7 +1857,7 @@ def _query_main(args: argparse.Namespace) -> int:
             report["ok"] = ok
         if args.measure:
             # One-module question on a real CONNECTED row, plus the two filters.
-            sample = "tools/future/status_causality.py"
+            sample = "tools/verify/status_causality.py"
             report["measure_module"] = _ai.measure_one(triage, "modules", sample)
             report["measure_unreachable"] = _ai.measure_filter(
                 triage, "modules", classification="UNREACHABLE"
@@ -1910,7 +1910,7 @@ What already existed (reused, not rewritten)
 --------------------------------------------
 - tools/future/orchestration.py BINDINGS + invoke(): registration, and
   invoke() is not statically reached from HCLI. A BINDINGS row is not a call.
-- tools/future/capability_reachability.py: the analyzer. Its caller citations
+- tools/roadmap/capability_reachability.py: the analyzer. Its caller citations
   are import-dominated; this adapter requires an AST Call of a named symbol.
 - tools/audit/reachability_triage.py: per-module inventory, wake strings.
   This module consumes that inventory and adds a typed invoke surface.

@@ -32,7 +32,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from tools.future._common import write_receipt, load_json, REPO
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 
 RECEIPT = "CONTAMINATION_SCIENCE.json"
 SCHEMA = "hawking.future.contamination.v1"

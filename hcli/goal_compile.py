@@ -171,7 +171,7 @@ def load_reachability_snapshot() -> Dict[str, Any]:
     in as ``reachability_snapshot``. This module reads that analyzer's
     verdicts, it does not build a second one.
     """
-    from tools.future.capability_reachability import assemble
+    from tools.roadmap.capability_reachability import assemble
 
     return assemble()["capabilities"]
 

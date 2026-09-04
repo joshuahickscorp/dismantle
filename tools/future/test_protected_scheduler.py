@@ -16,7 +16,7 @@ import pytest
 from tools.future import protected_scheduler as ps
 from tools.future import protected_window as pw
 from tools.future import qualification_pipeline as qp
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import RECEIPTS, REPO, _assert_no_hardware_claims
 
 

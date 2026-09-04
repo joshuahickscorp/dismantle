@@ -20,7 +20,7 @@ import pytest
 
 from tools.future import odyssey_launch as ol
 from tools.future import autonomy_trial as at
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import HARDWARE_FIELDS, RECEIPTS, HardwareClaimError, write_receipt, sha256_file
 from hcli.workunit import WorkUnit
 

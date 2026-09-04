@@ -15,7 +15,7 @@ import pytest
 
 from tools.audit import reachability_triage as rt
 from tools.future._common import RECEIPTS, load_json
-from tools.future import capability_reachability as cr
+from tools.roadmap import capability_reachability as cr
 
 
 # --------------------------------------------------------------------------
@@ -258,7 +258,7 @@ def test_live_status_causality_is_connected_from_hcli_gates(live_doc):
     status_causality is imported by the HCLI gates. A blanket 'tools/future
     is dead' or 'tools/future is wired' fails this row.
     """
-    row = live_doc["modules"]["tools/future/status_causality.py"]
+    row = live_doc["modules"]["tools/verify/status_causality.py"]
     assert row["disposition"] == "CONNECTED"
     assert row["hcli_reachable"] is True
     files = {s["file"] for s in row["call_sites"]}

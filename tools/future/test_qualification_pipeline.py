@@ -15,7 +15,7 @@ import pytest
 from tools.future import contamination as C
 from tools.future import qualification_pipeline as qp
 from tools.future import repro_science as rs
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import HARDWARE_FIELDS, RECEIPTS, HardwareClaimError, _assert_no_hardware_claims
 
 

@@ -520,21 +520,6 @@ _PYTHON_INVOKER_RE = re.compile(r"^python3(\.\d+)?$")
 _PROTECTED_PATH_PREFIXES = frozenset({".git", ".hcli"})
 _TEST_ENV_KEYS = ("PATH", "HOME", "LANG", "TMPDIR")
 
-# These spellings stay registered because existing missions and callers may
-# emit them.  The model-facing catalog can treat them as one capability.  A
-# slash-bearing alias is intentionally kept out of the canonical spelling: it
-# is legal in the registry, but it is a poor token boundary for a model.
-_TOOL_ALIAS_GROUPS = (
-    ("fs.read", "filesystem.read"),
-    ("fs.search", "filesystem.search"),
-    ("fs.list", "filesystem.list"),
-    ("git.checkout-safe", "git.revert-safe", "git.checkout/revert-safe"),
-    ("receipt.read", "receipt.inspect", "benchmark.inspect"),
-    ("huggingface.resolve", "huggingface.manifest"),
-    ("roadmap.read", "roadmap.inspect"),
-)
-
-
 def _sha256_bytes(data: Optional[bytes]) -> Optional[str]:
     if data is None:
         return None
@@ -1828,13 +1813,10 @@ class Engine:
 
         used = set()
         alias_lines: List[str] = []
-        for group in _TOOL_ALIAS_GROUPS:
-            present = [name for name in group if name in specs]
-            if not any(name.split(".", 1)[0] in selected_prefixes for name in present):
+        for name, spec in sorted(specs.items()):
+            if name.split(".", 1)[0] not in selected_prefixes:
                 continue
-            if not present:
-                continue
-            if group[0].startswith("git.checkout") and not any(
+            if name.startswith("git.checkout-safe") and not any(
                 word in focus_text
                 for word in ("checkout", "revert", "restore", "reset", "discard")
             ):
@@ -1842,10 +1824,12 @@ class Engine:
                 # read rounds. It re-enters only when the goal explicitly asks
                 # about rollback semantics, and even then no mutation is done.
                 continue
-            advertised = [name for name in present if "/" not in name]
-            if advertised:
-                alias_lines.append("|".join(advertised) + signature(specs[present[0]]))
-            used.update(present)
+            aliases = spec.get("aliases", [])
+            advertised = [name]
+            advertised.extend(alias for alias in aliases if "/" not in alias)
+            if aliases:
+                alias_lines.append("|".join(advertised) + signature(spec))
+                used.add(name)
 
         by_prefix: Dict[str, List[str]] = {}
         for name in sorted(specs):

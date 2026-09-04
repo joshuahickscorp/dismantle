@@ -55,7 +55,7 @@ from tools.future import negative_index as ni
 from tools.future import orchestration as orch
 from tools.future import protected_scheduler as ps
 from tools.future import scar_scheduling as ss
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future import trial_workload as tw
 from tools.future import work_events as we
 from tools.future import workgraph as wg

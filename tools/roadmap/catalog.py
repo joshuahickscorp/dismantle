@@ -558,7 +558,7 @@ DISK_TRUTH_MODULES: tuple[str, ...] = (
     "tools/accelerator/repatriation_audit.py",
     "tools/odyssey/noetic_compiler.py",
     "tools/future/complete_ebpw.py",
-    "tools/future/capability_reachability.py",
+    "tools/roadmap/capability_reachability.py",
 )
 
 

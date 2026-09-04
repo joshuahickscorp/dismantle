@@ -16,10 +16,10 @@ UNTESTED, not evidence the claim is unjustified.
 no disk, no catalog, no subprocess. A gate that does not call it is a
 named coverage gap, not silent success.
 
-    python3 tools/future/status_causality.py --build
-    python3 tools/future/status_causality.py --challenge BLOCKED_NO_METAL_GPU
-    python3 tools/future/status_causality.py --scan
-    python3 tools/future/status_causality.py --coverage
+    python3 tools/verify/status_causality.py --build
+    python3 tools/verify/status_causality.py --challenge BLOCKED_NO_METAL_GPU
+    python3 tools/verify/status_causality.py --scan
+    python3 tools/verify/status_causality.py --coverage
 """
 from __future__ import annotations
 
@@ -491,7 +491,7 @@ THIS_LANE_WRITE_SCOPE: tuple[str, ...] = (
     "hcli/agentos/vmcp_gate.py",
     "hcli/agentos/recovery.py",
     "hcli/agentos/research.py",
-    "tools/future/status_causality.py",
+    "tools/verify/status_causality.py",
     "tools/future/test_status_causality_gates.py",
     "receipts/future/STATUS_CAUSALITY_COVERAGE.json",
 )
@@ -527,7 +527,7 @@ G007_NAMED_GATES: tuple[str, ...] = (
 ODYSSEY_III_CALL = {
     "inherits": True,
     "caller": "tools.future.odyssey3_adversary.emit_for_law and apply_result",
-    "calls": "tools.future.status_causality.emit",
+    "calls": "tools.verify.status_causality.emit",
     "arguments": {
         "status": "law['law_id']",
         "probe_performed": (
@@ -1651,7 +1651,7 @@ def build_coverage() -> Path:
         "evidence_class": "STATIC_ONLY",
         "gpu_authority": False,
         "does_not_assert_world_state": True,
-        "emit_entry_point": "tools.future.status_causality.emit()",
+        "emit_entry_point": "tools.verify.status_causality.emit()",
         "five_recorded_fields": list(FIVE_RECORDED_FIELDS),
         "law": LAW,
         "selection_rule": cov["selection_rule"],
@@ -1692,7 +1692,7 @@ def build_coverage() -> Path:
             "reason that is not that partition."
         ),
     }
-    return write_receipt(COVERAGE_RECEIPT, doc, "tools/future/status_causality.py")
+    return write_receipt(COVERAGE_RECEIPT, doc, "tools/verify/status_causality.py")
 
 
 def improvement_trial_alu_bound_control() -> dict[str, Any]:
@@ -2608,9 +2608,9 @@ def build() -> Path:
             *named_gaps,
         ],
         "resident_callable": {
-            "entry_point": "tools.future.status_causality.challenge()",
-            "emit_entry_point": "tools.future.status_causality.emit()",
-            "stamp_entry_point": "tools.future.status_causality.stamp()",
+            "entry_point": "tools.verify.status_causality.challenge()",
+            "emit_entry_point": "tools.verify.status_causality.emit()",
+            "stamp_entry_point": "tools.verify.status_causality.stamp()",
             "workunit": (
                 "one CPU_ANALYSIS unit; challenge a consequential blocker before "
                 "acting on its label"
@@ -2625,8 +2625,8 @@ def build() -> Path:
             ),
         },
         "emit_time": {
-            "entry_point": "tools.future.status_causality.emit()",
-            "stamp": "tools.future.status_causality.stamp()",
+            "entry_point": "tools.verify.status_causality.emit()",
+            "stamp": "tools.verify.status_causality.stamp()",
             "cheap": "no disk, no catalog, no subprocess",
             "returns": list(VERDICTS),
             "records": list(FIVE_RECORDED_FIELDS),
@@ -2656,7 +2656,7 @@ def build() -> Path:
         doc["negative_findings"].append(
             "a status with no recorded probe was not UNTESTED; the detector is accusing in the dark"
         )
-    written = write_receipt(RECEIPT, doc, "tools/future/status_causality.py")
+    written = write_receipt(RECEIPT, doc, "tools/verify/status_causality.py")
     build_coverage()
     return written
 

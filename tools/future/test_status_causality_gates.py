@@ -12,7 +12,7 @@ import sys
 import types
 from pathlib import Path
 
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import RECEIPTS, REPO, git, write_receipt
 
 GATES_DIR = REPO / "hcli" / "agentos"

@@ -284,10 +284,11 @@ class ToolSpec:
     resources: Tuple[str, ...] = ()
     verifier_expectations: Tuple[str, ...] = ()
     provenance: str = "hcli.tool_registry"
+    alias_of: Optional[str] = None
     handler: Callable[[ToolContext, Dict[str, Any]], Any] = field(repr=False, compare=False, default=lambda _c, _a: None)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "schema": TOOL_SCHEMA,
             "name": self.name,
             "description": self.description,
@@ -301,6 +302,9 @@ class ToolSpec:
             "verifier_expectations": list(self.verifier_expectations),
             "provenance": self.provenance,
         }
+        if self.alias_of:
+            result["alias_of"] = self.alias_of
+        return result
 
 
 @dataclass
@@ -356,18 +360,40 @@ class ToolRegistry:
             raise ValueError(f"tool already registered: {name}")
         if spec.mutation not in MUTATION_CLASSES:
             raise ValueError(f"unknown mutation class: {spec.mutation}")
+        if spec.alias_of and spec.alias_of not in self._tools:
+            raise ValueError(f"alias target is not registered: {spec.alias_of}")
         self._tools[name] = spec
         return spec
 
     def get(self, name: str) -> Optional[ToolSpec]:
         return self._tools.get(str(name or "").strip())
 
-    def discover(self, *, role: Optional[str] = None) -> List[Dict[str, Any]]:
+    def discover(
+        self,
+        *,
+        role: Optional[str] = None,
+        include_aliases: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Return canonical tools with compatibility aliases as metadata.
+
+        Aliases remain callable through :meth:`get` and :meth:`invoke`, but
+        are not independent model-facing capabilities. ``include_aliases``
+        is available for diagnostics and migration audits.
+        """
+        aliases: Dict[str, List[str]] = {}
+        for item in self._tools.values():
+            if item.alias_of:
+                aliases.setdefault(item.alias_of, []).append(item.name)
         result = []
         for spec in sorted(self._tools.values(), key=lambda item: item.name):
+            if spec.alias_of and not include_aliases:
+                continue
             if role and spec.roles and role not in spec.roles:
                 continue
-            result.append(spec.to_dict())
+            item = spec.to_dict()
+            if not spec.alias_of and aliases.get(spec.name):
+                item["aliases"] = sorted(aliases[spec.name])
+            result.append(item)
         return result
 
     def describe(self, focus: str = "", *, max_results: int = 12) -> Dict[str, Any]:
@@ -388,6 +414,8 @@ class ToolRegistry:
 
         scored: List[Tuple[int, str, ToolSpec]] = []
         for spec in self._tools.values():
+            if spec.alias_of:
+                continue
             name = spec.name.lower()
             haystack = " ".join(
                 (spec.name, spec.description, *spec.roles, *spec.resources)
@@ -1912,7 +1940,7 @@ def default_tool_registry(
         path_schema,
         handler=_read_file,
     ))
-    registry.register(ToolSpec("filesystem.read", "Read one known file under an AgentOS read root.", path_schema, handler=_read_file))
+    registry.register(ToolSpec("filesystem.read", "Read one known file under an AgentOS read root.", path_schema, alias_of="fs.read", handler=_read_file))
     registry.register(ToolSpec(
         "fs.search", "Search bounded text files under a read root.",
         {"type": "object", "required": ["pattern"], "additionalProperties": False,
@@ -1923,7 +1951,7 @@ def default_tool_registry(
         "filesystem.search", "Search bounded text files under a read root.",
         {"type": "object", "required": ["pattern"], "additionalProperties": False,
          "properties": {"pattern": {"type": "string"}, "root": {"type": "string"}, "path": {"type": "string"}, "glob": {"type": "string"}, "max_results": {"type": "integer"}}},
-        handler=_search_files,
+        alias_of="fs.search", handler=_search_files,
     ))
     # `path` is NOT required: the handler already defaults to the workspace root
     # and the read-root check still applies, so demanding it bought no safety and
@@ -1943,7 +1971,7 @@ def default_tool_registry(
     ))
     registry.register(ToolSpec(
         "filesystem.list", "List files and directory entries under a read root, optionally filtered by glob.",
-        list_schema, handler=_list_files,
+        list_schema, alias_of="fs.list", handler=_list_files,
     ))
     registry.register(ToolSpec(
         "filesystem.write", "Atomically write a workspace/repository file under reversible permission.",
@@ -2029,6 +2057,7 @@ def default_tool_registry(
             {"type": "object", "additionalProperties": False, "properties": {"path": {"type": "string"}, "paths": {"type": "array", "items": {"type": "string"}}}},
             mutation=DESTRUCTIVE,
             deterministic=True,
+            alias_of=None if name == "git.checkout-safe" else "git.checkout-safe",
             handler=_git_safe_revert_refusal,
         ))
     registry.register(ToolSpec(
@@ -2082,7 +2111,7 @@ def default_tool_registry(
     registry.register(ToolSpec(
         "huggingface.manifest", "Resolve a Hugging Face revision and return a bounded manifest.",
         {"type": "object", "required": ["repo"], "additionalProperties": False, "properties": {"repo": {"type": "string"}, "revision": {"type": "string"}}},
-        mutation=RESEARCH, deterministic=False, resources=("network",), handler=_huggingface_resolve,
+        mutation=RESEARCH, deterministic=False, resources=("network",), alias_of="huggingface.resolve", handler=_huggingface_resolve,
     ))
     registry.register(ToolSpec(
         "huggingface.fetch_file", "Fetch a bounded text/metadata file from a public or already-authorized Hugging Face repo.",
@@ -2102,7 +2131,7 @@ def default_tool_registry(
         verifier_expectations=("hash must be checked before atomic publish",), handler=_huggingface_download,
     ))
     registry.register(ToolSpec("receipt.read", "Read a JSON/text receipt under the repository or mission state roots.", path_schema, handler=_receipt_read))
-    registry.register(ToolSpec("receipt.inspect", "Inspect a JSON/text receipt under the repository or mission state roots.", path_schema, handler=_receipt_read))
+    registry.register(ToolSpec("receipt.inspect", "Inspect a JSON/text receipt under the repository or mission state roots.", path_schema, alias_of="receipt.read", handler=_receipt_read))
     for name, description in (
         ("roadmap.read", "Read the persisted civilization roadmap."),
         ("vmcp.capabilities", "Read the latest VMCP capability census."),
@@ -2263,12 +2292,12 @@ def default_tool_registry(
     registry.register(ToolSpec(
         "roadmap.inspect", "Inspect the persisted civilization roadmap receipt.",
         {"type": "object", "additionalProperties": False, "properties": {"path": {"type": "string"}}},
-        handler=_target_receipt("roadmap.read"),
+        alias_of="roadmap.read", handler=_target_receipt("roadmap.read"),
     ))
     registry.register(ToolSpec(
         "benchmark.inspect", "Inspect benchmark evidence through a named receipt path.",
         {"type": "object", "required": ["path"], "additionalProperties": False, "properties": {"path": {"type": "string"}}},
-        handler=_receipt_read,
+        alias_of="receipt.read", handler=_receipt_read,
     ))
     artifact_item_schema = {
         "type": "object",

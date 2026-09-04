@@ -29,7 +29,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import REPO  # noqa: E402
-from tools.future import status_causality as sc  # noqa: E402
+from tools.verify import status_causality as sc  # noqa: E402
 
 RECEIPT = REPO / "receipts" / "future" / "INTEGRATION_GATE.json"
 TEST_TIMEOUT_S = 1200

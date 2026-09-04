@@ -13,7 +13,7 @@ import pathlib
 import pytest
 
 from tools.future import metal_reachability as mr
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import REPO, RECEIPTS
 
 

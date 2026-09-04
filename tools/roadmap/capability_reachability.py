@@ -66,8 +66,8 @@ deterministic/scripted path guarantees this runs" -- not proof a model
 could never ask for it. That is exactly the honest question this wave asks:
 is there a real, checkable path, or only a possibility.
 
-    python3 tools/future/capability_reachability.py --build
-    python3 tools/future/capability_reachability.py --selftest
+    python3 tools/roadmap/capability_reachability.py --build
+    python3 tools/roadmap/capability_reachability.py --selftest
     python3 -m pytest tools/future/test_capability_reachability.py -q
 """
 from __future__ import annotations
@@ -95,7 +95,7 @@ from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 RECEIPT = "HCLI_CAPABILITY_REACHABILITY.json"
 SCHEMA = "hawking.future.capability_reachability.v1"
 VERSION = 1
-RECORDED_BY = "tools/future/capability_reachability.py"
+RECORDED_BY = "tools/roadmap/capability_reachability.py"
 
 TOOL_REGISTRY_REL = "hcli/tool_registry.py"
 FUTURE_DIR_REL = "tools/future"
@@ -652,7 +652,7 @@ def _extract_file_facts_fanout(
         chunks[i % n].append(pair)
     py_rels_list = list(py_rels)
     worker = (
-        "from tools.future.capability_reachability import _fanout_worker_main; "
+        "from tools.roadmap.capability_reachability import _fanout_worker_main; "
         "_fanout_worker_main()"
     )
     env = dict(_os.environ)
@@ -870,7 +870,7 @@ def build_capability(
 ) -> dict[str, Any]:
     """`resident_visible=None` derives it: registered, or directly imported
     by hcli/ itself (a real second discovery channel that bypasses
-    ToolRegistry -- see tools.future.status_causality for why this matters:
+    ToolRegistry -- see tools.verify.status_causality for why this matters:
     it is imported by eight hcli/agentos/*_gate.py modules despite never
     being a ToolSpec). Pass an explicit bool to assert the ToolSpec-wrapping
     channel instead (typed tools, and functions a ToolSpec wraps)."""

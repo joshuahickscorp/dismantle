@@ -47,7 +47,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.future._common import RECEIPTS, REPO, write_receipt
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 
 RECEIPT = "SPECIMEN_VERIFICATION.json"
 SCHEMA = "hawking.future.specimen_verify.v1"

@@ -386,7 +386,7 @@ def _resolved_from_modules(
     *,
     known_files: set[str] | frozenset[str] | None = None,
 ) -> list[str]:
-    """Port of tools.future.capability_reachability._resolved_from_modules."""
+    """Port of tools.roadmap.capability_reachability._resolved_from_modules."""
     bases: list[str] = []
     level = int(imp.get("level") or 0)
     if imp.get("form") == "from" and level > 0:

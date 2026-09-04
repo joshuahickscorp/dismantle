@@ -357,7 +357,7 @@ def test_load_reachability_snapshot_reads_the_real_analyzer_shape(monkeypatch):
     unmodified, using a stub in the analyzer's place."""
     sentinel = {"some.capability": {"defined": True}}
     monkeypatch.setattr(
-        "tools.future.capability_reachability.assemble",
+        "tools.roadmap.capability_reachability.assemble",
         lambda: {"capabilities": sentinel},
     )
     assert load_reachability_snapshot() == sentinel

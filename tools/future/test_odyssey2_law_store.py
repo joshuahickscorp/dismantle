@@ -11,7 +11,7 @@ import pathlib
 import pytest
 
 from tools.future import odyssey2_law_store as ols
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import RECEIPTS, HardwareClaimError
 
 

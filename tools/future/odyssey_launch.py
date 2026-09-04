@@ -37,7 +37,7 @@ from tools.future import flash_nx_audit as nx_audit
 from tools.future import odyssey2_law_store as ols
 from tools.future import odyssey3_adversary as o3
 from tools.future import repro_science as rs
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future.specimen_curriculum import (  # noqa: F401 - re-export; this file is not a second authority
     CURRICULUM_ROLES,
     propose_specimen_curriculum,

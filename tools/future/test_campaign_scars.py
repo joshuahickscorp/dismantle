@@ -7,7 +7,7 @@ import sys
 
 from tools.future import campaign_scars as cs
 from tools.future import negative_index as ni
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import HARDWARE_FIELDS, RECEIPTS, REPO, _assert_no_hardware_claims
 
 SEVEN = (

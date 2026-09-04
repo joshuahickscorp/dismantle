@@ -44,7 +44,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.future._common import REPO, write_receipt
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 
 RECEIPT = "METAL_REACHABILITY.json"
 SCHEMA = "hawking.future.metal_reachability.v1"

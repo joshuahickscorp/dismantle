@@ -10,7 +10,7 @@ import ast
 import json
 
 from tools.future import autonomy_scars as asc
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import HARDWARE_FIELDS, RECEIPTS, _assert_no_hardware_claims
 
 
@@ -349,7 +349,7 @@ def test_build_emits_a_sealed_static_receipt():
     assert doc["n_supported_fixtures"] >= 3
     assert doc["untested_control"]["verdict"] == sc.UNTESTED
     assert doc["does_not_assert_world_state"] is True
-    assert doc["resident_callable"]["entry_point"] == "tools.future.status_causality.challenge()"
+    assert doc["resident_callable"]["entry_point"] == "tools.verify.status_causality.challenge()"
     assert doc["resident_callable"]["frontier"] == "FT.VERIFICATION.negative-index"
     _assert_no_hardware_claims(doc)
     for key in HARDWARE_FIELDS:
@@ -375,7 +375,7 @@ def test_challenge_output_has_the_contract_fields():
 
 
 def test_module_parses():
-    src = (sc.REPO / "tools" / "future" / "status_causality.py").read_text()
+    src = (sc.REPO / "tools" / "verify" / "status_causality.py").read_text()
     ast.parse(src)
     tree = ast.parse(src)
     for node in ast.walk(tree):
@@ -623,7 +623,7 @@ def test_build_receipt_names_odyssey_iii_call_and_coverage_lists():
     doc = json.loads(out.read_text())
     iii = doc["odyssey_iii"]
     assert iii["inherits"] is True
-    assert iii["calls"] == "tools.future.status_causality.emit"
+    assert iii["calls"] == "tools.verify.status_causality.emit"
     assert iii["caller"].startswith("tools.future.odyssey3_adversary")
     args = iii["arguments"]
     assert args["status"] == "law['law_id']"
@@ -631,7 +631,7 @@ def test_build_receipt_names_odyssey_iii_call_and_coverage_lists():
     assert args["interpretation"] == "law['statement']"
     assert "law['scope']" in args["probe_kind"]
     assert doc["resident_callable"]["emit_entry_point"] == (
-        "tools.future.status_causality.emit()"
+        "tools.verify.status_causality.emit()"
     )
     assert isinstance(doc["gates_recording_five_fields"], list)
     assert isinstance(doc["gates_not_recording_five_fields"], list)

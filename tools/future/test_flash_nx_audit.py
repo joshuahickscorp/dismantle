@@ -2,7 +2,7 @@ import json
 import pathlib
 
 from tools.future import flash_nx_audit as audit
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future._common import RECEIPTS, HardwareClaimError, write_receipt
 
 

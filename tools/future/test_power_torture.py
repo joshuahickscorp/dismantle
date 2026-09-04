@@ -22,7 +22,7 @@ from tools.future import concurrency_doctor as cd
 from tools.future import flash_organ_pivot as fop
 from tools.future import orchestration as orch
 from tools.future import power_torture as pt
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future import trial_workload as tw
 from tools.future._common import (
     HARDWARE_FIELDS,

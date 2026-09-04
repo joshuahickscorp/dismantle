@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.future._common import REPO, git, load_json, write_receipt
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 
 RECEIPT = "FLASH_NX_COMPLETENESS_AUDIT.json"
 SCHEMA = "hawking.future.flash_nx_audit.v1"

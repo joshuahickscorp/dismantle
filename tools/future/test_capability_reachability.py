@@ -1,4 +1,4 @@
-"""Tests for tools/future/capability_reachability.py.
+"""Tests for tools/roadmap/capability_reachability.py.
 
 Two layers: a hermetic engine test against a synthetic three-file fixture
 (so the "own test doesn't count" rule is checked against a known-exact
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.future import capability_reachability as cr
+from tools.roadmap import capability_reachability as cr
 from tools.future import _common as cr_common
 
 

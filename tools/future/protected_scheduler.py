@@ -42,7 +42,7 @@ from tools.future import contamination as C
 from tools.future import frontiers as fr
 from tools.future import protected_window as pw
 from tools.future import qualification_pipeline as qp
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 from tools.future import workunit_species as ws
 
 RECEIPT = "PROTECTED_SCHEDULER.json"

@@ -34,7 +34,7 @@ from tools.future import autonomy_trial as at
 from tools.future import flash_organ_pivot as fop
 from tools.future import frontiers as fr
 from tools.future import negative_index as ni
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 
 RECEIPT = "MODEL_BEARING.json"
 SCHEMA = "hawking.future.model_bearing.v1"
@@ -1918,7 +1918,7 @@ def build() -> Path:
             "tools/future/frontiers.py — next_work order is the fixed policy (gain then id); _tokens/_jaccard reused",
             "tools/future/flash_organ_pivot.py — refuse_if_restatement / restatement_verdict; scoped scar is not a restatement on a new surface",
             "tools/future/negative_index.py — refuse_if_dead / canon_family / canon_organ; tools still kill dead ideas",
-            "tools/future/status_causality.py — challenge(); a status label is a hypothesis until the probe entails it",
+            "tools/verify/status_causality.py — challenge(); a status label is a hypothesis until the probe entails it",
             "tools/future/no_wait_scheduler.py — poll is supervisor-side; the reasoning context is already released",
             "tools/future/power_torture.py — REPLAN / SUBAGENT_STATE transition classes the hour must still demonstrate",
             "tools/future/orchestration.py — BINDINGS / invoke / emit_workunit; this module is not bound (outside WRITE)",

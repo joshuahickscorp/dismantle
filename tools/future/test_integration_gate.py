@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import integration_gate as g
 from _common import REPO
-from tools.future import status_causality as sc
+from tools.verify import status_causality as sc
 
 
 def test_it_finds_the_test_module_for_a_source_module():

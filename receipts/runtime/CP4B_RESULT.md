@@ -47,6 +47,16 @@ This is the third time a knee model has failed to transfer. CP3 said registers; 
 CP4b says the q4-era number was coincidence and the real constraint is grid width against core
 count. **Treat every published knee as scoped to the shape it was measured on.**
 
+> **SUPERSEDED by `CP6C_RESULT.md`.** The grid-width explanation above is wrong, and it is wrong
+> in exactly the way this paragraph warns about. CP6c varied R at FIXED K on the real organ with
+> real weights across 64 layers: doubling R halves the threadgroups (4352 to 2176) and doubles the
+> accumulators (16 to 32), and the time moves by 2.0% at K=2 and 0.3% at K=4. Grid width does
+> nothing across a 4x range. What CP4b actually observed was two organs of different SHAPES
+> (17408 rows against 5120) having different knees, and the grid-width story was fitted to that
+> rather than tested against it. The measured governing variable is K, through FMAs per weight
+> loaded. The sentence about scoping a knee to its shape was right; the conclusion drawn one line
+> earlier was not.
+
 ## Standing arithmetic, and what it is not
 
 Measured organ shares and measured speedups, if and only if they integrate:

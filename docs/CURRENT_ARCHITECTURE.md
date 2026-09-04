@@ -66,10 +66,10 @@ debt, not silently reclassified as clean layering. Removing those edges needs a
 separate neutral-primitive/UI-vocabulary change and is outside the no-physical-
 optimization refactor lane.
 
-The undeclared `crates/hide-backend/src/hcli/` tree and its `hcli-backend`
-wrapper are a retained, non-building historical scaffold. The live Rust HCLI
-surface is the declared `hcli_bridge`, profile, research, source, and swarm
-modules; the old scaffold is not a second runtime authority.
+The undeclared `crates/hide-backend/src/hcli/` tree, its `hcli-backend` wrapper,
+and its integration test were removed in Phase III. They had never built and
+were not a second runtime authority. The live Rust HCLI surface is the declared
+`hcli_bridge`, profile, research, source, and swarm modules.
 
 ## Authority rules
 

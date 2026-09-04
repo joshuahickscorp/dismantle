@@ -268,12 +268,11 @@ Both are now.
 
 Three findings that were not renames:
 
-1. **`hide_backend::haider` has never compiled.** `mod haider` was never in
-   lib.rs, so the module, its binary and its integration test -- 2823 lines --
-   were in no build, and `cargo build -p hide-backend` has been failing on that
-   binary before and after this change. Declaring it yields 14 compile errors.
-   The library builds clean. Documented in lib.rs. Adopt or delete is a
-   separate call, now with evidence.
+1. **The former `hide_backend::haider` scaffold never compiled.** `mod haider`
+   was never in lib.rs, so the module, its binary, and its integration test were
+   in no build. Declaring it exposed 14 compile errors. Phase III removed that
+   historical scaffold after preserving this finding; the declared backend
+   surface is now the only Rust HCLI owner.
 2. **`tools/headless/conftest.py` would have skipped everything.** It gated on
    `tools/haider/hcli` existing; after the move that is permanently false and
    every hcli-importing module below it would have been skipped silently. It

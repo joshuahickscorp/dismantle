@@ -254,7 +254,7 @@ def resolve_workspace_path(value: str | Path) -> Path:
     if head == "ramanujan":
         # Ramanujan retains sealed logical paths while its scaffold, records,
         # and governance material live in a compact local hierarchy.
-        from ramanujan.layout import resolve_ramanujan_path
+        from tools.verify.ramanujan_layout import resolve_ramanujan_path
 
         return resolve_ramanujan_path(path)
     if head == "odyssey":

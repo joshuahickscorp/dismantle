@@ -21,7 +21,8 @@ and receipts/headless/CONSOLIDATION2.json.
 `hawking-experiments` is not a valid Python package name (dash). Import the
 moved modules by bare name (`import frankenstein_ablation`, `import prometheus`)
 after `lab.layout.ensure_experiment_imports()` (also invoked from
-`lab.operators` import and repo-root `conftest.py`). Ramanujan stays at
-repo-root `ramanujan/` — it is a live package.
+`lab.operators` import and repo-root `conftest.py`). Ramanujan is retained
+under `research/ramanujan/` as evidence only; live verification code is under
+`tools/verify/`.
 
 Live readers of historic path strings should use `lab.layout.resolve_workspace_path`.

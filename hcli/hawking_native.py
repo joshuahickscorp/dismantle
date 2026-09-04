@@ -1470,7 +1470,13 @@ class HawkingNativeConnector:
             # and that is not in scope here -- so this is labelled for what it
             # is rather than mislabelled for what would be more convenient.
             "profile_max_seq_len": config.max_seq_len,
-            "prompt_tokens_counted_by_connector": prompt_tokens,
+            # `prompt_tokens` above PREFERS the resident's own count
+            # (body["prompt_len"]), so relaying it under a "counted by connector"
+            # name was a mislabel and made the two numbers look identical when
+            # they are not. THIS is the one _limits consumed to compute
+            # available = position_limit - prompt - 8, and it is the only number
+            # that explains a 2048-token request being granted 1446.
+            "prompt_tokens_used_for_budget": prompt.prompt_tokens,
         }
         return {
             "id": f"hawking-chat-{uuid.uuid4()}",

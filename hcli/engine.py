@@ -4268,7 +4268,7 @@ class Engine:
                 # these were dying on the second.
                 "max_new_tokens_granted",
                 "profile_max_seq_len",
-                "prompt_tokens_counted_by_connector",
+                "prompt_tokens_used_for_budget",
             ):
                 value = native.get(key)
                 if value is not None:

@@ -258,17 +258,18 @@ def test_reported_density_tracks_the_bytes_actually_written():
 def test_canonical_libraries_are_not_silently_downgraded():
     """Two producers write these paths; whichever ran last wins.
 
-    tools/headless/genome_libraries.py emits the v1 form of REPRESENTATION_LIBRARY.json
-    and KERNEL_LIBRARY.json to the same canonical paths this campaign's v2 producers own,
-    and test_genome_libraries.py runs it. A full `pytest tools/` therefore reverts them,
-    which silently drops 13 representation families and every kernel completeness field.
+    The retired v1 genome-library producer used to emit the v1 form of
+    REPRESENTATION_LIBRARY.json and KERNEL_LIBRARY.json to the same canonical paths
+    this campaign's v2 producers own. A full `pytest tools/` must not reintroduce
+    that old producer, which silently drops 13 representation families and every
+    kernel completeness field.
     """
     for name, want in (("REPRESENTATION_LIBRARY", ".representation_library.v2"),
                        ("KERNEL_LIBRARY", ".kernel_library.v2")):
         d = load(name)
         assert str(d["schema"]).endswith(want), (
             f"{name} is at {d['schema']}, not {want}. Something rewrote the canonical "
-            f"path -- rerun tools/headless/{name.lower()}.py before trusting any gate "
+            f"path -- regenerate the v2 authority before trusting any gate "
             f"that cites it.")
 
 

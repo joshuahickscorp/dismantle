@@ -49,14 +49,30 @@ at T=16, 1.33x at T=128, because the WY build is O(T^2 K). Anyone selling this
 as an arithmetic saving is wrong.
 
 **Bandwidth.** The model is DENSE -- `qwen38_geometry.rs` refuses MoE keys
-outright -- so every position re-reads the full weight set. Per layer that is
-`H*H*2 + H*I*3` with H=5120, I=17408: about 20.5 GB per position across 64
-layers at one byte per parameter.
+outright -- so every position re-reads the full weight set.
 
-The measured prefill was 17,048 positions in 595 s, implying roughly 349 TB of
-weight traffic. At the machine's measured 778.8 GB/s that traffic alone needs
-**448 s against 595 s observed -- 75% of peak.** That is a bandwidth-bound loop,
-and a GEMM over T positions reads those weights once instead of T times.
+CORRECTION, 2026-09-04. An earlier version of this file estimated 20.5 GB of
+weights from geometry at one byte per parameter and derived "75% of peak" from
+it. The resident REPORTS its own figure on the ready banner:
+
+    resident_weight_bytes = 10,554,259,456   (10.55 GB)
+
+Half the estimate. The reported number is authority; the estimate was mine.
+Recomputed from a clean R1 run -- 586 positions of cold prefill in 15.9 s, so
+27.1 ms per position:
+
+    10.55 GB / 27.1 ms  =  389 GB/s  =  50% of the measured 778.8 GB/s peak
+
+Across the earlier campaign aggregate, 17,048 positions imply 180 TB, needing
+231 s at peak against 595 s observed -- 39% of peak.
+
+50% of peak bandwidth on a GEMV-dominated loop is still a bandwidth-limited
+regime: a dense GEMV is close to a pure streaming read and rarely clears 60-70%.
+But it is NOT the 75% first published, and the honest headline is weaker: there
+is roughly a 2x bandwidth headroom here, not a 4x one. A GEMM over T positions
+still reads those weights once instead of T times, which is the mechanism; the
+size of the prize is now a measured 2x on the bandwidth term rather than an
+estimated 4x.
 
 ## Projected
 
@@ -65,8 +81,13 @@ Prefill is 75% of accepted-unit model wall (595 s of 799 s), at 28.7 prompt tok/
 | prefill speedup | prefill wall | model wall | prompt tok/s |
 |---|---|---|---|
 | 1x (today) | 595 s | 799 s | 28.7 |
+| 2x | 298 s | 502 s | 57.2 |
 | 4x | 149 s | 353 s | 114.6 |
 | 8x | 74 s | 278 s | 229.2 |
+
+The 2x row is the one the corrected bandwidth arithmetic supports directly. The
+4x and 8x rows require the chunked path to also win back dispatch and launch
+overhead, which CP3 measures rather than assumes.
 
 ## Next rungs
 

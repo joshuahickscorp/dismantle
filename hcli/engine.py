@@ -1027,6 +1027,38 @@ def _operation_text(operation: Dict[str, Any], field: str) -> Optional[str]:
     return operation_text(operation, field)
 
 
+def blast_radius(before: str, after: str) -> Dict[str, Any]:
+    """What a whole-file write did to the file, as a number the receipt keeps.
+
+    Receipt ecf6d616 was ACCEPTED -- mutation, completed, py_compile exit 0,
+    4 of 4 tests green, red_before_green True -- for a `replace_file` that cut a
+    202-line dashboard to 72 lines and left two names read but never bound. The
+    recorded operation carried `op`, `path` and `new_text`, so the only account
+    of what the change DID was the model's own prose, which said "add two
+    helpers". A narrow test then licensed the deletion and nothing anywhere
+    contradicted it.
+
+    This does NOT refuse the write. Legitimate rewrites exist, and a guard that
+    blocked them would be a worse defect than the one it closes. It makes the
+    size of the change VISIBLE, which is what was missing.
+    """
+    before_lines = before.count("\n") + (1 if before and not before.endswith("\n") else 0)
+    after_lines = after.count("\n") + (1 if after and not after.endswith("\n") else 0)
+    removed = max(0, before_lines - after_lines)
+    fraction = (removed / before_lines) if before_lines else 0.0
+    return {
+        "lines_before": before_lines,
+        "lines_after": after_lines,
+        "lines_removed": removed,
+        "fraction_removed": round(fraction, 4),
+        "bytes_before": len(before.encode("utf-8")),
+        "bytes_after": len(after.encode("utf-8")),
+        # A third of a file is a lot to lose to an operation whose stated purpose
+        # was to add something. The threshold is a REPORTING trigger, not a veto.
+        "mostly_deleted": fraction >= 0.34,
+    }
+
+
 def _rejected_excerpt(text: str) -> str:
     """Keep both ENDS of a rejected reply, not just its head.
 
@@ -5036,6 +5068,23 @@ class Engine:
                 if current == new_text:
                     raise NoOpMutation(
                         "replace_file content unchanged"
+                    )
+
+                # Record what this write DOES to the file, onto the operation
+                # the receipt echoes. Without it the receipt's only account of a
+                # whole-file replace is the model's own summary of it.
+                radius = blast_radius(current, new_text)
+                try:
+                    operation["blast_radius"] = radius
+                except Exception:  # noqa: BLE001 - a frozen mapping must not fail the write
+                    pass
+                if radius["mostly_deleted"]:
+                    self._emit(
+                        "mutation_blast_radius",
+                        {
+                            "path": str(path.relative_to(self.root)),
+                            **radius,
+                        },
                     )
 
                 # ATOMIC. A SIGKILL during an in-place write_text left a

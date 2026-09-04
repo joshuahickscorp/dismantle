@@ -208,6 +208,19 @@ class GoalCompiler:
         r"(?![A-Za-z0-9_])"
     )
 
+    #: A sentence OPENING with one of these is a constraint on the whole goal,
+    #: never a unit of work. See _extract_obligations.
+    _PROHIBITION_OPENERS = (
+        "do not",
+        "don't",
+        "do n't",
+        "never",
+        "must not",
+        "must never",
+        "no ",
+        "avoid ",
+    )
+
     _INVARIANT_MARKERS = (
         "do not",
         "don't",
@@ -525,6 +538,24 @@ class GoalCompiler:
                 for marker in self._ACCEPTANCE_MARKERS
                 + self._INVARIANT_MARKERS
             ):
+                continue
+            # A PROHIBITION IS NOT A WORK UNIT. It constrains every unit, it is
+            # discharged by doing nothing, and there is no mutation that
+            # produces the "observable evidence ... is discharged" its own
+            # acceptance criterion then demands -- so it fails, gets repaired,
+            # and gets repaired again. Measured: FIFTEEN units for a one-file
+            # two-function change, with the mission grinding on
+            # `G003.work.repair.1.repair.1` at accepted=0, whose OBJECTIVE read
+            # verbatim "Do not weaken or edit that test file."
+            #
+            # These sentences already flow into the packet's INVARIANTS section,
+            # so compiling them here as well is pure duplication that costs
+            # resident calls -- the metric directive XI is actually about.
+            #
+            # Leading clause, not marker presence: "Do not weaken or edit that
+            # TEST file" also contains an ACCEPTANCE marker, so a test for
+            # "has no invariant marker" would let it straight through.
+            if lower.lstrip().startswith(self._PROHIBITION_OPENERS):
                 continue
             key = re.sub(r"\s+", " ", sentence.strip().lower())
             if len(key) < 8 or key in seen:

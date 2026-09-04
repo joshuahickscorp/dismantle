@@ -37,7 +37,7 @@ defects this campaign already paid for once:
   the node is marked COMPLETE and no WorkUnit is emitted for it at all --
   prose claiming work remains does not outrank a passing check.
 * CAPABILITY REACHABILITY (``load_reachability_snapshot`` /
-  ``_capability_notes``) -- reuses ``tools/future/capability_reachability``
+  ``_capability_notes``) -- reuses ``tools.roadmap.capability_reachability``
   rather than building a second analyzer. That module does a whole-repo AST
   scan (tens of seconds); this module NEVER runs it implicitly. A caller
   computes the snapshot once, out of band, and passes it to ``schedule``.

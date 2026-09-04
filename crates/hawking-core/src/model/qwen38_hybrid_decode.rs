@@ -8274,6 +8274,269 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             )
         }
 
+        /// CP6i -- chunked prefill: K prompt positions in ONE command buffer.
+        ///
+        /// The buffer contract in `encode_layers` is a clean ping-pong:
+        ///
+        ///   `hidden` --[mixer]--> `first_residual` --[MLP]--> `hidden`
+        ///
+        /// so a chunk needs exactly two K-wide buffers and the CP6g glue. Per
+        /// layer: gather each position into `hidden`, run the mixer as it runs
+        /// today, scatter `first_residual` into the K-wide residual, then run the
+        /// MLP ONCE for all K.
+        ///
+        /// The reordering is legal. Today position k traverses all 64 layers
+        /// before k+1 starts; here all K traverse layer L before layer L+1. Each
+        /// position's layer L depends only on its own layer L-1 output plus
+        /// shared state, and that shared state -- the DeltaNet recurrence and the
+        /// KV append -- is still advanced in POSITION ORDER within each layer.
+        ///
+        /// Only the last position's logits are needed to continue, so the
+        /// terminal runs once. CP6h measured that head at 4.3% of a token, so
+        /// this is a small part of the win, not the mechanism; it is noted so the
+        /// comparison is not read as pure chunking.
+        pub fn prefill_chunk(
+            &mut self,
+            tokens: &[u32],
+            r: usize,
+        ) -> Result<(u32, CommandBufferTiming)> {
+            if self.fallbacks != 0 {
+                return Err(Error::Model(
+                    "qwen38 decode refuses a run after a fallback".into(),
+                ));
+            }
+            let chunk = tokens.len();
+            if chunk == 0 || r == 0 {
+                return Err(Error::Model("prefill_chunk needs tokens and a positive r".into()));
+            }
+            if self.mlp_fusion != Qwen38MlpFusion::GateUpSwiglu {
+                return Err(Error::Model(format!(
+                    "prefill_chunk needs GateUpSwiglu; this session is {:?}",
+                    self.mlp_fusion
+                )));
+            }
+            let hidden = QWEN38_HIDDEN;
+            let inter = QWEN38_INTERMEDIATE;
+            let hid_u = hidden as u32;
+            let ck = chunk as u32;
+
+            // Two K-wide activation buffers plus the MLP's own scratch.
+            let c_hidden = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let c_resid = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_xin = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_act = self.context.new_buffer_checked(inter * chunk * 4)?;
+            let b_down = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_norm = self.context.new_buffer_checked(hidden * chunk * 4)?;
+
+            let k_gu = format!(
+                "qwen_affine_q2_group64_matmul_gate_up_swiglu_r{r}k{chunk}_geo_tpr64_tg128_bitcast"
+            );
+            let k_dn = format!("qwen_affine_q2_matmul_r{r}k{chunk}_geo_tpr64_tg128");
+            let fused_tail = self.fuse_add_rmsnorm;
+            let rms_tg = if self.rmsnorm_tg > 0 { self.rmsnorm_tg } else { 256 };
+            let tg128 = (128u32, 1, 1);
+
+            self.reset_active_weight_bytes();
+            let encode_t0 = Instant::now();
+            // Detached so the command buffer borrows the CONTEXT, not `self`.
+            // The mixer reads `self.position` for RoPE and the KV offset, so the
+            // chunk has to advance it between positions -- which needs `&mut
+            // self` while encoding. Without this the K positions of a chunk all
+            // share one RoPE index and one KV slot, which is exactly the defect
+            // the first run of CP6i caught: 1.353x faster and a DIFFERENT token.
+            let ctx = self.context.clone();
+            let mut tcb = TokenCommandBuffer::new(&ctx);
+            self.enable_dispatch_name_trace(&mut tcb);
+            let base_position = self.position;
+
+            let encoded = (|| -> Result<()> {
+                let tcb = &mut tcb;
+                // EVERY dispatch in a chunk is ordered against its neighbours,
+                // and this is not optional. Without it the K positions of a
+                // layer race: position k's gather overwrites `workspace.hidden`
+                // while k-1's mixer is still reading it, and k's mixer reads the
+                // recurrent state before k-1 has written it. The first two runs
+                // of CP6i were 1.35x faster and predicted a DIFFERENT token, and
+                // K=1 stayed EQUIVALENT throughout -- which is what localised it
+                // here rather than in the encoder wiring.
+                tcb.begin_serial_group()?;
+                let scatter = |tcb: &mut TokenCommandBuffer<'_>,
+                               src: &PinnedBuffer,
+                               dst: &PinnedBuffer,
+                               slot: u32|
+                 -> Result<()> {
+                    tcb.dispatch_threads(
+                        "qwen38_scatter_to_interleaved",
+                        (hid_u, 1, 1),
+                        (256, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(src), 0);
+                            enc.set_buffer(1, Some(dst), 0);
+                            enc.set_bytes(2, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(3, 4, &ck as *const u32 as *const _);
+                            enc.set_bytes(4, 4, &slot as *const u32 as *const _);
+                        },
+                    )
+                };
+                let gather = |tcb: &mut TokenCommandBuffer<'_>,
+                              src: &PinnedBuffer,
+                              dst: &PinnedBuffer,
+                              slot: u32|
+                 -> Result<()> {
+                    tcb.dispatch_threads(
+                        "qwen38_gather_from_interleaved",
+                        (hid_u, 1, 1),
+                        (256, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(src), 0);
+                            enc.set_buffer(1, Some(dst), 0);
+                            enc.set_bytes(2, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(3, 4, &ck as *const u32 as *const _);
+                            enc.set_bytes(4, 4, &slot as *const u32 as *const _);
+                        },
+                    )
+                };
+
+                // Embed every position into the K-wide layer input.
+                for (k, &tok) in tokens.iter().enumerate() {
+                    self.encode_embed(tcb, tok)?;
+                    scatter(tcb, &self.workspace.hidden, &c_hidden, k as u32)?;
+                }
+
+                for layer in 0..QWEN38_LAYERS {
+                    // Mixers, in POSITION ORDER -- the recurrence and KV depend on it.
+                    for k in 0..chunk {
+                        // The mixer's RoPE index and KV slot come from
+                        // `self.position`. Set it to THIS position before
+                        // encoding, or every position in the chunk lands on the
+                        // same slot.
+                        self.position = base_position + k;
+                        gather(tcb, &c_hidden, &self.workspace.hidden, k as u32)?;
+                        match self.mixer_kind(layer)? {
+                            Qwen38MixerKind::DeltaNet => self.encode_deltanet(tcb, layer)?,
+                            Qwen38MixerKind::Gqa => self.encode_gqa(tcb, layer)?,
+                        }
+                        scatter(tcb, &self.workspace.first_residual, &c_resid, k as u32)?;
+                    }
+
+                    // ONE MLP for all K positions: c_resid -> c_hidden.
+                    let gate = self
+                        .affine(&self.layer_name(layer, "mlp.gate_proj.weight"))
+                        .ok_or_else(|| {
+                            Error::Model(format!("layer {layer} gate_proj is not affine"))
+                        })?;
+                    let up = self
+                        .affine(&self.layer_name(layer, "mlp.up_proj.weight"))
+                        .ok_or_else(|| {
+                            Error::Model(format!("layer {layer} up_proj is not affine"))
+                        })?;
+                    let down = self
+                        .affine(&self.layer_name(layer, "mlp.down_proj.weight"))
+                        .ok_or_else(|| {
+                            Error::Model(format!("layer {layer} down_proj is not affine"))
+                        })?;
+                    let gb = gate.biases.as_ref().ok_or_else(|| {
+                        Error::Model("chunked prefill on a delta-only (q2f) gate".into())
+                    })?;
+                    let ub = up.biases.as_ref().ok_or_else(|| {
+                        Error::Model("chunked prefill on a delta-only (q2f) up".into())
+                    })?;
+                    let db = down.biases.as_ref().ok_or_else(|| {
+                        Error::Model("chunked prefill on a delta-only (q2f) down".into())
+                    })?;
+                    let (gr, gc) = (gate.rows, gate.cols);
+                    let (dr, dc) = (down.rows, down.cols);
+                    let tgs = |rows: u32| ((rows as usize + 2 * r - 1) / (2 * r) * 128) as u32;
+                    let head_w =
+                        self.f32(&self.layer_name(layer, "post_attention_layernorm.weight"))?;
+                    let next_w = self.next_norm_weight_name(layer);
+                    let w_norm = self.f32(&next_w)?;
+
+                    if !fused_tail {
+                        tcb.dispatch_threads(
+                            "qwen38_residual_rmsnorm_tg_interleaved",
+                            (rms_tg * ck, 1, 1),
+                            (rms_tg, 1, 1),
+                            |enc| {
+                                enc.set_buffer(0, Some(&c_resid), 0);
+                                enc.set_buffer(1, Some(head_w), 0);
+                                enc.set_buffer(2, Some(&b_xin), 0);
+                                enc.set_bytes(3, 4, &hid_u as *const u32 as *const _);
+                                enc.set_bytes(4, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                                enc.set_bytes(5, 4, &ck as *const u32 as *const _);
+                                enc.set_threadgroup_memory_length(0, (rms_tg as u64) * 4);
+                            },
+                        )?;
+                    }
+                    tcb.dispatch_threads(&k_gu, (tgs(gr), 1, 1), tg128, |enc| {
+                        enc.set_buffer(0, Some(&gate.codes), 0);
+                        enc.set_buffer(1, Some(&gate.scales), 0);
+                        enc.set_buffer(2, Some(gb), 0);
+                        enc.set_buffer(3, Some(&up.codes), 0);
+                        enc.set_buffer(4, Some(&up.scales), 0);
+                        enc.set_buffer(5, Some(ub), 0);
+                        enc.set_buffer(6, Some(&b_xin), 0);
+                        enc.set_buffer(7, Some(&b_act), 0);
+                        set_u32(enc, 8, gr);
+                        set_u32(enc, 9, gc);
+                    })?;
+                    tcb.dispatch_threads(&k_dn, (tgs(dr), 1, 1), tg128, |enc| {
+                        enc.set_buffer(0, Some(&down.codes), 0);
+                        enc.set_buffer(1, Some(&down.scales), 0);
+                        enc.set_buffer(2, Some(db), 0);
+                        enc.set_buffer(3, Some(&b_act), 0);
+                        enc.set_buffer(4, Some(&b_down), 0);
+                        set_u32(enc, 5, dr);
+                        set_u32(enc, 6, dc);
+                        set_u32(enc, 7, 64);
+                    })?;
+                    if fused_tail {
+                        tcb.dispatch_threads(
+                            "qwen38_add_residual_rmsnorm_tg_interleaved",
+                            (rms_tg * ck, 1, 1),
+                            (rms_tg, 1, 1),
+                            |enc| {
+                                enc.set_buffer(0, Some(&c_resid), 0);
+                                enc.set_buffer(1, Some(&b_down), 0);
+                                enc.set_buffer(2, Some(&c_hidden), 0);
+                                enc.set_buffer(3, Some(w_norm), 0);
+                                enc.set_buffer(4, Some(&b_norm), 0);
+                                enc.set_bytes(5, 4, &hid_u as *const u32 as *const _);
+                                enc.set_bytes(6, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                                enc.set_bytes(7, 4, &ck as *const u32 as *const _);
+                                enc.set_threadgroup_memory_length(0, (rms_tg as u64) * 4);
+                            },
+                        )?;
+                    } else {
+                        qwen_next_add_residual_tcb(
+                            tcb,
+                            &c_resid,
+                            &b_down,
+                            &c_hidden,
+                            hidden * chunk,
+                        )?;
+                    }
+                }
+
+                // Only the last position continues the sequence.
+                self.position = base_position + chunk - 1;
+                gather(tcb, &c_hidden, &self.workspace.hidden, (chunk - 1) as u32)?;
+                self.encode_terminal(tcb)?;
+                tcb.end_serial_group()
+            })();
+            encoded?;
+            let harvested = tcb.structural_kernel_names().map(|names| names.to_vec());
+            let encode_ns = encode_t0.elapsed().as_nanos() as u64;
+            let mut timing = tcb.commit_and_wait_timed()?;
+            self.harvest_dispatch_names(harvested);
+            if timing.encode_ns == 0 {
+                timing.encode_ns = encode_ns;
+            }
+            let sampled = unsafe { *(self.workspace.sampled.contents() as *const u32) };
+            self.position = base_position.saturating_add(chunk);
+            Ok((sampled, timing))
+        }
+
         pub fn step(&mut self, token: u32) -> Result<(u32, CommandBufferTiming)> {
             if self.fallbacks != 0 {
                 return Err(Error::Model(

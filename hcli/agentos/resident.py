@@ -2139,7 +2139,7 @@ def _add_goal_arguments(parser: argparse.ArgumentParser) -> None:
     """`--goal` or `--goal-file`, exactly one.
 
     A sovereign goal is 5 KB of obligation ledger. Requiring it as a shell
-    argument meant the documented launch command (`--goal-file sovereign-goal.txt`)
+    argument meant the documented launch command (`--goal-file civilization/sovereign-goal.txt`)
     did not exist, and the goal's only durable copy was a JSON field inside the
     daemon's own state file -- which is not a thing an operator can edit or
     review before launching.

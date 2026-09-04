@@ -293,14 +293,14 @@ def test_copes_with_unseen_handoff_and_queue():
     """Sparse checkout: unseen is a recovery path, not an absence assertion."""
     book = fr.load_book(
         overrides={
-            "CODEX_ACCELERATOR_HANDOFF.json": None,
+            "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json": None,
             "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json": None,
         }
     )
     taken = book.recovery["paths_taken"]
-    assert taken["CODEX_ACCELERATOR_HANDOFF.json"]
-    assert "unseen" in taken["CODEX_ACCELERATOR_HANDOFF.json"] or taken[
-        "CODEX_ACCELERATOR_HANDOFF.json"
+    assert taken["receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"]
+    assert "unseen" in taken["receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"] or taken[
+        "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"
     ].startswith("override")
     assert len(book.frontiers()) == len(fr.FRONTIER_NAMES)
     units = book.next_work(fr.THIS_HOST_LANES)

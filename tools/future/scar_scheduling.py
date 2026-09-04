@@ -36,7 +36,7 @@ from tools.future import odyssey3_adversary as o3
 RECEIPT = "SCAR_SCHEDULING.json"
 SCHEMA = "hawking.future.scar_scheduling.v1"
 RECORDED_BY = "tools/future/scar_scheduling.py"
-HANDOFF_REL = "CODEX_ACCELERATOR_HANDOFF.json"
+HANDOFF_REL = "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"
 O2_RECEIPT = "ODYSSEY2_LAW_STORE.json"
 
 DECISION_ADMITTED = "ADMITTED"
@@ -188,7 +188,7 @@ def _checkout_roots() -> list[Path]:
 
 
 def load_handoff() -> dict[str, Any]:
-    """Recover CODEX_ACCELERATOR_HANDOFF.json. Sparse absence is not absence."""
+    """Recover receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json. Sparse absence is not absence."""
     searched: list[str] = []
     for root in _checkout_roots():
         path = root / HANDOFF_REL
@@ -267,7 +267,7 @@ def load_handoff() -> dict[str, Any]:
         "present": None,
         "source": "unresolved",
         "note": (
-            "CODEX_ACCELERATOR_HANDOFF.json is not in this worktree, the primary "
+            "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json is not in this worktree, the primary "
             "checkout, the pinned evidence snapshot, or git HEAD. Sparse checkout "
             "is not evidence of absence."
         ),
@@ -1252,7 +1252,7 @@ def recovered_implementation() -> list[dict[str, str]]:
             "gap": "consumes Codex deltas, does not admit WorkUnits or count experiments prevented",
         },
         {
-            "path": "CODEX_ACCELERATOR_HANDOFF.json known_scars",
+            "path": "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json known_scars",
             "role": "six campaign scars with receipts/seals (training trace, not an archive)",
             "adequate": "no",
             "gap": "not ingested into the refuse path",
@@ -1274,7 +1274,7 @@ def gaps_closed() -> list[str]:
 
 def negative_findings() -> list[str]:
     return [
-        "CODEX_ACCELERATOR_HANDOFF.json is not in git HEAD of this worktree; it is recovered from the primary checkout when present. Sparse absence is not treated as zero scars.",
+        "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json is not in git HEAD of this worktree; it is recovered from the primary checkout when present. Sparse absence is not treated as zero scars.",
         "Odyssey II and Odyssey III use different scope ladders. Confidence reduction and O2 narrowing run on the O2 lattice; the O3 implication is a separately constructed law fed to apply_result.",
         "MACHINE_LOCAL O2 laws are not narrowed by a model-organ scar (different axis). That is a stated non-move, not a missed demotion.",
         "This lane produces STATIC_ONLY / bench UNKNOWN. It does not classify DIAGNOSTIC_RELATIVE vs PROTECTED_ABSOLUTE.",

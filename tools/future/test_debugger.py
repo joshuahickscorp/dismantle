@@ -418,15 +418,15 @@ def test_recovered_implementation_accounts_for_named_seams():
         "hcli/vmcp_adapter.py",
         "tools/future/ane_preboard.py",
         "receipts/future/ANE_PREBOARD.json",
-        "CODEX_ACCELERATOR_HANDOFF.json",
+        "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
     ):
         assert path in recovered
         assert recovered[path]["source"] in {"ABSENT", "ON_DISK", "GIT_HEAD"}
     concepts = dbg.recovered_concepts()
     assert concepts["XDebugger"]["status"] == "ABSENT"
     findings = "\n".join(dbg.negative_findings())
-    if recovered["CODEX_ACCELERATOR_HANDOFF.json"]["source"] == "ABSENT":
-        assert "CODEX_ACCELERATOR_HANDOFF.json" in findings
+    if recovered["receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"]["source"] == "ABSENT":
+        assert "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json" in findings
     assert "XDebugger" in findings
 
 

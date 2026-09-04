@@ -33,7 +33,7 @@ RECEIPT = "CODEX_WORKUNIT_SPECIES.json"
 SCHEMA = "hawking.future.codex_behaviors.v1"
 VERSION = 1
 RECORDED_BY = "tools/future/codex_behaviors.py"
-HANDOFF_REL = "CODEX_ACCELERATOR_HANDOFF.json"
+HANDOFF_REL = "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"
 
 # Closed vocabulary from the steer. Not a queue bound — a named species list.
 SPECIES_IDS: tuple[str, ...] = (
@@ -242,7 +242,7 @@ class CodexSpeciesError(ValueError):
 
 
 def load_handoff(*, force: bool = False) -> tuple[dict[str, Any] | None, str]:
-    """Load CODEX_ACCELERATOR_HANDOFF.json from this tree or the primary checkout."""
+    """Load receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json from this tree or the primary checkout."""
     global _HANDOFF, _HANDOFF_SRC
     if not force and _HANDOFF is not _UNSET:
         if _HANDOFF is None:
@@ -607,8 +607,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Complete-token wall, not a kernel microbench, is the quantity the loop ranks.",
             objective="Capture or recover the incumbent complete-token profile so FIND_TALLEST_COST has a denominator.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_flash_state.critical_path",
-                "CODEX_ACCELERATOR_HANDOFF.json:current_qwen27_incumbent_control_identity.control_receipt",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_flash_state.critical_path",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_qwen27_incumbent_control_identity.control_receipt",
             ),
             inputs=("incumbent control receipt", "complete-token measurement contract"),
             source_identities=("qwen27-fast-profile", "sealed-3.14"),
@@ -648,7 +648,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             title="Profile an affected physical region",
             hypothesis="The tallest cost lives in a named organ/region, not in the whole graph equally.",
             objective="Bind the current episode to the region Codex named as the physical effect.",
-            evidence_parents=("CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",),
+            evidence_parents=("receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",),
             inputs=("atomic_change.physical_effect_intended", "affected_physical_region on the live queue"),
             source_identities=("flash-device-mhc-state",),
             mutation_scope=no_mutate,
@@ -682,7 +682,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="GPU time is a column of the complete-token contract, never a substitute for it.",
             objective="Record whether gpu_ns_per_token is present on the incumbent; do not invent it.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
             ),
             inputs=("required_measurement_fields", "incumbent control_receipt.metrics keys"),
             source_identities=("qwen27-fast-profile",),
@@ -720,7 +720,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Commit/label/pipeline-state ceremony can dominate entering the loop.",
             objective="Account host ceremony as its own denominator so S3-host-ceremony-union is meaningful.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.qwen27.step_3_dependency_cells_in_order",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.qwen27.step_3_dependency_cells_in_order",
             ),
             inputs=("S3-host-ceremony-union", "pipeline/commit/encoder-label candidates"),
             source_identities=(
@@ -759,7 +759,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Active bytes per token, not packed footprint, bound the move/recompute decision.",
             objective="See whether active_representation_bytes_per_token is on the measurement contract.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
             ),
             inputs=("required_measurement_fields",),
             source_identities=("qwen27-fast-profile",),
@@ -794,8 +794,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Keeping state resident is a byte decision; residency that is not measured is a wish.",
             objective="Bind resident_bytes and the mHC residency hypothesis to the same contract.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
-                "CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",
             ),
             inputs=("required_measurement_fields", "device-mHC residency intent"),
             source_identities=("flash-device-mhc-state",),
@@ -829,7 +829,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             title="Profile dispatches per token",
             hypothesis="Dispatch count is a column, not the cost (AKB-DISPATCH-COUNT-DOES-NOT-PREDICT-COST).",
             objective="Record dispatches_per_token so structural compare can refute S031-style ladders.",
-            evidence_parents=("CODEX_ACCELERATOR_HANDOFF.json:known_laws.active_law_ids",),
+            evidence_parents=("receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws.active_law_ids",),
             inputs=("AKB-964-DISPATCHES-PER-DECODE-TOKEN", "required_measurement_fields"),
             source_identities=("AKB-964-DISPATCHES-PER-DECODE-TOKEN",),
             mutation_scope=no_mutate,
@@ -863,8 +863,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Wait/sync can dominate submission (AKB-WAIT-DOMINATES-SUBMISSION, conditional).",
             objective="Keep sync_ns_per_token as its own column so fusion does not hide a fence.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
-                "CODEX_ACCELERATOR_HANDOFF.json:known_laws.conditional_law_ids",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.required_measurement_fields",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws.conditional_law_ids",
             ),
             inputs=("sync_ns_per_token", "AKB-WAIT-DOMINATES-SUBMISSION"),
             source_identities=("AKB-WAIT-DOMINATES-SUBMISSION",),
@@ -899,7 +899,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="The floor mechanism is unresolved after six levers; dispatch count is not the wall.",
             objective="Rank which profiled column is the tallest cost using laws, never using a guessed ns.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:known_laws.current_relevant_laws",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws.current_relevant_laws",
                 "receipts/future/evidence/ACCELERATOR_DISPATCH_IS_NOT_THE_COST.json",
             ),
             inputs=("PROFILE_* receipts or incumbent control identity", "current_relevant_laws"),
@@ -944,8 +944,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Why the cost exists is already in the atlas and AKB; do not re-derive from a prompt.",
             objective="Pull atlas primitives and current_relevant_laws that explain the tallest column.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:accelerator_architecture_atlas_identity",
-                "CODEX_ACCELERATOR_HANDOFF.json:known_laws.source",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:accelerator_architecture_atlas_identity",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws.source",
             ),
             inputs=("FIND_TALLEST_COST output", "ACCELERATOR_ARCHITECTURE_ATLAS.json", "ACCELERATOR_LAW_BASE.json"),
             source_identities=("hawking.accelerator.architecture_atlas.v1", "hawking.accelerator.akb.v1"),
@@ -980,8 +980,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="The atomic episode is a kernel-shaped mutation under opt-in device controls.",
             objective="Emit a kernel-candidate spec with source_oracle_control vs candidate_control.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:atomic_change",
-                "CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:atomic_change",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
             ),
             inputs=("SEARCH_ARCHITECTURE_LAWS", "atomic_change.source_oracle_control", "atomic_change.candidate_control"),
             source_identities=("flash-device-mhc-state", "HAWKING_DSV4F_DEVICE_MHC"),
@@ -1018,8 +1018,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Fusion beats materialising (AKB-FUSION-BEATS-MATERIALISING) when it removes a dispatch of real bytes.",
             objective="Emit a fusion candidate spec from the live fusion family (QKV, gate, DeltaNet, mHC-norm).",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
-                "CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",
             ),
             inputs=("SEARCH_ARCHITECTURE_LAWS", "qwen27 fusion candidate ids", "physical_effect_intended fusion clause"),
             source_identities=(
@@ -1058,8 +1058,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Geometry (split-K, vecgroup) can raise occupancy without changing representation.",
             objective="Emit a layout/geo candidate from the live Qwen27 geometry family.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
-                "CODEX_ACCELERATOR_HANDOFF.json:current_high_ev_unmeasured_candidates.qwen27",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_high_ev_unmeasured_candidates.qwen27",
             ),
             inputs=("SEARCH_ARCHITECTURE_LAWS", "qwen27-affine2-splitk4", "qwen27-q4-vecgroup-x64", "qwen27-q2f-splitk4"),
             source_identities=("qwen27-affine2-splitk4", "qwen27-q4-vecgroup-x64", "qwen27-q2f-splitk4"),
@@ -1092,7 +1092,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             title="Generate a state-residency candidate",
             hypothesis="Keeping mHC state resident between attention and FFN removes a round-trip.",
             objective="Emit a residency candidate whose control is the non-resident path.",
-            evidence_parents=("CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",),
+            evidence_parents=("receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:atomic_change.physical_effect_intended",),
             inputs=("SEARCH_ARCHITECTURE_LAWS", "HAWKING_DSV4F_DEVICE_MHC", "flash-device-mhc-state"),
             source_identities=("flash-device-mhc-state", "AKB-DEVICE-RESIDENT-OPERANDS"),
             mutation_scope=proposal_only,
@@ -1125,8 +1125,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Per-token pipeline lookup/id-resolution/state binding is ceremony that can persist.",
             objective="Emit pipeline-cache / id-resolution / state-elision candidate specs.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
-                "CODEX_ACCELERATOR_HANDOFF.json:current_high_ev_unmeasured_candidates.qwen27",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_high_ev_unmeasured_candidates.qwen27",
             ),
             inputs=("PROFILE_HOST_CEREMONY", "qwen27-pipeline-*", "flash-pipeline-*"),
             source_identities=(
@@ -1164,8 +1164,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Route-before-payload and routed fused epilogues are the Flash MoE lever.",
             objective="Emit a routed-expert / top-k / backend-placement candidate spec.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_high_ev_unmeasured_candidates.flash",
-                "CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_high_ev_unmeasured_candidates.flash",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
             ),
             inputs=("SEARCH_ARCHITECTURE_LAWS", "flash-p6-routed-fp4-gate-up-swiglu-fused"),
             source_identities=("flash-p6-routed-fp4-gate-up-swiglu-fused", "flash-router-topk-fusion"),
@@ -1199,8 +1199,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Native-packed kernels, not a generic matmul, are what the incumbent already is.",
             objective="Emit a representation-native kernel spec bound to the incumbent kind native-packed.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
-                "CODEX_ACCELERATOR_HANDOFF.json:current_qwen27_incumbent_control_identity.profile.representation",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:recurring_hcli_workunit_species",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_qwen27_incumbent_control_identity.profile.representation",
             ),
             inputs=("PROFILE_ACTIVE_BYTES", "representation.kind", "Flash source-BF16 / compact MoE rows"),
             source_identities=("native-packed", "sealed-3.14"),
@@ -1234,7 +1234,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Static correctness does not prove speed or physical parity (Codex scar).",
             objective="Run the zero-GPU host/shader preflight before any AB window is requested.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:known_scars",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_scars",
                 "receipts/future/STATIC_KERNEL_PREFLIGHT.json",
                 "tools/future/static_kernel_verify.py",
             ),
@@ -1273,8 +1273,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="ABI drift between host binds and shader parameters is a static defect, not a GPU mystery.",
             objective="Check host/shader ABI; Metal compiler absence is SLEEPING for compile, not a skip of the parse.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:known_scars",
-                "CODEX_ACCELERATOR_HANDOFF.json:atomic_change.validation.metal_source_compilation",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_scars",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:atomic_change.validation.metal_source_compilation",
                 "receipts/future/CLAUDE_SIDECAR_ABI_ADJUDICATION.json",
             ),
             inputs=("STATIC_KERNEL_VERIFY", "host bind sites", "shader parameters"),
@@ -1312,8 +1312,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Two graphs at the same dispatch count are not the same cost.",
             objective="Compare candidate vs control structurally (bytes, dispatches, intermediates) without a GPU number.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:known_laws.current_relevant_laws",
-                "CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.reject_if",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws.current_relevant_laws",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol.reject_if",
             ),
             inputs=("PROFILE_*", "GENERATE_*", "AKB-DISPATCH-COUNT-DOES-NOT-PREDICT-COST"),
             source_identities=("AKB-DISPATCH-COUNT-DOES-NOT-PREDICT-COST",),
@@ -1350,8 +1350,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="DIAGNOSTIC_RELATIVE guides and never promotes.",
             objective="Request a diagnostic AB only. A pass does not move READY_PROTECTED.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_queue.status_counts",
-                "CODEX_ACCELERATOR_HANDOFF.json:current_qwen27_incumbent_control_identity.incumbent_ab",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_queue.status_counts",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_qwen27_incumbent_control_identity.incumbent_ab",
             ),
             inputs=("STRUCTURAL_COST_COMPARE", "diagnostic_command on the live queue"),
             source_identities=("READY_DIAGNOSTIC", "DIAGNOSTIC_PASS"),
@@ -1389,8 +1389,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Only a protected complete-token receipt under ABAB paired CI may decide.",
             objective="Request a protected AB. This sidecar never holds the lease and never seizes the lock.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol",
-                "CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.preconditions",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:current_staged_protected_batch.protocol",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.preconditions",
             ),
             inputs=("DIAGNOSTIC_AB", "READY_PROTECTED candidates", "protocol.reject_if"),
             source_identities=("ABAB; paired CI; no mean/average promotion",),
@@ -1428,7 +1428,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Compositions run only after singleton/parent survivors are parity-clean and physically faster.",
             objective="Emit the next staged cell (S2/S3) from survivors; never 2^N.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.qwen27",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.qwen27",
                 "receipts/future/CANDIDATE_STAGED_PLAN.json",
                 "tools/future/candidate_planner.py",
             ),
@@ -1470,7 +1470,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="A win changes the incumbent; the next tallest cost is unknown until the token is profiled again.",
             objective="On a physical win, enqueue a new PROFILE_* wave against the new incumbent.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.flash_after_authority_returns.rule",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:exact_next_protected_qualification_sequence.flash_after_authority_returns.rule",
             ),
             inputs=("PROTECTED_AB winner", "repatriation outcome in WIN_OUTCOMES"),
             source_identities=("PHYSICAL_WIN_MODEL_LOCAL", "PHYSICAL_WIN_FAMILY"),
@@ -1547,8 +1547,8 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Every atomic candidate has a repatriation outcome from a closed vocabulary.",
             objective="Record the outcome (IMPLEMENTED_UNMEASURED today) without promoting a law.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:repatriation_effects_identity",
-                "CODEX_ACCELERATOR_HANDOFF.json:atomic_change.repatriation_outcome",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:repatriation_effects_identity",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:atomic_change.repatriation_outcome",
             ),
             inputs=("PROTECTED_AB or atomic_change", "outcome_vocabulary"),
             source_identities=("flash-device-mhc-state", "IMPLEMENTED_UNMEASURED"),
@@ -1585,7 +1585,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Scope is earned; physical_laws_promoted_by_effects_ledger is currently 0.",
             objective="Seed or refresh a law record from a PHYSICAL_WIN. Refuse unevidenced promotion.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:known_laws",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws",
                 "receipts/future/ODYSSEY2_LAW_STORE.json",
                 "tools/future/odyssey2_law_store.py",
             ),
@@ -1625,7 +1625,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="Rejection hard-invalidates declared descendants.",
             objective="Record a scar from REJECTED_* or a rolled-back candidate so the next cycle cannot retry it blindly.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:known_scars",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_scars",
                 "receipts/future/NEGATIVE_SCIENCE_INDEX.json",
                 "tools/future/negative_index.py",
             ),
@@ -1662,7 +1662,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             hypothesis="No cross-model or cross-backend law is promoted without protected evidence.",
             objective="Propose a scoped transfer. Refuse GENERIC_VERIFIED without a protected parent.",
             evidence_parents=(
-                "CODEX_ACCELERATOR_HANDOFF.json:known_laws.transfer_rule",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws.transfer_rule",
                 "receipts/future/ODYSSEY2_LAW_STORE.json",
             ),
             inputs=("UPDATE_LAW", "AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER", "AKB-CONTROL-LOUDNESS-IS-NOT-TRANSFERABLE"),
@@ -1700,7 +1700,7 @@ def _species_specs() -> tuple[dict[str, Any], ...]:
             evidence_parents=(
                 "receipts/future/ODYSSEY3_ADVERSARY.json",
                 "tools/future/odyssey3_adversary.py",
-                "CODEX_ACCELERATOR_HANDOFF.json:known_laws.conditional_law_ids",
+                "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json:known_laws.conditional_law_ids",
             ),
             inputs=("TRANSFER_LAW", "claimed AKB law", "negative index"),
             source_identities=("AKB-ORGAN-FLOOR-DOES-NOT-TRANSFER",),
@@ -2073,7 +2073,7 @@ def recovered_implementation(handoff_src: str, qual_src: str) -> dict[str, Any]:
         "tools.future.odyssey2_law_store": "UPDATE_LAW / TRANSFER_LAW owner",
         "tools.future.odyssey3_adversary": "ATTACK_LAW owner once grounded",
         "tools.future.negative_index": "UPDATE_SCAR consumer",
-        "CODEX_ACCELERATOR_HANDOFF.json": f"training trace loaded from {handoff_src}",
+        "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json": f"training trace loaded from {handoff_src}",
         "qualification_queue_work_units": qual_src,
         "note": (
             "Codex's recurring_hcli_workunit_species is nine English labels. The ten "

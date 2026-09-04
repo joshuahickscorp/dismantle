@@ -118,7 +118,7 @@ TEACHER_RELS = (
     "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
     "receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
 )
-CODEX_HANDOFF_REL = "CODEX_ACCELERATOR_HANDOFF.json"
+CODEX_HANDOFF_REL = "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"
 QUEUE_RELS = (
     "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
     "receipts/future/evidence/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json",
@@ -1926,7 +1926,7 @@ def gaps_closed() -> list[str]:
 
 def negative_findings() -> list[str]:
     return [
-        "CODEX_ACCELERATOR_HANDOFF.json is not visible in this worktree disk or git HEAD; current_qwen27_incumbent_control_identity is therefore not copied. The collector copes if the file later appears.",
+        "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json is not visible in this worktree disk or git HEAD; current_qwen27_incumbent_control_identity is therefore not copied. The collector copes if the file later appears.",
         "hcli/ is not materialized in this sparse checkout; sealed profile and machine.py were recovered via git show / load_authority.",
         "hcli/agentos/resident.py is not a git blob; resident_gate.py is the live lifecycle.",
         "CAPABILITY_noetic-sealed-3.14.json identity_sufficient is false (UNIDENTIFIED); 30/43 is CONTROL, not a body-identified current proof.",

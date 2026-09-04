@@ -56,7 +56,7 @@ def test_required_species_are_exactly_the_loop_and_live_in_codex_behaviors():
     assert len(set(aw.REQUIRED_SPECIES)) == len(aw.REQUIRED_SPECIES)
     doc, _src = _handoff()
     if doc is None:
-        with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+        with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
             aw.contracts()
         return
     cat = cb.catalog_by_id(handoff=doc)
@@ -79,7 +79,7 @@ def test_every_gpu_species_emitted_sleeping_none_runnable():
     """NEGATIVE CONTROL: a GPU species is SLEEPING, never pending, on this sidecar."""
     doc, _src = _handoff()
     if doc is None:
-        with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+        with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
             aw.emit_species("PROTECTED_AB", receipts_visible=_visible(True))
         return
     loop = aw.emit_loop(
@@ -108,7 +108,7 @@ def test_species_with_absent_input_receipt_refuses_naming_the_receipt():
     """NEGATIVE CONTROL: missing input is a named refusal, never a default success."""
     doc, _src = _handoff()
     if doc is None:
-        with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+        with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
             aw.emit_species("FIND_TALLEST_COST", receipts_visible={aw.HANDOFF_REL: False})
         return
     with pytest.raises(aw.InputRefused, match="ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"):
@@ -118,7 +118,7 @@ def test_species_with_absent_input_receipt_refuses_naming_the_receipt():
             receipts_visible={aw.QUEUE_REL: False},
             contamination_class="QUIESCENT",
         )
-    with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+    with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
         aw.emit_species(
             "FIND_TALLEST_COST",
             handoff=doc,
@@ -139,14 +139,14 @@ def test_species_with_absent_input_receipt_refuses_naming_the_receipt():
     assert loop["refusals"]
     named = {r["missing_receipt"] for r in loop["refusals"]}
     assert any(r and "ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json" in r for r in named)
-    assert any(r and "CODEX_ACCELERATOR_HANDOFF.json" in r for r in named)
+    assert any(r and "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json" in r for r in named)
 
 
 def test_protected_ab_never_runnable_under_light_or_worse():
     """NEGATIVE CONTROL: LIGHT/HEAVY/UNKNOWN cannot emit PROTECTED_AB as runnable."""
     doc, _src = _handoff()
     if doc is None:
-        with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+        with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
             aw.emit_species("PROTECTED_AB", receipts_visible=_visible(True))
         return
     for klass in ("LIGHT", "HEAVY", "UNKNOWN"):
@@ -294,7 +294,7 @@ def test_unknown_species_refuses():
 def test_unknown_contamination_class_refuses():
     doc, _src = _handoff()
     if doc is None:
-        with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+        with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
             aw.emit_species("PROTECTED_AB", receipts_visible=_visible(True), contamination_class="QUIETISH")
         return
     with pytest.raises(aw.InputRefused, match="unknown contamination_class"):
@@ -309,7 +309,7 @@ def test_unknown_contamination_class_refuses():
 def test_find_tallest_is_cpu_pending_when_inputs_present():
     doc, _src = _handoff()
     if doc is None:
-        with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+        with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
             aw.emit_species("FIND_TALLEST_COST", receipts_visible=_visible(True))
         return
     unit = aw.emit_species(
@@ -330,7 +330,7 @@ def test_find_tallest_is_cpu_pending_when_inputs_present():
 def test_emitted_units_match_hcli_shape_and_carry_scheduler_fields():
     doc, _src = _handoff()
     if doc is None:
-        with pytest.raises(aw.InputRefused, match="CODEX_ACCELERATOR_HANDOFF.json"):
+        with pytest.raises(aw.InputRefused, match="receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"):
             aw.emit_loop(receipts_visible=_visible(True))
         return
     loop = aw.emit_loop(handoff=doc, receipts_visible=_visible(True), contamination_class="LIGHT")

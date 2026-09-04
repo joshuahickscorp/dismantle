@@ -73,7 +73,7 @@ EVIDENCE = {
     "ledger": "FLASH_COMPLETE_V0.BYTE_LEDGER.json",
 }
 
-HANDOFF_REL = "CODEX_ACCELERATOR_HANDOFF.json"
+HANDOFF_REL = "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"
 FRONTIER_REL = "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
 
 # Map EBPW-budget organ names onto census families when they are the same
@@ -1702,7 +1702,7 @@ def recovered_implementation(docs: Mapping[str, Any]) -> list[dict[str, Any]]:
             "gap": "census, not a candidate-per-organ NR",
         },
         {
-            "path": "CODEX_ACCELERATOR_HANDOFF.json",
+            "path": "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
             "what": (
                 "current_flash_state (source_independent_nx SCAFFOLD_ONLY, "
                 "ebpw_budget, critical_path, stateful_gate); "

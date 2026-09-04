@@ -93,7 +93,7 @@ WANTED = [
     # 2026-08-30 phase transition: Codex sealed its Accelerator handoff at the
     # repo root. It is the training trace the whole resident metabolism is
     # extracted from, so it must be pinned like any other authority.
-    "CODEX_ACCELERATOR_HANDOFF.json",
+    "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
 ]
 
 

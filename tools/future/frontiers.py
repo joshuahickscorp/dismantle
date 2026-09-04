@@ -37,7 +37,7 @@ from tools.future import workunit_species as wus
 RECEIPT = "FRONTIER_STATE.json"
 SCHEMA = "hawking.future.frontiers.v1"
 RECORDED_BY = "tools/future/frontiers.py"
-HANDOFF_REL = "CODEX_ACCELERATOR_HANDOFF.json"
+HANDOFF_REL = "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"
 GLOBAL_FRONTIER_REL = "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
 QUEUE_REL = "receipts/headless/ACCELERATOR_PHYSICAL_QUALIFICATION_QUEUE.json"
 SCAR_INDEX_REL = "receipts/future/NEGATIVE_SCIENCE_INDEX.json"

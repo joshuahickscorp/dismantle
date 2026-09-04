@@ -57,7 +57,7 @@ REL_QWEN_SEAL = "receipts/headless/HCLI_RESIDENT_SEAL.json"
 REL_QWEN_CAPABILITY = "receipts/headless/CAPABILITY_noetic-sealed-3.14.json"
 REL_TOURNAMENT = "receipts/future/TOURNAMENT_READINESS.json"
 REL_INSTALL = "receipts/future/RESIDENT_INSTALL_CONTRACT.json"
-REL_CODEX_HANDOFF = "CODEX_ACCELERATOR_HANDOFF.json"
+REL_CODEX_HANDOFF = "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json"
 REL_FRONTIER = "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
 PINNED = REPO / "receipts" / "future" / "evidence"
 

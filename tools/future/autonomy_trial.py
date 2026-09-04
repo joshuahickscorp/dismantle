@@ -3027,12 +3027,12 @@ def recovered_implementation() -> list[dict[str, Any]]:
             "what": "49-system sidecar inventory; scaffolding is no longer the goal.",
         },
         {
-            "path": "CODEX_ACCELERATOR_HANDOFF.json",
+            "path": "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
             "what": (
                 "Not materialized in this worktree. Treated as a large manual "
                 "training trace when present; not required to judge a timeline."
             ),
-            "present_in_this_checkout": (REPO / "CODEX_ACCELERATOR_HANDOFF.json").is_file(),
+            "present_in_this_checkout": (REPO / "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json").is_file(),
         },
     ]
 
@@ -3058,7 +3058,7 @@ def gaps_closed() -> list[str]:
 def negative_findings() -> list[str]:
     return [
         "This lane did not start an HCLI resident model process and did not take a GPU lease.",
-        "CODEX_ACCELERATOR_HANDOFF.json is not materialized in this sparse worktree; Codex blockers are taken from the contract list plus pinned evidence receipts.",
+        "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json is not materialized in this sparse worktree; Codex blockers are taken from the contract list plus pinned evidence receipts.",
         "This-wave siblings (frontiers, detached, wakeup, workgraph, sandbox, super_resident, odyssey_launch, …) were not imported; local interfaces are named as integration points.",
         "hcli/agentos/autonomy_gate.py is recovered read-only and is not executed (it starts a native resident).",
         "Machine HEAVY and lock-holder-unproven are recovered from QUALIFICATION_PIPELINE.json / Path.is_file, not by flock or by signalling workers.",

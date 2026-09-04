@@ -82,7 +82,7 @@ DEFAULT_LOCK_RELS: tuple[str, ...] = (
 )
 
 STAGED_PLAN_REL = Path("receipts") / "future" / "CANDIDATE_STAGED_PLAN.json"
-HANDOFF_REL = Path("CODEX_ACCELERATOR_HANDOFF.json")
+HANDOFF_REL = Path("receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json")
 NX_AUDIT_REL = Path("receipts") / "future" / "FLASH_NX_COMPLETENESS_AUDIT.json"
 FRONTIER_PATH = qp.FRONTIER_PATH
 QUAL_RECEIPT_REL = Path("receipts") / "future" / "QUALIFICATION_PIPELINE.json"
@@ -1696,7 +1696,7 @@ def recovered_implementation() -> list[dict[str, Any]]:
             "composed_as": "composed inside qualification_pipeline; this envelope does not re-classify a window",
         },
         {
-            "path": "CODEX_ACCELERATOR_HANDOFF.json",
+            "path": "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
             "role": "exact_next_protected_qualification_sequence, current_staged_protected_batch, processes_leases_must_not_be_disturbed",
             "composed_as": "load_staged_batch primary source when visible via checkout roots",
         },

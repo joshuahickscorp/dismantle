@@ -67,12 +67,12 @@ than deleting it — a terminal mission is still the evidence for why the previo
 run ended.
 
 ```bash
-hcli resident replace --goal-file sovereign-goal.txt --interval-s 30
+hcli resident replace --goal-file civilization/sovereign-goal.txt --interval-s 30
 hcli resident watch
 ```
 
 `--goal-file` did not exist when this line was first written, and
-`sovereign-goal.txt` was a 2810-char variant with no G001-G015 in it, so the
+`civilization/sovereign-goal.txt` was a 2810-char variant with no G001-G015 in it, so the
 documented command both failed to parse and would have dropped the whole
 obligation ledger if it had run. Both are fixed: the flag is real and the file is
 the live 5444-char goal. `hcli/test_sovereign_goal_file.py` fails if either
@@ -208,7 +208,7 @@ audit and the written plan are missing.
 | The system prompt's `answer` and `mutation` examples omitted `tool_calls`, which the schema **requires** — a model copying what it was shown was rejected every attempt. The `op` example was a `a\|b\|c` placeholder, also invalid | `engine.py` `_SYSTEM_PROMPT` | `hcli/test_system_prompt_matches_schema.py` (5) |
 | `structured_output_probe.py` held a stale hand-copy of the schema with **no `tool_calls` at all** — the instrument understated the failure it measures. It now imports the live values | `tools/headless/structured_output_probe.py` | same |
 | A structured-output rejection now carries the reply it rejected. Every prior receipt said "response is not a JSON object" and none said what the reply was | `engine.py` `_degraded_structured_record` | `hcli/test_rejected_reply_is_in_the_receipt.py` (4) |
-| `--goal-file` did not exist and `sovereign-goal.txt` was missing G001-G015 | `resident.py` `_add_goal_arguments`, `sovereign-goal.txt` | `hcli/test_sovereign_goal_file.py` (18) |
+| `--goal-file` did not exist and `civilization/sovereign-goal.txt` was missing G001-G015 | `resident.py` `_add_goal_arguments`, `civilization/sovereign-goal.txt` | `hcli/test_sovereign_goal_file.py` (18) |
 | The recovery gate's fixture child looped `while True` under a comment calling it bounded; 10 orphans were alive at PPID 1, one per suite run | `agentos/recovery.py` | `hcli/test_recovery_fixture_does_not_leak.py` (2, mutation-checked) |
 
 Gates-excluded baseline is now **686 passed, 1 skipped**. The handoff's 637 and

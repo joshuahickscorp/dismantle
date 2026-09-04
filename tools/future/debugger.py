@@ -125,7 +125,7 @@ RECOVER_PATHS = (
     "receipts/future/ANE_PREBOARD.json",
     "receipts/future/CLAUDE_GLOBAL_FRONTIER.json",
     "receipts/future/FUTURE_SUBSTRATE_HANDOFF.json",
-    "CODEX_ACCELERATOR_HANDOFF.json",
+    "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json",
 )
 
 CLT_COREML_HEADERS = Path(
@@ -1731,7 +1731,7 @@ def recovered_implementation() -> list[dict[str, Any]]:
         "receipts/future/ANE_PREBOARD.json": "sealed ANE toolchain probe this lab extends, does not fork",
         "receipts/future/CLAUDE_GLOBAL_FRONTIER.json": "live frontier; debugger-lab entry is proposed, not written here",
         "receipts/future/FUTURE_SUBSTRATE_HANDOFF.json": "sidecar inventory + active_processes used as Codex pid denylist seed",
-        "CODEX_ACCELERATOR_HANDOFF.json": (
+        "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json": (
             "named Codex handoff (exact_physical_blockers: Metal compiler, no Metal GPU); "
             "not on disk and not in git HEAD of this sparse worktree"
         ),
@@ -1823,7 +1823,7 @@ def negative_findings(lab: Mapping[str, Any] | None = None) -> list[str]:
             "xcodebuild requires full Xcode; CommandLineTools is not a compile toolchain",
             "Instruments, simctl, coremlcompiler, metallib are not resolved by xcrun",
             "MLComputePlan.h / MLState.h exist as SDK headers and are not a live load",
-            "CODEX_ACCELERATOR_HANDOFF.json is not in this sparse worktree or git HEAD; blockers recovered from the lane contract and ANE_PREBOARD",
+            "receipts/future/evidence/CODEX_ACCELERATOR_HANDOFF.json is not in this sparse worktree or git HEAD; blockers recovered from the lane contract and ANE_PREBOARD",
             "no debugger session was opened against a live debuggee in this process",
             "FPGA remains Accelerator / Physical Compiler / Fusion; this lab does not grow an FPGA debugger",
         ]

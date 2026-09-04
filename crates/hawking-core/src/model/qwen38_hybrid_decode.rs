@@ -5810,6 +5810,255 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             }
         }
 
+        /// CP6f -- the chunked dense MLP, checked against the production encoder
+        /// on real catalog weights.
+        ///
+        /// CP6a/b/c measured the chunked organ but were TIMING ONLY: correctness
+        /// rested on CP4's bit-identical result for the kernel in isolation.
+        /// This closes that gap by running the ACTUAL three-dispatch MLP -- fused
+        /// gate_up+swiglu, down_proj, add-residual+norm -- for K positions in one
+        /// pass and comparing against K runs of `encode_dense_mlp`.
+        ///
+        /// Returns `(max_abs_residual, max_abs_norm, dispatches_seq, dispatches_chunked)`.
+        ///
+        /// Not bit-identical by construction and not expected to be: the
+        /// multi-position matmul accumulates in a different order (R rows x K
+        /// positions per weight sweep against one row at a time), so this reports
+        /// a magnitude and the caller judges it. The norm tail IS bit-identical
+        /// (CP6e), so any error here is the matmul's reassociation alone.
+        pub fn verify_chunked_dense_mlp(
+            &self,
+            layer: usize,
+            r: usize,
+            chunk: usize,
+        ) -> Result<(f64, f64, usize, usize)> {
+            if chunk == 0 || r == 0 {
+                return Err(Error::Model("chunk and r must be positive".into()));
+            }
+            if self.mlp_fusion != Qwen38MlpFusion::GateUpSwiglu {
+                return Err(Error::Model(format!(
+                    "verify_chunked_dense_mlp needs GateUpSwiglu; this session is {:?}",
+                    self.mlp_fusion
+                )));
+            }
+            let hidden = QWEN38_HIDDEN;
+            let inter = QWEN38_INTERMEDIATE;
+
+            // Deterministic fixtures, pinned so a rerun compares the same bytes.
+            let seed = |tag: u64, k: usize, n: usize| -> Vec<f32> {
+                let mut st = tag
+                    .wrapping_mul(0x9E37_79B9_7F4A_7C15)
+                    .wrapping_add((layer as u64) << 17)
+                    .wrapping_add(k as u64);
+                (0..n)
+                    .map(|_| {
+                        st = st
+                            .wrapping_mul(6364136223846793005)
+                            .wrapping_add(1442695040888963407);
+                        ((st >> 33) as f32 / (1u64 << 31) as f32) - 0.5
+                    })
+                    .collect()
+            };
+            let norm_in: Vec<Vec<f32>> = (0..chunk).map(|k| seed(1, k, hidden)).collect();
+            let resid_in: Vec<Vec<f32>> = (0..chunk).map(|k| seed(2, k, hidden)).collect();
+
+            // ---- reference: the production encoder, one position at a time ----
+            let mut want_resid = vec![0f32; hidden * chunk];
+            let mut want_norm = vec![0f32; hidden * chunk];
+            let mut seq_dispatches = 0usize;
+            for k in 0..chunk {
+                // In the FUSED configuration the encoder skips the head norm and
+                // consumes `normalized` directly, so seed it. In the UNFUSED one
+                // the encoder norms `input` itself, so seeding `normalized` would
+                // be overwritten -- there, `mixer` alone is the input.
+                if self.fuse_add_rmsnorm {
+                    self.write_f32_workspace("normalized", &norm_in[k])?;
+                }
+                self.write_f32_workspace("mixer", &resid_in[k])?;
+                let mut d = 0usize;
+                self.timed_cb(|tcb| {
+                    self.encode_dense_mlp(tcb, layer, &self.workspace.mixer)?;
+                    d = tcb.dispatch_count();
+                    Ok(())
+                })?;
+                seq_dispatches += d;
+                let rr = self.read_f32_workspace("hidden", hidden)?;
+                let nn = self.read_f32_workspace("normalized", hidden)?;
+                for c in 0..hidden {
+                    want_resid[c * chunk + k] = rr[c];
+                    want_norm[c * chunk + k] = nn[c];
+                }
+            }
+
+            // ---- chunked: the same three steps, K positions in one pass ----
+            let gate = self
+                .affine(&self.layer_name(layer, "mlp.gate_proj.weight"))
+                .ok_or_else(|| Error::Model(format!("layer {layer} gate_proj is not affine")))?;
+            let up = self
+                .affine(&self.layer_name(layer, "mlp.up_proj.weight"))
+                .ok_or_else(|| Error::Model(format!("layer {layer} up_proj is not affine")))?;
+            let down = self
+                .affine(&self.layer_name(layer, "mlp.down_proj.weight"))
+                .ok_or_else(|| Error::Model(format!("layer {layer} down_proj is not affine")))?;
+            let gb = gate
+                .biases
+                .as_ref()
+                .ok_or_else(|| Error::Model("chunked MLP on a delta-only (q2f) gate".into()))?;
+            let ub = up
+                .biases
+                .as_ref()
+                .ok_or_else(|| Error::Model("chunked MLP on a delta-only (q2f) up".into()))?;
+            let db = down
+                .biases
+                .as_ref()
+                .ok_or_else(|| Error::Model("chunked MLP on a delta-only (q2f) down".into()))?;
+
+            let mut xin = vec![0f32; hidden * chunk];
+            let mut rin = vec![0f32; hidden * chunk];
+            for k in 0..chunk {
+                for c in 0..hidden {
+                    xin[c * chunk + k] = norm_in[k][c];
+                    rin[c * chunk + k] = resid_in[k][c];
+                }
+            }
+            let bytes = |v: &[f32]| -> &[u8] {
+                unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 4) }
+            };
+            let b_xin = self.context.new_buffer_with_bytes_checked(bytes(&xin))?;
+            let b_rin = self.context.new_buffer_with_bytes_checked(bytes(&rin))?;
+            let b_act = self.context.new_buffer_checked(inter * chunk * 4)?;
+            let b_down = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_rout = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_norm = self.context.new_buffer_checked(hidden * chunk * 4)?;
+
+            let k_gu = format!(
+                "qwen_affine_q2_group64_matmul_gate_up_swiglu_r{r}k{chunk}_geo_tpr64_tg128_bitcast"
+            );
+            let k_dn = format!("qwen_affine_q2_matmul_r{r}k{chunk}_geo_tpr64_tg128");
+            // Which tail this session actually runs. `fuse_add_rmsnorm` defaults
+            // to the FAST PROFILE flag, not to true -- so the ordinary default
+            // path is the UNFUSED one, and both have to work.
+            let fused_tail = self.fuse_add_rmsnorm;
+            let next_w = self.next_norm_weight_name(layer);
+            let w_norm = self.f32(&next_w)?;
+            let head_w = self.f32(&self.layer_name(layer, "post_attention_layernorm.weight"))?;
+
+            let tgs = |rows: usize| ((rows + 2 * r - 1) / (2 * r) * 128) as u32;
+            let tg128 = (128u32, 1, 1);
+            let rms_tg = if self.rmsnorm_tg > 0 { self.rmsnorm_tg } else { 256 };
+            let (gr, gc) = (gate.rows, gate.cols);
+            let (dr, dc) = (down.rows, down.cols);
+            let hid_u = hidden as u32;
+            let ck = chunk as u32;
+
+            let mut chunk_dispatches = 0usize;
+            self.timed_cb(|tcb| {
+                if !fused_tail {
+                    // The head norm the unfused encoder performs itself: the
+                    // interleaved RESIDUAL rmsnorm, input -> normalized.
+                    tcb.dispatch_threads(
+                        "qwen38_residual_rmsnorm_tg_interleaved",
+                        (rms_tg * ck, 1, 1),
+                        (rms_tg, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(&b_rin), 0);
+                            enc.set_buffer(1, Some(head_w), 0);
+                            enc.set_buffer(2, Some(&b_xin), 0);
+                            enc.set_bytes(3, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(4, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                            enc.set_bytes(5, 4, &ck as *const u32 as *const _);
+                            enc.set_threadgroup_memory_length(0, (rms_tg as u64) * 4);
+                        },
+                    )?;
+                }
+                tcb.dispatch_threads(&k_gu, (tgs(gr as usize), 1, 1), tg128, |enc| {
+                    enc.set_buffer(0, Some(&gate.codes), 0);
+                    enc.set_buffer(1, Some(&gate.scales), 0);
+                    enc.set_buffer(2, Some(gb), 0);
+                    enc.set_buffer(3, Some(&up.codes), 0);
+                    enc.set_buffer(4, Some(&up.scales), 0);
+                    enc.set_buffer(5, Some(ub), 0);
+                    enc.set_buffer(6, Some(&b_xin), 0);
+                    enc.set_buffer(7, Some(&b_act), 0);
+                    set_u32(enc, 8, gr);
+                    set_u32(enc, 9, gc);
+                })?;
+                tcb.dispatch_threads(&k_dn, (tgs(dr as usize), 1, 1), tg128, |enc| {
+                    enc.set_buffer(0, Some(&down.codes), 0);
+                    enc.set_buffer(1, Some(&down.scales), 0);
+                    enc.set_buffer(2, Some(db), 0);
+                    enc.set_buffer(3, Some(&b_act), 0);
+                    enc.set_buffer(4, Some(&b_down), 0);
+                    set_u32(enc, 5, dr);
+                    set_u32(enc, 6, dc);
+                    set_u32(enc, 7, 64);
+                })?;
+                if fused_tail {
+                    tcb.dispatch_threads(
+                        "qwen38_add_residual_rmsnorm_tg_interleaved",
+                        (rms_tg * ck, 1, 1),
+                        (rms_tg, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(&b_rin), 0);
+                            enc.set_buffer(1, Some(&b_down), 0);
+                            enc.set_buffer(2, Some(&b_rout), 0);
+                            enc.set_buffer(3, Some(w_norm), 0);
+                            enc.set_buffer(4, Some(&b_norm), 0);
+                            enc.set_bytes(5, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(6, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                            enc.set_bytes(7, 4, &ck as *const u32 as *const _);
+                            enc.set_threadgroup_memory_length(0, (rms_tg as u64) * 4);
+                        },
+                    )?;
+                } else {
+                    // Plain elementwise residual add. NO new kernel: an
+                    // elementwise binary op with no reduction and no
+                    // position-shared operand is LAYOUT-AGNOSTIC, so the
+                    // production kernel works on the interleaved buffer
+                    // unchanged -- it only needs the wider element count.
+                    // That is the real rule the norms violate: strided variants
+                    // are needed for a REDUCTION or a SHARED operand, not for
+                    // being on the chunked path.
+                    qwen_next_add_residual_tcb(
+                        tcb,
+                        &b_rin,
+                        &b_down,
+                        &b_rout,
+                        hidden * chunk,
+                    )?;
+                }
+                chunk_dispatches = tcb.dispatch_count();
+                Ok(())
+            })?;
+
+            let got_r = unsafe {
+                std::slice::from_raw_parts(b_rout.contents() as *const f32, hidden * chunk)
+            };
+            let got_n = unsafe {
+                std::slice::from_raw_parts(b_norm.contents() as *const f32, hidden * chunk)
+            };
+            let mut mr = 0f64;
+            let mut mn = 0f64;
+            for i in 0..hidden * chunk {
+                mr = mr.max((got_r[i] as f64 - want_resid[i] as f64).abs());
+                if fused_tail {
+                    mn = mn.max((got_n[i] as f64 - want_norm[i] as f64).abs());
+                }
+            }
+            if !fused_tail {
+                // The unfused tail emits no norm. Compare the HEAD norm instead,
+                // which the chunked path wrote into b_xin -- otherwise this arm
+                // would report a silent zero for a step it never checked.
+                let got_h = unsafe {
+                    std::slice::from_raw_parts(b_xin.contents() as *const f32, hidden * chunk)
+                };
+                for i in 0..hidden * chunk {
+                    mn = mn.max((got_h[i] as f64 - want_norm[i] as f64).abs());
+                }
+            }
+            Ok((mr, mn, seq_dispatches, chunk_dispatches))
+        }
+
         /// The fusion-matched baseline for [`Self::measure_isolated_organ_chunked`].
         ///
         /// `measure_isolated_organ("mlp_gate_up")` encodes the SwiGLU-fused

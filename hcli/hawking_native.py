@@ -1455,6 +1455,22 @@ class HawkingNativeConnector:
             # exactly as grammar_enforced did before the scar above.
             "stop_reason": body.get("stop_reason"),
             "layers": body.get("layers"),
+            # WHAT WAS ACTUALLY GRANTED, versus what the engine asked for.
+            # Receipt a4339d06 carries max_tokens 2048 and completion 1446 with
+            # stop_reason "budget" and finish_reason "length" -- and those three
+            # cannot all be true, because finish_reason is set from
+            # `generated_count >= max_new_tokens`. Three separate reads of the
+            # request path could not settle which number the resident actually
+            # received, because the only number the receipt ever carried was the
+            # ENGINE'S request. These are the connector's own resolved values
+            # after _limits, which is the arithmetic nobody else can see.
+            "max_new_tokens_granted": max_new_tokens,
+            # The PROFILE ceiling, named as such. The effective position limit
+            # _limits computes can be lower when a caller passes max_seq_len,
+            # and that is not in scope here -- so this is labelled for what it
+            # is rather than mislabelled for what would be more convenient.
+            "profile_max_seq_len": config.max_seq_len,
+            "prompt_tokens_counted_by_connector": prompt_tokens,
         }
         return {
             "id": f"hawking-chat-{uuid.uuid4()}",

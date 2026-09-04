@@ -4259,6 +4259,16 @@ class Engine:
                 # interpretable without it, and the host has no other source:
                 # the sealed profile carries capabilities, not geometry.
                 "layers",
+                # The budget the connector actually GRANTED after _limits, and
+                # the position limit it computed it from. The receipt has only
+                # ever carried the ENGINE'S request, so a reply truncated at
+                # 1446 against a recorded max_tokens of 2048 was unattributable
+                # -- three reads of the request path could not say which number
+                # the resident received. A field has to survive three hops and
+                # these were dying on the second.
+                "max_new_tokens_granted",
+                "profile_max_seq_len",
+                "prompt_tokens_counted_by_connector",
             ):
                 value = native.get(key)
                 if value is not None:

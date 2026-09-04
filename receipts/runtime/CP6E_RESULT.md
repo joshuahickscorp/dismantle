@@ -85,8 +85,11 @@ re-run green.
 ## The second kernel -- and why the MLP is now kernel-complete
 
 `qwen38_add_residual_rmsnorm_tg_interleaved`, the FUSED add-residual + norm.
-This is the one the production path actually runs (`fuse_add_rmsnorm`), so it is
-the one that had to be right.
+> **CORRECTED 2026-09-04 by `CP6F_RESULT.md`.** This paragraph said the fused
+> kernel is "the one the production path actually runs". That is conditional, not
+> unconditional: `fuse_add_rmsnorm` defaults to the **fast profile** flag
+> (`Err(_) => (fast, false)`), so the ordinary default path is the UNFUSED tail.
+> Both tails are load-bearing and both are now wired and checked.
 
 Reading `encode_dense_mlp_mixed` settles the remaining cost exactly. In the
 production configuration (`GateUpSwiglu` + `fuse_add_rmsnorm`) the MLP is three
@@ -101,6 +104,14 @@ dispatches:
 So the chunked MLP needs **no further new kernels**. The "7 kernels" figure is
 the cost of the WHOLE layer including the mixer; the MLP half -- 56.8% of the
 step, where every measured win lives -- is now complete.
+
+> **SHARPENED by `CP6F_RESULT.md`.** The blanket claim above -- that every
+> elementwise kernel on the chunked path needs a strided variant -- is too broad.
+> The unfused tail needed NO new kernel: `qwen_next_add_residual` takes an element
+> count and runs unchanged on the interleaved buffer. The precise rule is that an
+> elementwise op with **no reduction** and **no position-shared operand** is
+> layout-agnostic; a reduction (the norms) or a shared operand (the norm weight)
+> is what forces a strided variant.
 
 Both outputs of the fused kernel checked, both bit-identical:
 

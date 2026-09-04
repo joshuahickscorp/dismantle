@@ -80,17 +80,40 @@ worse than K=4 at every R measured. The four uninstantiated grid cells are repor
 raw receipt with their budgets rather than dropped; r16k8 would need 176 live floats/thread
 and is not worth instantiating on this evidence.
 
-## What is NOT settled
+## CP3b — the baseline anomaly is RESOLVED, and it refutes the flattering number
 
-**The baseline may be cache-advantaged, which would make the real win LARGER.** The
-sequential arm re-reads the same 41.9 MB tensor K times back to back. A production prefill
-streams ~10.55 GB between positions, so every position's read is genuinely cold. A single
-isolated baseline dispatch measured 128,750 ns while the steady-state per-position cost
-across 12 later cells is a tight ~74,500-77,000 ns. That gap is either cache reuse (which
-production would not get, so 2.474x is a floor) or first-cells warm-up/DVFS ramp (in which
-case 2.474x is the honest number). **The two are not yet distinguished.** The discriminator
-is cheap — re-run with the (R,K) sweep order reversed, or with per-cell warm-up — and it is
-CP3b. Until then the 4.281x "vs serial-K1" ratio in the raw receipt is NOT claimed.
+Raw: `receipts/runtime/CP3B_REVERSED_ORDER.json` (`sweep_order: REVERSED`).
+
+The first pass measured the R=1 cells (which ran first) at ~128,750 ns/position against a
+steady ~74,500 across the twelve later cells. Two mechanisms explained that equally well and
+implied opposite conclusions: cache reuse in the sequential arm, which a real 64-layer prefill
+loop would not get, making 2.474x a FLOOR; or first-cells warm-up, making 2.474x the honest
+number. Re-running with the sweep order reversed separates them, because under warm-up the
+cost follows the ORDER and under cache it follows the CELL.
+
+**It follows the order.**
+
+| cell | fwd position | rev position | fwd ns/pos baseline | rev ns/pos baseline |
+|---|---|---|---|---|
+| r1k1 | 1 | 20 | 128,750 | **74,375** |
+| r1k4 | 3 | 18 | 129,188 | **74,188** |
+| r2k1 | 5 | 16 | 95,375 | 74,125 |
+| r4k4 | 13 | 8 | 74,520 | 85,646 |
+| r4k8 | 14 | 7 | 78,286 | **128,370** |
+| r8k4 | 16 | 5 | 74,927 | **128,667** |
+| r16k4 | 19 | 2 | 75,062 | **124,209** |
+
+The expensive cells swapped places exactly with the order. So the cause is **first-cells
+warm-up / DVFS ramp, not cache**, and the "vs serial-K1" ratio of 4.281x that the raw receipt
+carries is **REFUTED** — it divided by a K1 reference measured during the ramp. It is not
+claimed, and the earlier suspicion that 2.474x was a floor is withdrawn.
+
+**2.474x is the number.** The paired design is what makes it survive: because both arms of a
+cell run adjacently, the ramp cancels in the ratio, and the speedups agree across the two
+orders to within noise —
+
+    r4k4   2.474  /  2.479        r2k2   1.863  /  1.859
+    r2k4   2.132  /  2.114        r16k1  0.680  /  0.678
 
 Interleaving activations into `input[col*K + k]` cost 19,167 ns of host time against
 ~120,500 ns of GPU time saved (15.9%). In a real chunked prefill the activations arrive

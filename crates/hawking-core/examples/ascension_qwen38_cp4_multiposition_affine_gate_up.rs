@@ -72,7 +72,8 @@ mod macos {
     /// not intrinsic. The ratio survives because both arms of a cell run
     /// adjacently -- but a claim that compares CELLS to each other (which is
     /// exactly what "where is the knee" asks) must be checked in both orders.
-    const GRID: &[(usize, usize)] = &[(1, 1), (2, 2), (2, 4), (4, 2), (4, 4)];
+    const GRID: &[(usize, usize)] =
+        &[(1, 1), (2, 1), (4, 1), (2, 2), (2, 4), (4, 2), (4, 4)];
 
     const BASELINE: &str = "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128";
 

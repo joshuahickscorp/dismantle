@@ -5043,6 +5043,13 @@ kernel void qwen_affine_q2_group64_matmul_gate_up_r##RVAL##k##KVAL##_geo_tpr64_t
 }
 
 AFFINE_Q2_G64_GATE_UP_MATMUL_RK(1, 1)
+// R-only baselines. Without these the RxK table cannot separate a KERNEL TILING
+// win -- more rows served per activation load, available at K=1 and needing no
+// multi-token machinery at all -- from a genuine MULTI-TOKEN win. CP3 carried
+// them (r2k1 1.044, r4k1 1.012, r8k1 0.980, r16k1 0.680) and that is the only
+// reason its 2.474x could be attributed to batching rather than to tiling.
+AFFINE_Q2_G64_GATE_UP_MATMUL_RK(2, 1)
+AFFINE_Q2_G64_GATE_UP_MATMUL_RK(4, 1)
 AFFINE_Q2_G64_GATE_UP_MATMUL_RK(2, 2)
 AFFINE_Q2_G64_GATE_UP_MATMUL_RK(2, 4)
 AFFINE_Q2_G64_GATE_UP_MATMUL_RK(4, 2)

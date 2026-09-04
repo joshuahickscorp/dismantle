@@ -1055,12 +1055,12 @@ def recovered_implementation() -> list[dict[str, Any]]:
             "representation Doctor: FAMILIES, organ_plan, avoid_list citing NNS, ORGAN/DIAGNOSIS/PRESCRIPTION/AVOID",
         ),
         (
-            "tools/headless/doctor_technique_library.py",
-            "general TechniqueLibrary; KEEP/PRUNE; applicability per architecture class",
+            "receipts/headless/DOCTOR_TECHNIQUE_LIBRARY.json",
+            "sealed general TechniqueLibrary; KEEP/PRUNE; applicability per architecture class",
         ),
         (
-            "tools/headless/doctor_technique_registry.py",
-            "REQUIRED_ENTRY_FIELDS, cheapest() CPU probe, SCAR_* phrases, git-fallback load_json",
+            "receipts/headless/DOCTOR_TECHNIQUE_REGISTRY.json",
+            "sealed REQUIRED_ENTRY_FIELDS, cheapest() CPU probe, SCAR_* phrases, git-fallback load_json",
         ),
         (
             "hcli/agentos/fpga_preboard.py",

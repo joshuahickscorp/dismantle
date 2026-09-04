@@ -264,6 +264,19 @@ pub fn qwen38_fuse_add_rmsnorm_enabled() -> bool {
 /// Batched prompt prefill. Default **on**. `HAWKING_QWEN38_BATCH_PREFILL=0`
 /// restores the historical per-token `step` loop so a regression can be
 /// bisected against the sequential path.
+/// Flash (online-softmax, tiled) GQA attention. Default **off** until measured.
+///
+/// The production `mha_decode_f32` materialises the full score vector in
+/// THREADGROUP memory, so this M3 Ultra's 32,768-byte threadgroup limit caps
+/// context at ~7,680 tokens against an advertised 262,144 -- and nothing in the
+/// code guards it. `mha_decode_flash_f32` keeps a constant `scores_tile` of
+/// FLASH_TG floats instead, so its threadgroup footprint does not grow with
+/// sequence length. The two `_tcb` helpers take identical arguments, so this is
+/// a route swap rather than a rewrite.
+pub fn qwen38_flash_attention_enabled() -> bool {
+    crate::env_on("HAWKING_QWEN38_FLASH_ATTN")
+}
+
 pub fn qwen38_batched_prefill_enabled() -> bool {
     crate::env_opt_out("HAWKING_QWEN38_BATCH_PREFILL")
 }
@@ -1943,7 +1956,8 @@ mod device {
     use super::*;
     use crate::json_constrain::{argmax_f32_metal_tiebreak, JsonConstraint, JsonVocabIndex};
     use crate::kernels::{
-        mha_decode_f32_tcb, qwen_next_add_residual_tcb, sample_argmax_f32_tcb,
+        mha_decode_f32_tcb, mha_decode_flash_f32_tcb, qwen_next_add_residual_tcb,
+        sample_argmax_f32_tcb,
     };
     use crate::metal::{CommandBufferTiming, MetalContext, PinnedBuffer, TokenCommandBuffer};
     use std::cell::Cell;
@@ -6766,7 +6780,14 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             let slot_elems = self.max_seq_len * QWEN38_GQA_KV_HEADS * QWEN38_GQA_HEAD_DIM;
             let cache_off = (slot * slot_elems * 4) as u64;
             let seq = self.position.max(1).min(self.max_seq_len);
-            mha_decode_f32_tcb(
+            // Same arguments either way; only the threadgroup-memory behaviour
+            // differs, which is the whole point of the swap.
+            let attn = if qwen38_flash_attention_enabled() {
+                mha_decode_flash_f32_tcb
+            } else {
+                mha_decode_f32_tcb
+            };
+            attn(
                 tcb,
                 &self.workspace.query,
                 &self.workspace.gqa_key,

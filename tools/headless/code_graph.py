@@ -1910,7 +1910,7 @@ def findings(
                     "reexport_only": bool(f.get("reexport_only")),
                     "entrypoints": f.get("entrypoints") or [],
                     "reason": (
-                        "fossil namespace (tools/hcli/bootstrap/*.py, disconnected from hcli package)"
+                        "historical bootstrap record (Python wrappers retired; disconnected from hcli package)"
                         if kind == "hcli_fossil"
                         else "product module with no inbound product imports"
                         if not inbound
@@ -2021,9 +2021,9 @@ def findings(
             "id": "fossil_haider_disconnected",
             "severity": "info",
             "detail": (
-                "tools/hcli/bootstrap/snapshots/haider.py and p0_tool_bridge.py are a separate process "
-                "from the hcli package. Standing fact: haider is a fossil namespace. "
-                "The graph must show them disconnected from hcli.*, not rename them."
+                "tools/hcli/bootstrap/ is a historical record, not live code, and is separate "
+                "from the hcli package. The Python wrappers were retired; the record path remains "
+                "stable for lineage and must not be mistaken for an importable runtime."
             ),
             "files": [p for p in nodes if p.startswith("tools/hcli/bootstrap/") and not p.startswith("hcli/")],
         },
@@ -2170,8 +2170,8 @@ def watch_failures(files: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
     rows.append(
         {
             "what": "haider module presence under sparse checkout",
-            "result": "OK" if haider_n and haider_disk == 0 else ("MIXED" if haider_disk else "FAIL"),
-            "reason": f"parsed {haider_n} haider modules; on_disk={haider_disk} (0 is the sparse-hole case)",
+            "result": "OK" if haider_n == 0 else ("OK" if haider_disk == 0 else "MIXED"),
+            "reason": f"parsed {haider_n} bootstrap Python modules; on_disk={haider_disk} (0 means the wrappers are retired)",
         }
     )
     return rows
@@ -2391,7 +2391,7 @@ def main() -> int:
         "census_roots": list(CENSUS_ROOTS),
         "scope": {
             "includes": [
-                "tools/hcli/bootstrap/**/*.py — live HCLI control plane plus fossil wrappers (read via git when sparse-missing)",
+                "tools/hcli/bootstrap/ — historical bootstrap record; Python wrappers are retired",
                 "tools/headless/**/*.py — harnesses and headless tests",
             ],
             "excludes": [

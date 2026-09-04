@@ -777,8 +777,8 @@ def _tool_dispatch_pattern(tool_name: str) -> re.Pattern[str]:
     `.invoke("<name>"` / `invoke("<name>"` first positional argument.
 
     Without this, a bare quoted "git.status"/"fs.read" anywhere in the repo
-    counts -- including tools/hcli/bootstrap/p0_tool_bridge.py's OWN, unrelated
-    ALL_TOOLS set for a different HAIDER API bridge that happens to reuse a
+    counts -- including an unrelated bridge's OWN, unrelated ALL_TOOLS set for a
+    different API bridge that happens to reuse a
     few of the same short names. Same string, two unconnected systems; only
     the dispatch-shaped occurrence is evidence for THIS registry.
     """

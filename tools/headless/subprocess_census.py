@@ -646,7 +646,7 @@ def _role(hit: Dict[str, Any]) -> str:
         return "production"
     if f.startswith("crates/") or f.startswith("src/"):
         return "native"
-    if f in {"tools/hcli/bootstrap/snapshots/haider.py", "tools/hcli/bootstrap/p0_tool_bridge.py"}:
+    if f.startswith("tools/hcli/bootstrap/"):
         return "production_fossil"
     return "other"
 
@@ -805,9 +805,9 @@ def classify(hit: Dict[str, Any]) -> Dict[str, Any]:
     if func.endswith("run_validation") and f.endswith("haider.py"):
         return out(
             "LEGACY_WRAPPER",
-            "`[sys.executable, tools/hcli/bootstrap/test_p0_tool_bridge.py]` — Python spawning Hawking Python.",
-            replacement="import the test module and call its main, or pytest.main([str(test_file)])",
-            would_break="haider.py is a fossil entrypoint (zero `import aider`). Callers expecting a subprocess exit code from the P0 file.",
+            "a retired bootstrap wrapper once spawned a second Python process.",
+            replacement="The bootstrap wrapper is retired; current HCLI validation stays in hcli.",
+            would_break="Historical callers expecting a subprocess exit code from the retired P0 file.",
             hot_path="cold",
         )
     if func.endswith("_run_script_counting_asserts"):

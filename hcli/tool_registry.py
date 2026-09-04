@@ -1617,10 +1617,23 @@ def _doctor_query(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
         "schema": "hcli.doctor.query.v1",
         "operation": operation,
         "status": "PROPOSED",
-        "authority": "measurement/verifier, not Doctor",
+        "authority": "tools.doctor.engine",
         "external_research_used": False,
         "physical_execution": False,
     }
+    target = args.get("receipt") or args.get("model")
+    if target:
+        from tools.doctor.engine import diagnose
+
+        result["diagnosis"] = diagnose(target)
+        result["status"] = "DIAGNOSED"
+        result["producer"] = "tools.doctor.engine.diagnose"
+    else:
+        from tools.doctor.engine import zeros_controls
+
+        result["doctor_controls"] = zeros_controls()
+        result["status"] = "CONTROLLED_PROPOSAL"
+        result["producer"] = "tools.doctor.engine.zeros_controls"
     if args.get("model"):
         result["architecture"] = _architecture_inspect(context, {"path": args["model"]})
     if args.get("receipt"):
@@ -1652,8 +1665,16 @@ def _gravity_experiment(context: ToolContext, args: Dict[str, Any]) -> Dict[str,
     if args.get("receipt"):
         result["prior_evidence"] = _receipt_read(context, {"path": args["receipt"]})
     if args.get("execute"):
-        result["status"] = "REFUSED_NOT_IMPLEMENTED"
-        result["blocker"] = "HCLI does not claim physical Gravity execution from a metadata tool"
+        from hcli.agentos.flash_representation_experiment import (
+            run_flash_representation_experiment,
+        )
+
+        experiment = run_flash_representation_experiment(root=args.get("model"))
+        result["experiment"] = experiment
+        result["status"] = "EXECUTED"
+        result["producer"] = "hcli.agentos.flash_representation_experiment.run_flash_representation_experiment"
+        result["physical_execution"] = False
+        result["capability_claim"] = "none"
     return result
 
 

@@ -36,7 +36,10 @@ markers = ["slow: real hardware/compile evidence; deselected by default"]
 # tools/future session artifacts (HEAD ls-tree + receipts/future blobs) live
 # in tools/future/conftest.py, not here: addopts cannot carry -n.
 addopts = "-m 'not slow'"
-testpaths = ["hcli/tests"]
+# Collect the live HCLI package, including its root-level contract tests and
+# the deeper hcli/tests suite. Historical tools/future tests remain explicit
+# because they write evidence fixtures and use their own harness.
+testpaths = ["hcli"]
 pythonpath = [
     ".",
     # research/ is a source root: `lab.*` and the frankenstein packages are

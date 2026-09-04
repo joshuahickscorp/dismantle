@@ -560,7 +560,7 @@ def test_public_surface_is_small_and_named():
         "MIXED",
         "Hypothesis",
         "Frontier",
-        "WorkUnit",
+        "ScientificWorkUnit",
         "IngestResult",
         "Metabolism",
         "NotAHypothesis",

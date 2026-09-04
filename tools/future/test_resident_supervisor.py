@@ -72,7 +72,7 @@ def test_imports_the_existing_loop_and_does_not_fork_it():
 
 
 def test_lane_vocabulary_is_the_frontiers(tmp_path: Path):
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=1,
@@ -115,7 +115,7 @@ def test_persist_does_not_invoke_a_vcs_mutation(tmp_path: Path, monkeypatch: pyt
 
     monkeypatch.setattr(subprocess, "run", wrapped)
     monkeypatch.setattr(rs, "argv_is_vcs_mutation", rs.argv_is_vcs_mutation)
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=1,
@@ -181,7 +181,7 @@ def test_all_eleven_live_frontiers_are_asked_every_tick(tmp_path: Path):
         seen.append(name)
         return []
 
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=2,
@@ -228,7 +228,7 @@ def test_idle_with_proof_does_not_fire_when_one_frontier_still_has_work(tmp_path
             return [rs.cpu_unit(uid, live_frontier=name, gain=3)]
         return []
 
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=2,
@@ -249,7 +249,7 @@ def test_idle_with_proof_does_not_fire_when_curriculum_remains(tmp_path: Path):
     def curriculum() -> list[dict]:
         return [rs.cpu_unit("WU.curriculum.1", live_frontier="TOOL_USE", gain=2)]
 
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=1,
@@ -275,7 +275,7 @@ def test_never_emits_awaiting_instructions_merely_because_a_list_ended(tmp_path:
 
 
 def test_emit_refuses_the_instruction_wait_label(tmp_path: Path):
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=0,
@@ -312,7 +312,7 @@ def test_emit_status_returns_and_run_continues(tmp_path: Path):
             return [rs.cpu_unit(f"WU.hcli.{len(ticks)}", live_frontier=name, gain=2)]
         return []
 
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=3,
@@ -401,7 +401,7 @@ def test_hardware_work_parks_sleeping_and_cpu_work_still_runs(tmp_path: Path):
             return [rs.cpu_unit("WU.tools.cpu", live_frontier=name, gain=2)]
         return []
 
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=1,
@@ -434,7 +434,7 @@ def test_satisfied_wake_condition_requeues_the_unit(tmp_path: Path):
     def wake_fn(unit: dict) -> bool:
         return flag["wake"] and unit.get("id") == "WU.wake.me"
 
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=2,
@@ -479,7 +479,7 @@ def test_satisfied_wake_condition_requeues_the_unit(tmp_path: Path):
 
 def test_tick_is_bounded_and_max_ticks_terminates(tmp_path: Path):
     slept: list[float] = []
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=4,
@@ -507,9 +507,9 @@ def test_sigterm_persists_state_before_exit(tmp_path: Path):
     child = r"""
 import sys
 from pathlib import Path
-from tools.future.resident_supervisor import ResidentSupervisor
+from tools.future.resident_supervisor import FutureResidentSupervisor
 ws = Path(sys.argv[1])
-s = ResidentSupervisor(
+s = FutureResidentSupervisor(
     ws,
     tick_s=0.05,
     max_ticks=10000,
@@ -563,7 +563,7 @@ raise SystemExit(s.run().get("exit_code", 0))
 
 
 def test_in_process_sigterm_handler_persists(tmp_path: Path):
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=1,
@@ -593,7 +593,7 @@ def test_work_refilled_is_canonical_and_empty_is_not_a_refill(tmp_path: Path):
             return [rs.cpu_unit("WU.tools.r", live_frontier=name, gain=3)]
         return []
 
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=1,
@@ -615,7 +615,7 @@ def test_work_refilled_is_canonical_and_empty_is_not_a_refill(tmp_path: Path):
 
 
 def test_tick_performs_the_named_loop_body(tmp_path: Path):
-    sup = rs.ResidentSupervisor(
+    sup = rs.FutureResidentSupervisor(
         tmp_path,
         tick_s=0.0,
         max_ticks=1,

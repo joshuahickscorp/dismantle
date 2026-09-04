@@ -483,7 +483,7 @@ def _as_sleeping_from_book(unit: Mapping[str, Any], live_frontier: str) -> dict[
 # ---------------------------------------------------------------------------
 
 
-class ResidentSupervisor:
+class FutureResidentSupervisor:
     """Independent of any conversational turn. One bounded tick at a time."""
 
     def __init__(
@@ -1769,7 +1769,7 @@ class ResidentSupervisor:
 
 
 def run_loop(workspace: str | os.PathLike[str], **kwargs: Any) -> dict[str, Any]:
-    return ResidentSupervisor(workspace, **kwargs).run()
+    return FutureResidentSupervisor(workspace, **kwargs).run()
 
 
 # ---------------------------------------------------------------------------
@@ -1795,7 +1795,7 @@ def scenario_empty_refill_does_not_halt(workspace: Path) -> dict[str, Any]:
             return [cpu_unit("WU.tools.novel", live_frontier=name, gain=3)]
         return []
 
-    sup = ResidentSupervisor(
+    sup = FutureResidentSupervisor(
         workspace,
         tick_s=0.0,
         max_ticks=1,
@@ -1839,7 +1839,7 @@ def scenario_blocked_does_not_block_unblocked(workspace: Path) -> dict[str, Any]
             return [cpu_unit("WU.hcli.emit", live_frontier=name, gain=3)]
         return []
 
-    sup = ResidentSupervisor(
+    sup = FutureResidentSupervisor(
         workspace,
         tick_s=0.0,
         max_ticks=1,
@@ -1858,7 +1858,7 @@ def scenario_blocked_does_not_block_unblocked(workspace: Path) -> dict[str, Any]
 
 
 def scenario_idle_with_proof(workspace: Path) -> dict[str, Any]:
-    sup = ResidentSupervisor(
+    sup = FutureResidentSupervisor(
         workspace,
         tick_s=0.0,
         max_ticks=2,
@@ -1899,7 +1899,7 @@ def scenario_list_ended_is_not_awaiting(workspace: Path) -> dict[str, Any]:
             return [cpu_unit("WU.tools.once", live_frontier=name, gain=2)]
         return []
 
-    sup = ResidentSupervisor(
+    sup = FutureResidentSupervisor(
         workspace,
         tick_s=0.0,
         max_ticks=3,
@@ -1931,7 +1931,7 @@ def scenario_status_does_not_stop(workspace: Path) -> dict[str, Any]:
             return [cpu_unit(uid, live_frontier=name, gain=2)]
         return []
 
-    sup = ResidentSupervisor(
+    sup = FutureResidentSupervisor(
         workspace,
         tick_s=0.0,
         max_ticks=3,
@@ -1982,7 +1982,7 @@ def scenario_sleeping_fields(workspace: Path) -> dict[str, Any]:
     def wake_fn(u: dict[str, Any]) -> bool:
         return woke["n"] >= 1 and _unit_id(u) == "WU.sleep.gpu"
 
-    sup = ResidentSupervisor(
+    sup = FutureResidentSupervisor(
         workspace,
         tick_s=0.0,
         max_ticks=2,
@@ -2016,7 +2016,7 @@ def scenario_sleeping_fields(workspace: Path) -> dict[str, Any]:
 def scenario_never_vcs_mutation(workspace: Path) -> dict[str, Any]:
     src = Path(__file__).read_text(encoding="utf-8")
     phrase_absent = _forbidden_vcs_phrase() not in src
-    sup = ResidentSupervisor(
+    sup = FutureResidentSupervisor(
         workspace,
         tick_s=0.0,
         max_ticks=1,
@@ -2077,7 +2077,7 @@ def _live_trace() -> dict[str, Any]:
     """Two ticks against the real book, dry launch, then stop. Must terminate."""
     with tempfile.TemporaryDirectory(prefix="hawking-resident-sup-live-") as td:
         try:
-            sup = ResidentSupervisor(
+            sup = FutureResidentSupervisor(
                 Path(td),
                 tick_s=0.0,
                 max_ticks=2,
@@ -2219,7 +2219,7 @@ def record() -> Path:
             "command-less frontier items are launched as sealed dry receipts rather than unbounded orchestration.invoke",
         ],
         "resident_callable": {
-            "entry_point": "tools.future.resident_supervisor.ResidentSupervisor(workspace).run()",
+            "entry_point": "tools.future.resident_supervisor.FutureResidentSupervisor(workspace).run()",
             "workunit": "one CPU_ANALYSIS supervisor tick; dry or detached launch of admitted WorkUnits",
             "receipt": f"receipts/future/{RECEIPT}",
             "frontier": "FT.HCLI_SELF.emit-workunits",

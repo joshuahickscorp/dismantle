@@ -292,8 +292,8 @@ class Hypothesis:
 
 
 @dataclass
-class WorkUnit:
-    """Scientific work, not an HCLI WorkUnit. Role is one of ROLES."""
+class ScientificWorkUnit:
+    """Scientific work record, distinct from the live HCLI WorkUnit."""
 
     id: str
     role: str
@@ -403,7 +403,7 @@ class Metabolism:
     """The campaign's option substrate: frontiers + work + ingest log."""
 
     frontiers: dict[str, Frontier]
-    work_units: list[WorkUnit] = field(default_factory=list)
+    work_units: list[ScientificWorkUnit] = field(default_factory=list)
     ingest_log: list[IngestResult] = field(default_factory=list)
     cited: dict[str, Any] = field(default_factory=dict)
     sources: dict[str, str] = field(default_factory=dict)
@@ -637,7 +637,7 @@ def work_unit(
     expected_runtime_s: float,
     status: str = "QUEUED",
     terminal: Mapping[str, Any] | None = None,
-) -> WorkUnit:
+) -> ScientificWorkUnit:
     r = _strip(role).upper()
     if r not in ROLES:
         raise UnknownRole(
@@ -658,7 +658,7 @@ def work_unit(
         kind = term.get("kind", "")
         rest = {k: v for k, v in term.items() if k != "kind"}
         term = globals()["terminal"](kind, **rest)
-    return WorkUnit(
+    return ScientificWorkUnit(
         id=_strip(id),
         role=r,
         hypothesis_id=_strip(hypothesis_id),
@@ -671,11 +671,17 @@ def work_unit(
     )
 
 
-def role_balance(units: Iterable[WorkUnit] | Iterable[Mapping[str, Any]]) -> RoleBalance:
+def role_balance(
+    units: Iterable[ScientificWorkUnit] | Iterable[Mapping[str, Any]],
+) -> RoleBalance:
     counts = {r: 0 for r in ROLES}
     n = 0
     for u in units:
-        role = u.role if isinstance(u, WorkUnit) else _strip(u.get("role")).upper()
+        role = (
+            u.role
+            if isinstance(u, ScientificWorkUnit)
+            else _strip(u.get("role")).upper()
+        )
         if role in counts:
             counts[role] += 1
         n += 1
@@ -2410,7 +2416,7 @@ __all__ = (
     "UnknownRole",
     "UnknownTerminal",
     "VerbExperiment",
-    "WorkUnit",
+    "ScientificWorkUnit",
     "apply_terminal",
     "attach",
     "build",

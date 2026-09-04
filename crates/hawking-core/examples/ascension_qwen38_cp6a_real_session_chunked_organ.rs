@@ -99,6 +99,7 @@ mod macos {
         let mut seq: Vec<u64> = Vec::new();
         let mut bat: Vec<u64> = Vec::new();
         let mut fused: Vec<u64> = Vec::new();
+        let mut chunked_fused: Vec<u64> = Vec::new();
         for rep in 0..(reps + 1) {
             // Alternated, so a clock ramp hits both arms. CP3b established that
             // the first cells of any sweep sit on a DVFS ramp and that the ratio
@@ -112,14 +113,20 @@ mod macos {
             let f = session
                 .measure_isolated_organ("mlp_gate_up")
                 .unwrap_or_else(|e| fail(e));
+            // Batching AND fusion AND bitcast together -- the kernel CP6a said
+            // was the lever, measured against the same fused production arm.
+            let cf = session
+                .measure_isolated_organ_chunked("mlp_gate_up_swiglu", chunk)
+                .unwrap_or_else(|e| fail(e));
             if rep == 0 {
                 continue;
             }
-            match (a.gpu_ns, b.gpu_ns, f.gpu_ns) {
-                (Some(x), Some(y), Some(z)) => {
+            match (a.gpu_ns, b.gpu_ns, f.gpu_ns, cf.gpu_ns) {
+                (Some(x), Some(y), Some(z), Some(w)) => {
                     seq.push(x);
                     bat.push(y);
                     fused.push(z);
+                    chunked_fused.push(w);
                 }
                 _ => fail("driver gave no GPU timestamp"),
             }
@@ -128,6 +135,7 @@ mod macos {
         let sm = median(seq.clone()) as f64;
         let bm = median(bat.clone()) as f64;
         let fm = median(fused.clone()) as f64;
+        let cfm = median(chunked_fused.clone()) as f64;
         // The baseline runs ONE position over 64 layers; the chunked arm runs
         // `chunk` positions over the same 64 layers in one dispatch each.
         let speedup = (sm * chunk as f64) / bm;
@@ -139,6 +147,11 @@ mod macos {
             "  (against the FUSED production baseline it would read {:.3}x -- not claimed, \
 different fusion)",
             (fm * chunk as f64) / bm
+        );
+        eprintln!("chunked FUSED+bitcast r4k{chunk}                median {cfm:.0} ns");
+        eprintln!(
+            "  vs the fused production path, LIKE FOR LIKE: {:.3}x",
+            (fm * chunk as f64) / cfm
         );
 
         let doc = json!({
@@ -166,6 +179,9 @@ baseline would credit batching with a fusion difference.",
             "fused_production_gpu_ns_median": fm as u64,
             "speedup_x_vs_pair": speedup,
             "speedup_x_vs_fused_NOT_CLAIMED": (fm * chunk as f64) / bm,
+            "chunked_fused_bitcast_gpu_ns_reps": chunked_fused,
+            "chunked_fused_bitcast_gpu_ns_median": cfm as u64,
+            "speedup_x_fused_vs_chunked_fused_LIKE_FOR_LIKE": (fm * chunk as f64) / cfm,
             "session_open_s": open_s,
         });
         match out {

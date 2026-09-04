@@ -5197,3 +5197,176 @@ AFFINE_Q2_MATMUL_RK(4, 4)
 AFFINE_Q2_MATMUL_RK(4, 8)
 
 #undef AFFINE_Q2_MATMUL_RK
+
+
+// ── multi-position affine gate_up WITH swiglu AND bitcast unpack ──────────
+//
+// CP6a measured the gap this closes. On real catalog weights over 64 layers:
+//
+//   pair baseline (unfused)   9,321,041 ns   1 position
+//   swiglu-fused production   7,183,124 ns   1 position
+//   multi-position r4k4      15,348,083 ns   4 positions
+//
+//   batching alone, fusion-matched                       2.429x
+//   against the fused path that actually runs            1.872x
+//   what production's fusion + bitcast buy on their own  1.298x
+//
+// The multi-position kernel had neither the SwiGLU fusion nor the bitcast
+// unpack, so replacing production with it gave up 1.298x of what production
+// already had. This kernel is all three at once, and it is the thing that turns
+// 1.872x into something near 2.4x on the real path.
+//
+// Unpack is the bitcast form: 0x40000000 | (q << 21) reinterpreted as float is
+// 2.0 + q*0.5 for q in 0..3, so passing scale*2 and bias - scale*4 recovers
+// q*scale + bias with one OR and one bitcast instead of a convert.
+//
+// Epilogue is SwiGLU, so ONE output per (row, position) instead of two:
+//   act_out[row * K + k] = silu(gate) * up
+//
+// Registers: 2*R*K accumulators, K staged activations, 3R weight terms per row.
+// CP4b showed the governing variable is grid width against core count rather
+// than register count, and gate_up is 17408 rows -- 2176 threadgroups at R=4,
+// against 60 GPU cores -- so R=4 is not grid-starved here.
+//
+// Activation layout input[col*K + k], output act_out[row*K + k], matching every
+// other multi-position kernel so one caller drives them all.
+// Grid: ceil(rows / (2*R)) * 128, TG (128,1,1).
+
+template <uint R, uint K>
+static inline void affine_q2_g64_gate_up_swiglu_matmul_rk_bitcast_body(
+    device const uchar* gate_codes,
+    device const half*  gate_scales,
+    device const half*  gate_biases,
+    device const uchar* up_codes,
+    device const half*  up_scales,
+    device const half*  up_biases,
+    device const float* input,
+    device float*       act_out,
+    uint rows,
+    uint cols,
+    threadgroup float* red,
+    uint group_id,
+    uint simd_lane,
+    uint simd_id)
+{
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row0 = (group_id * 2u + team) * R;
+
+    float acc_g[R * K];
+    float acc_u[R * K];
+    for (uint i = 0u; i < R * K; ++i) {
+        acc_g[i] = 0.0f;
+        acc_u[i] = 0.0f;
+    }
+
+    if ((cols % 64u) != 0u) {
+        return;
+    }
+    const uint groups_per_row = cols >> 6u;
+
+    for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+        const uint group = col >> 6u;
+        const uint local = col & 63u;
+
+        uint gp[R], up[R];
+        float gs2[R], gb4[R], us2[R], ub4[R];
+        for (uint r = 0u; r < R; ++r) {
+            const uint row = row0 + r;
+            // Clamp the ADDRESS, zero the SCALE. An out-of-range row reads a
+            // valid page and contributes nothing; branching per row would
+            // diverge every lane in the simdgroup.
+            const uint safe = row < rows ? row : (rows - 1u);
+            const uint rgb = safe * groups_per_row + group;
+            const uint byte0 = rgb * 16u + (local >> 2u);
+            gp[r] = uint(*((device const ushort*)(gate_codes + byte0)));
+            up[r] = uint(*((device const ushort*)(up_codes + byte0)));
+            const float live = row < rows ? 1.0f : 0.0f;
+            const float gs = float(gate_scales[rgb]) * live;
+            const float us = float(up_scales[rgb]) * live;
+            gs2[r] = gs * 2.0f;
+            us2[r] = us * 2.0f;
+            gb4[r] = fma(gs, -4.0f, float(gate_biases[rgb]) * live);
+            ub4[r] = fma(us, -4.0f, float(up_biases[rgb]) * live);
+        }
+
+        for (uint i = 0u; i < 8u; ++i) {
+            // One activation fetch per position feeds all R rows. R is what
+            // fixes the activation:code ratio that killed the K-only kernel.
+            float xv[K];
+            const uint xbase = (col + i) * K;
+            for (uint k = 0u; k < K; ++k) {
+                xv[k] = input[xbase + k];
+            }
+            const uint sh = 2u * i;
+            for (uint r = 0u; r < R; ++r) {
+                const uint gb = 0x40000000u | (((gp[r] >> sh) & 3u) << 21u);
+                const uint ub = 0x40000000u | (((up[r] >> sh) & 3u) << 21u);
+                const float wg = fma(gs2[r], as_type<float>(gb), gb4[r]);
+                const float wu = fma(us2[r], as_type<float>(ub), ub4[r]);
+                for (uint k = 0u; k < K; ++k) {
+                    acc_g[r * K + k] = fma(wg, xv[k], acc_g[r * K + k]);
+                    acc_u[r * K + k] = fma(wu, xv[k], acc_u[r * K + k]);
+                }
+            }
+        }
+    }
+
+    for (uint i = 0u; i < R * K; ++i) {
+        const float sg = simd_sum(acc_g[i]);
+        const float su = simd_sum(acc_u[i]);
+        if (simd_lane == 0u) {
+            red[i * 4u + simd_id] = sg;
+            red[4u * R * K + i * 4u + simd_id] = su;
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u) {
+        for (uint r = 0u; r < R; ++r) {
+            const uint row = row0 + r;
+            if (row >= rows) {
+                break;
+            }
+            for (uint k = 0u; k < K; ++k) {
+                const uint i = r * K + k;
+                const uint t = team * kSplit;
+                const float g = red[i * 4u + t] + red[i * 4u + t + 1u];
+                const float u =
+                    red[4u * R * K + i * 4u + t] + red[4u * R * K + i * 4u + t + 1u];
+                act_out[row * K + k] = (g / (1.0f + exp(-g))) * u;
+            }
+        }
+    }
+}
+
+#define AFFINE_Q2_G64_GATE_UP_SWIGLU_MATMUL_RK(RVAL, KVAL)                     \
+kernel void qwen_affine_q2_group64_matmul_gate_up_swiglu_r##RVAL##k##KVAL##_geo_tpr64_tg128_bitcast( \
+    device const uchar* gate_codes  [[buffer(0)]],                             \
+    device const half*  gate_scales [[buffer(1)]],                             \
+    device const half*  gate_biases [[buffer(2)]],                             \
+    device const uchar* up_codes    [[buffer(3)]],                             \
+    device const half*  up_scales   [[buffer(4)]],                             \
+    device const half*  up_biases   [[buffer(5)]],                             \
+    device const float* input       [[buffer(6)]],                             \
+    device float*       act_out     [[buffer(7)]],                             \
+    constant uint& rows             [[buffer(8)]],                             \
+    constant uint& cols             [[buffer(9)]],                             \
+    uint group_id                    [[threadgroup_position_in_grid]],         \
+    uint simd_lane                   [[thread_index_in_simdgroup]],            \
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])       \
+{                                                                              \
+    threadgroup float red[8u * RVAL * KVAL];                                   \
+    affine_q2_g64_gate_up_swiglu_matmul_rk_bitcast_body<RVAL, KVAL>(           \
+        gate_codes, gate_scales, gate_biases, up_codes, up_scales, up_biases,  \
+        input, act_out, rows, cols, red, group_id, simd_lane, simd_id);        \
+}
+
+AFFINE_Q2_G64_GATE_UP_SWIGLU_MATMUL_RK(1, 1)
+AFFINE_Q2_G64_GATE_UP_SWIGLU_MATMUL_RK(2, 2)
+AFFINE_Q2_G64_GATE_UP_SWIGLU_MATMUL_RK(2, 4)
+AFFINE_Q2_G64_GATE_UP_SWIGLU_MATMUL_RK(4, 2)
+AFFINE_Q2_G64_GATE_UP_SWIGLU_MATMUL_RK(4, 4)
+
+#undef AFFINE_Q2_G64_GATE_UP_SWIGLU_MATMUL_RK

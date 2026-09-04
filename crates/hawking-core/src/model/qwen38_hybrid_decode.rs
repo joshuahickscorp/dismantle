@@ -5541,6 +5541,7 @@ mod device {
             }
             let r = 4usize;
             match organ {
+                // The unfused pair form, which the fusion-matched baseline divides.
                 "mlp_gate_up" => {
                     let kernel =
                         format!("qwen_affine_q2_group64_matmul_gate_up_r{r}k{chunk}_geo_tpr64_tg128");
@@ -5598,9 +5599,68 @@ mod device {
                         Ok(())
                     })
                 }
+                // Batching AND SwiGLU fusion AND the bitcast unpack, which is what
+                // CP6a said was needed: the unfused multi-position kernel gave up
+                // the 1.298x that production's fusion and bitcast already buy.
+                // This one keeps them. Its output is `act`, one value per
+                // (row, position), not a gate/up pair.
+                "mlp_gate_up_swiglu" => {
+                    let kernel = format!(
+                        "qwen_affine_q2_group64_matmul_gate_up_swiglu_r{r}k{chunk}_geo_tpr64_tg128_bitcast"
+                    );
+                    let g0 = self
+                        .affine(&self.layer_name(0, "mlp.gate_proj.weight"))
+                        .ok_or_else(|| {
+                            Error::Model(
+                                "chunked fused gate_up needs an affine gate_proj".into(),
+                            )
+                        })?;
+                    let rows = g0.rows as usize;
+                    let cols = g0.cols as usize;
+                    let xin = self.context.new_buffer_checked(cols * chunk * 4)?;
+                    let aout = self.context.new_buffer_checked(rows * chunk * 4)?;
+                    let tgs = (rows + 2 * r - 1) / (2 * r);
+                    let grid = ((tgs * 128) as u32, 1, 1);
+                    let tg = (128u32, 1, 1);
+                    self.timed_cb(|tcb| {
+                        for layer in 0..QWEN38_LAYERS {
+                            let gate = self
+                                .affine(&self.layer_name(layer, "mlp.gate_proj.weight"))
+                                .ok_or_else(|| {
+                                    Error::Model(format!("layer {layer} gate_proj is not affine"))
+                                })?;
+                            let up = self
+                                .affine(&self.layer_name(layer, "mlp.up_proj.weight"))
+                                .ok_or_else(|| {
+                                    Error::Model(format!("layer {layer} up_proj is not affine"))
+                                })?;
+                            let gb = gate.biases.as_ref().ok_or_else(|| {
+                                Error::Model("chunked fused gate_up on a q2f tensor".into())
+                            })?;
+                            let ub = up.biases.as_ref().ok_or_else(|| {
+                                Error::Model("chunked fused gate_up on a q2f tensor".into())
+                            })?;
+                            let rr = gate.rows;
+                            let cc = gate.cols;
+                            tcb.dispatch_threads(&kernel, grid, tg, |enc| {
+                                enc.set_buffer(0, Some(&gate.codes), 0);
+                                enc.set_buffer(1, Some(&gate.scales), 0);
+                                enc.set_buffer(2, Some(gb), 0);
+                                enc.set_buffer(3, Some(&up.codes), 0);
+                                enc.set_buffer(4, Some(&up.scales), 0);
+                                enc.set_buffer(5, Some(ub), 0);
+                                enc.set_buffer(6, Some(&xin), 0);
+                                enc.set_buffer(7, Some(&aout), 0);
+                                set_u32(enc, 8, rr);
+                                set_u32(enc, 9, cc);
+                            })?;
+                        }
+                        Ok(())
+                    })
+                }
                 other => Err(Error::Model(format!(
                     "no chunked path for organ {other:?}; \
-mlp_gate_up is the only one wired"
+mlp_gate_up and mlp_gate_up_swiglu are wired"
                 ))),
             }
         }

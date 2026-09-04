@@ -1,5 +1,13 @@
 # CP6g -- the HYBRID layer wins, with the glue paid
 
+> **QUALIFIED 2026-09-04 by `CP6I_RESULT.md`.** These numbers were measured on a
+> **racing encoder**. Arm B never called `begin_serial_group`, so within a layer
+> position k's gather overwrote `workspace.hidden` while k-1's mixer was still
+> reading it. CP6g measured only time and could not see it. Serialising the chunk
+> cost nothing measurable (1.346x to 1.349x on the prompt wall), so the ratio here
+> is not believed to be inflated by the race -- but it was not measured on a
+> correct encoder, and CP6i's prompt-wall figures, which were, supersede it.
+
 2026-09-04 · frontier G019 · resident loaded, `NOETIC_PARENT_A`, quiet lane
 
 ## The idea

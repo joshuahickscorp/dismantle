@@ -3560,6 +3560,15 @@ class Engine:
         # nothing, because nothing was supposed to be shared.
         try:
             native = data.get("hawking") if isinstance(data, dict) else None
+            # The budget the connector GRANTED, which is what the resident was
+            # actually allowed. `plan["max_tokens"]` is the pre-reduction value
+            # and diverges from it: receipt 5b2e060a recorded plan 2048 against a
+            # payload of 1446, and the retry instruction built from the plan told
+            # the model it had 2048 and "the runtime stopped 710 tokens SHORT",
+            # when the runtime had delivered its budget exactly.
+            granted = (native or {}).get("max_new_tokens_granted")
+            if isinstance(granted, int) and granted > 0:
+                self._last_granted_max_tokens = granted
             self._prefix_probe.observe(
                 self._active_goal_id or "",
                 self._last_rendered_prompt or "",
@@ -3614,7 +3623,10 @@ class Engine:
             parsed = self._extract_json_object(content)
         except EngineError:
             if str(finish_reason) == "length":
-                budget = plan.get("max_tokens")
+                budget = (
+                    getattr(self, "_last_granted_max_tokens", None)
+                    or plan.get("max_tokens")
+                )
                 raise EngineError(
                     _truncation_message(budget, completion_tokens, prompt_tokens)
                 )
@@ -3678,7 +3690,15 @@ class Engine:
                     # times over without the parser for it ever being reached.
                     if _patch_block_to_operations(content) is not None:
                         return result
-                    budget = plan.get("max_tokens")
+                    # The granted budget, not the plan's pre-reduction one.
+                    # Quoting the plan made a model that EXHAUSTED its budget be
+                    # told it had stopped short of a larger one and should
+                    # "answer far more briefly" -- advice against a ceiling it
+                    # had already hit, spent three attempts over.
+                    budget = (
+                        getattr(self, "_last_granted_max_tokens", None)
+                        or plan.get("max_tokens")
+                    )
                     prompt_tokens = result.prompt_tokens
                     if prompt_tokens is None:
                         prompt_tokens = plan.get("prompt_tokens_est")

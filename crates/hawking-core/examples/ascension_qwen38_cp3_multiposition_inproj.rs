@@ -74,6 +74,16 @@ mod macos {
     const SEGMENT_BYTES: u64 = 44_564_520;
 
     /// The grid this sweep intends to cover.
+    ///
+    /// `--reverse` walks it backwards. That is CP3b's discriminator, not a
+    /// convenience: the first pass measured the R=1 cells (which run first) at
+    /// ~128,750 ns/position against a steady ~74,500 across the twelve later
+    /// cells. Two mechanisms explain that equally well -- the sequential arm
+    /// re-reading the same 41.9 MB tensor K times back to back and hitting
+    /// cache (which a real 64-layer prefill loop would NOT get, making the win
+    /// a floor), or first-cells warm-up / DVFS ramp (making 2.474x the honest
+    /// number). Reversing the order separates them: under warm-up the high cost
+    /// follows the ORDER, under cache it follows the CELL.
     const GRID: &[(usize, usize)] = &[
         (1, 1), (1, 2), (1, 4), (1, 8),
         (2, 1), (4, 1), (8, 1), (16, 1),
@@ -234,6 +244,7 @@ branchless, so content affects neither timing nor the A-vs-B comparison."
         out: Option<PathBuf>,
         reps: usize,
         timing: bool,
+        reverse: bool,
     }
 
     fn parse_args() -> Args {
@@ -245,6 +256,7 @@ branchless, so content affects neither timing nor the A-vs-B comparison."
         let mut out = None;
         let mut reps = 7usize;
         let mut timing = false;
+        let mut reverse = false;
         let mut it = env::args().skip(1);
         while let Some(flag) = it.next() {
             match flag.as_str() {
@@ -254,10 +266,11 @@ branchless, so content affects neither timing nor the A-vs-B comparison."
                 "--out" => out = it.next().map(PathBuf::from),
                 "--reps" => reps = it.next().unwrap_or_default().parse().unwrap_or(7),
                 "--timing" => timing = true,
+                "--reverse" => reverse = true,
                 other => panic!("unknown flag {other}"),
             }
         }
-        Args { artifact_root, out, reps, timing }
+        Args { artifact_root, out, reps, timing, reverse }
     }
 
     struct Arm {
@@ -371,7 +384,11 @@ branchless, so content affects neither timing nor the A-vs-B comparison."
 
         let mut rows_out: Vec<Value> = Vec::new();
 
-        for &(r, k) in GRID {
+        let mut order: Vec<(usize, usize)> = GRID.to_vec();
+        if args.reverse {
+            order.reverse();
+        }
+        for &(r, k) in &order {
             let Some(kernel) = kernel_for(r, k) else {
                 rows_out.push(json!({
                     "r": r, "k": k, "kernel": Value::Null, "valid": false,
@@ -586,6 +603,7 @@ path additionally FUSES qkv into one dispatch; that fusion is a different axis a
 not folded into this comparison, which isolates batching alone.",
             "gpu_timestamp_authority": "completed MTLCommandBuffer GPUStartTime/GPUEndTime after wait; never a CPU-wait proxy",
             "timing_enabled": args.timing,
+            "sweep_order": if args.reverse { "REVERSED" } else { "forward" },
             "reps": if args.timing { json!(args.reps) } else { Value::String("NOT_INSTRUMENTED".into()) },
             "warmup_discarded": 1,
             "results": rows_out,

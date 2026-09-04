@@ -5056,3 +5056,144 @@ AFFINE_Q2_G64_GATE_UP_MATMUL_RK(4, 2)
 AFFINE_Q2_G64_GATE_UP_MATMUL_RK(4, 4)
 
 #undef AFFINE_Q2_G64_GATE_UP_MATMUL_RK
+
+
+// ── multi-position affine-q2 single-tensor matvec: mlp_down, 20.9% ────────
+//
+// CP4 batched gate_up (35.9%) at 2.49x. mlp_down runs the GENERIC affine
+// matvec `qwen_affine_q2_group32_matvec_geo_tpr64_tg128`, which branches on a
+// runtime group_size, and had no multi-position variant either. Same skeleton,
+// one tensor instead of a pair, so R*K accumulators rather than 2*R*K:
+//
+//   live floats/thread ~= R*K + K + 3*R
+//
+// CP4 refuted CP3's register threshold (r4k4 won at 60 live floats where the
+// q4 curve had collapsed by 50-56), so no knee is predicted here. The grid is
+// swept and the measurement decides.
+//
+// Activation layout input[col * K + k], output out[row * K + k], matching both
+// existing multi-position families so one caller drives all three.
+// Grid: ceil(rows / (2*R)) * 128, TG (128,1,1).
+
+template <uint R, uint K>
+static inline void affine_q2_matmul_rk_body(
+    device const uchar* codes,
+    device const half*  scales,
+    device const half*  biases,
+    device const float* input,
+    device float*       output,
+    uint rows,
+    uint cols,
+    uint group_size,
+    threadgroup float* red,
+    uint group_id,
+    uint simd_lane,
+    uint simd_id)
+{
+    constexpr uint kSplit = 2u;
+    const uint team = simd_id / kSplit;
+    const uint split = simd_id % kSplit;
+    const uint lane_in_row = split * 32u + simd_lane;
+    const uint row0 = (group_id * 2u + team) * R;
+
+    float acc[R * K];
+    for (uint i = 0u; i < R * K; ++i) {
+        acc[i] = 0.0f;
+    }
+
+    if (affine_q2_group_ok(group_size, cols)) {
+        const bool g32 = (group_size == 32u);
+        const uint gshift = g32 ? 5u : 6u;
+        const uint gmask = g32 ? 31u : 63u;
+        const uint gbytes = g32 ? 8u : 16u;
+        const uint groups_per_row = cols >> gshift;
+
+        for (uint col = lane_in_row * 8u; col + 8u <= cols; col += 512u) {
+            const uint group = col >> gshift;
+            const uint local = col & gmask;
+
+            uint packed[R];
+            float sc[R], bi[R];
+            for (uint r = 0u; r < R; ++r) {
+                const uint row = row0 + r;
+                // Clamp the ADDRESS but zero the SCALE and BIAS, so a row past
+                // the end reads a valid page and contributes nothing. Branching
+                // per row would diverge every lane in the simdgroup.
+                const uint safe = row < rows ? row : (rows - 1u);
+                const uint rgb = safe * groups_per_row + group;
+                const float live = row < rows ? 1.0f : 0.0f;
+                sc[r] = float(scales[rgb]) * live;
+                bi[r] = float(biases[rgb]) * live;
+                packed[r] = uint(*((device const ushort*)(codes + rgb * gbytes + (local >> 2u))));
+            }
+
+            for (uint i = 0u; i < 8u; ++i) {
+                float xv[K];
+                const uint xbase = (col + i) * K;
+                for (uint k = 0u; k < K; ++k) {
+                    xv[k] = input[xbase + k];
+                }
+                const uint sh = 2u * i;
+                for (uint r = 0u; r < R; ++r) {
+                    const float w = float((packed[r] >> sh) & 3u) * sc[r] + bi[r];
+                    for (uint k = 0u; k < K; ++k) {
+                        acc[r * K + k] = fma(w, xv[k], acc[r * K + k]);
+                    }
+                }
+            }
+        }
+    }
+
+    for (uint i = 0u; i < R * K; ++i) {
+        const float summed = simd_sum(acc[i]);
+        if (simd_lane == 0u) {
+            red[i * 4u + simd_id] = summed;
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (split == 0u && simd_lane == 0u) {
+        for (uint r = 0u; r < R; ++r) {
+            const uint row = row0 + r;
+            if (row >= rows) {
+                break;
+            }
+            for (uint k = 0u; k < K; ++k) {
+                const uint i = r * K + k;
+                const uint t = team * kSplit;
+                output[row * K + k] = red[i * 4u + t] + red[i * 4u + t + 1u];
+            }
+        }
+    }
+}
+
+#define AFFINE_Q2_MATMUL_RK(RVAL, KVAL)                                        \
+kernel void qwen_affine_q2_matmul_r##RVAL##k##KVAL##_geo_tpr64_tg128(          \
+    device const uchar* codes       [[buffer(0)]],                             \
+    device const half*  scales      [[buffer(1)]],                             \
+    device const half*  biases      [[buffer(2)]],                             \
+    device const float* input       [[buffer(3)]],                             \
+    device float*       output      [[buffer(4)]],                             \
+    constant uint& rows             [[buffer(5)]],                             \
+    constant uint& cols             [[buffer(6)]],                             \
+    constant uint& group_size       [[buffer(7)]],                             \
+    uint group_id                    [[threadgroup_position_in_grid]],         \
+    uint simd_lane                   [[thread_index_in_simdgroup]],            \
+    uint simd_id                     [[simdgroup_index_in_threadgroup]])       \
+{                                                                              \
+    threadgroup float red[4u * RVAL * KVAL];                                   \
+    affine_q2_matmul_rk_body<RVAL, KVAL>(                                      \
+        codes, scales, biases, input, output, rows, cols, group_size,          \
+        red, group_id, simd_lane, simd_id);                                    \
+}
+
+AFFINE_Q2_MATMUL_RK(1, 1)
+// R-only baselines, so kernel tiling cannot masquerade as multi-token batching.
+AFFINE_Q2_MATMUL_RK(2, 1)
+AFFINE_Q2_MATMUL_RK(4, 1)
+AFFINE_Q2_MATMUL_RK(2, 2)
+AFFINE_Q2_MATMUL_RK(2, 4)
+AFFINE_Q2_MATMUL_RK(4, 2)
+AFFINE_Q2_MATMUL_RK(4, 4)
+AFFINE_Q2_MATMUL_RK(4, 8)
+
+#undef AFFINE_Q2_MATMUL_RK

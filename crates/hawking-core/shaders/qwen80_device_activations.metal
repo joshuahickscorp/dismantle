@@ -742,3 +742,52 @@ kernel void qwen38_residual_rmsnorm_tg_interleaved(
             input[index * chunk + k] * inverse_rms * (1.0f + weight[index]);
     }
 }
+
+
+// Interleaved-layout FUSED add-residual + RMSNorm. This is the one the
+// production MLP path actually runs (fuse_add_rmsnorm), and with it the chunked
+// MLP needs no further new kernels: gate_up+swiglu and down already have
+// multi-position families, and this closes the tail.
+//
+// Same interleaving rule as qwen38_residual_rmsnorm_tg_interleaved: activations
+// are strided by chunk, the norm weight is per-hidden-dim and shared across
+// positions so it stays contiguous. One threadgroup per position.
+// Grid: (tg_size * K, 1, 1), TG (tg_size, 1, 1).
+kernel void qwen38_add_residual_rmsnorm_tg_interleaved(
+    device const float* residual_in  [[buffer(0)]],
+    device const float* delta        [[buffer(1)]],
+    device float* residual_out       [[buffer(2)]],
+    device const float* weight       [[buffer(3)]],
+    device float* x_norm             [[buffer(4)]],
+    constant uint& hidden            [[buffer(5)]],
+    constant float& eps              [[buffer(6)]],
+    constant uint& chunk             [[buffer(7)]],
+    threadgroup float* scratch       [[threadgroup(0)]],
+    uint tid                         [[thread_index_in_threadgroup]],
+    uint tg_size                     [[threads_per_threadgroup]],
+    uint group_id                    [[threadgroup_position_in_grid]])
+{
+    const uint k = group_id;
+    if (k >= chunk) {
+        return;
+    }
+    float sum = 0.0f;
+    for (uint index = tid; index < hidden; index += tg_size) {
+        const uint at = index * chunk + k;
+        const float v = residual_in[at] + delta[at];
+        residual_out[at] = v;
+        sum += v * v;
+    }
+    scratch[tid] = sum;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint stride = tg_size / 2u; stride > 0u; stride >>= 1u) {
+        if (tid < stride) scratch[tid] += scratch[tid + stride];
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
+    const float inverse_rms = 1.0f / sqrt(scratch[0] / float(hidden) + eps);
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint index = tid; index < hidden; index += tg_size) {
+        const uint at = index * chunk + k;
+        x_norm[at] = residual_out[at] * inverse_rms * (1.0f + weight[index]);
+    }
+}

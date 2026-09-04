@@ -104,6 +104,74 @@ mod macos {
         read_f32(&ob, HIDDEN * chunk)
     }
 
+    /// The FUSED add-residual + rmsnorm through the production per-position
+    /// kernel. This is the one the real MLP path runs, so it is the one that
+    /// has to be right for a chunked MLP to exist at all.
+    fn blocked_fused(ctx: &MetalContext, r: &[f32], d: &[f32], w: &[f32]) -> (Vec<f32>, Vec<f32>) {
+        let rb = ctx.new_buffer_with_bytes(as_bytes(r));
+        let db = ctx.new_buffer_with_bytes(as_bytes(d));
+        let ro = ctx.new_buffer(HIDDEN * 4);
+        let wb = ctx.new_buffer_with_bytes(as_bytes(w));
+        let xn = ctx.new_buffer(HIDDEN * 4);
+        let hidden = HIDDEN as u32;
+        ctx.dispatch_threads("qwen80_add_residual_rmsnorm_tg", (TG, 1, 1), (TG, 1, 1), |e| {
+            e.set_buffer(0, Some(&rb), 0);
+            e.set_buffer(1, Some(&db), 0);
+            e.set_buffer(2, Some(&ro), 0);
+            e.set_buffer(3, Some(&wb), 0);
+            e.set_buffer(4, Some(&xn), 0);
+            e.set_bytes(5, 4, &hidden as *const u32 as *const _);
+            e.set_bytes(6, 4, &EPS as *const f32 as *const _);
+            e.set_threadgroup_memory_length(0, (TG as u64) * 4);
+        })
+        .expect("blocked fused");
+        (read_f32(&ro, HIDDEN), read_f32(&xn, HIDDEN))
+    }
+
+    fn interleaved_fused(
+        ctx: &MetalContext,
+        ri: &[f32],
+        di: &[f32],
+        w: &[f32],
+        chunk: usize,
+    ) -> (Vec<f32>, Vec<f32>) {
+        let rb = ctx.new_buffer_with_bytes(as_bytes(ri));
+        let db = ctx.new_buffer_with_bytes(as_bytes(di));
+        let ro = ctx.new_buffer(HIDDEN * chunk * 4);
+        let wb = ctx.new_buffer_with_bytes(as_bytes(w));
+        let xn = ctx.new_buffer(HIDDEN * chunk * 4);
+        let hidden = HIDDEN as u32;
+        let k = chunk as u32;
+        ctx.dispatch_threads(
+            "qwen38_add_residual_rmsnorm_tg_interleaved",
+            (TG * k, 1, 1),
+            (TG, 1, 1),
+            |e| {
+                e.set_buffer(0, Some(&rb), 0);
+                e.set_buffer(1, Some(&db), 0);
+                e.set_buffer(2, Some(&ro), 0);
+                e.set_buffer(3, Some(&wb), 0);
+                e.set_buffer(4, Some(&xn), 0);
+                e.set_bytes(5, 4, &hidden as *const u32 as *const _);
+                e.set_bytes(6, 4, &EPS as *const f32 as *const _);
+                e.set_bytes(7, 4, &k as *const u32 as *const _);
+                e.set_threadgroup_memory_length(0, (TG as u64) * 4);
+            },
+        )
+        .expect("interleaved fused");
+        (read_f32(&ro, HIDDEN * chunk), read_f32(&xn, HIDDEN * chunk))
+    }
+
+    fn pack(pos: &[Vec<f32>], chunk: usize) -> Vec<f32> {
+        let mut v = vec![0f32; HIDDEN * chunk];
+        for (k, p) in pos.iter().enumerate() {
+            for c in 0..HIDDEN {
+                v[c * chunk + k] = p[c];
+            }
+        }
+        v
+    }
+
     pub fn run() {
         let ctx = match MetalContext::new() {
             Ok(c) => c,
@@ -176,6 +244,60 @@ mod macos {
                     "  K={chunk}  ISOLATION   {}  bled {bled} of {} (target moved: {moved})",
                     if isolated { "PASS" } else { "FAIL" },
                     HIDDEN * (chunk - 1)
+                );
+            }
+
+            // The FUSED kernel: two outputs, both must match, and both must
+            // stay isolated across positions.
+            let rp: Vec<Vec<f32>> = (0..chunk).map(|k| fixture(HIDDEN, 0xC0FFEE + k as u64)).collect();
+            let dp: Vec<Vec<f32>> = (0..chunk).map(|k| fixture(HIDDEN, 0xD00D + k as u64)).collect();
+            let (ri, di) = (pack(&rp, chunk), pack(&dp, chunk));
+            let (gro, gxn) = interleaved_fused(&ctx, &ri, &di, &w, chunk);
+            let mut fmax = 0f64;
+            for k in 0..chunk {
+                let (wro, wxn) = blocked_fused(&ctx, &rp[k], &dp[k], &w);
+                for c in 0..HIDDEN {
+                    let a = (gro[c * chunk + k] as f64 - wro[c] as f64).abs();
+                    let b = (gxn[c * chunk + k] as f64 - wxn[c] as f64).abs();
+                    fmax = fmax.max(a).max(b);
+                }
+            }
+            let fequiv = fmax == 0.0;
+            if !fequiv {
+                failures += 1;
+            }
+            println!(
+                "  K={chunk}  FUSED EQUIV {}  max_abs {fmax:.3e}",
+                if fequiv { "PASS" } else { "FAIL" }
+            );
+
+            if chunk > 1 {
+                let target = chunk / 2;
+                let mut dp2 = di.clone();
+                for c in 0..HIDDEN {
+                    dp2[c * chunk + target] += 1.0;
+                }
+                let (gro2, gxn2) = interleaved_fused(&ctx, &ri, &dp2, &w, chunk);
+                let mut bled = 0usize;
+                let mut moved = false;
+                for c in 0..HIDDEN {
+                    for k in 0..chunk {
+                        let ch = gro2[c * chunk + k] != gro[c * chunk + k]
+                            || gxn2[c * chunk + k] != gxn[c * chunk + k];
+                        if k == target {
+                            moved |= ch;
+                        } else if ch {
+                            bled += 1;
+                        }
+                    }
+                }
+                let iso = bled == 0 && moved;
+                if !iso {
+                    failures += 1;
+                }
+                println!(
+                    "  K={chunk}  FUSED ISO   {}  bled {bled} (target moved: {moved})",
+                    if iso { "PASS" } else { "FAIL" }
                 );
             }
         }

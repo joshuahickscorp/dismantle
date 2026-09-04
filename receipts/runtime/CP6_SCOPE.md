@@ -29,7 +29,15 @@ distinct kernels:
 | `qwen38_gated_delta_decode_vi_simd` | serial by nature, one dispatch per position — CP5b proved that is fine and marginally cheaper inside a shared CB |
 
 **Trivially K-parallel — 7.** Elementwise or per-position normalisations. Launching K× the
-threads over a K-wide buffer is the whole change: `qwen80_add_residual_rmsnorm_tg`,
+threads over a K-wide buffer is the whole change:
+
+> **SUPERSEDED 2026-09-04 by `CP6E_RESULT.md`.** That claim is WRONG. The
+> multi-position matmuls require INTERLEAVED activations `[col*K+k]` for
+> coalescing, so a per-position kernel cannot be rebound at a byte offset --
+> offsets address a BLOCKED layout. Each of these needs its own strided
+> variant. Stage 1 is 7 kernels, not 7 launch changes. Two are now built and
+> bit-identical; with them the MLP half needs no further new kernels.
+ `qwen80_add_residual_rmsnorm_tg`,
 `qwen80_residual_rmsnorm_tg`, `qwen80_deltanet_gated_rmsnorm_tg`, `qwen80_ba_to_decay_beta_f32`,
 `qwen38_attention_apply_sigmoid_gate`, `qwen_uniform_q4_embedding_lookup`, `sample_argmax_f32`
 (prefill needs the last only for the final position).

@@ -82,7 +82,55 @@ Two things this establishes:
 Marker `MUTATION_CP6E` grepped to 0 occurrences after restore; rebuilt and
 re-run green.
 
+## The second kernel -- and why the MLP is now kernel-complete
+
+`qwen38_add_residual_rmsnorm_tg_interleaved`, the FUSED add-residual + norm.
+This is the one the production path actually runs (`fuse_add_rmsnorm`), so it is
+the one that had to be right.
+
+Reading `encode_dense_mlp_mixed` settles the remaining cost exactly. In the
+production configuration (`GateUpSwiglu` + `fuse_add_rmsnorm`) the MLP is three
+dispatches:
+
+| step | multi-position kernel |
+|---|---|
+| `encode_fused_gate_up(layer, true)` | CP4 / CP6b, measured 1.89-1.90x |
+| `encode_named_matvec(down_proj)` | CP4b affine `matmul_rk` |
+| `encode_add_residual_rmsnorm` | **built here** |
+
+So the chunked MLP needs **no further new kernels**. The "7 kernels" figure is
+the cost of the WHOLE layer including the mixer; the MLP half -- 56.8% of the
+step, where every measured win lives -- is now complete.
+
+Both outputs of the fused kernel checked, both bit-identical:
+
+```
+  K=1  FUSED EQUIV PASS  max_abs 0.000e0
+  K=2  FUSED EQUIV PASS  max_abs 0.000e0     FUSED ISO PASS  bled 0
+  K=4  FUSED EQUIV PASS  max_abs 0.000e0     FUSED ISO PASS  bled 0
+  K=8  FUSED EQUIV PASS  max_abs 0.000e0     FUSED ISO PASS  bled 0
+```
+
+Mutation: **stride the norm weight** (`weight[at]` instead of `weight[index]`).
+This is the plausible real bug -- every other index in the kernel IS strided, so
+striding this one looks locally consistent.
+
+```
+  K=1  FUSED EQUIV PASS               <- correct
+  K=2  FUSED EQUIV FAIL  max_abs 2.067e0
+  K=4  FUSED EQUIV FAIL  max_abs 5.749e0
+  K=8  FUSED EQUIV FAIL  max_abs 1.402e1
+```
+
+Error grows with K, as it must: a strided weight read reaches further out of its
+own range the wider the chunk. `FUSED ISO` stayed PASS under this mutation too --
+the same independence the unfused pair showed. Marker grepped to 0, rebuilt,
+re-run green.
+
 ## Standing
 
-One of the 7. `mlp_down`'s residual add, the swiglu when unfused, and the
-mixer-side norms remain. The gate_up and down matmuls already exist (CP4, CP4b).
+Two of the 7 built, and they are the two the MLP needs. The mixer-side norms and
+the unfused swiglu remain, and those are the attention/DeltaNet half.
+
+Next: `encode_dense_mlp_chunked` -- the integration, which also closes the gap
+CP6a/b/c left open, that they were TIMING ONLY on the real-weight path.

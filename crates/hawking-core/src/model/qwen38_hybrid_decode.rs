@@ -1842,6 +1842,75 @@ pub fn qwen38_workspace_bytes(max_seq_len: usize) -> Result<Qwen38WorkspaceBytes
     })
 }
 
+/// Workspace bytes for a CHUNKED prefill that carries `chunk` positions at once.
+///
+/// `CP5C_RESULT.md` lists residency under Kx activations as untested, and it is
+/// the one item on that list that can be settled by arithmetic rather than by a
+/// harness, because the accounting already separates the three classes:
+///
+/// * `activation_bytes` is per POSITION and is the only class that scales.
+/// * `deltanet_state_bytes` is per LAYER — 48 conv states and 48 recurrent
+///   states — and a chunk does not add layers.
+/// * `gqa_kv_bytes` scales with `max_seq_len`, which a chunk does not change.
+///
+/// The refinement that matters: the terminal head's `logits` buffer is 248,320
+/// f32 — 993 KB of the 1.69 MB activation total, 59% of it — and prefill needs
+/// logits for the LAST position of a chunk only, never for the interior ones.
+/// Scaling it by `chunk` would overstate the requirement by more than half, so
+/// `terminal_bytes` is held at one position and reported separately.
+pub fn qwen38_chunk_workspace_bytes(
+    max_seq_len: usize,
+    chunk: usize,
+) -> Result<Qwen38ChunkWorkspaceBytes> {
+    if chunk == 0 {
+        return Err(Error::Model("qwen38 chunk must be positive".into()));
+    }
+    let base = qwen38_workspace_bytes(max_seq_len)?;
+    // The terminal head, which a chunk needs once rather than `chunk` times.
+    let terminal = (QWEN38_VOCAB
+        .checked_mul(std::mem::size_of::<f32>())
+        .ok_or_else(|| Error::Model("qwen38 workspace overflow".into()))?)
+    .checked_add(std::mem::size_of::<u32>())
+    .ok_or_else(|| Error::Model("qwen38 workspace overflow".into()))?;
+    let per_position = base.activation_bytes.saturating_sub(terminal);
+    let scaled = per_position
+        .checked_mul(chunk)
+        .ok_or_else(|| Error::Model("qwen38 chunk workspace overflow".into()))?;
+    let total = scaled
+        .checked_add(terminal)
+        .and_then(|n| n.checked_add(base.deltanet_state_bytes))
+        .and_then(|n| n.checked_add(base.gqa_kv_bytes))
+        .ok_or_else(|| Error::Model("qwen38 chunk workspace overflow".into()))?;
+    Ok(Qwen38ChunkWorkspaceBytes {
+        chunk,
+        base_total_bytes: base.total_bytes,
+        per_position_bytes: per_position,
+        scaled_activation_bytes: scaled,
+        terminal_bytes: terminal,
+        deltanet_state_bytes: base.deltanet_state_bytes,
+        gqa_kv_bytes: base.gqa_kv_bytes,
+        total_bytes: total,
+    })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Qwen38ChunkWorkspaceBytes {
+    pub chunk: usize,
+    /// What the per-token path allocates today, for comparison.
+    pub base_total_bytes: usize,
+    /// Activation bytes that genuinely scale with the chunk.
+    pub per_position_bytes: usize,
+    pub scaled_activation_bytes: usize,
+    /// The terminal head, held at ONE position: prefill reads logits for the
+    /// last position of a chunk only.
+    pub terminal_bytes: usize,
+    /// Per LAYER, not per position. A chunk does not add layers.
+    pub deltanet_state_bytes: usize,
+    /// Scales with max_seq_len, which a chunk does not change.
+    pub gqa_kv_bytes: usize,
+    pub total_bytes: usize,
+}
+
 pub fn load_qwen38_tokenizer(path: impl AsRef<Path>) -> Result<Tokenizer> {
     Tokenizer::from_file(path)
 }

@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover - Windows has no termios
 
 from hcli.persist import atomic_write_json
 from hcli.resources import process_start_token
-from hcli.workunit import WorkUnit
+from hcli.workunit import WorkUnit, AUTHOR_HCLI
 from hcli.goal_bank import GoalBank
 from hcli.steering import SteeringQueue
 from hcli.agentos.event_sink import EventSink, read_events
@@ -730,6 +730,11 @@ def _child_workunit(parent_id: str, value: Mapping[str, Any]) -> WorkUnit:
         provider=(str(value["provider"]) if value.get("provider") else None),
         tool=tool,
         tool_arguments=(dict(tool_arguments) if tool_arguments is not None else None),
+        # The resident proposed this unit, so the resident authored it. This is
+        # the only site where HCLI itself creates work, which makes it the one
+        # place the Claude-removal ratio can be recorded truthfully rather than
+        # reconstructed afterwards.
+        author=AUTHOR_HCLI,
     )
 
 

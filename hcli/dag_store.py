@@ -53,6 +53,7 @@ _PERSISTED_EXTRAS = (
     # concern `provider` above already handles.
     "tool",
     "tool_arguments",
+    "author",
 )
 
 GrokLiveness = Callable[[str], Any]

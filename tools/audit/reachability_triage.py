@@ -2,7 +2,8 @@
 
 Hawking's known worst defect class is capability that exists but nothing
 calls. This tool is the inventory: every non-test Python module under
-tools/future/, tools/accelerator/, tools/odyssey/, and tools/headless/ is
+tools/verify/, tools/future/, tools/accelerator/, tools/odyssey/, and
+tools/headless/ is
 classified and given a disposition (CONNECTED / PARKED / ARCHIVE_CANDIDATE)
 from grep/AST evidence only.
 
@@ -64,7 +65,13 @@ SCHEMA = "hawking.audit.reachability_triage.v1"
 VERSION = 1
 RECORDED_BY = "tools/audit/reachability_triage.py"
 
-TREE_ROOTS = ("tools/future", "tools/accelerator", "tools/odyssey", "tools/headless")
+TREE_ROOTS = (
+    "tools/verify",
+    "tools/future",
+    "tools/accelerator",
+    "tools/odyssey",
+    "tools/headless",
+)
 
 CLASSIFICATIONS = (
     "BUILT",
@@ -1439,8 +1446,8 @@ def assemble_inventory() -> dict[str, Any]:
         "version": VERSION,
         "purpose": (
             "Authoritative reachability inventory for every non-test Python "
-            "module under tools/future, tools/accelerator, tools/odyssey, "
-            "tools/headless. A definition is not a capability."
+            "module under tools/verify, tools/future, tools/accelerator, "
+            "tools/odyssey, tools/headless. A definition is not a capability."
         ),
         "law": (
             "A capability nothing calls does not exist. Grep for call sites of "

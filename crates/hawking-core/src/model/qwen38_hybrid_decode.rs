@@ -9193,6 +9193,54 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let wall = Instant::now();
         let mut next = 0u32;
         let prefill = Instant::now();
+        // The batched route consumes the whole prompt in one pass, so it emits
+        // ONE record covering every prompt token rather than one per token.
+        // Fabricating N per-token rows from a single measurement would invent
+        // per-token detail that was never measured; the role name and
+        // `tokens_covered` say plainly what the row represents.
+        //
+        // This function always resets and takes neither `reuse` nor
+        // `snapshot_at`, so the guard those need elsewhere does not apply here.
+        let batched_prefill = qwen38_batched_prefill_enabled();
+        if batched_prefill {
+            let complete = Instant::now();
+            let (sampled, timing) = session.prefill_prompt(prompt)?;
+            let (tokenizer_decode_ns, bookkeeping_ns) =
+                finish_new_token(tokenizer, &mut tokens, sampled)?;
+            next = sampled;
+            steps.push(Qwen38CompleteToken {
+                role: "prefill_batched_emits_first_new",
+                step_index: 0,
+                token_in: prompt[0],
+                token_out: sampled,
+                step: Qwen38StepWall {
+                    wall_ns: complete.elapsed().as_nanos() as u64,
+                    encode_ns: timing.encode_ns,
+                    submit_ns: timing.submit_ns,
+                    wait_ns: timing.wait_ns,
+                    gpu_ns: timing.gpu_ns,
+                    gpu_start_s: None,
+                    gpu_end_s: None,
+                    gpu_start_ns: None,
+                    gpu_end_ns: None,
+                    // NOT_INSTRUMENTED on this route rather than zero: the
+                    // batched encoder does not break these out, and a zero
+                    // would read as "measured, and free".
+                    allocation_ns: 0,
+                    encoder_count: 0,
+                    commit_epilogue_ns: 0,
+                    sample_readback_ns: 0,
+                    state_update_ns: 0,
+                    tcb_encode_ns: 0,
+                    dispatches: timing.dispatches,
+                    command_buffers: 0,
+                    active_weight_bytes: timing.active_weight_bytes,
+                },
+                tokenizer_decode_ns,
+                bookkeeping_ns,
+                complete_wall_ns: complete.elapsed().as_nanos() as u64,
+            });
+        } else {
         for (i, &token) in prompt.iter().enumerate() {
             let complete = Instant::now();
             let (sampled, step) = session.step_complete(token)?;
@@ -9220,6 +9268,7 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
                 bookkeeping_ns,
                 complete_wall_ns: complete.elapsed().as_nanos() as u64,
             });
+        }
         }
         let prefill_wall_ns = prefill.elapsed().as_nanos() as u64;
         let decode = Instant::now();

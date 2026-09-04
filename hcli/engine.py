@@ -175,13 +175,20 @@ For a requested code/file change:
     {
       "op": "replace",
       "path": "workspace/relative/path",
-      "old_text": "exact anchor, copied verbatim, occurring once",
-      "new_text": "the replacement"
+      "old_lines": ["exact anchor lines, copied verbatim, occurring once"],
+      "new_lines": ["the replacement", "one entry per line, no trailing newline"]
     }
   ],
   "tests": ["hcli/tests/test_the_thing_you_changed.py"],
   "tool_calls": []
 }
+
+USE old_lines/new_lines, NOT old_text/new_text, for anything with more than one
+line. One entry per line, no trailing "\n" of your own. A JSON string has to
+escape every newline and you get that wrong: a reply that sent "\\n" where "\n"
+belonged produced "unexpected character after line continuation character" and
+lost three attempts and four calls. A list of plain lines has nothing to escape.
+old_text/new_text remain valid for a short single-line anchor.
 
 A MUTATION WITH AN EMPTY "tests" LIST CANNOT BE ACCEPTED. The verifier records
 it UNVERIFIED -- reason NO_EVIDENCE -- which is terminal, so the work is thrown
@@ -1012,11 +1019,12 @@ def _operation_text(operation: Dict[str, Any], field: str) -> Optional[str]:
     about what an operation says is exactly the defect that let a bad anchor
     reach _apply_operations with the contract reporting no complaint.
     """
-    lines = operation.get(f"{field.split('_')[0]}_lines")
-    if isinstance(lines, list) and all(isinstance(x, str) for x in lines):
-        return "\n".join(lines) + "\n" if lines else ""
-    value = operation.get(field)
-    return str(value) if value is not None else None
+    # Delegates. The resolver lives in hcli/mutation.py so the applier there and
+    # the preflight here cannot drift apart -- which they had, and a line-form
+    # operation through mutation.py resolved to an EMPTY anchor.
+    from .mutation import operation_text
+
+    return operation_text(operation, field)
 
 
 def _rejected_excerpt(text: str) -> str:

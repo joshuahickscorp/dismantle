@@ -67,6 +67,11 @@ mod macos {
     const SEGMENT_BYTES: u64 = 27_853_103;
     const HEADER_BYTES: usize = 303; // 8 magic + 4 len + 291 json
 
+    /// `--reverse` walks this backwards. CP3b established that the first cells
+    /// of any sweep sit on a DVFS ramp, so an absolute ns/position is ordered,
+    /// not intrinsic. The ratio survives because both arms of a cell run
+    /// adjacently -- but a claim that compares CELLS to each other (which is
+    /// exactly what "where is the knee" asks) must be checked in both orders.
     const GRID: &[(usize, usize)] = &[(1, 1), (2, 2), (2, 4), (4, 2), (4, 4)];
 
     const BASELINE: &str = "qwen_affine_q2_group64_matvec_gate_up_geo_tpr64_tg128";
@@ -155,12 +160,13 @@ mod macos {
         (0..COLS).map(|c| ((c % 29) as f32 - 14.0) * (1.0 + t as f32) * 0.0625).collect()
     }
 
-    struct Args { artifact_root: PathBuf, out: Option<PathBuf>, reps: usize, timing: bool }
+    struct Args { artifact_root: PathBuf, out: Option<PathBuf>, reps: usize, timing: bool, reverse: bool }
 
     fn parse_args() -> Args {
         let mut artifact_root = PathBuf::from(env::var("HOME").unwrap_or_default())
             .join("noetic").join("NOETIC_PARENT_A");
         let (mut out, mut reps, mut timing) = (None, 7usize, false);
+        let mut reverse = false;
         let mut it = env::args().skip(1);
         while let Some(f) = it.next() {
             match f.as_str() {
@@ -168,10 +174,11 @@ mod macos {
                 "--out" => out = it.next().map(PathBuf::from),
                 "--reps" => reps = it.next().unwrap_or_default().parse().unwrap_or(7),
                 "--timing" => timing = true,
+                "--reverse" => reverse = true,
                 o => panic!("unknown flag {o}"),
             }
         }
-        Args { artifact_root, out, reps, timing }
+        Args { artifact_root, out, reps, timing, reverse }
     }
 
     struct Bufs {
@@ -258,7 +265,9 @@ mod macos {
         let ur: Vec<Vec<f32>> = uref.iter().map(|b| read_f32(b, ROWS)).collect();
 
         let mut rows_out: Vec<Value> = Vec::new();
-        for &(r, k) in GRID {
+        let mut order: Vec<(usize, usize)> = GRID.to_vec();
+        if args.reverse { order.reverse(); }
+        for &(r, k) in &order {
             let kernel = kernel_for(r, k);
             let t0 = Instant::now();
             let mut xi = vec![0f32; COLS * k];
@@ -391,6 +400,7 @@ for the correctness check, and both arms use it, so the comparison isolates batc
 by 50-56. Here live floats = 2*R*K + K + 6*R, so r2k4=32 and r4k4=60. The knee should land at (2,4) \
 or (4,2), NOT (4,4). If r4k4 wins anyway, CP3's register story is wrong.",
             "timing_enabled": args.timing,
+            "sweep_order": if args.reverse { "REVERSED" } else { "forward" },
             "reps": if args.timing { json!(args.reps) } else { Value::String("NOT_INSTRUMENTED".into()) },
             "warmup_discarded": 1,
             "results": rows_out,

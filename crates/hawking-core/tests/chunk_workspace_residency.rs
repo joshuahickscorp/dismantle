@@ -68,3 +68,54 @@ resident weights -- at that point chunk size becomes a residency decision"
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// The ALLOCATOR, not just the arithmetic. `qwen38_chunk_workspace_bytes` above
+// computes what a chunked workspace would need; these pin that
+// `Qwen38HybridWorkspace::allocate_chunked` actually allocates it.
+//
+// A private allocator with no caller is the disease this repo keeps
+// rediscovering -- registration is not reachability -- so the probe that makes
+// these tests possible is itself the call site.
+
+#[cfg(target_os = "macos")]
+mod device_allocation {
+    use hawking_core::model::qwen38_hybrid_decode::qwen38_probe_chunk_workspace_bytes;
+
+    #[test]
+    fn chunk_of_one_allocates_exactly_what_the_per_token_path_does() {
+        let (base, chunked) = match qwen38_probe_chunk_workspace_bytes(2048, 1) {
+            Ok(v) => v,
+            // No Metal device in this environment is not a test failure.
+            Err(_) => return,
+        };
+        assert_eq!(
+            base, chunked,
+            "chunk=1 allocated {chunked} against the per-token path's {base}; a foundation that \
+quietly differs at K=1 makes every later comparison suspect"
+        );
+    }
+
+    #[test]
+    fn growth_is_bounded_and_only_the_activations_move() {
+        let (base, k1) = match qwen38_probe_chunk_workspace_bytes(2048, 1) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let (_, k4) = match qwen38_probe_chunk_workspace_bytes(2048, 4) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        assert_eq!(base, k1);
+        assert!(k4 > k1, "chunk=4 must allocate more than chunk=1");
+        // Per-position activations are ~0.7 MB once the terminal head is
+        // excluded, against a workspace dominated by the 268 MB KV cache and
+        // 157 MB of per-layer state. Tripling the per-position part must not
+        // come close to doubling the whole.
+        assert!(
+            k4 < k1 * 2,
+            "chunk=4 more than doubled the workspace ({k1} -> {k4}); either the \
+per-layer state or the KV cache is being scaled with the chunk, and neither should be"
+        );
+    }
+}

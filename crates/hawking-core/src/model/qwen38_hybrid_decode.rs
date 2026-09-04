@@ -2520,6 +2520,21 @@ mod device {
         xsum64: PinnedBuffer,
     }
 
+    /// Allocate both workspaces and report their resident bytes, so the K-wide
+    /// allocator can be TESTED rather than merely compiled.
+    ///
+    /// A private allocator with no caller is the disease this repo keeps
+    /// rediscovering: registration is not reachability. This is the call site.
+    pub fn qwen38_probe_chunk_workspace_bytes(
+        max_seq_len: usize,
+        chunk: usize,
+    ) -> Result<(u64, u64)> {
+        let ctx = MetalContext::new()?;
+        let base = Qwen38HybridWorkspace::allocate(&ctx, max_seq_len)?;
+        let chunked = Qwen38HybridWorkspace::allocate_chunked(&ctx, max_seq_len, chunk)?;
+        Ok((base.resident_bytes(), chunked.resident_bytes()))
+    }
+
     impl Qwen38HybridWorkspace {
         fn allocate(ctx: &MetalContext, max_seq_len: usize) -> Result<Self> {
             let layout = Qwen38DeltaNetLayout::source_exact();
@@ -2568,6 +2583,115 @@ mod device {
                 logits: ctx.new_buffer_checked(logits)?,
                 sampled: ctx.new_buffer_checked(std::mem::size_of::<u32>())?,
                 // ARGMAX_GROUPS partials, one (value, index) pair per threadgroup
+                argmax_part_v: ctx.new_buffer_checked(ARGMAX_GROUPS * 4)?,
+                argmax_part_i: ctx.new_buffer_checked(ARGMAX_GROUPS * 4)?,
+                conv_state: ctx.new_buffer_checked(conv)?,
+                rec_state: ctx.new_buffer_checked(rec)?,
+                gqa_key: ctx.new_buffer_checked(kv_cache)?,
+                gqa_value: ctx.new_buffer_checked(kv_cache)?,
+                hgravs_mid: ctx.new_buffer_checked(f32b(QWEN38_MIXED_HGRAVS_RANK)?)?,
+                split_qkv: ctx.new_buffer_checked(f32b(
+                    crate::model::qwen38_geometry::QWEN38_IN_PROJ_QKV_ROWS,
+                )?)?,
+                split_b: ctx.new_buffer_checked(f32b(
+                    crate::model::qwen38_geometry::QWEN38_IN_PROJ_B_ROWS,
+                )?)?,
+                split_a: ctx.new_buffer_checked(f32b(
+                    crate::model::qwen38_geometry::QWEN38_IN_PROJ_A_ROWS,
+                )?)?,
+                xsum64: ctx.new_buffer_checked(f32b(QWEN38_XSUM64_CAP)?)?,
+            })
+        }
+
+        /// The same workspace, sized to carry `chunk` positions at once.
+        ///
+        /// This is the foundation CP6 stage 1 rests on: `step()` encodes
+        /// embed -> layers -> terminal and every organ encoder downstream reads
+        /// and writes these buffers as ONE position. A chunked prefill needs
+        /// them K-wide before any encoder can be taught to address them per
+        /// position, which is why this lands first and alone.
+        ///
+        /// THREE CLASSES, and only one of them scales — the same split
+        /// `qwen38_chunk_workspace_bytes` reports and its tests pin:
+        ///
+        /// * per-POSITION activations scale with `chunk`;
+        /// * per-LAYER state (48 conv, 48 recurrent) does NOT — a chunk adds no
+        ///   layers, and the recurrence is stepped one position at a time
+        ///   inside the chunk, which CP5b measured as bit-identical and
+        ///   marginally cheaper inside a shared command buffer;
+        /// * the GQA KV cache scales with `max_seq_len`, which a chunk does not
+        ///   change.
+        ///
+        /// The terminal head — `logits`, `sampled`, and the argmax partials —
+        /// stays at ONE position. Prefill reads logits for the last position of
+        /// a chunk only, and `logits` alone is 248,320 f32, 59% of a single
+        /// position's activations. Scaling it would more than double the true
+        /// requirement for no use.
+        ///
+        /// `chunk == 1` must allocate exactly what [`Self::allocate`] does. The
+        /// test pins that, because a foundation that quietly differs at K=1 is
+        /// one that makes every later comparison suspect.
+        fn allocate_chunked(
+            ctx: &MetalContext,
+            max_seq_len: usize,
+            chunk: usize,
+        ) -> Result<Self> {
+            if chunk == 0 {
+                return Err(Error::Model("qwen38 chunk must be positive".into()));
+            }
+            let layout = Qwen38DeltaNetLayout::source_exact();
+            let f32b = |n: usize| {
+                n.checked_mul(std::mem::size_of::<f32>())
+                    .ok_or_else(|| Error::Model("qwen38 workspace overflow".into()))
+            };
+            // Per position, so multiplied by the chunk.
+            let k = |n: usize| {
+                n.checked_mul(chunk)
+                    .ok_or_else(|| Error::Model("qwen38 chunk workspace overflow".into()))
+                    .and_then(f32b)
+            };
+            let hidden = k(QWEN38_HIDDEN)?;
+            let qkvz = k(layout.qkvz_rows())?;
+            let ba = k(layout.ba_rows())?;
+            let value = k(layout.value_elements())?;
+            let q_proj = k(QWEN38_GQA_HEADS * QWEN38_GQA_HEAD_DIM * 2)?;
+            let kv = k(QWEN38_GQA_KV_HEADS * QWEN38_GQA_HEAD_DIM)?;
+            let query = k(QWEN38_GQA_HEADS * QWEN38_GQA_HEAD_DIM)?;
+            let mid = k(QWEN38_INTERMEDIATE)?;
+            let heads = k(layout.value_heads)?;
+            // Not scaled: per-layer state, the KV cache, and the terminal head.
+            let conv = f32b(48 * layout.conv_state_elements())?;
+            let rec = f32b(48 * layout.recurrent_state_elements())?;
+            let logits = f32b(QWEN38_VOCAB)?;
+            let kv_cache =
+                f32b(QWEN38_GQA_LAYERS * max_seq_len * QWEN38_GQA_KV_HEADS * QWEN38_GQA_HEAD_DIM)?;
+            Ok(Self {
+                hidden: ctx.new_buffer_checked(hidden)?,
+                normalized: ctx.new_buffer_checked(hidden)?,
+                qkvz: ctx.new_buffer_checked(qkvz)?,
+                ba: ctx.new_buffer_checked(ba)?,
+                repeated_q: ctx.new_buffer_checked(value)?,
+                repeated_k: ctx.new_buffer_checked(value)?,
+                conv_v: ctx.new_buffer_checked(value)?,
+                z: ctx.new_buffer_checked(value)?,
+                decay: ctx.new_buffer_checked(heads)?,
+                beta: ctx.new_buffer_checked(heads)?,
+                rec_out: ctx.new_buffer_checked(value)?,
+                gated: ctx.new_buffer_checked(value)?,
+                mixer: ctx.new_buffer_checked(hidden)?,
+                first_residual: ctx.new_buffer_checked(hidden)?,
+                q_proj: ctx.new_buffer_checked(q_proj)?,
+                k_proj: ctx.new_buffer_checked(kv)?,
+                v_proj: ctx.new_buffer_checked(kv)?,
+                query: ctx.new_buffer_checked(query)?,
+                attn: ctx.new_buffer_checked(query)?,
+                gated_attn: ctx.new_buffer_checked(query)?,
+                gate: ctx.new_buffer_checked(mid)?,
+                up: ctx.new_buffer_checked(mid)?,
+                act: ctx.new_buffer_checked(mid)?,
+                down: ctx.new_buffer_checked(hidden)?,
+                logits: ctx.new_buffer_checked(logits)?,
+                sampled: ctx.new_buffer_checked(std::mem::size_of::<u32>())?,
                 argmax_part_v: ctx.new_buffer_checked(ARGMAX_GROUPS * 4)?,
                 argmax_part_i: ctx.new_buffer_checked(ARGMAX_GROUPS * 4)?,
                 conv_state: ctx.new_buffer_checked(conv)?,
@@ -8583,8 +8707,8 @@ impl Qwen38GenerateResult {
 pub use device::{
     generate_constrained, generate_greedy, generate_greedy_complete_wall, generate_greedy_parallel,
     generate_greedy_reusing, generate_greedy_reusing_snapshot, generate_greedy_unmeasured,
-    measure_shared_weight_fanout, Qwen38HybridDecodeSession, Qwen38HybridWeights,
-    Qwen38WeightFanout,
+    measure_shared_weight_fanout, qwen38_probe_chunk_workspace_bytes,
+    Qwen38HybridDecodeSession, Qwen38HybridWeights, Qwen38WeightFanout,
 };
 
 #[cfg(not(target_os = "macos"))]

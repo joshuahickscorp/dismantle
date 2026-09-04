@@ -2926,6 +2926,13 @@ mod device {
         workspace: Qwen38HybridWorkspace,
         max_seq_len: usize,
         position: usize,
+        /// Bumped by every `reset()`. A prefix checkpoint records the epoch it
+        /// was taken in, because it carries the recurrent and convolution state
+        /// but NOT the KV cache -- and `reset()` zeroes the KV. Restoring across
+        /// a reset therefore conditions attention on an empty cache while the
+        /// recurrent state claims a long prefix, which produces a different
+        /// answer with nothing to signal it.
+        kv_epoch: u64,
         /// `dispatch_threads` labels harvested when
         /// `HAWKING_TRACE_DISPATCH=1`, WITH THEIR COUNTS. `None` on the
         /// default path so `step` allocates nothing extra.
@@ -3063,6 +3070,7 @@ mod device {
                 workspace,
                 max_seq_len,
                 position: 0,
+                kv_epoch: 0,
                 seen_kernels: if qwen38_trace_dispatch_enabled() {
                     Some(BTreeMap::new())
                 } else {
@@ -3429,6 +3437,7 @@ mod device {
 
         pub fn reset(&mut self) {
             self.position = 0;
+            self.kv_epoch = self.kv_epoch.wrapping_add(1);
             self.reset_active_weight_bytes();
             zero_buffer(&self.workspace.conv_state);
             zero_buffer(&self.workspace.rec_state);
@@ -6580,6 +6589,7 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         pub fn prefix_checkpoint(&self) -> Result<Qwen38PrefixCheckpoint> {
             Ok(Qwen38PrefixCheckpoint {
                 position: self.position,
+                kv_epoch: self.kv_epoch,
                 rec_state: self.read_f32_workspace("rec_state", self.rec_state_f32_count())?,
                 conv_state: self
                     .read_f32_workspace("conv_state", self.conv_state_f32_count())?,
@@ -6602,6 +6612,21 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
                 return Err(Error::Model(
                     "qwen38 prefix checkpoint position exceeds max_seq_len".into(),
                 ));
+            }
+            // A checkpoint carries rec_state and conv_state. It does NOT carry
+            // the KV cache, and `reset()` zeroes that cache. Restoring across a
+            // reset leaves the 16 attention layers reading an EMPTY cache for a
+            // prefix the recurrent state insists has already been consumed.
+            // Measured: after reset + restore the next sampled token was 4242
+            // where the honest walk gives 358. Nothing downstream could tell.
+            // A refusal is recoverable; a silently different answer is not.
+            if checkpoint.kv_epoch != self.kv_epoch {
+                return Err(Error::Model(format!(
+                    "qwen38 prefix checkpoint was taken in session epoch {} but this session is \
+                     at epoch {} -- reset() zeroed the KV cache the checkpoint depends on. \
+                     Re-walk the prefix, or checkpoint again after the reset.",
+                    checkpoint.kv_epoch, self.kv_epoch
+                )));
             }
             self.write_f32_workspace("rec_state", &checkpoint.rec_state)?;
             self.write_f32_workspace("conv_state", &checkpoint.conv_state)?;
@@ -9579,6 +9604,9 @@ impl Qwen38CompleteWallResult {
 #[derive(Debug, Clone)]
 pub struct Qwen38PrefixCheckpoint {
     pub position: usize,
+    /// The session epoch this was taken in. See `restore_prefix`: a checkpoint
+    /// is only valid against the KV cache that was live when it was made.
+    pub kv_epoch: u64,
     pub rec_state: Vec<f32>,
     pub conv_state: Vec<f32>,
 }

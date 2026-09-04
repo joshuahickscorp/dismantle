@@ -791,3 +791,45 @@ kernel void qwen38_add_residual_rmsnorm_tg_interleaved(
         x_norm[at] = residual_out[at] * inverse_rms * (1.0f + weight[index]);
     }
 }
+
+
+// ── the glue between a SEQUENTIAL mixer and a BATCHED MLP ─────────────────
+//
+// The mixer is genuinely per-position: DeltaNet carries a recurrent state and
+// GQA appends KV, so position k+1 depends on k. The MLP is not -- it is
+// position-independent, and it is 56.8% of the step.
+//
+// So the chunked prefill does not have to wait for a batched mixer. Run the
+// mixer K times as it already runs, scatter each result into slot k of a K-wide
+// interleaved buffer, run the MLP ONCE batched, then gather back. These two
+// kernels are that glue, and they are what makes the hybrid honest: their cost
+// is paid inside the measurement rather than assumed away.
+//
+// One float per thread, grid (hidden, 1, 1).
+kernel void qwen38_scatter_to_interleaved(
+    device const float* blocked      [[buffer(0)]],
+    device float* interleaved        [[buffer(1)]],
+    constant uint& hidden            [[buffer(2)]],
+    constant uint& chunk             [[buffer(3)]],
+    constant uint& slot              [[buffer(4)]],
+    uint gid                         [[thread_position_in_grid]])
+{
+    if (gid >= hidden || slot >= chunk) {
+        return;
+    }
+    interleaved[gid * chunk + slot] = blocked[gid];
+}
+
+kernel void qwen38_gather_from_interleaved(
+    device const float* interleaved  [[buffer(0)]],
+    device float* blocked            [[buffer(1)]],
+    constant uint& hidden            [[buffer(2)]],
+    constant uint& chunk             [[buffer(3)]],
+    constant uint& slot              [[buffer(4)]],
+    uint gid                         [[thread_position_in_grid]])
+{
+    if (gid >= hidden || slot >= chunk) {
+        return;
+    }
+    blocked[gid] = interleaved[gid * chunk + slot];
+}

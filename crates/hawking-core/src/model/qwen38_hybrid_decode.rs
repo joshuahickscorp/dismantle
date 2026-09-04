@@ -6059,6 +6059,223 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             Ok((mr, mn, seq_dispatches, chunk_dispatches))
         }
 
+        /// CP6g -- the HYBRID layer: sequential mixer, batched MLP.
+        ///
+        /// The mixer is genuinely per-position (DeltaNet carries a recurrent
+        /// state, GQA appends KV, so k+1 depends on k). The MLP is not, and it
+        /// is 56.8% of the step. So a chunked prefill does not have to wait for
+        /// a batched mixer: run the mixer K times as it already runs, scatter
+        /// each result into slot k of a K-wide buffer, run the MLP ONCE, gather
+        /// back.
+        ///
+        /// This measures whether that actually wins WITH THE GLUE PAID. The
+        /// scatter/gather dispatches are inside arm B's command buffer, not
+        /// assumed away -- 2K extra launches against K-1 MLPs saved.
+        ///
+        /// Returns `(seq_gpu_ns, hybrid_gpu_ns, seq_dispatches, hybrid_dispatches)`.
+        ///
+        /// `layers` is a SPAN, not one layer, and that is not cosmetic. The first
+        /// run of this measured ONE layer and produced 50-130% jitter on the
+        /// baseline, separating nothing -- a ~400us command buffer is below this
+        /// instrument's noise floor. The series was checked for monotone drift
+        /// first (KV growth would do it); the second-half-over-first ratio came
+        /// back 0.84-1.08, so it is genuine noise, not accumulation. CP6a/b/c got
+        /// 0.7% reproducibility by putting all 64 layers in one command buffer.
+        pub fn measure_hybrid_layers(
+            &self,
+            layers: &[usize],
+            r: usize,
+            chunk: usize,
+        ) -> Result<(u64, u64, usize, usize)> {
+            if chunk == 0 || r == 0 {
+                return Err(Error::Model("chunk and r must be positive".into()));
+            }
+            if layers.is_empty() {
+                return Err(Error::Model("measure_hybrid_layers needs at least one layer".into()));
+            }
+            let hidden = QWEN38_HIDDEN;
+            let inter = QWEN38_INTERMEDIATE;
+
+            let encode_mixer = |tcb: &mut TokenCommandBuffer<'_>, layer: usize| -> Result<()> {
+                match self.mixer_kind(layer)? {
+                    Qwen38MixerKind::DeltaNet => self.encode_deltanet(tcb, layer),
+                    Qwen38MixerKind::Gqa => self.encode_gqa(tcb, layer),
+                }
+            };
+
+            // ---- arm A: K full sequential layers, across the span ----
+            let mut seq_d = 0usize;
+            let seq = self.timed_cb(|tcb| {
+                for &layer in layers {
+                    for _ in 0..chunk {
+                        encode_mixer(tcb, layer)?;
+                        self.encode_dense_mlp(tcb, layer, &self.workspace.first_residual)?;
+                    }
+                }
+                seq_d = tcb.dispatch_count();
+                Ok(())
+            })?;
+
+            // ---- arm B: K mixers + scatter, ONE batched MLP, K gathers ----
+            // Scratch is shared across the span: each layer's MLP is independent
+            // here, so one set of K-wide buffers serves all of them.
+            // Weights are resolved PER LAYER inside the encode loop below; the
+            // K-wide scratch is shared across the span because each layer's MLP
+            // is independent in this measurement.
+
+            let b_xin = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_rin = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_act = self.context.new_buffer_checked(inter * chunk * 4)?;
+            let b_down = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_rout = self.context.new_buffer_checked(hidden * chunk * 4)?;
+            let b_norm = self.context.new_buffer_checked(hidden * chunk * 4)?;
+
+            let k_gu = format!(
+                "qwen_affine_q2_group64_matmul_gate_up_swiglu_r{r}k{chunk}_geo_tpr64_tg128_bitcast"
+            );
+            let k_dn = format!("qwen_affine_q2_matmul_r{r}k{chunk}_geo_tpr64_tg128");
+            let fused_tail = self.fuse_add_rmsnorm;
+
+            let tgs = |rows: usize| ((rows + 2 * r - 1) / (2 * r) * 128) as u32;
+            let tg128 = (128u32, 1, 1);
+            let rms_tg = if self.rmsnorm_tg > 0 { self.rmsnorm_tg } else { 256 };
+            let hid_u = hidden as u32;
+            let ck = chunk as u32;
+
+            let mut hyb_d = 0usize;
+            let hyb = self.timed_cb(|tcb| {
+                for &layer in layers {
+                let gate = self
+                    .affine(&self.layer_name(layer, "mlp.gate_proj.weight"))
+                    .ok_or_else(|| Error::Model(format!("layer {layer} gate_proj is not affine")))?;
+                let up = self
+                    .affine(&self.layer_name(layer, "mlp.up_proj.weight"))
+                    .ok_or_else(|| Error::Model(format!("layer {layer} up_proj is not affine")))?;
+                let down = self
+                    .affine(&self.layer_name(layer, "mlp.down_proj.weight"))
+                    .ok_or_else(|| Error::Model(format!("layer {layer} down_proj is not affine")))?;
+                let gb = gate.biases.as_ref().ok_or_else(|| {
+                    Error::Model("hybrid layer on a delta-only (q2f) gate".into())
+                })?;
+                let ub = up.biases.as_ref().ok_or_else(|| {
+                    Error::Model("hybrid layer on a delta-only (q2f) up".into())
+                })?;
+                let db = down.biases.as_ref().ok_or_else(|| {
+                    Error::Model("hybrid layer on a delta-only (q2f) down".into())
+                })?;
+                let (gr, gc) = (gate.rows, gate.cols);
+                let (dr, dc) = (down.rows, down.cols);
+                let next_w = self.next_norm_weight_name(layer);
+                let w_norm = self.f32(&next_w)?;
+                let head_w = self.f32(&self.layer_name(layer, "post_attention_layernorm.weight"))?;
+                // K mixers, each scattered into its slot. This is the glue's
+                // real cost: one extra dispatch per position.
+                for k in 0..chunk {
+                    encode_mixer(tcb, layer)?;
+                    let slot = k as u32;
+                    tcb.dispatch_threads(
+                        "qwen38_scatter_to_interleaved",
+                        (hid_u, 1, 1),
+                        (256, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(&self.workspace.hidden), 0);
+                            enc.set_buffer(1, Some(&b_rin), 0);
+                            enc.set_bytes(2, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(3, 4, &ck as *const u32 as *const _);
+                            enc.set_bytes(4, 4, &slot as *const u32 as *const _);
+                        },
+                    )?;
+                }
+                // ONE MLP for all K positions.
+                if !fused_tail {
+                    tcb.dispatch_threads(
+                        "qwen38_residual_rmsnorm_tg_interleaved",
+                        (rms_tg * ck, 1, 1),
+                        (rms_tg, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(&b_rin), 0);
+                            enc.set_buffer(1, Some(head_w), 0);
+                            enc.set_buffer(2, Some(&b_xin), 0);
+                            enc.set_bytes(3, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(4, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                            enc.set_bytes(5, 4, &ck as *const u32 as *const _);
+                            enc.set_threadgroup_memory_length(0, (rms_tg as u64) * 4);
+                        },
+                    )?;
+                }
+                tcb.dispatch_threads(&k_gu, (tgs(gr as usize), 1, 1), tg128, |enc| {
+                    enc.set_buffer(0, Some(&gate.codes), 0);
+                    enc.set_buffer(1, Some(&gate.scales), 0);
+                    enc.set_buffer(2, Some(gb), 0);
+                    enc.set_buffer(3, Some(&up.codes), 0);
+                    enc.set_buffer(4, Some(&up.scales), 0);
+                    enc.set_buffer(5, Some(ub), 0);
+                    enc.set_buffer(6, Some(&b_xin), 0);
+                    enc.set_buffer(7, Some(&b_act), 0);
+                    set_u32(enc, 8, gr);
+                    set_u32(enc, 9, gc);
+                })?;
+                tcb.dispatch_threads(&k_dn, (tgs(dr as usize), 1, 1), tg128, |enc| {
+                    enc.set_buffer(0, Some(&down.codes), 0);
+                    enc.set_buffer(1, Some(&down.scales), 0);
+                    enc.set_buffer(2, Some(db), 0);
+                    enc.set_buffer(3, Some(&b_act), 0);
+                    enc.set_buffer(4, Some(&b_down), 0);
+                    set_u32(enc, 5, dr);
+                    set_u32(enc, 6, dc);
+                    set_u32(enc, 7, 64);
+                })?;
+                if fused_tail {
+                    tcb.dispatch_threads(
+                        "qwen38_add_residual_rmsnorm_tg_interleaved",
+                        (rms_tg * ck, 1, 1),
+                        (rms_tg, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(&b_rin), 0);
+                            enc.set_buffer(1, Some(&b_down), 0);
+                            enc.set_buffer(2, Some(&b_rout), 0);
+                            enc.set_buffer(3, Some(w_norm), 0);
+                            enc.set_buffer(4, Some(&b_norm), 0);
+                            enc.set_bytes(5, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(6, 4, &QWEN38_RMS_EPS as *const f32 as *const _);
+                            enc.set_bytes(7, 4, &ck as *const u32 as *const _);
+                            enc.set_threadgroup_memory_length(0, (rms_tg as u64) * 4);
+                        },
+                    )?;
+                } else {
+                    qwen_next_add_residual_tcb(tcb, &b_rin, &b_down, &b_rout, hidden * chunk)?;
+                }
+                // K gathers back to the per-position layout the next mixer wants.
+                for k in 0..chunk {
+                    let slot = k as u32;
+                    tcb.dispatch_threads(
+                        "qwen38_gather_from_interleaved",
+                        (hid_u, 1, 1),
+                        (256, 1, 1),
+                        |enc| {
+                            enc.set_buffer(0, Some(&b_rout), 0);
+                            enc.set_buffer(1, Some(&self.workspace.hidden), 0);
+                            enc.set_bytes(2, 4, &hid_u as *const u32 as *const _);
+                            enc.set_bytes(3, 4, &ck as *const u32 as *const _);
+                            enc.set_bytes(4, 4, &slot as *const u32 as *const _);
+                        },
+                    )?;
+                }
+                }
+                hyb_d = tcb.dispatch_count();
+                Ok(())
+            })?;
+
+            Ok((
+                seq.gpu_ns
+                    .ok_or_else(|| Error::Model("no GPU timestamp on the sequential CB".into()))?,
+                hyb.gpu_ns
+                    .ok_or_else(|| Error::Model("no GPU timestamp on the hybrid CB".into()))?,
+                seq_d,
+                hyb_d,
+            ))
+        }
+
         /// The fusion-matched baseline for [`Self::measure_isolated_organ_chunked`].
         ///
         /// `measure_isolated_organ("mlp_gate_up")` encodes the SwiGLU-fused

@@ -1117,10 +1117,23 @@ def _mentioned_and_known_files(
     wu: WorkUnit,
     compiled_goal: Dict[str, Any],
     failure_context: Any,
+    extra_texts: Sequence[str] = (),
 ) -> Tuple[str, ...]:
+    """Which files this packet may SHOW, from everything this packet SAYS.
+
+    ``extra_texts`` carries the unit's own invariants and acceptance criteria.
+    Scanning only ``wu.description`` meant a file the packet named in its own
+    INVARIANTS rendered as ``EVIDENCE_PATHS: (none)`` -- and under
+    ``HCLI_NO_TOOLS=1`` evidence is the only channel to a file's bytes, so the
+    model was handed a filename, no bytes and no tool, and invented an anchor
+    for a different file entirely. Receipt
+    ``.hcli/receipts/16c237d7-d2e0-40b4-9b62-742e6edf2824.json``: four resident
+    calls, zero operations, "your old_text for hcli/engine.py matches nothing
+    in the file -- not one line of it".
+    """
     compiler = GoalCompiler()
     known = [str(path) for path in (compiled_goal.get("referenced_files") or [])]
-    texts = [wu.description or ""]
+    texts = [wu.description or "", *(str(text) for text in extra_texts)]
     if failure_context:
         try:
             texts.append(json.dumps(failure_context, default=str, sort_keys=True))
@@ -1138,6 +1151,15 @@ def _mentioned_and_known_files(
             name = path.rsplit("/", 1)[-1]
             if path in blob or (name and name in blob):
                 hits.append(path)
+        # RANK, do not FILTER. A unit whose text happens not to re-mention a
+        # file is not a unit with no business seeing it. The root goal named
+        # `tools/hcli_metric.py` and the compiler captured it in
+        # referenced_files; the OBJECTIVE it derived began one sentence later,
+        # so the path survived nowhere in the unit's own text and the packet was
+        # compiled ABOUT a file it could not show. Re-mentioned files stay
+        # FIRST, so they are the ones that survive; the goal's remaining files
+        # follow, and the packet char cap below trims from the tail.
+        hits.extend(known)
         return tuple(dict.fromkeys(hits))
     return tuple(dict.fromkeys(mentioned))
 
@@ -1451,7 +1473,13 @@ def compile_worker_context(
         _sanitize_goal_header(item, root_goal)
         for item in _acceptance_for_unit(wu, compiled, ledger)
     ]
-    evidence_paths = list(_mentioned_and_known_files(wu, compiled, fc))
+    # invariants and acceptance are already rendered INTO this packet; a path
+    # the worker can read there must also be a path the worker can be shown.
+    evidence_paths = list(
+        _mentioned_and_known_files(
+            wu, compiled, fc, extra_texts=[*invariants, *acceptance]
+        )
+    )
     for item in evidence or ():
         ident = _coerce_identity(item)
         if ident is not None and ident.path not in evidence_paths:

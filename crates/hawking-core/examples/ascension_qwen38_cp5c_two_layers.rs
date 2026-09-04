@@ -502,7 +502,13 @@ mod macos {
                                   "reference_value_at_worst_rel": at_ref}));
             eprintln!("{name:<11} abs/scale={scaled:.3e}  max_abs={mabs:.3e}  |ref|max={mag:.3e}  (raw rel {m:.3e} at ref {at_ref:.3e})");
         }
-        let valid = worst <= 1e-4;
+        // SCALE-RELATIVE, not raw-relative. Layer 2's worst raw relative error is
+        // 2.169e-3 and it sits at a reference value of -8.2e-5, where relative
+        // error says nothing; against the tensor's own magnitude the same
+        // disagreement is 4.768e-7 on a 2.276 range -- two ulps of f32. Gating on
+        // the raw figure marked a correct run INVALID and silently skipped the
+        // whole timing sweep, which is how this was noticed.
+        let valid = worst_scaled <= 1e-5;
 
         // ---- timing, alternated, first rep discarded
         let (mut sq, mut bq) = (Vec::new(), Vec::new());

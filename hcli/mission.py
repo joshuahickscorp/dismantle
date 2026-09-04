@@ -782,6 +782,7 @@ class Mission:
             return 1
         return 0
 
+    @_wall_phase("mission", total=True)
     def run(self) -> Dict[str, Any]:
         if self.engine is None:
             raise RuntimeError("Mission requires an engine")

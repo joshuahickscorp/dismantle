@@ -1190,13 +1190,13 @@ def recovered_implementation(sources: dict[str, Any]) -> dict[str, Any]:
                 "receipt": "receipts/headless/C1SHAREDBASIS_DESIGN.json",
             },
             {
-                "path": "tools/headless/shared_basis_coherent.py",
-                "role": "no coherent shared-basis point beats q2f on density and ns",
+                "path": "receipts/headless/SHARED_BASIS_COHERENT.json",
+                "role": "retained negative result: no coherent shared-basis point beats q2f on density and ns; executor retired",
                 "receipt": "receipts/headless/SHARED_BASIS_COHERENT.json",
             },
             {
-                "path": "tools/headless/shared_basis_kernel.py",
-                "role": "competent native kernel for shared-binary-basis MLP (dense, not MoE bank)",
+                "path": "receipts/headless/SHARED_BASIS_KERNEL.json",
+                "role": "retained competency result for shared-binary-basis MLP (dense, not MoE bank); executor retired",
                 "receipt": "receipts/headless/SHARED_BASIS_KERNEL.json",
             },
             {

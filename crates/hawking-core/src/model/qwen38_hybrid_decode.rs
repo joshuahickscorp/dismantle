@@ -5536,10 +5536,31 @@ mod device {
             organ: &str,
             chunk: usize,
         ) -> Result<CommandBufferTiming> {
-            if chunk == 0 {
-                return Err(Error::Model("chunk must be positive".into()));
+            self.measure_isolated_organ_chunked_rk(organ, 4, chunk)
+        }
+
+        /// The same measurement with R exposed, so grid width, accumulator count
+        /// and reduction cost can be moved independently.
+        ///
+        /// CP6b ruled out unpack cost as what binds the chunked arm at 30% of
+        /// roof -- removing the int->float convert changed nothing. What is left
+        /// is register pressure (2*R*K accumulators), the reduction (R*K
+        /// simd_sums into an 8*R*K threadgroup array), and occupancy (gate_up is
+        /// 17408 rows, so ceil(17408/2R) threadgroups against 60 GPU cores).
+        /// Those three move together at fixed R, which is why R has to be free:
+        ///
+        ///   r2k4 vs r4k2   same R*K, so same accumulators and same reduction,
+        ///                  but 4352 threadgroups against 2176
+        ///   r4k4 vs r2k4   double the accumulators AND half the threadgroups
+        pub fn measure_isolated_organ_chunked_rk(
+            &self,
+            organ: &str,
+            r: usize,
+            chunk: usize,
+        ) -> Result<CommandBufferTiming> {
+            if chunk == 0 || r == 0 {
+                return Err(Error::Model("chunk and r must be positive".into()));
             }
-            let r = 4usize;
             match organ {
                 // The unfused pair form, which the fusion-matched baseline divides.
                 "mlp_gate_up" => {

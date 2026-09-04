@@ -2429,8 +2429,8 @@ def recover_implementation() -> list[dict[str, Any]]:
             "why_not_adequate": "memory admission, not energy.",
         },
         {
-            "path": "tools/headless/noetic_scoreboard.py",
-            "what": "S017 §44 columns. Every unmeasured cell is ABSENT, never 0. No joule column.",
+            "path": "receipts/headless/NOETIC_SCOREBOARD.json",
+            "what": "Sealed S017 §44 columns. Every unmeasured cell is ABSENT, never 0. No joule column.",
             "adequate_for_this_lane": False,
             "why_not_adequate": "the energy axis is exactly the missing column.",
         },

@@ -15,7 +15,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 RH = REPO / "receipts/headless"
 
-# Everything the rehearsal is allowed to read. Canonical libraries, the transfer report,
+# Everything the rehearsal is allowed to read. Canonical libraries and the sealed transfer report,
 # and the specimen's own metadata. Nothing else -- and specifically not the Qwen captures,
 # artifacts, or per-experiment receipts.
 ALLOWED_RECEIPTS = [
@@ -25,7 +25,7 @@ ALLOWED_RECEIPTS = [
     "ARCHITECTURE_RECOGNIZER_FIXTURES.json",
 ]
 ALLOWED_TOOLS = ["arch_recognizer.py", "representation_library.py", "negative_science.py",
-                 "organ_library.py", "transfer_report.py", "transfer_rehearsal.py"]
+                 "organ_library.py", "transfer_rehearsal.py"]
 # Reading these would be smuggling: they are Qwen's private working state.
 FORBIDDEN_PREFIXES = [
     str(Path.home() / "noetic"), str(Path.home() / "models"),
@@ -272,7 +272,7 @@ def main():
         "git_head": subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                                    capture_output=True, text=True).stdout.strip(),
         "hand_authored": False,
-        "law": "the rehearsal may read only the canonical libraries, the transfer report and "
+            "law": "the rehearsal may read only the canonical libraries, the sealed transfer report and "
                "the specimen's own architecture metadata. Everything else is smuggling.",
         "input_audit": au,
         "plan": plan,

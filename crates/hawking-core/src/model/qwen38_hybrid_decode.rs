@@ -5446,6 +5446,121 @@ mod device {
 
         /// Isolated organ CBs: one family, all layers, GPUEnd−GPUStart.
         /// Production remains one CB; these partition it. Caller scales.
+        /// The same organ, over the same 64 layers and the same REAL artifact
+        /// weights, run through the MULTI-POSITION kernels for `chunk` positions
+        /// at once.
+        ///
+        /// CP3/CP4/CP4b/CP5* all measured these kernels in standalone harnesses
+        /// against buffers this crate filled. `CP5C_RESULT.md` lists "real
+        /// artifact weight bytes at these shapes" as untested, and this is what
+        /// tests it: the weights come from the session's own catalog, every
+        /// layer is encoded, and both arms sit in one command buffer exactly as
+        /// [`Self::measure_isolated_organ`] does.
+        ///
+        /// PAIRED WITH THE NON-SWIGLU BASELINE ON PURPOSE. Production fuses
+        /// SwiGLU into gate_up and the multi-position kernel does not, so
+        /// comparing against the fused baseline would credit batching with a
+        /// fusion difference. `organ_pair_baseline` encodes the same organ with
+        /// `with_swiglu = false`, which is what this must be divided by.
+        ///
+        /// Additive: it does not touch `step`, `encode_full_token`, or the
+        /// shared workspace. Intermediate buffers are allocated per call.
+        pub fn measure_isolated_organ_chunked(
+            &self,
+            organ: &str,
+            chunk: usize,
+        ) -> Result<CommandBufferTiming> {
+            if chunk == 0 {
+                return Err(Error::Model("chunk must be positive".into()));
+            }
+            let r = 4usize;
+            match organ {
+                "mlp_gate_up" => {
+                    let kernel =
+                        format!("qwen_affine_q2_group64_matmul_gate_up_r{r}k{chunk}_geo_tpr64_tg128");
+                    // Sized from the first layer's real geometry, not a constant.
+                    let g0 = self
+                        .affine(&self.layer_name(0, "mlp.gate_proj.weight"))
+                        .ok_or_else(|| {
+                            Error::Model(
+                                "chunked gate_up needs an affine gate_proj; this catalog has none"
+                                    .into(),
+                            )
+                        })?;
+                    let rows = g0.rows as usize;
+                    let cols = g0.cols as usize;
+                    let xin = self.context.new_buffer_checked(cols * chunk * 4)?;
+                    let gout = self.context.new_buffer_checked(rows * chunk * 4)?;
+                    let uout = self.context.new_buffer_checked(rows * chunk * 4)?;
+                    let tgs = (rows + 2 * r - 1) / (2 * r);
+                    let grid = ((tgs * 128) as u32, 1, 1);
+                    let tg = (128u32, 1, 1);
+                    self.timed_cb(|tcb| {
+                        for layer in 0..QWEN38_LAYERS {
+                            let gate = self
+                                .affine(&self.layer_name(layer, "mlp.gate_proj.weight"))
+                                .ok_or_else(|| {
+                                    Error::Model(format!("layer {layer} gate_proj is not affine"))
+                                })?;
+                            let up = self
+                                .affine(&self.layer_name(layer, "mlp.up_proj.weight"))
+                                .ok_or_else(|| {
+                                    Error::Model(format!("layer {layer} up_proj is not affine"))
+                                })?;
+                            let gb = gate.biases.as_ref().ok_or_else(|| {
+                                Error::Model("chunked gate_up on a delta-only (q2f) tensor".into())
+                            })?;
+                            let ub = up.biases.as_ref().ok_or_else(|| {
+                                Error::Model("chunked gate_up on a delta-only (q2f) tensor".into())
+                            })?;
+                            let rr = gate.rows;
+                            let cc = gate.cols;
+                            tcb.dispatch_threads(&kernel, grid, tg, |enc| {
+                                enc.set_buffer(0, Some(&gate.codes), 0);
+                                enc.set_buffer(1, Some(&gate.scales), 0);
+                                enc.set_buffer(2, Some(gb), 0);
+                                enc.set_buffer(3, Some(&up.codes), 0);
+                                enc.set_buffer(4, Some(&up.scales), 0);
+                                enc.set_buffer(5, Some(ub), 0);
+                                enc.set_buffer(6, Some(&xin), 0);
+                                enc.set_buffer(7, Some(&gout), 0);
+                                enc.set_buffer(8, Some(&uout), 0);
+                                set_u32(enc, 9, rr);
+                                set_u32(enc, 10, cc);
+                            })?;
+                        }
+                        Ok(())
+                    })
+                }
+                other => Err(Error::Model(format!(
+                    "no chunked path for organ {other:?}; \
+mlp_gate_up is the only one wired"
+                ))),
+            }
+        }
+
+        /// The fusion-matched baseline for [`Self::measure_isolated_organ_chunked`].
+        ///
+        /// `measure_isolated_organ("mlp_gate_up")` encodes the SwiGLU-fused
+        /// variant. The multi-position kernel is the non-fused pair, so dividing
+        /// by the fused baseline would credit batching with a fusion difference.
+        pub fn measure_isolated_organ_pair_baseline(
+            &self,
+            organ: &str,
+        ) -> Result<CommandBufferTiming> {
+            match organ {
+                "mlp_gate_up" => self.timed_cb(|tcb| {
+                    for layer in 0..QWEN38_LAYERS {
+                        self.encode_fused_gate_up(tcb, layer, false)?;
+                    }
+                    Ok(())
+                }),
+                other => Err(Error::Model(format!(
+                    "no pair baseline for organ {other:?}"
+                ))),
+            }
+        }
+
         pub fn measure_isolated_organ(&self, organ: &str) -> Result<CommandBufferTiming> {
             match organ {
                 "embedding" => self.timed_cb(|tcb| self.encode_embed(tcb, 1)),

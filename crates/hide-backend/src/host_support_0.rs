@@ -700,13 +700,13 @@ pub(crate) fn write_lease_patch(
     })
 }
 
-// --- The diff projection the FE actually reads (census sec 23) ---
+// --- The diff projection HCLI/HIDE clients read (census sec 23) ---
 //
-// app/src/surfaces/ide/types.ts folds `projection_patch{projection:"diff"}` into a
+// HIDE protocol clients fold `projection_patch{projection:"diff"}` into a
 // DiffDoc {diff_id, run_id, path, lang, before, after, hunks[{id, header, lines, status}]}
-// and app/src/surfaces/chat/parts.ts folds `{projection:"diff_chip"}` into
-// {chips:[{diff_id, path, added, removed, status}]}. The host record is per RUN and
-// spans files, the view model names ONE file, so the host adapts:
+// and `{projection:"diff_chip"}` into {chips:[{diff_id, path, added, removed, status}]}.
+// The host record is per RUN and spans files, while a client may name ONE file,
+// so the host adapts:
 //   * `hunks` carries EVERY hunk of the run (each also keeping the wire fields the
 //     review reads back: hunk_id, file, base_hash, provenance), so review is never
 //     silently narrowed to one file;

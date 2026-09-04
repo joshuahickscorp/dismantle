@@ -1,5 +1,15 @@
 # HCLI handoff — 2026-09-02
 
+## Current Phase III disposition — 2026-09-04
+
+HCLI is the current product surface. The Rust `hcli` binary in
+`crates/hide-backend` is the consolidated HIDE backend authority, while Python
+`hcli` remains the orchestration/resident skin where Python has comparative
+advantage. The obsolete visual frontend, `hide-serve` localhost transport, and
+`hide-acp` editor server are removed from this product branch. They remain
+recoverable through Git history and must be rebuilt only behind a hardened VMCP
+boundary; no visual work is required for the current phase.
+
 ## Where this stands
 
 The daemon stays alive perfectly and has never completed a single unit of work.

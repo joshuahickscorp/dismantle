@@ -134,8 +134,7 @@ impl BackendHost {
     /// leaves the supervisor in `Failed`/`Booting`; the host is still returned
     /// and fully usable (it will report "model offline" rather than fake a
     /// token). Related env:
-    /// * `HIDE_MODEL_ADDR` — bind (default `127.0.0.1:8745`, distinct from
-    ///   hide-serve's 8744)
+    /// * `HIDE_MODEL_ADDR` — bind (default `127.0.0.1:8745`)
     /// * `HIDE_HAWKING_BIN` — path to the `hawking` binary (default: `hawking`
     ///   on `PATH`)
     /// * `HIDE_MODEL_BOOT_TIMEOUT_SECS` — wait for `/healthz` (default 300)

@@ -11,23 +11,26 @@ must not be treated as a second architecture map.
 ```text
 model/specimen metadata ──┐
                           v
-                      HCLI / AgentOS ── typed tools, work units, gates,
-                          │              missions, receipts, resident control
+                      HCLI ── Python AgentOS control plane + Rust hcli backend,
+                          │  typed tools, work units, gates, missions, receipts
                           v
                 hawking-core / hawking / hawking-serve
                           │
                  CPU reference + Apple Metal runtime
 ```
 
-HCLI is the Python control plane. Rust owns model execution and serving. HCLI
-may plan, invoke, and verify runtime work, but a receipt or a plan never raises
-the capability ceiling of an unmeasured artifact.
+HCLI is the single product/control-plane name. Python owns the comparative-
+advantage orchestration and resident supervision; the Rust `hcli` binary in
+`hide-backend` owns the consolidated HIDE backend, durable backend protocol,
+tools, sessions, and runtime-facing composition. Rust also owns model execution
+and serving. A receipt or a plan never raises the capability ceiling of an
+unmeasured artifact.
 
 ## Ownership map
 
 | Concern | Canonical home | Boundary |
 |---|---|---|
-| Product CLI, UI, command ingress | `hcli.cli`, `hcli.app`, `hcli.commands`, `hcli.controller`, `hcli.tui` | User-facing control surface |
+| Product CLI and command ingress | Python `hcli.cli`, `hcli.commands`, `hcli.controller` plus Rust `hide-backend`/`hcli` | One HCLI product surface; Python is the orchestration skin and Rust is the backend authority |
 | AgentOS work and lifecycle | `hcli.agentos` plus canonical `hcli.goal`, `hcli.workunit`, `hcli.scheduler`, `hcli.mission`, `hcli.verifier_pipeline` | Scheduling/proposal is not verification |
 | Runtime and provider execution | `hcli.runtime`, `hcli.engine`, `hcli.backends`, `hcli.session`, `hcli.context`, `hcli.models` | Provider output is evidence only after the verifier accepts it |
 | Crash-safe persistence | `hcli.persist` | The shared text/bytes/JSON atomic writers; specialized compare-and-swap remains in its owner |
@@ -38,7 +41,7 @@ the capability ceiling of an unmeasured artifact.
 | Odyssey and ModelLake | `tools.odyssey`, including `tools.odyssey.modellake_promote` | Specimen lifecycle and promotion stay separate from Doctor/Gravity |
 | Sensory evidence | `hcli.vmcp` and the `visionmcp/` package | External VMCP surface; no duplicate sensory authority |
 | Machine/runtime identity | `hcli.machine`, `hcli.genomes`, `hcli.runtime_iface` | Identity and learned metadata do not authorize physical results |
-| HIDE IDE | `hide-*` crates | HIDE may depend on Hawking; Hawking-side HIDE edges are a known inversion debt |
+| Visual/IDE/ACP surface | Deferred; rebuild behind hardened VMCP | No active visual authority is shipped in this phase |
 
 `hcli.agentos` is a public namespace and ownership surface; it is not a second
 copy of the core lifecycle classes. Goal compilation, WorkUnit identity,
@@ -55,9 +58,11 @@ loop.
 ## Rust workspace boundary
 
 The default build surface is the Hawking inference/serving workspace plus its
-context, index, orchestration, research, event, adapter, and bake tools. HIDE
-crates are workspace members but are outside `default-members`. `hawking-serve`
-serves the runtime; `hide-backend` consumes it over HTTP.
+context, index, orchestration, research, event, adapter, and bake tools. HCLI
+backend/core/protocol crates are workspace members but are outside
+`default-members`. `hawking-serve` serves the runtime; Rust `hcli` composes the
+HIDE backend against it. The old visual `hide-serve` transport and ACP server
+are intentionally absent from the active workspace.
 
 Cargo metadata currently shows six Hawking-to-HIDE edges through shared errors,
 IDs, blobs, and UI event types (`hawking-context`, `hawking-index`,
@@ -69,7 +74,17 @@ optimization refactor lane.
 The undeclared `crates/hide-backend/src/hcli/` tree, its `hcli-backend` wrapper,
 and its integration test were removed in Phase III. They had never built and
 were not a second runtime authority. The live Rust HCLI surface is the declared
-`hcli_bridge`, profile, research, source, and swarm modules.
+`hcli` binary plus its `hcli_bridge`, profile, research, source, and swarm
+modules. The previous frontend, `hide-serve`, and `hide-acp` are removed from
+the product branch; their replacement condition is a hardened VMCP boundary.
+
+## Deferred visual boundary
+
+The desktop/frontend and editor-facing HIDE layer is not a current product
+requirement. It was removed from this branch together with its dedicated
+localhost transport and ACP server so it cannot form a second command or state
+authority. Rebuild it only after VMCP is hardened, using the Rust HCLI backend
+and `hide-protocol` as the contract boundary.
 
 ## Authority rules
 
@@ -110,6 +125,7 @@ python3 -m hcli --help
 python3 -m hcli.agentos.resident --help
 python3 -m tools.doctor --selftest
 python3 -m tools.roadmap --help
+cargo run -p hide-backend --bin hcli -- --help
 cargo check --workspace
 python3 -m pytest
 ```

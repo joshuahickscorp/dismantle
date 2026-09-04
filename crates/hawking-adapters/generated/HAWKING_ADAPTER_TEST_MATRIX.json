@@ -176,12 +176,12 @@
       "tests": [
         {
           "claim": "M04_SEALED: Rust adapter vs oracle on real flagship .gravity shards",
-          "exists": true,
+          "exists": false,
           "is_test": false,
           "kind": "small_checkpoint_run",
           "path": "research/evidence/glm52/GLM52_FLAGSHIP_ADAPTER_PARITY.json",
           "role": "evidence",
-          "status": "present"
+          "status": "missing"
         },
         {
           "claim": "GravityEngine dispatches glm_moe_dsa",
@@ -229,8 +229,8 @@
           "status": "missing"
         }
       ],
-      "tests_missing": 2,
-      "tests_present": 4
+      "tests_missing": 3,
+      "tests_present": 3
     },
     {
       "family": "kimi",
@@ -238,12 +238,12 @@
       "tests": [
         {
           "claim": "synthetic CPU reference + bound real-source metal K1 twin",
-          "exists": true,
+          "exists": false,
           "is_test": false,
           "kind": "synthetic_parity",
           "path": "research/evidence/kimi-k26/KIMI_K26_ADAPTER_TWIN.json",
           "role": "evidence",
-          "status": "present"
+          "status": "missing"
         },
         {
           "claim": "load_engine has no kimi arch arm (not serve-registered)",
@@ -291,8 +291,8 @@
           "status": "missing"
         }
       ],
-      "tests_missing": 4,
-      "tests_present": 2
+      "tests_missing": 5,
+      "tests_present": 1
     },
     {
       "family": "llama",
@@ -398,12 +398,12 @@
       "tests": [
         {
           "claim": "family listed in bridge archaeology; no serve path found",
-          "exists": true,
+          "exists": false,
           "is_test": false,
           "kind": "description",
           "path": "research/evidence/fabric/FABRIC_BRIDGE_ARCHAEOLOGY.md",
           "role": "evidence",
-          "status": "present"
+          "status": "missing"
         },
         {
           "claim": "no SOURCE_HEADER_VALIDATED test registered for this family",
@@ -460,8 +460,8 @@
           "status": "missing"
         }
       ],
-      "tests_missing": 6,
-      "tests_present": 1
+      "tests_missing": 7,
+      "tests_present": 0
     },
     {
       "family": "mistral_mixtral",

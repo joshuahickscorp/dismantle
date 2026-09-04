@@ -1,11 +1,13 @@
-//! HCLI — Hawking's headless local-model product surface.
+//! HCLI — Hawking's headless local-model product surface and HIDE backend.
 //!
-//! This is intentionally a CLI-first shell over the real HIDE/Hawking backend:
+//! This is the current Rust backend authority behind the HCLI product surface:
+//! a CLI-first shell over the real HIDE/Hawking backend:
 //! durable contextual sessions, local model calls, agent receipts, evidence
 //! procurement, safe tool invocation, throughput measurement, and a parallel
 //! analysis swarm.  It does not claim a graphical interface, cloud proxy,
 //! full-source V4 parity, unlimited uploads, or an isolated concurrent write
-//! swarm.
+//! swarm. The visual/IDE layer is intentionally deferred until the VMCP boundary
+//! is hardened; it is not a second active authority here.
 
 use anyhow::{anyhow, bail, Context, Result};
 use hide_backend::hcli_bridge::{

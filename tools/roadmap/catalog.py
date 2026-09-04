@@ -639,7 +639,7 @@ GENES: dict[str, dict[str, Any]] = {
 
 ABSENT_CLAIMS: tuple[tuple[str, str], ...] = (
     ("theia", "no path whose basename or directory component is theia"),
-    ("transport", "no PhysicalGraph transport-edge compiler (hide-acp transport.rs is ACP, not II-C)"),
+    ("transport", "no PhysicalGraph transport-edge compiler (visual/ACP transport is deferred behind VMCP)"),
     ("placement", "no standalone placement compiler (hide-fleet fabric_placement.rs is fleet, not II-C)"),
 )
 

@@ -68,15 +68,18 @@ Model weights are local inputs and are not part of this repository.
 
 | path | contents |
 | --- | --- |
-| `crates/` | Rust workspace: runtime, CLI, serving, benchmarks, HIDE crates |
+| `crates/` | Rust workspace: runtime, CLI, serving, benchmarks, and HCLI backend crates |
 | `hcli/` | Python control plane, resident supervision, tools and verifiers |
 | `tools/` | Campaign, evaluation and analysis tooling |
-| `app/` | Desktop application and frontend |
 | `docs/` | Current architecture, control-plane boundaries, specifications |
 | `research/` | Experiments, lab operators, archived work, evidence |
 | `receipts/` | Acceptance and provenance records |
 | `workspace/` | Local build and campaign working tree |
 | `civilization/` | Roadmap and capability-graph state read by the control plane |
+
+The visual HIDE/IDE surface is intentionally deferred. HCLI is the current
+product surface; the visual client and its transport boundary will be rebuilt
+against hardened VMCP rather than kept as a second active control plane.
 
 ## License
 

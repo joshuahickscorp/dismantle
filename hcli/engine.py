@@ -4269,6 +4269,8 @@ class Engine:
                 "max_new_tokens_granted",
                 "profile_max_seq_len",
                 "prompt_tokens_used_for_budget",
+                "prompt_token_count_source",
+                "rendered_prompt_chars",
             ):
                 value = native.get(key)
                 if value is not None:

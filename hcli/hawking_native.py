@@ -1477,6 +1477,14 @@ class HawkingNativeConnector:
             # available = position_limit - prompt - 8, and it is the only number
             # that explains a 2048-token request being granted 1446.
             "prompt_tokens_used_for_budget": prompt.prompt_tokens,
+            # WHICH counter produced it. `_limits` grants
+            # min(max_tokens, position_limit - this - 8), so a disagreement
+            # between this and the resident's own prompt_len halves the reply
+            # budget. Solving the observed grants backwards puts this at ~6738
+            # where the resident reported 3581 -- 1.88x on what should be the
+            # same string -- and the source names which tokenizer said so.
+            "prompt_token_count_source": prompt.token_count_source,
+            "rendered_prompt_chars": len(prompt.text),
         }
         return {
             "id": f"hawking-chat-{uuid.uuid4()}",

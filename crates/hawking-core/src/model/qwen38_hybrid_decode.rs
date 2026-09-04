@@ -1543,13 +1543,23 @@ fn qwen38_affine_gate_up_launch(
         Affine2Geo::Bitcast => {
             let tg = 128u32;
             let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
-            // Only the swiglu-fused form is written, because that is the one the
-            // resident dispatches. The unfused form falls back to production
-            // rather than naming a kernel that does not exist.
+            // Only the swiglu-fused form is written, because that is the one
+            // the resident dispatches. The unfused form falls back to the
+            // production PAIR kernel.
+            //
+            // It used to fall back to the production SWIGLU kernel, and the two
+            // have DIFFERENT buffer layouts: the unfused caller binds
+            // 7=gate_out, 8=up_out, 9=rows, 10=cols, while the SwiGLU kernel
+            // reads 7=act, 8=rows, 9=cols. So `rows` came from the up-output
+            // BUFFER, `row < rows` failed for nearly every thread, and the
+            // dispatch returned fast with a wrong answer. Measured on the live
+            // catalog: 64 layers in 866,874 ns, which is 4112.7 GB/s against a
+            // measured 778.8 GB/s roof -- 5.3x a physical ceiling. Falling back
+            // to production means the production kernel with the SAME ABI.
             let name = if with_swiglu {
                 QWEN38_AFFINE_GATE_UP_SWIGLU_BITCAST
             } else {
-                QWEN38_AFFINE_GATE_UP_SWIGLU_KERNEL
+                QWEN38_AFFINE_GATE_UP_KERNEL
             };
             (name, (grid, 1, 1), (tg, 1, 1))
         }
@@ -5446,6 +5456,62 @@ mod device {
 
         /// Isolated organ CBs: one family, all layers, GPUEnd−GPUStart.
         /// Production remains one CB; these partition it. Caller scales.
+        /// What the session ACTUALLY holds for one layer's gate_up, and which
+        /// kernel it would dispatch.
+        ///
+        /// CP6a's pair baseline reported 4112.7 GB/s against a measured 778.8
+        /// GB/s roof -- 5.3x a physical ceiling, so it is not reading the weight
+        /// set. The launch selector and the buffer bindings are symmetric
+        /// between the swiglu and non-swiglu branches, so the cause is upstream
+        /// of both, in what the catalog resolved to. This reports that instead
+        /// of inferring it.
+        pub fn probe_gate_up_geometry(&self, layer: usize) -> String {
+            let gate_name = self.layer_name(layer, "mlp.gate_proj.weight");
+            let up_name = self.layer_name(layer, "mlp.up_proj.weight");
+            let mut out = format!("layer {layer}\n");
+            match (self.affine(&gate_name), self.affine(&up_name)) {
+                (Some(g), Some(u)) => {
+                    out.push_str(&format!(
+                        "  affine gate rows={} cols={} group={} bits={} biases={}\n",
+                        g.rows, g.cols, g.group_size, g.bits, g.biases.is_some()
+                    ));
+                    out.push_str(&format!(
+                        "  affine up   rows={} cols={} group={} bits={} biases={}\n",
+                        u.rows, u.cols, u.group_size, u.bits, u.biases.is_some()
+                    ));
+                    let branch = if g.biases.is_none() && u.biases.is_none() {
+                        "encode_fused_q2f_gate_up"
+                    } else {
+                        "encode_fused_affine_gate_up"
+                    };
+                    out.push_str(&format!("  branch: {branch}\n"));
+                    let (n_s, grid_s, tg_s) =
+                        qwen38_affine_gate_up_launch(self.affine2_geo, true, g.rows);
+                    let (n_p, grid_p, tg_p) =
+                        qwen38_affine_gate_up_launch(self.affine2_geo, false, g.rows);
+                    out.push_str(&format!("  swiglu  {n_s} grid={grid_s:?} tg={tg_s:?}\n"));
+                    out.push_str(&format!("  pair    {n_p} grid={grid_p:?} tg={tg_p:?}\n"));
+                    let bytes = |w: &GpuAffine| -> u64 {
+                        (w.rows as u64) * (w.cols as u64) * (w.bits as u64) / 8
+                    };
+                    out.push_str(&format!(
+                        "  code bytes per layer (gate+up) = {}\n",
+                        bytes(g) + bytes(u)
+                    ));
+                }
+                _ => {
+                    out.push_str("  NOT affine -- falling through to the q4 path\n");
+                    if let Ok(q) = self.q4(&gate_name) {
+                        out.push_str(&format!(
+                            "  q4 gate rows={} cols={} group={}\n",
+                            q.rows, q.cols, q.group_size
+                        ));
+                    }
+                }
+            }
+            out
+        }
+
         /// The same organ, over the same 64 layers and the same REAL artifact
         /// weights, run through the MULTI-POSITION kernels for `chunk` positions
         /// at once.
@@ -10487,6 +10553,72 @@ mod mixed_catalog_contract_tests {
             failures.len(),
             failures.join("\n")
         );
+    }
+}
+
+#[cfg(test)]
+mod affine_gate_up_abi_tests {
+    use super::{qwen38_affine_gate_up_launch, Affine2Geo};
+
+    /// A with_swiglu=false request must never resolve to a SwiGLU kernel.
+    ///
+    /// The two forms have DIFFERENT buffer layouts. The pair caller binds
+    /// 7=gate_out, 8=up_out, 9=rows, 10=cols; the SwiGLU kernel expects
+    /// 7=act, 8=rows, 9=cols. Dispatching one against the other makes the
+    /// kernel read `rows` from the up-output BUFFER, so `row < rows` fails for
+    /// nearly every thread and the dispatch returns fast with a wrong answer.
+    ///
+    /// Measured on the live catalog before this guard: the pair arm over 64
+    /// layers finished in 866,874 ns, which implies 4112.7 GB/s against a
+    /// measured 778.8 GB/s roof -- 5.3x a physical ceiling. A silent wrong
+    /// answer wearing a fast number, which is the worst shape a defect can take.
+    ///
+    /// `Affine2Geo::Bitcast` had no unfused kernel and its arm said, in a
+    /// comment, that it "falls back to production rather than naming a kernel
+    /// that does not exist" -- then named the production SWIGLU kernel.
+    /// Falling back to the production PAIR kernel is what that intent means.
+    #[test]
+    fn no_geo_resolves_an_unfused_request_to_a_swiglu_kernel() {
+        let geos = [
+            Affine2Geo::QmvFast,
+            Affine2Geo::Wide64,
+            Affine2Geo::Tgx,
+            Affine2Geo::Tgsb,
+            Affine2Geo::Pipe,
+            Affine2Geo::SplitK4,
+            Affine2Geo::SplitK4Vec,
+            Affine2Geo::AccFuse,
+            Affine2Geo::FoldAddqx,
+            Affine2Geo::Bitcast,
+            Affine2Geo::BiasPrep,
+            Affine2Geo::Tpr64,
+            Affine2Geo::RuntimeDiv,
+        ];
+        let mut bad = Vec::new();
+        for geo in geos {
+            let (name, _, _) = qwen38_affine_gate_up_launch(geo, false, 17_408);
+            if name.contains("swiglu") {
+                bad.push(format!("{geo:?} -> {name}"));
+            }
+        }
+        assert!(
+            bad.is_empty(),
+            "these geos resolve an UNFUSED gate_up request to a SwiGLU kernel, whose \
+buffer layout the unfused caller does not bind: {bad:?}"
+        );
+    }
+
+    /// And the fused request must still resolve to a fused kernel, so the guard
+    /// above cannot be satisfied by breaking the other direction.
+    #[test]
+    fn a_fused_request_still_resolves_to_a_fused_kernel() {
+        for geo in [Affine2Geo::Bitcast, Affine2Geo::Tpr64, Affine2Geo::Wide64] {
+            let (name, _, _) = qwen38_affine_gate_up_launch(geo, true, 17_408);
+            assert!(
+                name.contains("swiglu"),
+                "{geo:?} with_swiglu=true resolved to {name}, which is not fused"
+            );
+        }
     }
 }
 

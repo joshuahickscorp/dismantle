@@ -88,6 +88,9 @@ mod macos {
 
         // A no-op command buffer, so the instrument is shown not to be measuring
         // nothing. The organ census carries the same control at 125 ns.
+        // What the catalog actually resolved to, before any timing is trusted.
+        eprint!("{}", session.probe_gate_up_geometry(0));
+
         let noop = session
             .measure_isolated_organ("noop_empty")
             .unwrap_or_else(|e| fail(e));

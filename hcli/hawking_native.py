@@ -1329,6 +1329,7 @@ class HawkingNativeConnector:
         wall_s: float,
         mode: str,
         clamped: bool,
+        payload_max_tokens: Optional[int] = None,
         retry_count: int = 0,
         resident_health: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -1484,6 +1485,7 @@ class HawkingNativeConnector:
             # where the resident reported 3581 -- 1.88x on what should be the
             # same string -- and the source names which tokenizer said so.
             "prompt_token_count_source": prompt.token_count_source,
+            "payload_max_tokens_received": payload_max_tokens,
             "rendered_prompt_chars": len(prompt.text),
         }
         return {
@@ -1515,6 +1517,13 @@ class HawkingNativeConnector:
         if not isinstance(payload, dict):
             raise HawkingNativeProtocolError("native model payload must be an object")
         prompt = self._render(payload)
+        # The RAW request, before _limits touches it. The receipt records the
+        # engine's PLAN, and _limits with the plan's 2048 and the observed
+        # prompt returns 2048 -- yet the grant was 1446. Either the payload
+        # already carried 1446 and the recorded plan is stale, or _limits
+        # clamped for a reason three reads of it did not find. One field
+        # separates those, and reading the code again will not.
+        self._last_payload_max_tokens = payload.get("max_tokens")
         max_new_tokens, max_seq_len, clamped = self._limits(payload, prompt.prompt_tokens)
         limit = float(timeout if timeout is not None else os.environ.get("HCLI_MODEL_TIMEOUT", "1800"))
         mode = self.mode
@@ -1535,6 +1544,7 @@ class HawkingNativeConnector:
                 wall_s=wall_s,
                 mode=mode,
                 clamped=clamped,
+                payload_max_tokens=getattr(self, "_last_payload_max_tokens", None),
             )
 
         if self.resident is None:
@@ -1591,6 +1601,7 @@ class HawkingNativeConnector:
             wall_s=wall_s,
             mode=mode,
             clamped=clamped,
+            payload_max_tokens=getattr(self, "_last_payload_max_tokens", None),
             retry_count=retry_count,
             resident_health=self.resident.health(),
         )

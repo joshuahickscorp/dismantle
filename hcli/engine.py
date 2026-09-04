@@ -4270,6 +4270,7 @@ class Engine:
                 "profile_max_seq_len",
                 "prompt_tokens_used_for_budget",
                 "prompt_token_count_source",
+                "payload_max_tokens_received",
                 "rendered_prompt_chars",
             ):
                 value = native.get(key)

@@ -5,6 +5,8 @@ consumed here. This module is the missing owner of the loop that drives them.
 """
 from __future__ import annotations
 
+from .wall_profile import phase as _wall_phase
+
 import hashlib
 import json
 import os
@@ -629,6 +631,7 @@ class Mission:
             return
         self.checkpoint()
 
+    @_wall_phase("persistence")
     def checkpoint(self) -> Path:
         """Write a coherent generation, DAG first, and fail loudly if it cannot.
 
@@ -976,6 +979,7 @@ class Mission:
         except Exception as exc:
             self._done.put({"id": wu.id, "error": exc})
 
+    @_wall_phase("workunit", total=True)
     def _run_unit(self, wu: WorkUnit) -> Dict[str, Any]:
         if wu.id in self._adopted_unit_ids and getattr(wu, "backend_task_id", None):
             return self._resume_adopted_grok(wu)
@@ -1037,6 +1041,7 @@ class Mission:
             "cancelled": False,
         }
 
+    @_wall_phase("context_compile")
     def _unit_context(self, wu: WorkUnit) -> Dict[str, Any]:
         self._maybe_compile()
         events: List[Any] = []

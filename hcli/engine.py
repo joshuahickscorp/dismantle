@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .wall_profile import phase as _wall_phase
+
 import ast
 import hashlib
 import json
@@ -1610,6 +1612,7 @@ class Engine:
         self.last_result = result
         return result
 
+    @_wall_phase("tools")
     def _run_tool_calls(
         self,
         calls: List[Dict[str, Any]],
@@ -4363,6 +4366,7 @@ class Engine:
         )
         return isinstance(reasoning, str) and bool(reasoning.strip())
 
+    @_wall_phase("resident")
     def _call_model(
         self,
         prompt: str,

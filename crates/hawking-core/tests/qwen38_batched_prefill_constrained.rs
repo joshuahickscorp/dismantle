@@ -5,7 +5,8 @@
 
 use hawking_core::json_constrain::{JsonConstraint, JsonVocabIndex};
 use hawking_core::model::qwen38_hybrid_decode::{
-    generate_constrained, load_qwen38_tokenizer, Qwen38HybridDecodeSession, Qwen38HybridWeights,
+    generate_constrained, generate_greedy, load_qwen38_tokenizer, Qwen38HybridDecodeSession,
+    Qwen38HybridWeights,
 };
 use std::sync::Arc;
 
@@ -117,5 +118,66 @@ identical={} seq_stop={} bat_stop={}",
     assert_eq!(seq.new_tokens(), bat.new_tokens());
     assert_eq!(seq.stop_reason, bat.stop_reason);
 
+    std::env::remove_var("HAWKING_QWEN38_BATCH_PREFILL");
+}
+
+/// Does the BATCHED route reach 100 fresh tok/s at REAL prompt lengths?
+///
+/// Every 8K/16K/32K fresh-prefill figure this campaign holds was taken through the
+/// resident, which always snapshots a prefix checkpoint --  and
+/// `qwen38_batched_prefill_allowed` refuses batching whenever a snapshot or reuse
+/// is in play. So all of them are the SEQUENTIAL route. The batched route had only
+/// ever been measured at 321 prompt tokens.
+#[test]
+fn batched_prefill_rate_by_prompt_length() {
+    if !artifact_present() {
+        eprintln!("skipping length sweep: artifact missing at {ARTIFACT}");
+        return;
+    }
+    if hawking_core::metal::MetalContext::new().is_err() {
+        eprintln!("skipping length sweep: no Metal GPU");
+        return;
+    }
+    fusion_env();
+    let weights = match Qwen38HybridWeights::load(ARTIFACT) {
+        Ok(w) => std::sync::Arc::new(w),
+        Err(err) => {
+            eprintln!("skipping length sweep: load failed: {err}");
+            return;
+        }
+    };
+    let tokenizer = load_qwen38_tokenizer(TOKENIZER).expect("tokenizer");
+    let unit = "The Hawking runtime schedules Metal command buffers across sixty GPU cores. ";
+    const SWEEP_MAX_SEQ: usize = 20480;
+
+    for target in [1024usize, 4096, 8192] {
+        let mut text = String::new();
+        while tokenizer.encode(&text, false).map(|v| v.len()).unwrap_or(0) < target {
+            text.push_str(unit);
+        }
+        let prompt = tokenizer.encode(&text, false).expect("encode");
+        let n = prompt.len();
+
+        std::env::set_var("HAWKING_QWEN38_BATCH_PREFILL", "0");
+        let mut s0 = Qwen38HybridDecodeSession::attach(Arc::clone(&weights), SWEEP_MAX_SEQ)
+            .expect("attach sequential");
+        let seq = generate_greedy(&mut s0, &prompt, 4).expect("sequential generation");
+
+        std::env::set_var("HAWKING_QWEN38_BATCH_PREFILL", "1");
+        let mut s1 = Qwen38HybridDecodeSession::attach(Arc::clone(&weights), SWEEP_MAX_SEQ)
+            .expect("attach batched");
+        let bat = generate_greedy(&mut s1, &prompt, 4).expect("batched generation");
+
+        assert!(!seq.batched_prefill, "arm 0 was not sequential");
+        assert!(bat.batched_prefill, "arm 1 was not batched");
+        assert_eq!(seq.new_tokens(), bat.new_tokens(), "token identity broke at {n} tokens");
+
+        let seq_tps = n as f64 / (seq.prefill_wall_ns as f64 / 1e9);
+        let bat_tps = n as f64 / (bat.prefill_wall_ns as f64 / 1e9);
+        println!(
+            "SWEEP prompt_tokens={} seq_tok_s={:.2} bat_tok_s={:.2} speedup={:.3} seq_disp={} bat_disp={} identical=true",
+            n, seq_tps, bat_tps, bat_tps / seq_tps, seq.prefill_dispatches, bat.prefill_dispatches
+        );
+    }
     std::env::remove_var("HAWKING_QWEN38_BATCH_PREFILL");
 }

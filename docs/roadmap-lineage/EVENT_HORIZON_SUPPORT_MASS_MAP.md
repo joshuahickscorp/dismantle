@@ -1,6 +1,6 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` at `d41092f85`. This is the support
+Measured on `refactor/event-horizon` at `22c0cc537`. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -14,9 +14,9 @@ support.
 
 | measure | LOC | files |
 |---|---:|---:|
-| product | 498,013 | 635 |
-| support | 804,873 | 2,036 |
-| active total | 1,302,886 | 2,671 |
+| product | 498,012 | 635 |
+| support | 804,953 | 2,037 |
+| active total | 1,302,965 | 2,672 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's

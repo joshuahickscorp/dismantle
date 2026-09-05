@@ -7,7 +7,7 @@ a close: every CONSOLIDATE / VERIFIED_EXISTING row is closed by driving the
 existing mechanism until a material mutation is DETECTED, and at least one
 canary is shown failing to detect.
 
-    python3 tools/headless/vmcp_lattice_disposition.py
+    python3 tools/vmcp/lattice_disposition.py
 """
 from __future__ import annotations
 

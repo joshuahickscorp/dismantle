@@ -583,12 +583,12 @@ def zeros_controls() -> dict[str, Any]:
 def _found_prior() -> list[dict[str, str]]:
     return [
         {
-            "path": "tools/headless/doctor_diagnosis.py",
-            "what": "N047 organ diagnosis on parent tensors. Not called: it streams BF16 weights.",
+            "path": "receipts/headless/DOCTOR_DIAGNOSIS.json",
+            "what": "Historical N047 organ diagnosis evidence on parent tensors; the producer is retired because it was not called by the product path.",
         },
         {
-            "path": "tools/headless/doctor_transfer.py",
-            "what": "CANONICAL_ORDER + THREE_ZEROS as documentation. Extended here as fail-able checks.",
+            "path": "receipts/headless/DOCTOR_TRANSFER.json",
+            "what": "Historical CANONICAL_ORDER + THREE_ZEROS evidence retained as a receipt; the redundant producer is retired.",
         },
         {
             "path": "tools/odyssey/doctor_tournament.py",
@@ -732,7 +732,7 @@ def build(repo: Path | None = None) -> Path:
             "AccessLog refuses weight shards; receipt records weight_bytes_loaded=0.",
         ],
         "negative_findings": [
-            "tools/headless/doctor_diagnosis.py still requires parent tensors; this lane does not call it.",
+            "Historical parent-tensor diagnosis is receipt-only; this lane does not load parent weights.",
             "tools/odyssey/doctor_tournament.py.probes() opens safetensors; not called.",
             "Activation/logit/hidden-state probes and Hessian are ABSENT (named, not invented).",
             "FPGA/U50, DGX, eGPU are ABSENT hardware; DEVICE COMPILE stays STATIC_ONLY.",

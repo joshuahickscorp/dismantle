@@ -17,7 +17,7 @@ it, and let a verifier ask whether the recorded evidence still supports a claim
 about that file. That claim can fail, which is the whole point -- the negative
 control mutates the file after capture and the same verifier must then refuse.
 
-    python3 tools/headless/hcli_vmcp_integration.py
+    python3 tools/vmcp/hcli_integration.py
 """
 
 from __future__ import annotations

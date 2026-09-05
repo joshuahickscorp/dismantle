@@ -182,21 +182,21 @@ GATES: dict[str, dict[str, Any]] = {
     ),
     "VMCP_STATE_LATTICE": _p(
         era="I", gene=IA, acc=(7706, 7738),
-        paths=("tools/headless/vmcp_lattice_disposition.py", "hcli/vmcp_adapter.py"),
-        modules=("tools.headless.vmcp_lattice_disposition", "hcli.vmcp_adapter"),
+        paths=("tools/vmcp/lattice_disposition.py", "hcli/vmcp_adapter.py"),
+        modules=("tools.vmcp.lattice_disposition", "hcli.vmcp_adapter"),
         receipts=("receipts/headless/VMCP_LATTICE_DISPOSITION.json",),
     ),
     "VMCP_DEEP_DIGEST": _p(
         era="I", gene=IA, acc=(7706, 7738),
         deps=("VMCP_STATE_LATTICE",),
-        paths=("tools/headless/vmcp_lattice_disposition.py",),
-        modules=("tools.headless.vmcp_lattice_disposition",),
+        paths=("tools/vmcp/lattice_disposition.py",),
+        modules=("tools.vmcp.lattice_disposition",),
     ),
     "VMCP_TRUTH_LEDGER": _p(
         era="I", gene=IA, acc=(7706, 7738),
         deps=("VMCP_DEEP_DIGEST",),
-        paths=("tools/headless/vmcp_forgery_canary.py",),
-        modules=("tools.headless.vmcp_forgery_canary",),
+        paths=("tools/vmcp/forgery_canary.py",),
+        modules=("tools.vmcp.forgery_canary",),
         receipts=("receipts/headless/VMCP_FORGERY_CANARY.json",),
     ),
     "VMCP_RECEIPT_LAW": _p(
@@ -208,39 +208,39 @@ GATES: dict[str, dict[str, Any]] = {
     ),
     "VMCP_TOOL_DOCTOR": _p(
         era="I", gene=IA, acc=(7741, 7767),
-        paths=("tools/headless/vmcp_capability_probe.py",),
-        modules=("tools.headless.vmcp_capability_probe",),
+        paths=("tools/vmcp/capability_probe.py",),
+        modules=("tools.vmcp.capability_probe",),
         receipts=("receipts/headless/VMCP_CAPABILITY_SURFACE.json",),
     ),
     "VMCP_FILE_CLASSIFIER": _p(
         era="I", gene=IA, acc=(7793, 7806),
         deps=("VMCP_TOOL_DOCTOR",),
-        paths=("tools/headless/vmcp_capability_probe.py",),
-        modules=("tools.headless.vmcp_capability_probe",),
+        paths=("tools/vmcp/capability_probe.py",),
+        modules=("tools.vmcp.capability_probe",),
     ),
     "VMCP_WEB_CAPTURE": _p(
         era="I", gene=IA, acc=(7827, 7840),
         deps=("VMCP_TOOL_DOCTOR",),
-        paths=("tools/headless/vmcp_capability_probe.py",),
-        modules=("tools.headless.vmcp_capability_probe",),
+        paths=("tools/vmcp/capability_probe.py",),
+        modules=("tools.vmcp.capability_probe",),
     ),
     "VMCP_VISUAL_DIFF": _p(
         era="I", gene=IA, acc=(7841, 7854),
         deps=("VMCP_TOOL_DOCTOR",),
-        paths=("tools/headless/vmcp_capability_probe.py",),
-        modules=("tools.headless.vmcp_capability_probe",),
+        paths=("tools/vmcp/capability_probe.py",),
+        modules=("tools.vmcp.capability_probe",),
     ),
     "VMCP_SPATIAL_VALIDATE": _p(
         era="I", gene=IA, acc=(7855, 7865),
         deps=("VMCP_TOOL_DOCTOR",),
-        paths=("tools/headless/vmcp_capability_probe.py",),
-        modules=("tools.headless.vmcp_capability_probe",),
+        paths=("tools/vmcp/capability_probe.py",),
+        modules=("tools.vmcp.capability_probe",),
     ),
     "VMCP_PTY_CAPTURE": _p(
         era="I", gene=IA, acc=(7866, 7881),
         deps=("VMCP_TOOL_DOCTOR",),
-        paths=("tools/headless/vmcp_capability_probe.py",),
-        modules=("tools.headless.vmcp_capability_probe",),
+        paths=("tools/vmcp/capability_probe.py",),
+        modules=("tools.vmcp.capability_probe",),
     ),
     "AGENTOS_BEHAVIOR_LAB": _p(
         era="I", gene=IA, acc=(7882, 7910),
@@ -256,8 +256,8 @@ GATES: dict[str, dict[str, Any]] = {
     "VMCP_AGENTOS_INTEGRATION": _p(
         era="I", gene=IA, acc=(7628, 7630),
         deps=("VMCP_RECEIPT_LAW", "VMCP_COMPACT_SURFACE"),
-        paths=("hcli/agentos/vmcp_gate.py", "tools/headless/hcli_vmcp_integration.py"),
-        modules=("hcli.agentos.vmcp_gate", "tools.headless.hcli_vmcp_integration"),
+        paths=("hcli/agentos/vmcp_gate.py", "tools/vmcp/hcli_integration.py"),
+        modules=("hcli.agentos.vmcp_gate", "tools.vmcp.hcli_integration"),
         receipts=("receipts/headless/VMCP_AGENTOS_INTEGRATION.json",),
     ),
     "AGENTOS_DETERMINISTIC_OFFLOAD": _p(
@@ -675,7 +675,7 @@ for _gate, _blocker in _THEIA_EXTERNAL_BLOCKERS.items():
 # ---------------------------------------------------------------------------
 # VMCP organs: cite what implements the capability, not what probes a vendor.
 #
-# Six VMCP gates pointed at tools/headless/vmcp_capability_probe.py. That file
+# Six VMCP gates pointed at tools/vmcp/capability_probe.py. That file
 # MEASURES the external visionmcp package -- it is a probe of somebody else's
 # tool, run rather than called -- so the auditor correctly found no call site and
 # correctly read six capabilities as unwired scaffolding. Hawking's own organs
@@ -755,19 +755,19 @@ for _gate, _blocker in _VMCP_EXTERNAL_BLOCKERS.items():
 #
 # tools/acceptance/vmcp/gates.py:237-241 calls prove_deep_digest,
 # prove_truth_ledger, prove_asset_lattice and prove_decode_lattice directly.
-# All four live in tools/headless/vmcp_lattice_disposition.py -- including
+# All four live in tools/vmcp/lattice_disposition.py -- including
 # prove_truth_ledger, which is why VMCP_TRUTH_LEDGER also gets that module
 # rather than only the forgery canary its catalogue row pointed at.
 _VMCP_LATTICE_SYMBOLS: dict[str, tuple[tuple[str, str], ...]] = {
     "VMCP_STATE_LATTICE": (
-        ("tools.headless.vmcp_lattice_disposition", "prove_asset_lattice"),
-        ("tools.headless.vmcp_lattice_disposition", "prove_decode_lattice"),
+        ("tools.vmcp.lattice_disposition", "prove_asset_lattice"),
+        ("tools.vmcp.lattice_disposition", "prove_decode_lattice"),
     ),
     "VMCP_DEEP_DIGEST": (
-        ("tools.headless.vmcp_lattice_disposition", "prove_deep_digest"),
+        ("tools.vmcp.lattice_disposition", "prove_deep_digest"),
     ),
     "VMCP_TRUTH_LEDGER": (
-        ("tools.headless.vmcp_lattice_disposition", "prove_truth_ledger"),
+        ("tools.vmcp.lattice_disposition", "prove_truth_ledger"),
     ),
 }
 
@@ -777,8 +777,8 @@ for _gate, _syms in _VMCP_LATTICE_SYMBOLS.items():
     ] + list(GATES[_gate].get("symbols") or [])
     _mods = {_m for _m, _ in _syms}
     GATES[_gate]["modules"] = sorted(_mods | set(GATES[_gate].get("modules") or []))
-    if "tools/headless/vmcp_lattice_disposition.py" not in (GATES[_gate].get("code_paths") or []):
-        GATES[_gate]["code_paths"] = ["tools/headless/vmcp_lattice_disposition.py"] + list(
+    if "tools/vmcp/lattice_disposition.py" not in (GATES[_gate].get("code_paths") or []):
+        GATES[_gate]["code_paths"] = ["tools/vmcp/lattice_disposition.py"] + list(
             GATES[_gate].get("code_paths") or []
         )
 

@@ -59,7 +59,7 @@ _REASONING_KEYS = {
     "thinking",
 }
 
-# Matches tools/headless/structured_output_probe.py::RESULT_SCHEMA. Do not
+# Matches tools/bench/structured_output_probe.py::RESULT_SCHEMA. Do not
 # diverge: constrained decoding is only a guarantee if the schema is the same
 # contract the system prompt already describes.
 HCLI_RESULT_SCHEMA: Dict[str, Any] = {

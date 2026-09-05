@@ -13,7 +13,7 @@ checkout read-only via PYTHONPATH.
 
 Run from the repository root:
 
-    python3 tools/headless/vmcp_capability_probe.py
+    python3 tools/vmcp/capability_probe.py
 """
 from __future__ import annotations
 

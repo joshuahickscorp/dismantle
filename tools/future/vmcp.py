@@ -150,7 +150,7 @@ def _load_optional(rel: str) -> tuple[dict[str, Any] | None, str]:
 def locate_visionmcp() -> dict[str, Any]:
     """Record where the foreign package is, without treating sparse as absence.
 
-    Candidates match tools/headless/vmcp_capability_probe.py. This sidecar
+    Candidates match tools/vmcp/capability_probe.py. This sidecar
     never imports visionmcp: an import is not a call of the compact surface,
     and the heavy stack is out of scope here.
     """
@@ -361,12 +361,12 @@ def _organ_table(located: Mapping[str, Any]) -> list[dict[str, Any]]:
         predicate=(
             "production AST Call of CaptureBus.observe from an HCLI entry "
             "after VISIONMCP_SRC is importable (tools/headless/"
-            "hcli_vmcp_integration.py already contains that Call, but it is "
+            "hcli_integration.py already contains that Call, but it is "
             "not reachable until the foreign package is on sys.path)"
         ),
         blocker=(
             "CaptureBus is real in visionmcp and called from "
-            "tools/headless/hcli_vmcp_integration.py:observe_file; this "
+            "tools/vmcp/hcli_integration.py:observe_file; this "
             "worktree cannot import visionmcp from HEAD"
         ),
         missing_dependency="VISIONMCP_SRC / a materialized visionmcp/src in the checkout",
@@ -407,12 +407,12 @@ def _organ_table(located: Mapping[str, Any]) -> list[dict[str, Any]]:
             "organ": "CORE / CaptureBus.observe (the acquire seam)",
             "disposition": "PARKED",
             "exists_today": (
-                "tools/headless/hcli_vmcp_integration.py:observe_file CALLS "
+            "tools/vmcp/hcli_integration.py:observe_file CALLS "
                 "CaptureBus.observe; FileEye implements SensorAdapter. Proven "
                 "when visionmcp is on sys.path. Not in hawking HEAD."
             ),
             "aspiration": "HCLI tool_registry verb that calls observe_file",
-            "symbol": "tools.headless.hcli_vmcp_integration.observe_file",
+            "symbol": "tools.vmcp.hcli_integration.observe_file",
             "call_sites": [],
             "evidence_tier": "STATIC",
             "wake": capture_wake,

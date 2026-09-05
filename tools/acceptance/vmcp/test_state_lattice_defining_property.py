@@ -107,7 +107,7 @@ def test_the_functions_the_receipts_claim_were_called_actually_exist():
     the test cite the module, which is how the auditor knows this gate is verified
     at all -- a test that verifies a capability without naming it is invisible.
     """
-    from tools.headless import vmcp_lattice_disposition as lat
+    from tools.vmcp import lattice_disposition as lat
 
     for name in ("prove_deep_digest", "prove_truth_ledger",
                  "prove_asset_lattice", "prove_decode_lattice"):

@@ -219,7 +219,7 @@ def test_runners_are_calls_not_just_imports():
     assert set(RUNNERS) == set(ASSIGNED)
     src = Path(__file__).with_name("gates.py").read_text(encoding="utf-8")
     # Load-bearing: these symbols are passed to C.call (an import is not a call).
-    assert "tools.headless.hcli_vmcp_integration.observe_file" in src
+    assert "tools.vmcp.hcli_integration.observe_file" in src
     assert "visionmcp.worldir.canonical.content_digest" in src
     assert "tools.future.vmcp.compact_surface" in src
     assert "visionmcp.worlds.spatial.io.obj.obj_file_counts" in src

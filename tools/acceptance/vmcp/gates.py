@@ -23,7 +23,7 @@ from typing import Any, Mapping
 
 from tools.acceptance.vmcp import common as C
 
-# --------------------------------------------------------------------------- visionmcp / headless
+# --------------------------------------------------------------------------- visionmcp / VMCP boundary
 
 
 def _vm_src() -> Path:
@@ -32,7 +32,7 @@ def _vm_src() -> Path:
 
 def _load_lattice():
     _vm_src()
-    from tools.headless import vmcp_lattice_disposition as lat
+    from tools.vmcp import lattice_disposition as lat
 
     return lat
 
@@ -294,7 +294,7 @@ def run_VMCP_STATE_LATTICE() -> dict[str, Any]:
     t0 = time.perf_counter()
     invoked: list[dict[str, Any]] = []
     lat = _load_lattice()
-    src = C.call("tools.headless.vmcp_lattice_disposition.locate_visionmcp_src", lat.locate_visionmcp_src)
+    src = C.call("tools.vmcp.lattice_disposition.locate_visionmcp_src", lat.locate_visionmcp_src)
     invoked.append(src)
     if src["raised"]:
         return _blocked(
@@ -306,10 +306,10 @@ def run_VMCP_STATE_LATTICE() -> dict[str, Any]:
             command=["python3", "-m", "tools.acceptance.vmcp", "--gate", "VMCP_STATE_LATTICE"],
             tier="STATIC",
         )
-    load = C.call("tools.headless.vmcp_lattice_disposition._load_vm", lat._load_vm)
+    load = C.call("tools.vmcp.lattice_disposition._load_vm", lat._load_vm)
     invoked.append(load)
     scan = C.call(
-        "tools.headless.vmcp_lattice_disposition._name_scan",
+        "tools.vmcp.lattice_disposition._name_scan",
         lat._name_scan,
         Path(src["value"]),
     )
@@ -317,13 +317,13 @@ def run_VMCP_STATE_LATTICE() -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="acc-lattice-") as raw:
         tmp = Path(raw)
         table_call = C.call(
-            "tools.headless.vmcp_lattice_disposition.prove_deep_digest",
+            "tools.vmcp.lattice_disposition.prove_deep_digest",
             lambda: _live_lattice_table(lat, load["value"], tmp, scan["value"]),
         )
         # The lambda CALLS every prove_* ; record them explicitly too.
         invoked.append(
             {
-                "symbol": "tools.headless.vmcp_lattice_disposition.prove_deep_digest",
+                "symbol": "tools.vmcp.lattice_disposition.prove_deep_digest",
                 "kind": "call",
                 "raised": table_call["raised"],
                 "error": table_call["error"],
@@ -343,7 +343,7 @@ def run_VMCP_STATE_LATTICE() -> dict[str, Any]:
         ):
             invoked.append(
                 {
-                    "symbol": f"tools.headless.vmcp_lattice_disposition.{name}",
+                    "symbol": f"tools.vmcp.lattice_disposition.{name}",
                     "kind": "call",
                     "raised": table_call["raised"],
                     "error": table_call["error"],
@@ -443,7 +443,7 @@ def run_VMCP_DEEP_DIGEST() -> dict[str, Any]:
     _vm_src()
     from visionmcp.worldir.canonical import content_digest
     from tools.future.vmcp import see, prove
-    from tools.headless.hcli_vmcp_integration import observe_file
+    from tools.vmcp.hcli_integration import observe_file
 
     with tempfile.TemporaryDirectory(prefix="acc-digest-") as raw:
         tmp = Path(raw)
@@ -453,7 +453,7 @@ def run_VMCP_DEEP_DIGEST() -> dict[str, Any]:
         seen = C.call("tools.future.vmcp.see", see, subject)
         invoked.append(seen)
         obs = C.call(
-            "tools.headless.hcli_vmcp_integration.observe_file",
+            "tools.vmcp.hcli_integration.observe_file",
             observe_file,
             tmp / "project",
             subject,
@@ -552,19 +552,19 @@ def run_VMCP_TRUTH_LEDGER() -> dict[str, Any]:
     t0 = time.perf_counter()
     invoked: list[dict[str, Any]] = []
     lat = _load_lattice()
-    load = C.call("tools.headless.vmcp_lattice_disposition._load_vm", lat._load_vm)
+    load = C.call("tools.vmcp.lattice_disposition._load_vm", lat._load_vm)
     invoked.append(load)
     with tempfile.TemporaryDirectory(prefix="acc-truth-") as raw:
         tmp = Path(raw)
         proof = C.call(
-            "tools.headless.vmcp_lattice_disposition.prove_truth_ledger",
+        "tools.vmcp.lattice_disposition.prove_truth_ledger",
             lat.prove_truth_ledger,
             load["value"],
             tmp,
         )
         invoked.append(proof)
         bound = C.call(
-            "tools.headless.vmcp_lattice_disposition._bound_graph",
+        "tools.vmcp.lattice_disposition._bound_graph",
             lat._bound_graph,
             load["value"],
         )
@@ -709,7 +709,7 @@ def run_VMCP_RECEIPT_LAW() -> dict[str, Any]:
     t0 = time.perf_counter()
     invoked: list[dict[str, Any]] = []
     _vm_src()
-    from tools.headless.hcli_vmcp_integration import FileEye, observe_file, verify_capture
+    from tools.vmcp.hcli_integration import FileEye, observe_file, verify_capture
     from tools.future.vmcp import prove
 
     with tempfile.TemporaryDirectory(prefix="acc-receipt-") as raw:
@@ -719,7 +719,7 @@ def run_VMCP_RECEIPT_LAW() -> dict[str, Any]:
         subject.write_bytes(payload)
         started = time.time()
         obs = C.call(
-            "tools.headless.hcli_vmcp_integration.observe_file",
+            "tools.vmcp.hcli_integration.observe_file",
             observe_file,
             tmp / "project",
             subject,
@@ -731,7 +731,7 @@ def run_VMCP_RECEIPT_LAW() -> dict[str, Any]:
         if isinstance(summary, str):
             summary = json.loads(summary)
         verified = C.call(
-            "tools.headless.hcli_vmcp_integration.verify_capture",
+            "tools.vmcp.hcli_integration.verify_capture",
             verify_capture,
             tmp / "project",
             obs_v.get("capture_id") or "",
@@ -1778,7 +1778,7 @@ def run_VMCP_AGENTOS_INTEGRATION() -> dict[str, Any]:
     invoked: list[dict[str, Any]] = []
     _vm_src()
     from tools.future.vmcp import prove
-    from tools.headless.hcli_vmcp_integration import observe_file, verify_capture
+    from tools.vmcp.hcli_integration import observe_file, verify_capture
     from visionmcp.worlds.spatial.io.obj import obj_file_counts
 
     with tempfile.TemporaryDirectory(prefix="acc-integ-") as raw:
@@ -1787,14 +1787,14 @@ def run_VMCP_AGENTOS_INTEGRATION() -> dict[str, Any]:
         subject = tmp / "state.txt"
         subject.write_bytes(b"v10-canary\n")
         obs = C.call(
-            "tools.headless.hcli_vmcp_integration.observe_file",
+            "tools.vmcp.hcli_integration.observe_file",
             observe_file,
             tmp / "project",
             subject,
         )
         invoked.append(obs)
         ver = C.call(
-            "tools.headless.hcli_vmcp_integration.verify_capture",
+            "tools.vmcp.hcli_integration.verify_capture",
             verify_capture,
             tmp / "project",
             (obs.get("value") or {}).get("capture_id") or "",

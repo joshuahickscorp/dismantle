@@ -2,7 +2,7 @@
 """Forgery canary for the receipts AgentOS actually trusts.
 
 Attacks `CaptureBus.observe` / `CaptureBus.verify` with `ProjectStore` /
-`ArtifactStore` — the same seam `hcli_vmcp_integration.py` proved, in a
+`ArtifactStore` — the same seam `hcli_integration.py` proved, in a
 temporary project.
 
 Adversaries (each must be attempted; UNDETECTED is a finding, not a skip):
@@ -18,7 +18,7 @@ Adversaries (each must be attempted; UNDETECTED is a finding, not a skip):
 Positive control: an untampered capture must verify clean, or a canary that
 always says DETECTED would pass.
 
-    python3 tools/headless/vmcp_forgery_canary.py
+    python3 tools/vmcp/forgery_canary.py
 """
 from __future__ import annotations
 
@@ -1045,7 +1045,7 @@ def main() -> int:
                             "(verify(self, capture_id, *, claimed_target=None)) and, "
                             "when it is provided, fail with subject_mismatch unless "
                             "it equals capture['request']['target']. The AgentOS "
-                            "verifier in tools/headless/hcli_vmcp_integration.py "
+                            "verifier in tools/vmcp/hcli_integration.py "
                             "(_VERIFIER, ~lines 155-171) must then pass claimed_path "
                             "through; a content-only sha256 check is not subject-binding."
                         ),

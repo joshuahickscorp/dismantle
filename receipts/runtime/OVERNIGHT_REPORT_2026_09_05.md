@@ -170,3 +170,59 @@ wall taken late in a long mission is inflated by an unknown, position-dependent 
      Must be qualified by semantic execution, never reconstruction arithmetic.
   5. NOT next: decode micro-optimization. One stream already saturates the GPU (1.002x on
      two), so there is no scheduling headroom to harvest; the work is inside DeltaNet.
+
+---
+
+# ADDENDUM — three more substrate defects, found after the report above was written
+
+The report above concluded the bootstrap streak had not closed. Continuing to work it
+uncovered WHY, and it was never the model.
+
+## The bootstrap loop could not do the job, in three independent ways
+
+    F026  the verifier never compiled Rust
+          _validate recorded "no_checker_available" for every non-.py path and continued
+          without setting ok = False. HCLI deleted a correctness guard in Rust and was
+          ACCEPTED on `test hcli/test_engine_tool_loop.py exit 0`.
+          FIXED: .rs runs cargo check (13.5 s); uncheckable SOURCE fails closed.
+
+    F028  an unwindowed fs.read returns 0.77% of the file
+          qwen38_hybrid_decode.rs is 141,009 tokens, 14.5x the resident's ENTIRE 9,728-token
+          window. fs.read with no window returns 4,001 of 520,266 characters and sets
+          "truncated": true. fs.read has taken start_line/end_line all along and fs.search
+          reports match lines -- the PROMPT's worked example showed neither.
+          FIXED: the example searches, then reads a line window. Paid for by trimming prose,
+          because adding it verbatim broke a previously-fitting closed turn.
+
+    F030  the first call of every unit was cut at 947 tokens
+          The planning call -- the one that has to choose tool calls and reason -- hit
+          finish_reason "length" at exactly the grant, every time, with 5,802 tokens
+          physically available. Units died at cognition with checks: 0.
+          FIXED: HCLI_MODEL_TOKENS 1536 -> 4096 raises the grant to 3,507. The model then
+          emits 500-633 tokens and stops on its own, well inside the directive's <1000
+          preference. It was never rambling; it was being cut off mid-thought.
+
+None of the three is visible on a Python-on-Python task, which is what every earlier
+bootstrap success in this campaign was.
+
+## What the loop does now
+
+    80ccbd51  accepted a wrong Rust mutation on Python evidence
+    3e0ee71e  refused non-compiling Rust (cargo_check exit 101); died on `length`
+    4d6ae0f5  finishes its replies; rejected with reason NO_OP_MUTATION
+
+The failure moved one layer up at each step and now sits on SUBSTANCE: the semantic no-op
+rejection firing on a change that does nothing. That is the first legitimate failure of the
+night.
+
+## Corrected in the report above
+
+Section 6 attributes the prefill gap to F009 and F017. That stands, but the commit message
+for 81fae6a91 attributes the whole "missing 400 s" to F009 alone and overstates it -- F017
+(process degradation) is part of it. Recorded in the ledger as F021 rather than rewritten.
+
+## Still true
+
+Nothing was made faster. Decode 36.67 tok/s and fresh prefill 48.4/34.8/21.5 tok/s remain
+below both Odyssey floors. G001 remains open with zero accepted mutations. What changed is
+that the loop is now capable of the task it is being asked to do.

@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 767,951 | 1,995 |
-| active total | 1,265,963 | 2,630 |
+| support | 763,707 | 1,987 |
+| active total | 1,261,719 | 2,622 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's
@@ -32,7 +32,7 @@ also included in the total and must not become an UNKNOWN bucket.
 |---:|---|---:|---|
 | 1 | `research/lab` | 141,899 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 106,832 | CURRENT_VERIFICATION |
-| 3 | `research/hawking-experiments` | 83,926 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 3 | `research/hawking-experiments` | 79,682 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 4 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 5 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 6 | `tools/headless` | 34,903 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
@@ -70,7 +70,8 @@ also included in the total and must not become an UNKNOWN bucket.
 - `research/hawking-experiments`: retain decisive findings and minimal
   reproducers; delete superseded executable campaign machinery after checking
   provenance and negative controls. The G1 evidence runners are now retired;
-  their result payloads and experiment notes remain the archival signal.
+  their result payloads and selected experiment notes remain the archival signal;
+  eight unreferenced superseded reports were also removed.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

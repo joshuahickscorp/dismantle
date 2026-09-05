@@ -1221,7 +1221,6 @@ struct TensorLoc {
     data_offset: u64,
     nbytes: usize,
     shape: Vec<usize>,
-    dtype: String,
 }
 
 /// Index over the source BF16 safetensors shards. Opens shard headers once;
@@ -1285,7 +1284,6 @@ impl SourceBf16Index {
                         data_offset: 8 + header_len + begin,
                         nbytes,
                         shape: info.shape.clone(),
-                        dtype: info.dtype.clone(),
                     },
                 );
             }
@@ -1301,7 +1299,7 @@ impl SourceBf16Index {
         self.map.len()
     }
 
-    pub fn require(&self, name: &str) -> Result<&TensorLoc> {
+    pub(crate) fn require(&self, name: &str) -> Result<&TensorLoc> {
         self.map
             .get(name)
             .ok_or_else(|| model_err(format!("source index lacks tensor {name}")))

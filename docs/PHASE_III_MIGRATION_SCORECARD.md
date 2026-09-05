@@ -56,7 +56,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
 | current clean-tree census | 1,392,082 | 3,010 | 704,995 | 489,194 | 1,095 | 40.790% |
-| current after headless retirement waves | 1,381,289 | 2,997 | 694,193 | 489,194 | 1,095 | 41.202% |
+| current after headless and Rust cleanup waves | 1,381,207 | 2,997 | 694,193 | 489,112 | 1,095 | 41.198% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
 Python lines), leaving 60 tracked future-farm files at the Phase III

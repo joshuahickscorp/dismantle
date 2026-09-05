@@ -115,7 +115,7 @@ def is_product(path: str) -> bool:
             and "/benches/" not in path
             and not is_test(path)
         )
-    if path.startswith("tools/vmcp/"):
+    if path.startswith("hcli/agentos/vmcp/"):
         return not is_test(path)
     return False
 
@@ -277,7 +277,7 @@ def _selfcheck() -> None:
     assert not is_test("crates/hawking-core/src/lib.rs")
     assert is_product("crates/hawking-core/src/lib.rs")
     assert is_product("hcli/engine.py")
-    assert is_product("tools/vmcp/file_eye.py")
+    assert is_product("hcli/agentos/vmcp/file_eye.py")
     assert not is_product("crates/hawking-core/examples/flash_fast_chain.rs")
     assert not is_product("research/lab/runtime.py")
     print("selfcheck ok")

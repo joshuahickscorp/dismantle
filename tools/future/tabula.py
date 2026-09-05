@@ -226,7 +226,7 @@ RECOVERY_CANDIDATES: tuple[tuple[str, str], ...] = (
         "child-generation economy; Tabula is one method of CHILD generation and must carry lineage",
     ),
     (
-        "tools/vmcp/behavior_lab.py",
+        "hcli/agentos/vmcp/behavior_lab.py",
         "VMCP E.11 fixture matrix scores through evaluate(); zero-refusal is still refused",
     ),
 )
@@ -270,12 +270,12 @@ FLOOR_CALL_SITES: tuple[dict[str, str], ...] = (
         "via": "WIRED future.tabula",
     },
     {
-        "file": "tools/vmcp/behavior_lab.py",
+        "file": "hcli/agentos/vmcp/behavior_lab.py",
         "symbol": "tools.future.tabula.evaluate",
         "kind": "call",
     },
     {
-        "file": "tools/vmcp/behavior_lab.py",
+        "file": "hcli/agentos/vmcp/behavior_lab.py",
         "symbol": "tools.future.tabula.scores_from_behavior_lab",
         "kind": "call",
     },

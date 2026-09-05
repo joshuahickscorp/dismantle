@@ -2099,11 +2099,16 @@ def _invoke_tabula(arguments: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _invoke_vmcp(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    from hcli.agentos.vmcp.disposition import compact_surface
+
+    act = str(arguments.get("act") or "disposition")
+    result = compact_surface(act, arguments)
+    tier = str(result.get("evidence_tier") or EVIDENCE_TIER_INVOKE)
     return {
-        "ok": False,
-        "value": {"state": "PARKED", "reason": "VMCP prototype deferred pending hardening"},
-        "symbol": "future.vmcp",
-        "evidence_tier": EVIDENCE_TIER_STATIC,
+        "ok": True,
+        "value": result,
+        "symbol": "compact_surface",
+        "evidence_tier": tier,
     }
 
 
@@ -2224,8 +2229,8 @@ WIRED: dict[str, dict[str, Any]] = {
             "file, plus disposition of every named organ. PARKED acts return a "
             "wake, never an empty success."
         ),
-        "module": "tools/vmcp/disposition.py",
-        "dotted": "tools.vmcp.disposition",
+        "module": "hcli/agentos/vmcp/disposition.py",
+        "dotted": "hcli.agentos.vmcp.disposition",
         "symbol": "compact_surface",
         "family": "perception.vmcp",
         "handler": _invoke_vmcp,

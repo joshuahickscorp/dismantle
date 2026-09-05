@@ -181,7 +181,7 @@ def build_units() -> List[WorkUnit]:
         'assert per_seq_context(32768, 3) == 11008, per_seq_context(32768, 3)"'))
     units.append(_cpu_unit(
         "cpu.vmcp", "VMCP evidence still gates a WorkUnit, replay still refused",
-        f'{PY} tools/vmcp/hcli_integration.py'))
+        f'{PY} hcli/agentos/vmcp/hcli_integration.py'))
     units.append(_cpu_unit(
         "cpu.repair", "the repair tree still terminates",
         f'{PY} tools/headless/hcli_repair_homeostasis_test.py'))

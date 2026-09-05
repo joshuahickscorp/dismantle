@@ -48,12 +48,13 @@ copy of the core lifecycle classes. Goal compilation, WorkUnit identity,
 Mission state, and verifier orchestration each retain their established
 canonical modules.
 
-`tools/future/` and `tools/hcli/bootstrap/` are historical research and fossil
-surfaces, not live product authorities. Their fixtures and receipts remain
-available for audit and reproducibility. In particular, the scientific
-metabolism and resident-supervisor records use explicit sidecar names so they
-cannot be mistaken for `hcli.workunit.WorkUnit` or the live resident control
-loop.
+`tools/future/` is now a small retained set of call-path sidecars, not a second
+product authority. The uncalled producer/test farm was removed; its fixtures
+and receipts remain available for audit and reproducibility. The retained
+scientific metabolism and resident-supervisor records use explicit sidecar
+names so they cannot be mistaken for `hcli.workunit.WorkUnit` or the live
+resident control loop. `tools/hcli/bootstrap/` remains historical bootstrap
+documentation only.
 
 ## Rust workspace boundary
 
@@ -130,9 +131,9 @@ cargo check --workspace
 python3 -m pytest
 ```
 
-The default pytest target is the complete live `hcli/` package. Historical
-`tools/future/` harnesses are run explicitly because they write evidence
-fixtures and own a separate session setup.
+The default pytest target is the complete live `hcli/` package. Current
+acceptance and audit tests invoke retained sidecars directly; there is no
+separate uncalled `tools/future/` test harness.
 
 For isolated work, set `CARGO_TARGET_DIR`, `PYTHONPYCACHEPREFIX`, and the
 pytest cache directory to a temporary refactor-specific location. Compare

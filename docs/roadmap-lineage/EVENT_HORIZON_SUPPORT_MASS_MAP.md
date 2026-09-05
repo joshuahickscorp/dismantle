@@ -33,7 +33,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 1 | `research/lab` | 141,899 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `research/hawking-experiments` | 111,162 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 3 | `crates/hawking-core` | 106,832 | CURRENT_VERIFICATION |
-| 4 | `tools/future` | 60,633 | ACTIVE_RESEARCH / SUPERSEDED audit required |
+| 4 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 5 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 6 | `tools/headless` | 38,220 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 26,556 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |

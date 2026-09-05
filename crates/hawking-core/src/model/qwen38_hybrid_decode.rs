@@ -9009,31 +9009,64 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let wall = Instant::now();
         let prefill = Instant::now();
         let mut first_step_wall_ns = 0u64;
-        for (i, &token) in prompt.iter().enumerate().skip(reuse) {
+        // The JSON mask applies to SAMPLING, and prefill samples nothing except
+        // at the final position -- so a constrained decode does not need a
+        // sequential prefill, it needs host-side logits for ONE position. Both
+        // routes leave exactly that: `encode_prefill_terminal` runs lm_head into
+        // `workspace.logits` -- the buffer read a few lines below -- before its
+        // own argmax, and this path already discards that argmax to pick under
+        // the mask on the host. Prefilling one token at a time to satisfy a
+        // constraint that only reads the last position was paying decode prices
+        // for every prompt token: measured on a real mission packet, 6616 prompt
+        // tokens took 313.8 s at 916 dispatches each, 73% of the whole call.
+        //
+        // The two REAL blockers are the ones the unconstrained path already
+        // names: the batched route consumes the whole prompt in one pass, so it
+        // can honour neither `reuse` (which skips an already-computed prefix)
+        // nor `snapshot_at` (which needs the recurrent state part-way through,
+        // and that state is a running summary with no rewind). Both keep the
+        // sequential route, and taking the batched one anyway would buy a faster
+        // wall and a different answer.
+        let batched_prefill =
+            qwen38_batched_prefill_enabled() && reuse == 0 && snapshot_at.is_none();
+        if batched_prefill {
             let step_wall = Instant::now();
-            let (_, timing) = session.step(token)?;
+            // The sampled id is discarded on purpose: the constraint picks the
+            // first new token from masked logits below, exactly as it does after
+            // a sequential prefill's final step.
+            let (_, timing) = session.prefill_prompt(prompt)?;
             let step_ns = step_wall.elapsed().as_nanos() as u64;
-            if i == reuse {
-                first_step_wall_ns = step_ns;
-            }
+            first_step_wall_ns = step_ns;
             wall_ns_per_step.push(step_ns);
             gpu_ns.push(timing.gpu_ns);
             wait_ns.push(timing.wait_ns);
             encode_ns.push(timing.encode_ns);
             submit_ns.push(timing.submit_ns);
             dispatches.push(timing.dispatches);
-            active_weight_bytes.push(session.last_active_weight_bytes());
-            if snapshot.is_none() && snapshot_at == Some(i + 1) {
-                snapshot = Some(session.prefix_checkpoint()?);
+            active_weight_bytes.push(timing.active_weight_bytes);
+        } else {
+            for (i, &token) in prompt.iter().enumerate().skip(reuse) {
+                let step_wall = Instant::now();
+                let (_, timing) = session.step(token)?;
+                let step_ns = step_wall.elapsed().as_nanos() as u64;
+                if i == reuse {
+                    first_step_wall_ns = step_ns;
+                }
+                wall_ns_per_step.push(step_ns);
+                gpu_ns.push(timing.gpu_ns);
+                wait_ns.push(timing.wait_ns);
+                encode_ns.push(timing.encode_ns);
+                submit_ns.push(timing.submit_ns);
+                dispatches.push(timing.dispatches);
+                active_weight_bytes.push(session.last_active_weight_bytes());
+                if snapshot.is_none() && snapshot_at == Some(i + 1) {
+                    snapshot = Some(session.prefix_checkpoint()?);
+                }
             }
         }
         let prefill_wall_ns = prefill.elapsed().as_nanos() as u64;
         // Captured HERE, before decode appends to the same vectors. Summing at
         // the initializer would silently fold decode into the prefill figures.
-        // This path is sequential by construction -- a constrained decode needs
-        // the host in the loop for the JSON mask -- so batched_prefill is false
-        // as a fact, not as a default.
-        let batched_prefill = false;
         let prefill_dispatches = dispatches.iter().copied().fold(0u64, u64::saturating_add);
         let prefill_gpu_ns = {
             let mut total = 0u64;

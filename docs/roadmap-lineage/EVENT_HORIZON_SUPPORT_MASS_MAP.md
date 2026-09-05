@@ -1,7 +1,7 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` after the Qwen30 future-oracle and N051
-one-shot analysis waves. This is the support
+Measured on `refactor/event-horizon` after the Qwen30 future-oracle, N051
+one-shot analysis, and CUDA hypothesis waves. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 679,273 | 1,876 |
-| active total | 1,177,285 | 2,510 |
+| support | 677,774 | 1,875 |
+| active total | 1,175,786 | 2,509 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -31,7 +31,7 @@ also included in the total and must not become an UNKNOWN bucket.
 |---:|---|---:|---|
 | 1 | `research/lab` | 131,322 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
-| 3 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
+| 3 | `tools/future` | 59,157 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 38,129 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 6 | `tools/headless` | 32,994 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
@@ -71,6 +71,9 @@ also included in the total and must not become an UNKNOWN bucket.
 - `tools/headless`: the concluded N051 sensitivity allocation was already
   fully represented by its sealed receipt and bounded interpretation; its
   one-shot generator was retired.
+- `tools/future`: the static CUDA literature adapter was retired after its
+  sealed receipt became the canonical record; `science_corpus` retains the
+  schema vocabulary needed to read those hypotheses.
 - `research/hawking-experiments`: retain decisive findings and minimal
   reproducers; delete superseded executable campaign machinery after checking
   provenance and negative controls. The G1 evidence runners are now retired;

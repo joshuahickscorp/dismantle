@@ -38,12 +38,26 @@ if str(HERE) not in sys.path:
 import noetic_information_accounting as accounting  # noqa: E402
 from capability_suite import SUITE  # noqa: E402
 from causal_benchmark_law import REQUIREMENTS, audit as audit_law  # noqa: E402
-from noetic_dispatch_fusion import theoretical_after  # noqa: E402
 from noetic_multisession import (  # noqa: E402
     expected_n_copies_bytes,
     expected_shared_resident_bytes,
     one_body_not_n_copies,
 )
+
+# The former noetic_dispatch_fusion producer is retired; keep its small
+# accounting rule beside the live adversary that still uses it. The sealed
+# receipt remains the source for the historical measured result.
+def theoretical_after(mlp: str, qkv: bool, dn: bool) -> int:
+    dispatches = 964
+    if mlp == "pair":
+        dispatches -= 64
+    elif mlp == "swiglu":
+        dispatches -= 128
+    if qkv:
+        dispatches -= 32
+    if dn:
+        dispatches -= 48
+    return dispatches
 from noetic_parent_a import (  # noqa: E402
     DURABLE,
     RECORDED_TOKEN_IDS,
@@ -437,7 +451,7 @@ def attack_hidden_parent(*, live_gpu: bool) -> dict[str, Any]:
             rel = str(path.relative_to(REPO))
             hits.extend(_source_parent_weight_hits(path.read_text(encoding="utf-8", errors="replace"), rel))
     py_opens = []
-    for py in (HERE / "noetic_parent_a.py", HERE / "noetic_fused_subbit.py"):
+    for py in (HERE / "noetic_parent_a.py",):
         py_opens.extend(_ast_opens_parent_weights(py))
 
     prior = None
@@ -512,7 +526,7 @@ def attack_hidden_parent(*, live_gpu: bool) -> dict[str, Any]:
         "ran": True,
         "commands": [
             f"rg safetensors {DECODE_RS}",
-            "ast walk of noetic_parent_a.py / noetic_fused_subbit.py for open(.safetensors)",
+            "ast walk of noetic_parent_a.py for open(.safetensors)",
             (
                 "DYLD_INSERT_LIBRARIES=noetic_openlog.dylib fused_subbit --artifact-root "
                 "~/noetic/NOETIC_PARENT_A"

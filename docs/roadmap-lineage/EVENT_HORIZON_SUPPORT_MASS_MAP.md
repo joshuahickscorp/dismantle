@@ -1,6 +1,6 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` at `22c0cc537`. This is the support
+Measured on `refactor/event-horizon` at `746b50797`. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 804,953 | 2,037 |
-| active total | 1,302,965 | 2,672 |
+| support | 798,503 | 2,033 |
+| active total | 1,296,515 | 2,668 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's
@@ -33,7 +33,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 1 | `research/lab` | 141,899 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `research/hawking-experiments` | 111,162 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 3 | `crates/hawking-core` | 106,832 | CURRENT_VERIFICATION |
-| 4 | `tools/future` | 67,104 | ACTIVE_RESEARCH / SUPERSEDED audit required |
+| 4 | `tools/future` | 60,633 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 5 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 6 | `tools/headless` | 38,220 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 26,556 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |

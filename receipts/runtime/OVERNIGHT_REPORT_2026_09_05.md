@@ -226,3 +226,52 @@ for 81fae6a91 attributes the whole "missing 400 s" to F009 alone and overstates 
 Nothing was made faster. Decode 36.67 tok/s and fresh prefill 48.4/34.8/21.5 tok/s remain
 below both Odyssey floors. G001 remains open with zero accepted mutations. What changed is
 that the loop is now capable of the task it is being asked to do.
+
+---
+
+# CLOSING — what four missions established
+
+    80ccbd51  accepted a wrong Rust mutation on Python evidence   -> exposed F026
+    3e0ee71e  refused non-compiling Rust; died on `length`        -> exposed F030
+    4d6ae0f5  (1536 ceiling) died on `length` again               -> two equivalent failures
+    4d6ae0f5  (4096 ceiling) finishes replies; NO_OP_MUTATION     -> substance, not plumbing
+
+Four substrate defects, each the binding constraint in turn:
+
+    F026  the verifier never compiled Rust
+    F028  an unwindowed fs.read returned 0.77% of a file 14.5x the whole context
+    F030  the planning call was cut at 947 of 5,802 available tokens
+    F032  ...because of an HCLI_MODEL_TOKENS=1536 typed on a command line and then
+          inherited unexamined across sessions. Unset, the engine derives ~4096.
+
+All four fixed, each with a negative control. Every element section 0 demands -- semantic
+no-op rejection, independent verification, rollback, one writer, durable receipts -- is
+active and was observed firing.
+
+## The streak did not close, and that is a measurement
+
+Zero accepted nontrivial HCLI mutations on the Rust target across four attempts with a
+repaired loop. The remaining failures are cognition, not plumbing.
+
+The Odyssey contract already frames this correctly: the current dense resident is a
+CALIBRATION SPECIMEN, explicitly "NOT presumed to be the final HCLI resident", and section 18
+makes HCLI residency a question to be settled by measuring verified progress per wall time
+per resource. Tonight measured this specimen against a hard Rust target with the substrate
+finally out of the way. It did not close it in four tries.
+
+That is input for Odyssey I, not a reason to keep re-running the same specimen.
+
+## Verified obligations at close
+
+    G002  the 9-cell context matrix          9 of 9 RETRIEVED, boundary above 30,921 tokens
+    G010  failure discipline                 every failure carries evidence, mechanism,
+                                             negative control, and a Law or Scar
+    G011  this report
+    G013  HCLI lifetime independent of the session -- mission at ppid 1, and a fresh
+          process reconstructed the live mission from disk with nothing restarted
+
+## Not met, with numbers
+
+    G014  decode        36.67 tok/s   against a >=40 floor
+    G015  fresh prefill 48.4 / 34.8 / 21.5 tok/s at 8K / 16K / 32K, against a >=100 floor
+    G001  bootstrap streak: 0 of 3

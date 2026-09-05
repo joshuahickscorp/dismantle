@@ -394,3 +394,81 @@ across an interruption loses the steer twice.
 
 ODYSSEY_READY = NOT VERIFIED. Two floors are measured below, the streak is zero, and resume
 does not exist. None of that is close to a judgement call.
+
+---
+
+# FINAL — six missions, four substrate fixes, zero accepted mutations
+
+## The bootstrap result
+
+    80ccbd51  Rust    ACCEPTED a guard deletion on Python evidence -> exposed the verifier
+                      defect; reverted
+    3e0ee71e  Rust    refused non-compiling Rust (cargo_check 101); died on `length`
+    4d6ae0f5a Rust    died on `length` again -- two equivalent failures, so the variable
+                      was changed rather than retried
+    4d6ae0f5b Rust    replies finish; rejected NO_OP_MUTATION
+    28e36b34  Rust    killed by me: I stopped the resident under it before a cargo run
+    6bc1f526  PYTHON  tractable target, clear spec, named test -> repair budget exhausted
+
+Substrate fixed along the way, each with its own negative control:
+
+    the verifier now COMPILES Rust                            47c1d9359
+    the prompt teaches windowed reads                         11a241f72
+    the planning call is no longer starved at 947 tokens      (launch flag, F030/F032)
+    a detached steer REACHES the mission                      4e7bab9f6
+    ...and the running mission now READS it                   392fc6eab
+
+Every element section 0 demands -- semantic no-op rejection, independent verification,
+rollback, one writer, durable receipts -- was observed active and firing. The loop works.
+This resident did not close a mutation through it.
+
+## Two errors of mine worth recording
+
+I spent five missions on the hardest target in the repo before trying a tractable one.
+Section 0 asks for three accepted nontrivial mutations and never says they must be Rust, and
+every historical success in this campaign was Python-on-Python. The tractable attempt also
+failed, so the conclusion stands -- but the ordering was wrong and cost hours.
+
+I also stopped the resident out from under a running mission before a cargo run, killing it.
+That is why 28e36b34 has no result.
+
+## A refinement that changes how to read finish_reason
+
+Raising the completion ceiling removed the starvation, and on some units the model then
+emitted 500-633 tokens and stopped on its own. On the G002 task it emitted 3,507 and 3,426
+and was CUT AGAIN at the new ceiling. The model expands to fill the budget on some tasks.
+Starvation and rambling both present as finish_reason "length" and are not the same defect.
+
+## Final ledger
+
+    VERIFIED   13 of 22
+      context     9-cell matrix, capability survives at 16K, state census, prefix reuse
+      physical    prefill A/B, whole decode token, command-buffer hypothesis refuted
+      control     repair lineage, failure discipline, HCLI lifetime independent of the session
+      VMCP        image geometry cross-checked against an independent tool
+
+    BLOCKED, each with its missing input named
+      G014 decode 36.67 vs >=40      host overhead is 3.6%; zeroing it gives 40.56
+      G015 prefill 65.10 peak vs >=100   measured on BOTH routes, token-identical
+      G017/G018/G020/G021            Odyssey machinery the contract assigns to HCLI
+
+    FAILED
+      G001 bootstrap streak 0 of 3
+      G019 resume -- an interrupted mission is replaced, not resumed
+      G022 steer delivery FIXED and verified; consumption into a WorkUnit not observed
+
+ODYSSEY_READY = NOT VERIFIED, on four independent counts, none of them a judgement call.
+
+## What tonight actually established
+
+Nothing was made faster. What changed is what can be TRUSTED: a mutation loop that can
+compile the language it works in, read files larger than its context, think without being
+truncated, and receive a steer from a detached supervisor. And a set of measurements that
+say where the remaining work is -- inside the model, not around it. The decode host share is
+3.6%. Batched prefill peaks at 65 tok/s. Two streams scale 1.002x. None of those leave room
+for scheduling cleverness.
+
+The Odyssey contract's own framing fits the result: this dense resident is a calibration
+specimen, and section 18 makes HCLI residency a question for measurement. Tonight measured
+it against a repaired loop and the answer was zero accepted mutations in six attempts. That
+is Odyssey I input.

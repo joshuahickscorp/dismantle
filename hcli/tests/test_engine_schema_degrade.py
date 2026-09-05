@@ -29,6 +29,7 @@ VALID = {
     "content": "ok",
     "operations": [],
     "tests": [],
+    "tool_calls": [],
 }
 
 

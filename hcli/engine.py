@@ -4108,7 +4108,16 @@ class Engine:
         response_schema: Optional[bool] = None,
         trailing: str = "",
     ) -> Dict[str, Any]:
-        goal_block = self._goal_block(prompt, compiled)
+        # Mission worker packets are already the compiled, bounded control
+        # context. Wrapping one in the legacy ``GOAL:\n`` envelope would make
+        # the worker seam look like a root-goal call again and defeats the
+        # packet compiler's no-parent-dump invariant. Keep ordinary/root calls
+        # on the established goal-block path.
+        is_worker_packet = (
+            str(prompt or "").lstrip().startswith("PHASE:")
+            and "\nWORKUNIT:" in str(prompt)
+        )
+        goal_block = prompt if is_worker_packet else self._goal_block(prompt, compiled)
         evidence = self._assert_evidence_fresh(evidence)
         evidence_text = "\n\n".join(
             (

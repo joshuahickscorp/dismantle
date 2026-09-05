@@ -481,7 +481,7 @@ pub fn qwen38_q4_bitcast_on() -> bool {
 /// Production name, or its bitcast sibling when the lever is on. Any q4 matvec
 /// name that has no bitcast sibling is returned unchanged rather than having
 /// "_bitcast" appended, because naming a kernel that does not exist binds a
-/// pipeline that fails at launch - the defect SplitK4Vec still carries.
+/// pipeline that fails at launch.
 pub fn qwen38_q4_kernel(name: &'static str) -> &'static str {
     if !qwen38_q4_bitcast_on() {
         return name;
@@ -1294,16 +1294,13 @@ fn qwen38_q2f_matvec_launch(
     geo: Affine2Geo,
     rows: u32,
 ) -> (&'static str, (u32, u32, u32), (u32, u32, u32)) {
-    let tg = match geo {
-        Affine2Geo::SplitK4 | Affine2Geo::SplitK4Vec => 256u32,
-        _ => 128u32,
-    };
-    let name = match geo {
-        Affine2Geo::Pipe => QWEN38_Q2F_PIPE,
-        Affine2Geo::SplitK4 => QWEN38_Q2F_SPLITK4,
-        Affine2Geo::SplitK4Vec => QWEN38_Q2F_SPLITK4_VEC,
-        _ => QWEN38_Q2F_GEO_TPR64,
-    };
+    // The current shader surface only compiles the Q2F serial and geo_tpr64
+    // families. Geometry names retained for historical A/B records must not
+    // become launch names until their shader exists; fall back to the
+    // compiled geo family while preserving the requested selector in config.
+    let _ = geo;
+    let tg = 128u32;
+    let name = QWEN38_Q2F_GEO_TPR64;
     let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
     (name, (grid, 1, 1), (tg, 1, 1))
 }
@@ -1313,19 +1310,13 @@ fn qwen38_q2f_gate_up_launch(
     with_swiglu: bool,
     rows: u32,
 ) -> (&'static str, (u32, u32, u32), (u32, u32, u32)) {
-    let tg = match geo {
-        Affine2Geo::SplitK4 | Affine2Geo::SplitK4Vec => 256u32,
-        _ => 128u32,
-    };
-    let name = match (geo, with_swiglu) {
-        (Affine2Geo::Pipe, false) => QWEN38_Q2F_GATE_UP_PIPE,
-        (Affine2Geo::Pipe, true) => QWEN38_Q2F_GATE_UP_SWIGLU_PIPE,
-        (Affine2Geo::SplitK4, false) => QWEN38_Q2F_GATE_UP_SPLITK4,
-        (Affine2Geo::SplitK4, true) => QWEN38_Q2F_GATE_UP_SWIGLU_SPLITK4,
-        (Affine2Geo::SplitK4Vec, false) => QWEN38_Q2F_GATE_UP_SPLITK4_VEC,
-        (Affine2Geo::SplitK4Vec, true) => QWEN38_Q2F_GATE_UP_SWIGLU_SPLITK4_VEC,
-        (_, false) => QWEN38_Q2F_GATE_UP_KERNEL,
-        (_, true) => QWEN38_Q2F_GATE_UP_SWIGLU_KERNEL,
+    // As above, only the geo_tpr64 Q2F gate/up pair is currently compiled.
+    let _ = geo;
+    let tg = 128u32;
+    let name = if with_swiglu {
+        QWEN38_Q2F_GATE_UP_SWIGLU_KERNEL
+    } else {
+        QWEN38_Q2F_GATE_UP_KERNEL
     };
     let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
     (name, (grid, 1, 1), (tg, 1, 1))
@@ -1418,7 +1409,10 @@ fn qwen38_affine_q2_launch_with_recon_fuse(
         Affine2Geo::SplitK4Vec => {
             let tg = 256u32;
             let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
-            Some((QWEN38_AFFINE_Q2_SPLITK4_VEC, (grid, 1, 1), (tg, 1, 1)))
+            // N035's vector sibling has no compiled shader in the current
+            // surface. Keep the opt-in selector observable, but never emit a
+            // pipeline name that cannot be loaded at launch.
+            Some((QWEN38_AFFINE_Q2_SPLITK4, (grid, 1, 1), (tg, 1, 1)))
         }
         Affine2Geo::AccFuse => {
             let tg = 128u32;
@@ -1515,8 +1509,8 @@ fn qwen38_affine_gate_up_launch(
             let tg = 256u32;
             let grid = rows.div_ceil(2).saturating_mul(tg).max(tg);
             let name = match with_swiglu {
-                true => QWEN38_AFFINE_GATE_UP_SWIGLU_SPLITK4_VEC,
-                false => QWEN38_AFFINE_GATE_UP_SPLITK4_VEC,
+                true => QWEN38_AFFINE_GATE_UP_SWIGLU_SPLITK4,
+                false => QWEN38_AFFINE_GATE_UP_SPLITK4,
             };
             (name, (grid, 1, 1), (tg, 1, 1))
         }
@@ -10277,15 +10271,15 @@ mod mixed_catalog_contract_tests {
         assert_eq!(
             qwen38_affine_q2_launch(Affine2Geo::SplitK4Vec, 64, 17408, 5120)
                 .map(|l| (l.0, l.2)),
-            Some((QWEN38_AFFINE_Q2_SPLITK4_VEC, (256, 1, 1)))
+            Some((QWEN38_AFFINE_Q2_SPLITK4, (256, 1, 1)))
         );
         assert_eq!(
             qwen38_affine_gate_up_launch(Affine2Geo::SplitK4Vec, false, 17408).0,
-            QWEN38_AFFINE_GATE_UP_SPLITK4_VEC
+            QWEN38_AFFINE_GATE_UP_SPLITK4
         );
         assert_eq!(
             qwen38_affine_gate_up_launch(Affine2Geo::SplitK4Vec, true, 17408).0,
-            QWEN38_AFFINE_GATE_UP_SWIGLU_SPLITK4_VEC
+            QWEN38_AFFINE_GATE_UP_SWIGLU_SPLITK4
         );
         assert_eq!(
             qwen38_affine_q2_launch(Affine2Geo::AccFuse, 64, 17408, 5120).map(|l| l.0),
@@ -10329,7 +10323,7 @@ mod mixed_catalog_contract_tests {
         );
         assert_eq!(
             qwen38_affine_gate_up_launch(Affine2Geo::Bitcast, false, 17408).0,
-            QWEN38_AFFINE_GATE_UP_SWIGLU_KERNEL,
+            QWEN38_AFFINE_GATE_UP_KERNEL,
             "the unfused bitcast kernel does not exist; naming it would bind a \
              pipeline that fails to compile at launch"
         );
@@ -10361,15 +10355,17 @@ mod mixed_catalog_contract_tests {
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
             "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_biasprep_drop_tpr64_tg128("
         ));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
-            "kernel void qwen_affine_q2_group64_matvec_splitk4_vec_tg256("
-        ));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
-            "kernel void qwen_affine_q2_group64_matvec_gate_up_splitk4_vec_tg256("
-        ));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
-            "kernel void qwen_affine_q2_group64_matvec_gate_up_swiglu_splitk4_vec_tg256("
-        ));
+        for kernel in [
+            "qwen_affine_q2_group64_matvec_splitk4_vec_tg256",
+            "qwen_affine_q2_group64_matvec_gate_up_splitk4_vec_tg256",
+            "qwen_affine_q2_group64_matvec_gate_up_swiglu_splitk4_vec_tg256",
+        ] {
+            assert!(
+                !crate::metal::SHADER_Q80_MIXED_DECODE
+                    .contains(&format!("kernel void {kernel}(")),
+                "unsupported affine2 geometry {kernel} must not be advertised"
+            );
+        }
         assert!(crate::metal::SHADER_QWEN80_DEVICE_ACTIVATIONS
             .contains("kernel void qwen80_residual_rmsnorm_tg_xsum64("));
         assert!(crate::metal::SHADER_QWEN80_DEVICE_ACTIVATIONS
@@ -10381,9 +10377,9 @@ mod mixed_catalog_contract_tests {
         assert!(qwen38_affine_q2_launch(Affine2Geo::Tgsb, 32, 17408, 5120).is_none());
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_q2f_group64_matvec_geo_tpr64_tg128("));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+        assert!(!crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_q2f_group64_matvec_qkv_geo_tpr64_tg128("));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
+        assert!(!crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_q2f_group64_matvec_pair_geo_tpr64_tg128("));
         assert!(crate::metal::SHADER_Q80_MIXED_DECODE
             .contains("kernel void qwen_q2f_group64_matvec("));
@@ -10404,52 +10400,55 @@ mod mixed_catalog_contract_tests {
         );
         assert_eq!(
             qwen38_q2f_matvec_launch(Affine2Geo::Pipe, 17408).0,
-            QWEN38_Q2F_PIPE
+            QWEN38_Q2F_GEO_TPR64
         );
         assert_eq!(
             qwen38_q2f_matvec_launch(Affine2Geo::SplitK4, 17408).0,
-            QWEN38_Q2F_SPLITK4
+            QWEN38_Q2F_GEO_TPR64
         );
         assert_eq!(
             qwen38_q2f_gate_up_launch(Affine2Geo::Pipe, true, 17408).0,
-            QWEN38_Q2F_GATE_UP_SWIGLU_PIPE
+            QWEN38_Q2F_GATE_UP_SWIGLU_KERNEL
         );
         assert_eq!(
             qwen38_q2f_gate_up_launch(Affine2Geo::SplitK4, false, 17408).0,
-            QWEN38_Q2F_GATE_UP_SPLITK4
+            QWEN38_Q2F_GATE_UP_KERNEL
         );
         assert_eq!(
             qwen38_q2f_gate_up_launch(Affine2Geo::SplitK4, true, 17408).0,
-            QWEN38_Q2F_GATE_UP_SWIGLU_SPLITK4
+            QWEN38_Q2F_GATE_UP_SWIGLU_KERNEL
         );
         assert_eq!(
             qwen38_q2f_matvec_launch(Affine2Geo::SplitK4Vec, 17408).0,
-            QWEN38_Q2F_SPLITK4_VEC
+            QWEN38_Q2F_GEO_TPR64
         );
         assert_eq!(
             qwen38_q2f_gate_up_launch(Affine2Geo::SplitK4Vec, false, 17408).0,
-            QWEN38_Q2F_GATE_UP_SPLITK4_VEC
+            QWEN38_Q2F_GATE_UP_KERNEL
         );
         assert_eq!(
             qwen38_q2f_gate_up_launch(Affine2Geo::SplitK4Vec, true, 17408).0,
-            QWEN38_Q2F_GATE_UP_SWIGLU_SPLITK4_VEC
+            QWEN38_Q2F_GATE_UP_SWIGLU_KERNEL
         );
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
-            .contains("kernel void qwen_q2f_group64_matvec_pipe_tpr64_tg128("));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
-            .contains("kernel void qwen_q2f_group64_matvec_splitk4_tg256("));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE
-            .contains("kernel void qwen_q2f_group64_matvec_splitk4_vec_tg256("));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
-            "kernel void qwen_q2f_group64_matvec_gate_up_swiglu_pipe_tpr64_tg128("
+        for kernel in [
+            "qwen_q2f_group64_matvec_pipe_tpr64_tg128",
+            "qwen_q2f_group64_matvec_splitk4_tg256",
+            "qwen_q2f_group64_matvec_gate_up_swiglu_pipe_tpr64_tg128",
+            "qwen_q2f_group64_matvec_gate_up_swiglu_splitk4_tg256",
+        ] {
+            assert!(
+                !crate::metal::SHADER_Q80_MIXED_DECODE
+                    .contains(&format!("kernel void {kernel}(")),
+                "unsupported Q2F geometry {kernel} must not be advertised"
+            );
+        }
+        assert!(!crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+            "kernel void qwen_q2f_group64_matvec_splitk4_vec_tg256("
         ));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
-            "kernel void qwen_q2f_group64_matvec_gate_up_swiglu_splitk4_tg256("
-        ));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+        assert!(!crate::metal::SHADER_Q80_MIXED_DECODE.contains(
             "kernel void qwen_q2f_group64_matvec_gate_up_splitk4_vec_tg256("
         ));
-        assert!(crate::metal::SHADER_Q80_MIXED_DECODE.contains(
+        assert!(!crate::metal::SHADER_Q80_MIXED_DECODE.contains(
             "kernel void qwen_q2f_group64_matvec_gate_up_swiglu_splitk4_vec_tg256("
         ));
     }
@@ -11323,6 +11322,7 @@ mod mixed_catalog_contract_tests {
 
     #[cfg(target_os = "macos")]
     #[test]
+    #[ignore = "requires the three external HGRAVU01 catalogs and a Metal device"]
     fn incumbent_extract_matches_cpu_oracle_above_uint32_overflow() {
         // The production geo_tpr64 bind only covers bits 3/4. bits 5–8
         // still dispatch the incumbent, which used `uint bit0 = element * bits`.

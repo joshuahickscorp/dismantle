@@ -1082,7 +1082,7 @@ class Mission:
             "acceptance": list(packet.acceptance),
             "neighborhood": list(packet.neighborhood),
             "compiled": compiled_ir_to_jsonable(compiled),
-            "context_memory": self.context_memory,
+            "context_memory": getattr(self, "context_memory", None),
             "packet": packet,
             "provider": getattr(wu, "provider", None) or getattr(wu, "preferred_backend", None),
         }

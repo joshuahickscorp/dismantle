@@ -2770,16 +2770,8 @@ mod imp {
                 "qwen_affine_q2_group64_matvec_gate_up_swiglu_biasprep_drop_tpr64_tg128",
                 "qwen_q2f_group64_matvec",
                 "qwen_q2f_group64_matvec_geo_tpr64_tg128",
-                "qwen_q2f_group64_matvec_qkv_geo_tpr64_tg128",
-                "qwen_q2f_group64_matvec_pair_geo_tpr64_tg128",
                 "qwen_q2f_group64_matvec_gate_up_geo_tpr64_tg128",
                 "qwen_q2f_group64_matvec_gate_up_swiglu_geo_tpr64_tg128",
-                "qwen_q2f_group64_matvec_pipe_tpr64_tg128",
-                "qwen_q2f_group64_matvec_splitk4_tg256",
-                "qwen_q2f_group64_matvec_gate_up_pipe_tpr64_tg128",
-                "qwen_q2f_group64_matvec_gate_up_swiglu_pipe_tpr64_tg128",
-                "qwen_q2f_group64_matvec_gate_up_splitk4_tg256",
-                "qwen_q2f_group64_matvec_gate_up_swiglu_splitk4_tg256",
                 "qwen_uniform_q3_group64_matvec_geo_tpr64_tg128",
                 "qwen_uniform_q3_group128_matvec_geo_tpr64_tg128",
             ] {
@@ -2787,6 +2779,29 @@ mod imp {
                 assert!(
                     SHADER_Q80_MIXED_DECODE.contains(&format!("kernel void {kernel}(")),
                     "{kernel} must compile from q80_mixed_decode.metal"
+                );
+            }
+            // These fused Q2F attention names remain in the host taxonomy for
+            // fallback diagnostics, but no current shader defines them. The
+            // runtime must therefore use the per-tensor path instead of
+            // advertising an impossible pipeline.
+            assert!(!SHADER_Q80_MIXED_DECODE.contains(
+                "kernel void qwen_q2f_group64_matvec_qkv_geo_tpr64_tg128("
+            ));
+            assert!(!SHADER_Q80_MIXED_DECODE.contains(
+                "kernel void qwen_q2f_group64_matvec_pair_geo_tpr64_tg128("
+            ));
+            for kernel in [
+                "qwen_q2f_group64_matvec_pipe_tpr64_tg128",
+                "qwen_q2f_group64_matvec_splitk4_tg256",
+                "qwen_q2f_group64_matvec_gate_up_pipe_tpr64_tg128",
+                "qwen_q2f_group64_matvec_gate_up_swiglu_pipe_tpr64_tg128",
+                "qwen_q2f_group64_matvec_gate_up_splitk4_tg256",
+                "qwen_q2f_group64_matvec_gate_up_swiglu_splitk4_tg256",
+            ] {
+                assert!(
+                    !SHADER_Q80_MIXED_DECODE.contains(&format!("kernel void {kernel}(")),
+                    "unsupported Q2F geometry {kernel} must not be advertised"
                 );
             }
             for &kernel in KERNELS {

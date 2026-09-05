@@ -14,6 +14,13 @@ Two things this deliberately does NOT do:
     warm one), so a median over a degrading series is not a rate. Every arm here
     runs in a FRESH subprocess, and the drift between arms is reported rather
     than averaged away.
+  * It does not divide one call's whole wall by the tokens it produced. That wall
+    contains a one-time model load and the prompt prefill, so a short run reports
+    a "decode rate" dominated by setup -- measured: 10.4 tok/s at 96 tokens, which
+    is setup, not decode. Worse, a 2-stream arm amortises the SAME load over twice
+    the tokens, so it would look faster for a reason that has nothing to do with
+    saturation. Decode is measured as a MARGINAL rate from two token counts on
+    otherwise identical calls, which cancels load and prefill exactly.
   * It does not reuse a historical 34/36/45/62 tok/s figure. `reused_historical_figure`
     is hardcoded False because the number is taken here, now, or not at all.
   * It does not report `vm.swapusage used=` as live swap. That counter is a BOOT
@@ -172,23 +179,35 @@ def main() -> int:
         "swapouts_cumulative_before": swap_before,
     }
 
-    # Arm 1: single stream, FRESH process. This is the authority.
-    single = _run_arm(1, args.tokens)
-    if not single["completion_tokens"]:
-        print("REFUSED: the single-stream arm decoded no tokens", file=sys.stderr)
+    # Marginal decode: two token counts, otherwise identical calls, each arm in a
+    # FRESH process. wall(hi) - wall(lo) contains ONLY the extra decoded tokens --
+    # the model load and the prompt prefill are identical in both and cancel.
+    LO, HI = 64, 576
+
+    def marginal(streams: int) -> dict:
+        lo = _run_arm(streams, LO)
+        hi = _run_arm(streams, HI)
+        d_tok = hi["completion_tokens"] - lo["completion_tokens"]
+        d_wall = hi["wall_s"] - lo["wall_s"]
+        return {
+            "lo": lo, "hi": hi, "delta_tokens": d_tok, "delta_wall_s": d_wall,
+            "tok_s": (d_tok / d_wall) if d_wall > 0 else 0.0,
+            "ns_per_token": (d_wall * 1e9 / d_tok) if d_tok > 0 else 0.0,
+        }
+
+    single = marginal(1)
+    if single["delta_tokens"] <= 0 or single["delta_wall_s"] <= 0:
+        print(f"REFUSED: the single-stream arms did not separate "
+              f"(delta_tokens={single['delta_tokens']}, "
+              f"delta_wall_s={single['delta_wall_s']}); the model stopped early",
+              file=sys.stderr)
         return 2
-    single_ns = single["wall_s"] * 1e9 / single["completion_tokens"]
+    single_ns = single["ns_per_token"]
 
-    # Arm 2: a REPEAT of arm 1, also fresh. Two fresh arms bound the run-to-run
-    # spread, which is the only spread worth quoting once the degradation is
-    # controlled for.
-    repeat = _run_arm(1, args.tokens)
-    repeat_ns = (repeat["wall_s"] * 1e9 / repeat["completion_tokens"]
-                 if repeat["completion_tokens"] else None)
+    repeat = marginal(1)
+    repeat_ns = repeat["ns_per_token"] or None
 
-    # Arm 3: the saturation retest, FRESH, so it is not compared against a
-    # degraded single.
-    agg = _run_arm(args.streams, args.tokens)
+    agg = marginal(args.streams)
 
     swap_after = _swapouts()
     doc = {
@@ -210,13 +229,20 @@ def main() -> int:
             abs(repeat_ns - single_ns) / min(repeat_ns, single_ns) * 100.0
             if repeat_ns else None
         ),
+        "method": "marginal: (wall(576) - wall(64)) / 512 decoded tokens, each arm a "
+                  "fresh process; cancels model load and prompt prefill exactly",
         "arms": {"single": single, "single_repeat": repeat, "aggregate": agg},
         "aggregate_vs_single": {
             "single_tok_s": 1e9 / single_ns,
+            # _run_arm SUMS completion tokens across streams, so agg["tok_s"] is
+            # ALREADY the aggregate rate. Multiplying it by `streams` double-counts
+            # and turns a flat result into an apparent 2x. Do not.
             "aggregate_tok_s": agg["tok_s"],
+            "aggregate_tok_s_per_stream": agg["tok_s"] / max(1, args.streams),
+            "aggregate_scaling_vs_single": agg["tok_s"] / (1e9 / single_ns),
             "streams": args.streams,
-            "aggregate_wall_s": agg["wall_s"],
-            "aggregate_completion_tokens": agg["completion_tokens"],
+            "aggregate_delta_wall_s": agg["delta_wall_s"],
+            "aggregate_delta_tokens": agg["delta_tokens"],
             "both_arms_fresh": True,
         },
         "conditions": {
@@ -235,7 +261,10 @@ def main() -> int:
         "evidence": {
             "note": "complete-token wall divided by tokens actually produced; "
                     "no kernel time, no synthetic loop",
-            "single_stream_samples": len(usable),
+            "fresh_arms_run": 3,
+            "arm_protocol": "single, single_repeat and aggregate each in a FRESH "
+                            "interpreter; the resident degrades ~4.5x across requests "
+                            "in one process, so arms must not share one",
         },
     }
 

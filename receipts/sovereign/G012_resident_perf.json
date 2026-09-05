@@ -1,0 +1,199 @@
+{
+  "aggregate_vs_single": {
+    "aggregate_delta_tokens": 1024,
+    "aggregate_delta_wall_s": 27.883814166940283,
+    "aggregate_scaling_vs_single": 1.001510344560992,
+    "aggregate_tok_s": 36.723813817913005,
+    "aggregate_tok_s_per_stream": 18.361906908956502,
+    "both_arms_fresh": true,
+    "single_tok_s": 36.66843185130627,
+    "streams": 2
+  },
+  "arms": {
+    "aggregate": {
+      "delta_tokens": 1024,
+      "delta_wall_s": 27.883814166940283,
+      "hi": {
+        "calls": [
+          {
+            "completion_tokens": 576,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 23.860511999984737
+          },
+          {
+            "completion_tokens": 576,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 40.16644849994918
+          }
+        ],
+        "completion_tokens": 1152,
+        "streams": 2,
+        "tok_s": 28.680188928796372,
+        "wall_s": 40.16709941695444
+      },
+      "lo": {
+        "calls": [
+          {
+            "completion_tokens": 64,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 9.921769582957495
+          },
+          {
+            "completion_tokens": 64,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 12.282432749983855
+          }
+        ],
+        "completion_tokens": 128,
+        "streams": 2,
+        "tok_s": 10.420664943839226,
+        "wall_s": 12.28328525001416
+      },
+      "ns_per_token": 27230287.27240262,
+      "tok_s": 36.723813817913005
+    },
+    "single": {
+      "delta_tokens": 512,
+      "delta_wall_s": 13.96296416700352,
+      "hi": {
+        "calls": [
+          {
+            "completion_tokens": 576,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 22.352503458037972
+          }
+        ],
+        "completion_tokens": 576,
+        "streams": 1,
+        "tok_s": 25.76889285469696,
+        "wall_s": 22.352531916985754
+      },
+      "lo": {
+        "calls": [
+          {
+            "completion_tokens": 64,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 8.38955075002741
+          }
+        ],
+        "completion_tokens": 64,
+        "streams": 1,
+        "tok_s": 7.62852174358274,
+        "wall_s": 8.389567749982234
+      },
+      "ns_per_token": 27271414.38867875,
+      "tok_s": 36.66843185130627
+    },
+    "single_repeat": {
+      "delta_tokens": 512,
+      "delta_wall_s": 13.975549583963584,
+      "hi": {
+        "calls": [
+          {
+            "completion_tokens": 576,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 22.384040915989317
+          }
+        ],
+        "completion_tokens": 576,
+        "streams": 1,
+        "tok_s": 25.73258681964871,
+        "wall_s": 22.384069041989278
+      },
+      "lo": {
+        "calls": [
+          {
+            "completion_tokens": 64,
+            "decode_wall_s": null,
+            "prefill_wall_ns": 0,
+            "prompt_tokens": 32,
+            "wall_s": 8.40850274998229
+          }
+        ],
+        "completion_tokens": 64,
+        "streams": 1,
+        "tok_s": 7.611328048829549,
+        "wall_s": 8.408519458025694
+      },
+      "ns_per_token": 27295995.281178877,
+      "tok_s": 36.635410788245544
+    }
+  },
+  "command": "python3 tools/sovereign/g012_resident_perf.py --tokens 96 --samples 3 --streams 2",
+  "complete_token_ns": 27271414.38867875,
+  "complete_token_ns_repeat": 27295995.281178877,
+  "conditions": {
+    "background_contamination": [
+      {
+        "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/scammermi",
+        "cpu_pct": 83.7
+      },
+      {
+        "command": "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/",
+        "cpu_pct": 49.9
+      },
+      {
+        "command": "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer -daemon",
+        "cpu_pct": 27.1
+      },
+      {
+        "command": "/System/Library/PrivateFrameworks/TCC.framework/Support/tccd system",
+        "cpu_pct": 10.5
+      },
+      {
+        "command": "/System/Applications/Utilities/Activity Monitor.app/Contents/MacOS/Activity Monitor",
+        "cpu_pct": 10.3
+      },
+      {
+        "command": "/System/Library/PrivateFrameworks/CoreAnalytics.framework/Support/analyticsd",
+        "cpu_pct": 9.6
+      },
+      {
+        "command": "powermetrics --samplers cpu_power gpu_power -i",
+        "cpu_pct": 9.1
+      },
+      {
+        "command": "/opt/homebrew/opt/tailscale/bin/tailscaled",
+        "cpu_pct": 9.1
+      }
+    ],
+    "free_bytes": 33913716736,
+    "free_bytes_after": 10326818816,
+    "swap_used_bytes": "total = 2048.00M  used = 450.75M  free = 1597.25M  (encrypted)",
+    "swap_used_bytes_is_boot_high_water": true,
+    "swapouts_cumulative_after": 80461992,
+    "swapouts_cumulative_before": 80461992,
+    "swapouts_delta_during_measurement": 0
+  },
+  "decode_tok_s": 36.66843185130627,
+  "decode_tok_s_repeat": 36.635410788245544,
+  "envelope": "ascension_envelope.hawking.json",
+  "evidence": {
+    "arm_protocol": "single, single_repeat and aggregate each in a FRESH interpreter; the resident degrades ~4.5x across requests in one process, so arms must not share one",
+    "fresh_arms_run": 3,
+    "note": "complete-token wall divided by tokens actually produced; no kernel time, no synthetic loop"
+  },
+  "fresh_process_per_arm": true,
+  "measured_at": "2026-09-05T11:06:02.747239+00:00",
+  "method": "marginal: (wall(576) - wall(64)) / 512 decoded tokens, each arm a fresh process; cancels model load and prompt prefill exactly",
+  "produced_at": "2026-09-05T11:06:02.747056+00:00",
+  "produced_by": "tools/sovereign/g012_resident_perf.py",
+  "resident_identity": "sealed-3.14",
+  "reused_historical_figure": false,
+  "run_to_run_spread_pct": 0.0901342781485251,
+  "schema": "hawking.sovereign.g012_resident_perf.v1"
+}

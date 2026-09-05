@@ -6034,7 +6034,7 @@ impl Qwen30CompleteNativeRuntime {
     ) -> Result<Qwen30NativeGeneration> {
         let mut completion_token_ids = Vec::with_capacity(max_new_tokens);
         let mut steps = Vec::with_capacity(max_new_tokens);
-        let mut ended_on_eog = false;
+        let mut ended_on_eog;
 
         // Mirror the historical loop shape: for each of max_new_tokens
         // iterations, emit the current id, stop on EOG, otherwise run one

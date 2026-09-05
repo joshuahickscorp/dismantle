@@ -8,7 +8,7 @@ What actually exists
 --------------------
 VisionMCP is a foreign package (visionmcp 0.8.0a2, ~1770 Python modules, 15
 core MCP tools). It is NOT a tree in this repository's HEAD. Hawking-side
-callers live in tools/headless/ (FileEye + CaptureBus integration, capability
+callers live in tools/vmcp/ (FileEye + CaptureBus integration, capability
 probe, lattice disposition, forgery canary, unavailable gate) and
 hcli/vmcp_adapter.py (read-only; this lane does not edit hcli/).
 
@@ -24,10 +24,10 @@ tools/vmcp/ and CALLED from see/check/prove (an import is not a call site):
 OPEN / MAKE / FIX / KEEP stay PARKED: those still live in the foreign package.
 WEB / SPATIAL / visual-proof / LABORATORY stay PARKED with explicit blockers.
 
-    python3 tools/future/vmcp.py --build
-    python3 tools/future/vmcp.py --selftest
+    python3 tools/vmcp/disposition.py --build
+    python3 tools/vmcp/disposition.py --selftest
     python3 tools/audit/reachability_triage.py --invoke future.vmcp --args '{"act":"see","path":"..."}'
-    python3 -m pytest tools/future/test_vmcp.py tools/vmcp/test_file_eye.py -q -o addopts=""
+    python3 -m pytest tools/vmcp/test_behavior_lab.py tools/vmcp/test_file_eye.py -q -o addopts=""
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ from typing import Any, Mapping
 RECEIPT = "VMCP_DISPOSITION.json"
 SCHEMA = "hawking.future.vmcp.v1"
 VERSION = 1
-RECORDED_BY = "tools/future/vmcp.py"
+RECORDED_BY = "tools/vmcp/disposition.py"
 DISPOSITION_SCHEMA = "hawking.audit.subsystem_disposition.v1"
 WAKE_SCHEMA = "hawking.audit.wake_condition.v1"
 WAKE_REQUIRED_KIND = "call"
@@ -386,16 +386,16 @@ def _organ_table(located: Mapping[str, Any]) -> list[dict[str, Any]]:
             "symbol": "tools.vmcp.file_eye.observe",
             "call_sites": [
                 {
-                    "file": "tools/future/vmcp.py",
+                    "file": "tools/vmcp/disposition.py",
                     "symbol": "tools.vmcp.file_eye.observe",
                     "kind": "call",
                     "via": "see()",
                 },
                 {
                     "file": "tools/audit/reachability_triage.py",
-                    "symbol": "tools.future.vmcp.compact_surface",
+                    "symbol": "tools.vmcp.disposition.compact_surface",
                     "kind": "call",
-                    "via": "WIRED future.vmcp",
+                    "via": "WIRED vmcp.disposition (compatibility capability id)",
                 },
             ],
             "evidence_tier": "FUNCTIONAL_SIM",
@@ -458,7 +458,7 @@ def _organ_table(located: Mapping[str, Any]) -> list[dict[str, Any]]:
             "symbol": "tools.vmcp.pty_eye.capture",
             "call_sites": [
                 {
-                    "file": "tools/future/vmcp.py",
+                    "file": "tools/vmcp/disposition.py",
                     "symbol": "tools.vmcp.pty_eye.capture",
                     "kind": "call",
                     "via": "see(organ=pty)",
@@ -482,7 +482,7 @@ def _organ_table(located: Mapping[str, Any]) -> list[dict[str, Any]]:
             "symbol": "tools.vmcp.behavior_lab.run_matrix",
             "call_sites": [
                 {
-                    "file": "tools/future/vmcp.py",
+                    "file": "tools/vmcp/disposition.py",
                     "symbol": "tools.vmcp.behavior_lab.run_matrix",
                     "kind": "call",
                     "via": "prove(organ=behavior_lab)",
@@ -506,7 +506,7 @@ def _organ_table(located: Mapping[str, Any]) -> list[dict[str, Any]]:
             "symbol": "tools.vmcp.tool_doctor.profile",
             "call_sites": [
                 {
-                    "file": "tools/future/vmcp.py",
+                    "file": "tools/vmcp/disposition.py",
                     "symbol": "tools.vmcp.tool_doctor.profile",
                     "kind": "call",
                     "via": "check(organ=tool_doctor)",
@@ -553,7 +553,7 @@ def disposition() -> dict[str, Any]:
                 {
                     "act": act,
                     "disposition": "CONNECTED",
-                    "symbol": f"tools.future.vmcp.{act}",
+            "symbol": f"tools.vmcp.disposition.{act}",
                     "evidence_tier": "FUNCTIONAL_SIM",
                     "wake": None,
                     "empty_success": False,
@@ -974,12 +974,12 @@ def build() -> Path:
         "disposition": doc,
         "selftest": proof,
         "resident_callable": {
-            "entry_point": "python3 tools/future/vmcp.py --build",
+            "entry_point": "python3 tools/vmcp/disposition.py --build",
             "invoke": (
                 "python3 tools/audit/reachability_triage.py --invoke future.vmcp "
                 "--args '{\"act\":\"see\",\"path\":\"...\"}'"
             ),
-            "symbol": "tools.future.vmcp.compact_surface",
+            "symbol": "tools.vmcp.disposition.compact_surface",
         },
         "claim_boundary": CLAIM_BOUNDARY,
         "gpu_authority": False,
@@ -1029,7 +1029,7 @@ def build() -> Path:
         },
         "runs": {
             "file_eye": {
-                "command": f"python3 tools/future/vmcp.py --act see --path {echo_path}",
+                "command": f"python3 tools/vmcp/disposition.py --act see --path {echo_path}",
                 "invoke": (
                     "python3 tools/audit/reachability_triage.py --invoke future.vmcp "
                     f"--args '{{\"act\":\"see\",\"path\":\"{echo_path}\"}}'"
@@ -1044,7 +1044,7 @@ def build() -> Path:
             },
             "tool_doctor": {
                 "command": (
-                    "python3 tools/future/vmcp.py --act check --organ tool_doctor "
+                    "python3 tools/vmcp/disposition.py --act check --organ tool_doctor "
                     "--args '{\"argv\":[\"/bin/echo\",\"perception-depth\"]}'"
                 ),
                 "invoke": (
@@ -1060,7 +1060,7 @@ def build() -> Path:
             },
             "behavior_lab": {
                 "command": (
-                    "python3 tools/future/vmcp.py --act prove --organ behavior_lab "
+                    "python3 tools/vmcp/disposition.py --act prove --organ behavior_lab "
                     "--args '{\"fixtures\":[\"BHV-02\",\"BHV-09\",\"BHV-21\"]}'"
                 ),
                 "invoke": (
@@ -1078,7 +1078,7 @@ def build() -> Path:
             },
             "pty_eye": {
                 "command": (
-                    "python3 tools/future/vmcp.py --act see --organ pty "
+                    "python3 tools/vmcp/disposition.py --act see --organ pty "
                     "--args '{\"argv\":[\"/bin/echo\",\"perception-depth-pty\"]}'"
                 ),
                 "status": pty_run.get("status"),

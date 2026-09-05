@@ -2,7 +2,7 @@
 
 The compact E.14 model-facing surface is still the nine acts
 (see/hold/open/know/make/check/fix/keep/prove) on
-``tools.future.vmcp.compact_surface``. This package is the implementation
+``tools.vmcp.disposition.compact_surface``. This package is the implementation
 those verbs call for local file classification, tool receipts, the
 behavior-lab fixture matrix, and an attempted PTY capture.
 

@@ -2097,10 +2097,10 @@ def _invoke_tabula(arguments: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _invoke_vmcp(arguments: Mapping[str, Any]) -> dict[str, Any]:
-    from tools.future.vmcp import compact_surface
+    from tools.vmcp.disposition import compact_surface
 
     act = str(arguments.get("act") or "disposition")
-    # WIRED_CALL future.vmcp.compact_surface
+    # WIRED_CALL future.vmcp.compact_surface (compatibility capability id)
     result = compact_surface(act, arguments)
     tier = str(result.get("evidence_tier") or EVIDENCE_TIER_INVOKE)
     return {
@@ -2228,8 +2228,8 @@ WIRED: dict[str, dict[str, Any]] = {
             "file, plus disposition of every named organ. PARKED acts return a "
             "wake, never an empty success."
         ),
-        "module": "tools/future/vmcp.py",
-        "dotted": "tools.future.vmcp",
+        "module": "tools/vmcp/disposition.py",
+        "dotted": "tools.vmcp.disposition",
         "symbol": "compact_surface",
         "family": "perception.vmcp",
         "handler": _invoke_vmcp,

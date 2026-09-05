@@ -442,7 +442,7 @@ def run_VMCP_DEEP_DIGEST() -> dict[str, Any]:
     invoked: list[dict[str, Any]] = []
     _vm_src()
     from visionmcp.worldir.canonical import content_digest
-    from tools.future.vmcp import see, prove
+    from tools.vmcp.disposition import see, prove
     from tools.vmcp.hcli_integration import observe_file
 
     with tempfile.TemporaryDirectory(prefix="acc-digest-") as raw:
@@ -450,7 +450,7 @@ def run_VMCP_DEEP_DIGEST() -> dict[str, Any]:
         subject = tmp / "state.txt"
         payload = b"canonical-sensory-state-v1\n"
         subject.write_bytes(payload)
-        seen = C.call("tools.future.vmcp.see", see, subject)
+        seen = C.call("tools.vmcp.disposition.see", see, subject)
         invoked.append(seen)
         obs = C.call(
             "tools.vmcp.hcli_integration.observe_file",
@@ -476,7 +476,7 @@ def run_VMCP_DEEP_DIGEST() -> dict[str, Any]:
             sensory,
         )
         invoked.append(sensory_digest)
-        proof = C.call("tools.future.vmcp.prove", prove, subject)
+        proof = C.call("tools.vmcp.disposition.prove", prove, subject)
         invoked.append(proof)
     seen_v = seen.get("value") or {}
     proof_v = proof.get("value") or {}
@@ -557,14 +557,14 @@ def run_VMCP_TRUTH_LEDGER() -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="acc-truth-") as raw:
         tmp = Path(raw)
         proof = C.call(
-        "tools.vmcp.lattice_disposition.prove_truth_ledger",
+            "tools.vmcp.lattice_disposition.prove_truth_ledger",
             lat.prove_truth_ledger,
             load["value"],
             tmp,
         )
         invoked.append(proof)
         bound = C.call(
-        "tools.vmcp.lattice_disposition._bound_graph",
+            "tools.vmcp.lattice_disposition._bound_graph",
             lat._bound_graph,
             load["value"],
         )
@@ -710,7 +710,7 @@ def run_VMCP_RECEIPT_LAW() -> dict[str, Any]:
     invoked: list[dict[str, Any]] = []
     _vm_src()
     from tools.vmcp.hcli_integration import FileEye, observe_file, verify_capture
-    from tools.future.vmcp import prove
+    from tools.vmcp.disposition import prove
 
     with tempfile.TemporaryDirectory(prefix="acc-receipt-") as raw:
         tmp = Path(raw)
@@ -744,7 +744,7 @@ def run_VMCP_RECEIPT_LAW() -> dict[str, Any]:
         stale = summary.get("sha256") != after
         subject.write_bytes(payload)
         restored = hashlib.sha256(subject.read_bytes()).hexdigest() == summary.get("sha256")
-        proof = C.call("tools.future.vmcp.prove", prove, subject)
+        proof = C.call("tools.vmcp.disposition.prove", prove, subject)
         invoked.append(proof)
         receipt = _tool_receipt(
             tool=obs_v.get("adapter") or FileEye.name,
@@ -1687,7 +1687,7 @@ def _e14(act: str, raw: dict[str, Any], *, elapsed_ms: float) -> dict[str, Any]:
 def run_VMCP_COMPACT_SURFACE() -> dict[str, Any]:
     t0 = time.perf_counter()
     invoked: list[dict[str, Any]] = []
-    from tools.future.vmcp import compact_surface
+    from tools.vmcp.disposition import compact_surface
 
     with tempfile.TemporaryDirectory(prefix="acc-e14-") as raw:
         tmp = Path(raw)
@@ -1699,7 +1699,7 @@ def run_VMCP_COMPACT_SURFACE() -> dict[str, Any]:
             args: dict[str, Any] = {"path": str(subject)}
             if act == "check":
                 args["expected_sha256"] = digest
-            row = C.call("tools.future.vmcp.compact_surface", compact_surface, act, args)
+            row = C.call("tools.vmcp.disposition.compact_surface", compact_surface, act, args)
             invoked.append(row)
             envelopes[act] = _e14(act, row.get("value") or {}, elapsed_ms=float(row.get("elapsed_ms") or 0.0))
     connected = {"see", "hold", "know", "check", "prove"}
@@ -1777,7 +1777,7 @@ def run_VMCP_AGENTOS_INTEGRATION() -> dict[str, Any]:
     t0 = time.perf_counter()
     invoked: list[dict[str, Any]] = []
     _vm_src()
-    from tools.future.vmcp import prove
+    from tools.vmcp.disposition import prove
     from tools.vmcp.hcli_integration import observe_file, verify_capture
     from visionmcp.worlds.spatial.io.obj import obj_file_counts
 
@@ -1800,7 +1800,7 @@ def run_VMCP_AGENTOS_INTEGRATION() -> dict[str, Any]:
             (obs.get("value") or {}).get("capture_id") or "",
         )
         invoked.append(ver)
-        proof = C.call("tools.future.vmcp.prove", prove, subject)
+        proof = C.call("tools.vmcp.disposition.prove", prove, subject)
         invoked.append(proof)
         v10 = {
             "observe_complete": (obs.get("value") or {}).get("status") == "COMPLETE",

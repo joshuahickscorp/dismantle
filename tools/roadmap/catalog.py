@@ -250,8 +250,8 @@ GATES: dict[str, dict[str, Any]] = {
     ),
     "VMCP_COMPACT_SURFACE": _p(
         era="I", gene=IA, acc=(7954, 7980),
-        paths=("tools/future/vmcp.py",),
-        modules=("tools.future.vmcp",),
+        paths=("tools/vmcp/disposition.py",),
+        modules=("tools.vmcp.disposition",),
     ),
     "VMCP_AGENTOS_INTEGRATION": _p(
         era="I", gene=IA, acc=(7628, 7630),
@@ -679,7 +679,7 @@ for _gate, _blocker in _THEIA_EXTERNAL_BLOCKERS.items():
 # MEASURES the external visionmcp package -- it is a probe of somebody else's
 # tool, run rather than called -- so the auditor correctly found no call site and
 # correctly read six capabilities as unwired scaffolding. Hawking's own organs
-# live in tools/vmcp/ and ARE reachable: tools/future/vmcp.py calls all four, and
+# live in tools/vmcp/ and ARE reachable: tools/vmcp/disposition.py calls all four, and
 # tools/acceptance/vmcp/gates.py calls that in turn.
 #
 # tools/vmcp/tool_doctor.report() already probes PTY at runtime rather than
@@ -699,7 +699,7 @@ _VMCP_ORGANS: dict[str, tuple[str, ...]] = {
 # The gate must NAME the symbol whose call counts, or no call can ever match it.
 # VMCP_RECEIPT_LAW carries symbols= and reads BUILT; these three carried none, so
 # `runtime_caller` could never populate and they read as unwired scaffolding no
-# matter how many production callers existed. tools/future/vmcp.py calls every one
+# matter how many production callers existed. tools/vmcp/disposition.py calls every one
 # of these -- pty_capture(...), file_observe(...), doctor_report(...),
 # doctor_profile(...) -- through `from X import Y as Z` aliases.
 _VMCP_ORGAN_SYMBOLS: dict[str, tuple[tuple[str, str], ...]] = {
@@ -960,12 +960,12 @@ _DECLARATION_SWEEP: dict[str, tuple[tuple[str, str], ...]] = {
     # H-ROADMAP E.14 -- nine VERBS (see hold open know make check fix keep prove)
     # each returning one fixed 8-field envelope. Different capability, same count.
     #
-    # tools/acceptance/vmcp/gates.py:1690 exercises tools.future.vmcp.compact_surface,
+    # tools/acceptance/vmcp/gates.py:1690 exercises tools.vmcp.disposition.compact_surface,
     # and tools/audit/reachability_triage.py:2097 calls it from production. That is
     # the symbol the acceptance is about AND the symbol something really calls, so
     # wiring and acceptance now describe the same artifact.
     "VMCP_COMPACT_SURFACE": (
-        ("tools.future.vmcp", "compact_surface"),
+        ("tools.vmcp.disposition", "compact_surface"),
     ),
     "HCLI_CONTEXT_INVALIDATION": (("hcli.goal", "assert_evidence_fresh"),),
     # This lane's own.

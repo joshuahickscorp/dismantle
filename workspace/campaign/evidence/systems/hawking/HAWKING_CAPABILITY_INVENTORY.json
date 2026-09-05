@@ -281,8 +281,6 @@
     "research/lab/operators/q80_capture_index.py",
     "research/lab/operators/q80_mixed_representation_pack.py",
     "research/lab/operators/q80_rank_bits_sweep.py",
-    "research/lab/operators/q80_recalibrate_capability_bar.py",
-    "research/lab/operators/q80_subbit_capability_curve.py",
     "research/lab/operators/qwen30b_gravity_pack.py",
     "research/lab/operators/qwen38_genesis_children.py",
     "research/lab/operators/qwen38_mlp_not_r160_pack.py",

@@ -85,7 +85,6 @@ THIS_WAVE_SIBLINGS = (
     "resident_identity",
     "frontiers",
     "succession",
-    "flash_schools",
     "flash_nr_complete",
     "super_resident",
     "tabula",

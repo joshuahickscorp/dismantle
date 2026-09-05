@@ -63,14 +63,10 @@ INFRASTRUCTURE = {
 # Each binding names the frontier this module's receipt genuinely informs.
 BINDINGS: dict[str, tuple[str, str]] = {
     # --- representation search -------------------------------------------
-    "flash_schools.py":            ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "GRAVITY_SEARCH"),
     "flash_nr_complete.py":        ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "NOETIC_COMPILE"),
     "meta_funnel.py":              ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "GRAVITY_SEARCH"),
     "meta_ready.py":               ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "GRAVITY_SEARCH"),
-    "ngram_school.py":             ("FT.MODEL_REPRESENTATION.ngram-school", "GRAVITY_SEARCH"),
-    "expert_bank_school.py":       ("FT.MODEL_REPRESENTATION.ngram-school", "GRAVITY_SEARCH"),
     "teacher_corpus.py":           ("FT.MODEL_REPRESENTATION.teacher-capture", "TEACHER_CAPTURE"),
-    "router_science.py":           ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "GRAVITY_SEARCH"),
     "ebpw_categories.py":          ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "NOETIC_COMPILE"),
     # --- capability / tournament -----------------------------------------
     "tournament.py":               ("FT.MODEL_CAPABILITY.tournament-refuse", "CAPABILITY_GATE"),

@@ -603,8 +603,8 @@ def _found_prior() -> list[dict[str, str]]:
             "what": "validate() calls doctor_zeros_for_doc → check_three_zeros.",
         },
         {
-            "path": "tools/future/flash_schools.py",
-            "what": "THREE_ZEROS as school questions. This lane makes them FAIL-able checks.",
+            "path": "receipts/headless/FLASH_ORGAN_SCHOOLS.json",
+            "what": "Historical representation-school findings retained as a receipt; the static generator was retired after its generic falsifier contract moved into adaptive verification.",
         },
         {
             "path": "tools/doctor_seal.py",

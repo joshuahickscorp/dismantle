@@ -230,8 +230,6 @@
     "research/lab/operators/doctor_ladder.py",
     "research/lab/operators/doctor_registry.py",
     "research/lab/operators/dsv4f_activation_x_source_verify.py",
-    "research/lab/operators/dsv4f_residual_composition_oracle.py",
-    "research/lab/operators/dsv4f_tensor_schedule.py",
     "research/lab/operators/expert_alloc.py",
     "research/lab/operators/glm52_behavior_access.py",
     "research/lab/operators/glm52_behavior_capture.py",

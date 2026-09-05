@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 635,967 | 1,799 |
-| active total | 1,133,979 | 2,434 |
+| support | 630,774 | 1,792 |
+| active total | 1,128,786 | 2,427 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -30,7 +30,7 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 104,581 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 99,385 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -108,6 +108,10 @@ also included in the total and must not become an UNKNOWN bucket.
   The uncalled Qwen state-KV and Q80 mixed-representation experiments were
   subsequently removed as a second research-only cluster; active Qwen30
   activation-weighted and Q80 capture-index owners remain.
+  The uncalled DeepSeek schedule/oracle, residual-teacher admission, and Qwen
+  metadata-preflight cluster was then compressed to
+  `STALE_RESEARCH_CLUSTER_ARCHIVE.md`; no live DeepSeek stream or Qwen capture
+  owner was changed.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

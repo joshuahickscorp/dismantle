@@ -325,3 +325,72 @@ consequence survives -- HCLI missions share prefixes heavily, so real WorkUnits 
 affected path -- but the mechanism in the earlier text is wrong and is corrected here.
 
 The fresh-process measurement protocol used throughout remains correct: it avoids the path.
+
+---
+
+# ODYSSEY READINESS — what the launch contract's own gates measure
+
+Working the contract's gates directly surfaced two more defects in the machinery Odyssey
+depends on, plus one fix.
+
+## FIXED: a detached supervisor's steer never reached the running mission
+
+Contract section 4 treats detached supervision as normal: Claude attaches, injects, detaches.
+Measured before the fix, on a live mission:
+
+    mission session_id               3f254d6d-...
+    the steer landed in              c22b3aa4-...   (the INJECTING process's session)
+    file for the mission's session   did not exist
+
+SteeringQueue is keyed by session id and a mission polls only its OWN file, so any steer from
+a process that did not start the mission was orphaned -- and the CLI printed a success tick
+regardless. A silent success is the worst form of this: the supervisor believes it steered a
+running experiment and it did not.
+
+Fixed (4e7bab9f6): the no-mission branch now reads the LIVE mission's identity from
+.hcli/mission/state.json and enqueues to the session the mission actually polls, recording
+mission_id and source_session_id. Verified live: the next steer landed in the mission's own
+file with mission_id 9075bdf8. Negative control: a mission in phase "failed" is not a target.
+
+Not claimed: the steer still reads applied=false. Delivery is fixed; CONSUMPTION into
+WorkUnits is not demonstrated, so the gate does not pass.
+
+## NOT FIXED: an interrupted mission is REPLACED, not resumed
+
+    BEFORE interrupt  id 9075bdf8  units {implement: running, validate: pending}
+    kill              state SURVIVES intact
+    reissue the SAME goal
+    AFTER             id 28e36b34  -- a NEW mission; 9075bdf8 gone from state.json,
+                                     checkpoint re-keyed, prior DAG retired
+
+Mission.from_workspace restores units from disk, so the capability exists at the API level;
+the /mission CLI path does not use it. Contract section 10 requires resume to verify identity
+and continue from the first unfinished unit, precisely because Odyssey may run for days.
+
+Left to HCLI on purpose: contract section 1 assigns missing Odyssey infrastructure to HCLI,
+not to the supervisor. This is machinery, not a transport repair.
+
+## They compound
+
+Because the mission is replaced rather than resumed, the restart also mints a NEW session id.
+So a steer correctly aimed at the pre-interrupt mission is orphaned a second time -- by the
+replacement, not by the routing bug that was fixed. A supervisor steering a long Odyssey
+across an interruption loses the steer twice.
+
+## Launch summary, measured
+
+    [x] corrected 9-cell context qualification      9 of 9 RETRIEVED, capability survives at 16K
+    [x] prefix reuse physically verified            six numbers reported separately
+    [x] no material swap contamination              swapouts delta 0
+    [x] memory/state accounting valid               131,181 B/token measured vs 131,072 derived
+    [x] Claude detach does not stop HCLI            mission at ppid 1
+    [x] new session attaches without restarting     /status reconstructed a live mission,
+                                                    resident count 1 before and after
+    [ ] complete decode >= 40 tok/s                 36.67 MEASURED BELOW
+    [ ] fresh prefill >= 100 tok/s                  48.4 / 34.8 / 21.5 MEASURED BELOW
+    [ ] 3 consecutive accepted HCLI mutations       0 of 3
+    [ ] checkpoint/resume proven                    FAILS -- replaced, not resumed
+    [ ] specimen lifecycle / canaries / ODYSSEY_READY   not reached
+
+ODYSSEY_READY = NOT VERIFIED. Two floors are measured below, the streak is zero, and resume
+does not exist. None of that is close to a judgement call.

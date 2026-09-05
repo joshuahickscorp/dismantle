@@ -472,3 +472,49 @@ The Odyssey contract's own framing fits the result: this dense resident is a cal
 specimen, and section 18 makes HCLI residency a question for measurement. Tonight measured
 it against a repaired loop and the answer was zero accepted mutations in six attempts. That
 is Odyssey I input.
+
+---
+
+# ADDENDUM 2 — supervisor injection closed, three defects deep
+
+Contract section 4 asks that a supervisor be able to steer a live mission. That path had
+THREE independent breaks, each invisible behind the one before it:
+
+    ROUTING     the steer landed in the INJECTING process's session file, which a mission
+                never reads -- and the CLI printed a success tick either way   4e7bab9f6
+    STALENESS   the mission's queue loads once at construction and all() returned that
+                cached list, so a correctly-routed steer was still unseen       392fc6eab
+    PROVENANCE  to_dict wrote mission_id/source_session_id; from_dict dropped both, losing
+                them on reload -- an orphan indistinguishable from a delivery   7dff43118
+
+The third was my own half-finished fix. The end-to-end test caught it, because it asserts the
+whole path rather than either half: injected from a second process, absorbed by a queue
+constructed BEFORE the injection, present in compile_worker_context's output as
+steering=('[knowledge] ...'). Two working halves and a broken joint is still a steer nobody
+acted on.
+
+I also committed that test one commit before the code that makes it pass -- I committed
+without reading the result. Recorded because it is the kind of thing that turns a green suite
+into a lie.
+
+Verified live on two separate missions with the mission id unchanged, one writer process
+throughout, and the pre-fix orphan still visible: history added to, never rewritten.
+
+# FINAL DISPOSITION
+
+VERIFIED 14 of 22. All eight remaining obligations are BLOCKED with exact missing inputs:
+
+    G001  bootstrap streak 0 of 3       a resident that can author a mutation
+    G014  decode 36.67 vs >=40          model-side work; host share is only 3.6%
+    G015  prefill 65.10 peak vs >=100   work beyond batching, measured on BOTH routes
+    G017  specimen lifecycle            HCLI-owned Odyssey machinery
+    G018  probe classification          probes to classify
+    G019  checkpoint/resume             an HCLI-authored resume
+    G020  three canaries                G017
+    G021  ODYSSEY_READY                 the four gates above
+
+Not one of them is blocked on difficulty or cost. Every one needs either a Hawking target
+mutation or Odyssey machinery that this directive and the Odyssey contract reserve for HCLI,
+and I authored neither -- which was the point.
+
+REOPEN CONDITION: one accepted nontrivial HCLI-authored mutation.

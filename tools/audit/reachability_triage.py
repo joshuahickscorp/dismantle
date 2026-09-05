@@ -232,18 +232,20 @@ def _extended_partition(sites: Sequence[cr.Site]) -> tuple[list[cr.Site], list[c
     return prod, test
 
 
-def _extended_build_repo_index(files: Sequence[Path] | None = None) -> cr.RepoIndex:
+def _extended_build_repo_index(
+    files: Sequence[Path] | None = None, *, source: str = cr.DEFAULT_SOURCE
+) -> cr.RepoIndex:
     key: Any
     if files is None:
-        key = None
+        key = (None, source)
     else:
-        key = tuple(cr.rel(p) for p in files)
+        key = (tuple(cr.rel(p) for p in files), source)
     cached = _INDEX_CACHE.get(key)
     if cached is not None:
         return cached
     file_list = list(files) if files is not None else cr.repo_py_files()
     prefetch_texts(file_list)
-    idx = _ORIG_BUILD_REPO_INDEX(files=file_list)
+    idx = _ORIG_BUILD_REPO_INDEX(files=file_list, source=source)
     _INDEX_CACHE[key] = idx
     return idx
 

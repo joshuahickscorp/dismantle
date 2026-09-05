@@ -137,7 +137,6 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "restart_supervisor.py":      ("FT.CHILD_RESIDENT.install-dry-run", "RESIDENT_RESTART"),
     "fallback_resident.py":       ("FT.CHILD_RESIDENT.install-dry-run", "RESIDENT_FALLBACK"),
     "adaptive_verification.py":   ("FT.VERIFICATION.repro", "MULTI_FIDELITY_SCREEN"),
-    "phase_listeners.py":         ("FT.ODYSSEY_TRANSFER.re-earn", "PHASE_LISTENER"),
     "consolidated_run.py":        ("FT.ODYSSEY_TRANSFER.re-earn", "ODYSSEY_RUN_DESCRIPTOR"),
     "accelerator_workunits.py":   ("FT.GPU_KERNELS.ready-protected", "ACCELERATOR_SPECIES"),
     "hcli_self_profile.py":       ("FT.LATENCY.cpu-turnaround", "HCLI_SELF_OPTIMIZATION"),

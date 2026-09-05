@@ -419,7 +419,7 @@ def test_invoke_ebpw_categories():
 def test_invoke_unwired_reports_unreachable_with_wake():
     out = rt.handle(
         "capability.invoke",
-        {"id": "future.claim_scope", "arguments": {}},
+        {"id": "future.specimen_events", "arguments": {}},
     )
     assert out["ok"] is False
     assert out["failure_class"] == "UNREACHABLE"

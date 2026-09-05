@@ -56,6 +56,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
 | current clean-tree census | 1,392,082 | 3,010 | 704,995 | 489,194 | 1,095 | 40.790% |
+| after future/lifecycle retirement | 1,386,703 | 3,007 | 699,607 | 489,194 | 1,095 | 40.974% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
 Python lines), leaving 60 tracked future-farm files at the Phase III
@@ -66,7 +67,10 @@ Rust example/shader files (168,974 physical lines) and 74 caller-free
 headless Python files (39,566 physical lines). The current LOC measurement
 includes this scorecard, which is now part of the tracked branch. Phase IV has
 since promoted the VMCP/bench survivors and retired the dead headless Doctor
-producers; the live namespace counts are recorded below.
+producers; the live namespace counts are recorded below. A follow-up reachability
+pass removed the orphan Objective-C memory-traffic probe (641 active lines); its
+historical receipt remains, and no current producer or acceptance path referenced
+the source.
 
 The Rust workspace census is now 18 packages, 12 binaries, and 73 examples.
 The two retired resident-server entry points were `hide-headless` and the old
@@ -168,10 +172,15 @@ The first namespace wave applies the explicit Phase IV rule that `future` and
 capability/oracle probes, HCLI VMCP integration, and structured-output probe
 were promoted to `tools/vmcp` or `tools/bench`. The uncalled headless Doctor
 producer and the nested benchmark driver were deleted; their receipts remain
-historical evidence. At this checkpoint `tools/future` has 59 tracked files and
-`tools/headless` has 54. Remaining files are not silently treated as product:
+historical evidence. The follow-up reachability pass also deleted one orphan
+Objective-C probe, leaving `tools/future` at 54 tracked files; `tools/headless`
+has 54. Remaining files are not silently treated as product:
 they are the next PROMOTE/MERGE/ORACLE/RESEARCH/DELETE queue, ranked by active
-LOC, callers, authority, and evidence coverage.
+LOC, callers, authority, and evidence coverage. A second pass then removed
+three uncalled future producers (`resident_supervisor`, `phase_listeners`, and
+`detached_trial`, 5,374 Python lines) after changing the lifecycle audit to
+receipt-only for their historical trials; `RESOURCE_AVAILABLE` now routes to
+the existing profile handler rather than a second future supervisor.
 
 ## Build and test performance evidence
 

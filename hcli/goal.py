@@ -418,7 +418,7 @@ class GoalCompiler:
         a check that only asserts a named file EXISTS goes green on an empty
         file, and an unscoped repo-wide search goes green because some
         unrelated file among 15k already defines a same-named symbol -- which
-        `goal_compile.check_disk_satisfaction` would read as "already done"
+        a disk-satisfaction helper would read as "already done"
         and skip the work entirely.
         """
         symbols = self._claim_symbols(blob)

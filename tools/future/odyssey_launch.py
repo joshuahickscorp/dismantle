@@ -1238,7 +1238,7 @@ def _eval_modellake() -> dict[str, Any]:
         "receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
         "receipts/headless/MODELLAKE_FLASH_NEXT_CENSUS.json",
     ]
-    rels.append("receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json")
+    rels.append("receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json")
     probe = probe_json(*rels)
     doc = probe.get("doc") if isinstance(probe.get("doc"), Mapping) else None
     schema_ok = bool(doc and str(doc.get("schema") or "").startswith("hcli.agentos.modellake"))
@@ -2551,7 +2551,7 @@ def _identity_stub(kind: str, integration: str) -> dict[str, Any]:
 
 def _machine_genome_pin() -> dict[str, Any]:
     nx = probe_json(
-        "receipts/future/evidence/FLASH_COMPLETE_V0.nx.json",
+        "receipts/headless/FLASH_COMPLETE_V0.nx.json",
         "receipts/headless/FLASH_COMPLETE_V0.nx.json",
     )
     digest = None

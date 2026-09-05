@@ -1104,7 +1104,7 @@ def _school_local_candidates(school: str, nbytes: int, inventory: Mapping[str, A
                     scar_distance="Not trivial shared basis (decoder is shared, codes are expert-local).",
                     hypothesis_family="expert_local_tile_generator",
                     bit_class="CRUSHED",
-                    extends="receipts/future/evidence/FLASH_META_REPRESENTATION_SUB1.json#meta_program.expert_bank",
+                    extends="receipts/headless/FLASH_META_REPRESENTATION_SUB1.json#meta_program.expert_bank",
                 ),
                 _cand(
                     school=school,

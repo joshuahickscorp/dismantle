@@ -134,7 +134,7 @@ NARROW_LABELS: dict[str, str] = {
 
 # Receipts that carried the motivating statuses, or the well-founded counterparts.
 KNOWN_RECEIPT_PATHS: tuple[str, ...] = (
-    "receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+    "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
     "receipts/future/METAL_REACHABILITY.json",
     "receipts/future/SPECIMEN_VERIFICATION.json",
     "receipts/future/ODYSSEY2_LAW_STORE.json",
@@ -467,7 +467,7 @@ CONSEQUENTIAL_GATES: tuple[dict[str, Any], ...] = (
     {
         "name": "flash_meta_teacher_capture_boundary",
         "module": None,
-        "receipt": "receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+        "receipt": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
         "emit_fn": None,
         "why": "stamped BLOCKED_NO_METAL_GPU and the campaign treated that as a host fact",
         "selection": "scan already reaches FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY",
@@ -579,11 +579,11 @@ HISTORICAL_CASES: tuple[dict[str, Any], ...] = (
     {
         "id": "HC.BLOCKED_NO_METAL_GPU",
         "status": "BLOCKED_NO_METAL_GPU",
-        "source": "receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+        "source": "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
         "recovered_from": [
             "tools/future/autonomy_scars.py::STATUS_LABEL_LAUNDERED_AS_CAUSAL_CLAIM",
             "tools/future/metal_reachability.py",
-            "receipts/future/evidence/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
+            "receipts/headless/FLASH_META_TEACHER_L4_CAPTURE_BOUNDARY.json",
         ],
         "probe_kind": PROBE_PROCESS_ERROR,
         "probe_performed": (

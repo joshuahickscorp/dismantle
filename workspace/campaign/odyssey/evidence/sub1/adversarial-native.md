@@ -1,7 +1,3 @@
-I'll start by reading the frontier packet in full so the proposals follow its guardrails and output schema.The packet is loaded. Next I’ll pull prior Hawking MoE numbers, bible §29, and patient facts so the proposals stay grounded.I’ll now pull the MoE map, bible §29, and the Q80/GLM receipts that set the active-vs-stored numbers.I’ll read the Odyssey MoE patients, negative science, and the Q80/GLM receipts next so the accounting is exact.I’ll locate GLM 0.167 BPW, bible §29, and native MoE gather kernels so the execution-path claims stay exact.I need Q80/GLM active-mass fractions and native gather kernels so the stored-vs-active split is geometric, not guessed.Lane is **active sub-1 MoE**: expert-gather + extreme per-expert quant + route-conditioned repr. Stored may stay >1; active (touched/token) <1 is the NX win. Selection ratio is **not** a compression stat.
-
----
-
 ## Geometry (do this first — several “sub-1” claims die here)
 
 **O005** `Qwen3-30B-A3B`, 48× MoE, 128 experts, top-8, **0 shared**. Census MEASURED: stored 30,532,122,624 params; expert mass 28,991,029,248 (95.0%); `8/128 = 0.0625`. Honest decode-active (moe_arch_map §3.1, DERIVED; **embed = 1 row, not the table**):

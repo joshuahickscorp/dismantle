@@ -1,7 +1,3 @@
-I'll read the Sub-1 frontier packet first, then produce several shared-basis proposals in its required schema.The packet is loaded. Next I’ll pull Hawking’s existing patients, expert-structure findings, and prior shared-basis work so the proposals stay grounded.There’s already a Qwen80 cross-expert negative receipt. I’ll pull that plus Odyssey prior science and the campaign packet so the proposals don’t rediscover a dead lever.I’ll read the Odyssey patient packets, novelty contracts, and negative-science files next so the proposals cite measured structure rather than architecture folklore.The negatives kill weight-space tying. I’ll check activation-space structure, GLM’s 0.167 BPW result, and whether any shared-codebook path is still live.I have the mass fractions, negatives, and live codecs. Next I’ll write the shared-basis packet with honest accounting and several mechanisms that don’t assume experts are redundant.Writing the harvestable packet with derived bounds, killed-lever exclusions, and eight mechanisms that don’t assume expert redundancy.Lane premise that survives the kills: experts are **not** redundant in weight space. Shared structure, if it exists, is in **(1) the shared activation they all see**, **(2) table/metadata amortization**, **(3) architecture-native shared experts**, not in “experts look alike.”
-
----
-
 ## Accounting law (DERIVED — do not violate)
 
 **O005** (MEASURED census): `f_expert=0.9495`, `f_non=0.0505`, `E=128`, `top-8`, `0` shared, `0` cold, route entropy `6.16/7.00`.  

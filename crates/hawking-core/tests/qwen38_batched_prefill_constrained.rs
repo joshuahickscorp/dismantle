@@ -91,6 +91,26 @@ fn batched_prefill_constrained_matches_sequential_cold_route() {
         None,
     )
     .expect("batched constrained generation");
+    // Print the measurement. The assertions below are unchanged; a passing test
+    // is a verdict, and G005 needs the numbers behind it.
+    println!(
+        "PARITY prompt_tokens={} seq_dispatches={} bat_dispatches={} ratio={:.2} \
+seq_prefill_ns={} bat_prefill_ns={} speedup={:.3} seq_tokens={:?} bat_tokens={:?} \
+identical={} seq_stop={} bat_stop={}",
+        prompt.len(),
+        seq.prefill_dispatches,
+        bat.prefill_dispatches,
+        seq.prefill_dispatches as f64 / bat.prefill_dispatches.max(1) as f64,
+        seq.prefill_wall_ns,
+        bat.prefill_wall_ns,
+        seq.prefill_wall_ns as f64 / bat.prefill_wall_ns.max(1) as f64,
+        seq.new_tokens(),
+        bat.new_tokens(),
+        seq.new_tokens() == bat.new_tokens(),
+        seq.stop_reason,
+        bat.stop_reason,
+    );
+
     assert!(bat.batched_prefill);
     assert!(bat.prefill_dispatches > 0);
     assert!(bat.prefill_dispatches < seq.prefill_dispatches / 4);

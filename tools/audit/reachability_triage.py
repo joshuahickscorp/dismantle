@@ -2099,17 +2099,11 @@ def _invoke_tabula(arguments: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _invoke_vmcp(arguments: Mapping[str, Any]) -> dict[str, Any]:
-    from tools.vmcp.disposition import compact_surface
-
-    act = str(arguments.get("act") or "disposition")
-    # WIRED_CALL future.vmcp.compact_surface (compatibility capability id)
-    result = compact_surface(act, arguments)
-    tier = str(result.get("evidence_tier") or EVIDENCE_TIER_INVOKE)
     return {
-        "ok": True,
-        "value": result,
-        "symbol": "compact_surface",
-        "evidence_tier": tier,
+        "ok": False,
+        "value": {"state": "PARKED", "reason": "VMCP prototype deferred pending hardening"},
+        "symbol": "future.vmcp",
+        "evidence_tier": EVIDENCE_TIER_STATIC,
     }
 
 

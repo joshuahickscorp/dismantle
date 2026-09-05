@@ -1215,7 +1215,7 @@ pub fn gemv_f32_rows(w: &[f32], rows: usize, cols: usize, x: &[f32], out: &mut [
 }
 
 #[derive(Clone, Debug)]
-struct TensorLoc {
+pub(crate) struct TensorLoc {
     shard: PathBuf,
     /// Absolute byte offset of tensor payload inside the shard file.
     data_offset: u64,

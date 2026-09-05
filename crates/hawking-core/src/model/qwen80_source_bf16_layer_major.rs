@@ -1284,7 +1284,7 @@ pub fn gemv_f32_rows(
 }
 
 #[derive(Clone, Debug)]
-struct TensorLoc {
+pub(crate) struct TensorLoc {
     shard: PathBuf,
     data_offset: u64,
     nbytes: usize,

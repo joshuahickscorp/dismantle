@@ -22,15 +22,6 @@
  "prompt_contract": {
   "renderer": "qwen-chat-template-or-closed-think-fallback",
   "fallback_template": "qwen_closed_think",
-  "thinking_parameter": "enable_thinking",
-  "supports_thinking": true,
   "token_count_authority": "native-resident"
- },
- "capabilities": {
-  "features": {
-   "grammar": "supported",
-   "response_format": "unsupported"
-  },
-  "grammar_note": "SYNTAX only: the resident masks logits so a reply cannot break JSON. It does NOT enforce the schema -- no required keys, no types, no enums -- so the structured-output contract still validates and retries. grammar_enforced in the reply is true only when the mask actually ran."
  }
 }

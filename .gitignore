@@ -279,3 +279,6 @@ directive-goal.txt
 .cargo-target/
 .anevenv/
 .anevenv39/
+
+# Vendored python deps for running HCLI without system packages (36M, reproducible)
+.hcli-deps/

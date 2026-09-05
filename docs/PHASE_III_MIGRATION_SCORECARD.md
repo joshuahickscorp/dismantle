@@ -72,8 +72,8 @@ from the historical 40.736% checkpoint to 40.736%; the native process
 authority recovers some Rust share, but this remains an open migration target
 rather than a claimed success.
 
-The tracked tree is 10,334 files / 461,352,875 bytes versus the Phase III base
-of 11,058 files / 479,552,373 bytes: down 724 files and 18,199,498 bytes.
+The tracked tree is 10,334 files / 461,353,169 bytes versus the Phase III base
+of 11,058 files / 479,552,373 bytes: down 724 files and 18,199,204 bytes.
 
 ## Closure status
 

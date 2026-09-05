@@ -194,21 +194,21 @@ fn ps_rows() -> Vec<(u32, u32, u64, f64, String, String)> {
         .lines()
         .skip(1)
         .filter_map(|line| {
-            let fields = line
-                .splitn(6, char::is_whitespace)
-                .filter(|field| !field.is_empty());
-            let fields: Vec<&str> = fields.collect();
-            if fields.len() < 6 || fields[5].contains("ps -eo") {
+            // `ps` pads numeric columns with variable-width whitespace.
+            // `splitn` counts each padding byte as a separator and can lose
+            // the command field; consume the five scalar fields first and
+            // join the remaining argv words into the command text.
+            let mut fields = line.split_whitespace();
+            let pid = fields.next()?.parse().ok()?;
+            let ppid = fields.next()?.parse().ok()?;
+            let rss_kb = fields.next()?.parse().ok()?;
+            let cpu_percent = fields.next()?.parse().ok()?;
+            let elapsed = fields.next()?.to_string();
+            let command = fields.collect::<Vec<_>>().join(" ");
+            if command.is_empty() || command.contains("ps -eo") {
                 return None;
             }
-            Some((
-                fields[0].parse().ok()?,
-                fields[1].parse().ok()?,
-                fields[2].parse().ok()?,
-                fields[3].parse().ok()?,
-                fields[4].to_string(),
-                fields[5].to_string(),
-            ))
+            Some((pid, ppid, rss_kb, cpu_percent, elapsed, command))
         })
         .collect()
 }

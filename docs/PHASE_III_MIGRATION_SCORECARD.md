@@ -28,7 +28,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | Phase III base `eec54c2ae` | 1,827,340 | 3,657 | 945,772 | 664,648 | 17,005 | 40.736% |
 | after HCLI boundary deletion | 1,803,951 | 3,550 | 945,772 | 657,320 | 1,095 | 40.872% |
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
-| after Rust/headless compaction | 1,399,885 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
+| after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
 Python lines), leaving 61 tracked future-farm files: 57 retained Python

@@ -32,7 +32,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after HCLI boundary deletion | 1,803,951 | 3,550 | 945,772 | 657,320 | 1,095 | 40.872% |
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
-| current clean-tree census | 1,394,764 | 3,013 | 707,288 | 489,679 | 1,095 | 40.736% |
+| current clean-tree census | 1,394,820 | 3,013 | 707,288 | 489,679 | 1,095 | 40.736% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
 Python lines), leaving 60 tracked future-farm files: 57 retained Python
@@ -64,7 +64,7 @@ Rust share is computed as
 `Rust / (Rust + Python + TypeScript + shell)`; it is not inflated by excluding
 the deleted Rust examples or by treating Markdown as executable source.
 
-Against the Phase III base, the current tree is down 432,576 active physical
+Against the Phase III base, the current tree is down 432,520 active physical
 LOC and 644 active files. Python is down 238,484 LOC; Rust is down 174,969 LOC
 because the deletion wave removed uncalled historical examples rather than
 restoring them to improve a ratio. The code-only Rust share therefore moved
@@ -72,7 +72,7 @@ from the historical 40.736% checkpoint to 40.736%; the native process
 authority recovers some Rust share, but this remains an open migration target
 rather than a claimed success.
 
-The tracked tree is 10,334 files / 461,353,169 bytes versus the Phase III base
+The tracked tree is 10,334 files / 461,358,544 bytes versus the Phase III base
 of 11,058 files / 479,552,373 bytes: down 724 files and 18,199,204 bytes.
 
 ## Closure status
@@ -82,7 +82,7 @@ gate is closed.
 
 | gate | current evidence | status |
 |---|---|---|
-| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,394,764 | met |
+| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,394,820 | met |
 | Rust active share materially increased | historical 40.736% -> current 40.736% after native process migration | open |
 | Rust workspace check | `cargo check --workspace` | pass |
 | relevant Rust tests | `cargo test --workspace --lib --bins` | pass |
@@ -97,6 +97,62 @@ missing live sovereign receipts (G002-G008, G012-G013, G015), and one existing
 G014 negative-science receipt still reports a non-zero dead-family duration.
 Those are evidence prerequisites for a later closure run, not source-code
 failures that this branch may fabricate away.
+
+## Candidate census and migration score
+
+The retained-Python census uses physical `wc -l` counts, `rg` import/call-site
+counts, the production command paths, and the retained test suite. Frequency and
+CPU wall are classified from those call paths (hot request path, resident loop,
+or CLI/evidence path); they are not presented as a profiler measurement. The
+priority score is a 0-10 triage score: two points each for durable/control-plane
+responsibility, process or concurrency ownership, hot-path/CPU exposure, a
+compatible Rust owner, and removable duplicate authority. It ranks work; it
+does not authorize a port without schema and restart parity.
+
+| rank | retained module | LOC | callers / frequency | state, process, IO, or encoding load | Rust/authority disposition | score |
+|---:|---|---:|---|---|---|---:|
+| 1 | `hcli/agentos/resident.py` | 2,437 | controller, AgentOS runtime, resident CLI; resident-loop hot path | process lifecycle, concurrency, durable mission state, JSON | next Rust candidate after resident parity and restart/receipt evidence | 8 |
+| 2 | `hcli/controller.py` | 2,028 | commands, runtime, tools, resident; hot request/control path | stateful orchestration, filesystem writes, context/session serialization | retain as Python orchestration until a Rust turn owner is proven | 6 |
+| 3 | `hcli/mission.py` | 1,588 | controller, resident, status/steering; resident hot path | mission/work-unit transitions, scheduler coordination, JSON state | retain; Rust scheduler is not the same mission schema | 6 |
+| 4 | `hcli/runtime.py` | 1,394 | controller, AgentOS runtime, native bridge; hot model path | backend selection, subprocess/runtime lifecycle, resource gates | retain behind Rust runtime-serving boundary until parity | 6 |
+| 5 | `hcli/resources.py` | 1,156 | controller, runtime, resident; hot admission path | RAM/GPU limits, mutation lock, process health, durable diagnostics | retain; overlaps several Rust policies but has no drop-in schema owner | 6 |
+| 6 | `hcli/engine.py` | 6,105 | command/controller/runtime/tool paths; hot execution path | prompt/context state, tool loop, provider calls, serialization | retain; highest LOC but no safe one-to-one Rust owner yet | 4 |
+| 7 | `hcli/backends.py` | 2,436 | runtime/engine/provider paths; model-call hot path | provider/network/process integration and response encoding | retain for comparative provider/hardware advantage | 4 |
+| 8 | `hcli/tool_registry.py` | 2,406 | engine, commands, resident; every tool turn | registry dispatch, effect policy, filesystem/process IO, JSON | Rust HIDE registry owns backend tools; Python AgentOS registry remains distinct | 4 |
+| 9 | `hcli/workunit.py` | 626 | mission/controller/steering; frequent state transitions | durable identity and JSON; SHA-256 schema differs from Rust BLAKE3 objects | retain until an explicit compatibility migration is specified | 2 |
+| 10 | `hcli/knowledge.py` | 524 | controller, AgentOS runtime, tool registry; context turns | workspace hot index plus gzip cold archive and JSON | retain; not interchangeable with `hawking-context` classed SQLite memory | 2 |
+| 11 | `hcli/session.py` | 264 | controller resume/compaction; turn lifecycle | transcript hot tail, semantic checkpoint, gzip history, legacy JSON | retain; Rust `SessionRegistry` owns identity/lineage, not this transcript schema | 2 |
+| 12 | `hcli/processes.py` | 205 | commands and tool registry; operator/diagnostic path | host `ps`, footprint/RSS, argv classification, SIGTERM | consolidated: 7 policy assertions moved to Rust; Python is a compatibility skin | 10 |
+
+The high-scoring process surface is complete because the native owner now
+passes live classification, workspace claims, safe orphan filtering, RSS
+fallback, dry-run reaping, and restart-oriented HCLI smoke. The remaining
+high-value rows are intentionally retained: their Rust neighbors differ in
+identity, schema, or authority semantics, so deleting Python now would create a
+dual-translation layer rather than consolidation. The next real migration
+target is the resident/mission boundary, gated by a Rust owner that can replay
+the same work-unit identity, repair budget, receipts, and restart behavior.
+
+## Build and test performance evidence
+
+Measured on 2026-09-04 in this worktree with the configured external Cargo
+target directory. Clean measurements used isolated temporary target directories;
+warm measurements reused the configured target. These are wall-clock baselines,
+not claims about optimal parallelism.
+
+| workload | mode | wall time | result |
+|---|---|---:|---|
+| `cargo check --workspace` | clean | 18.47s | pass |
+| `cargo check --workspace` | warm | 8.93s | pass |
+| `cargo test --workspace --lib --bins` | clean build + test | 62.84s | pass |
+| `cargo test --workspace --lib --bins` | warm build + test | 23.64s | pass |
+| `python3 -m pytest hcli --collect-only -q -p no:cacheprovider` | collection | 1.54s | 1,576 selected / 1,578 discovered |
+| `python3 -m pytest hcli -q -o addopts='' --tb=line` | full retained suite | 69.00s | 1,522 pass / 49 protected-evidence failures / 7 skip |
+
+The next performance pass should isolate Cargo linker/codegen/dependency walls,
+measure `-j` choices, and compare pytest worker counts and shared-fixture
+contention. Those measurements remain open; no unstable parallelism or cache
+reuse is being claimed by this scorecard.
 
 ## Python-to-Rust migration register
 

@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 716,994 | 1,943 |
-| active total | 1,215,006 | 2,578 |
+| support | 714,823 | 1,932 |
+| active total | 1,212,835 | 2,567 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's
@@ -40,7 +40,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,836 | CURRENT_VERIFICATION |
 | 10 | `workspace/campaign` | 15,668 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 11 | `workspace/docs` | 11,725 | IMPORTANT_ARCHIVE / SUPERSEDED audit required |
+| 11 | `workspace/docs` | 9,529 | IMPORTANT_ARCHIVE / SUPERSEDED audit required |
 | 12 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 13 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 14 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |

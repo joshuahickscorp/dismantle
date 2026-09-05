@@ -1,6 +1,6 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` at the closed G1 campaign-generation wave. This is the support
+Measured on `refactor/event-horizon` after the Qwen30 future-oracle family wave. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 685,985 | 1,884 |
-| active total | 1,183,997 | 2,519 |
+| support | 681,175 | 1,877 |
+| active total | 1,179,187 | 2,511 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -28,7 +28,7 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 136,103 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 131,322 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -64,7 +64,9 @@ also included in the total and must not become an UNKNOWN bucket.
 - `research/lab`: registry-backed operators and their dependency clusters
   survive only when their current scientific owner or verifier is identified;
   unowned campaign chains are candidates for extraction to result/receipt/
-  reproducer and deletion.
+  reproducer and deletion. The unrun Qwen30 streamed-source/raw-logit
+  preparation chain was compressed to `QWEN30_STREAMED_ORACLE_ARCHIVE.md`; the
+  frozen product-side Rust examples were retained.
 - `research/hawking-experiments`: retain decisive findings and minimal
   reproducers; delete superseded executable campaign machinery after checking
   provenance and negative controls. The G1 evidence runners are now retired;

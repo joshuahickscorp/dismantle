@@ -178,16 +178,22 @@ For a requested code/file change, emit:
 
 For a read-only inspection, emit:
 {"kind":"tool_use","content":"why these calls",
- "tool_calls":[{"tool":"fs.read","arguments":[{"name":"path",
- "value":"hcli/engine.py"}]}]}
+ "tool_calls":[{"tool":"fs.search","arguments":[{"name":"pattern",
+ "value":"fn qwen38_batched_prefill_allowed"},{"name":"path",
+ "value":"crates/hawking-core/src/model/qwen38_hybrid_decode.rs"}]},
+ {"tool":"fs.read","arguments":[{"name":"path",
+ "value":"crates/hawking-core/src/model/qwen38_hybrid_decode.rs"},
+ {"name":"start_line","value":"280"},{"name":"end_line","value":"300"}]}]}
 Results come back as OBSERVATIONS and you are asked again.
 
+An fs.read with no window is truncated at ~4,000 chars ("truncated": true) and
+real files here are 100x that. SEARCH FIRST, then read that region. Never edit a
+region you have not read.
+
 USE old_lines/new_lines, NOT old_text/new_text, for anything with more than one
-line. One entry per line, no trailing "\n" of your own. A JSON string has to
-escape every newline and you get that wrong: a reply that sent "\\n" where "\n"
-belonged produced "unexpected character after line continuation character" and
-lost three attempts and four calls. A list of plain lines has nothing to escape.
-old_text/new_text remain valid for a short single-line anchor.
+line: one entry per line, no trailing "\n" of your own, nothing to escape.
+Escaping newlines by hand has cost whole rounds. old_text/new_text remain valid
+for a short single-line anchor.
 
 A MUTATION WITH AN EMPTY or omitted "tests" LIST CANNOT BE ACCEPTED. The
 verifier records it UNVERIFIED -- reason NO_EVIDENCE -- which is terminal, so

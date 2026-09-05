@@ -11,6 +11,9 @@ backend protocol, tools, receipts, local-model composition, and runtime-facing
 control. Python `hcli` remains the orchestration and resident skin where its
 comparative advantage is the long-lived AgentOS loop and experimental provider
 integration. Those are different ownership layers, not a second visual app.
+Host-wide process observation and startup orphan reaping are now native in
+`hide-backend::process_inspector`; Python exposes only a compatibility adapter
+for the retained `/processes` and registry callers.
 
 The desktop frontend, localhost `hide-serve` transport, and ACP server are
 intentionally absent from this phase. They are recoverable from Git history and
@@ -29,7 +32,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after HCLI boundary deletion | 1,803,951 | 3,550 | 945,772 | 657,320 | 1,095 | 40.872% |
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
-| current clean-tree census | 1,394,555 | 3,012 | 707,556 | 489,218 | 1,095 | 40.704% |
+| current clean-tree census | 1,394,764 | 3,013 | 707,288 | 489,679 | 1,095 | 40.736% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
 Python lines), leaving 60 tracked future-farm files: 57 retained Python
@@ -54,21 +57,23 @@ historical receipts and generated graphs are not counted as source reduction.
 
 The current row is the clean-tree measurement after the small ABI, contract,
 receipt-path, closure-report, stream-render, runtime-identity, Rust-REPL,
-duplicate-GoalIR, and test-only-checkpoint consolidations made after the
-historical compaction checkpoint. The code-only
+duplicate-GoalIR, test-only-checkpoint, benchmark-package, and native-process
+authority consolidations made after the historical compaction checkpoint. The
+code-only
 Rust share is computed as
 `Rust / (Rust + Python + TypeScript + shell)`; it is not inflated by excluding
 the deleted Rust examples or by treating Markdown as executable source.
 
-Against the Phase III base, the current tree is down 432,785 active physical
-LOC and 645 active files. Python is down 238,216 LOC; Rust is down 175,430 LOC
+Against the Phase III base, the current tree is down 432,576 active physical
+LOC and 644 active files. Python is down 238,484 LOC; Rust is down 174,969 LOC
 because the deletion wave removed uncalled historical examples rather than
 restoring them to improve a ratio. The code-only Rust share therefore moved
-from 40.736% to 40.704%, which is recorded as an open migration target rather
-than presented as a success.
+from the historical 40.736% checkpoint to 40.736%; the native process
+authority recovers some Rust share, but this remains an open migration target
+rather than a claimed success.
 
-The tracked tree is 10,333 files / 461,349,086 bytes versus the Phase III base
-of 11,058 files / 479,552,373 bytes: down 725 files and 18,203,287 bytes.
+The tracked tree is 10,334 files / 461,352,875 bytes versus the Phase III base
+of 11,058 files / 479,552,373 bytes: down 724 files and 18,199,498 bytes.
 
 ## Closure status
 
@@ -77,11 +82,11 @@ gate is closed.
 
 | gate | current evidence | status |
 |---|---|---|
-| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,394,555 | met |
-| Rust active share materially increased | 40.736% -> 40.704% after honest example pruning | open |
+| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,394,764 | met |
+| Rust active share materially increased | historical 40.736% -> current 40.736% after native process migration | open |
 | Rust workspace check | `cargo check --workspace` | pass |
 | relevant Rust tests | `cargo test --workspace --lib --bins` | pass |
-| full Python HCLI suite | 1,529 passed, 49 protected/evidence failures, 7 skipped (1,585 collected) | open; no failures hidden |
+| full Python HCLI suite | 1,522 passed, 49 protected/evidence failures, 7 skipped (1,578 collected) | open; no failures hidden; seven moved process-policy assertions now run in Rust |
 | no new unexplained failures | focused regressions closed; missing live sovereign receipts remain | open |
 | examples and launch surface reduced | 235 -> 73 examples; 14 -> 12 binaries | met |
 | remaining Rust packages have an ownership boundary | 18 packages after folding two one-consumer facades | met |
@@ -104,6 +109,7 @@ role, a measured caller, and a clear Rust owner.
 | backend command ingress and JSONL control | `crates/hide-backend/src/bin/hcli.rs` + `hcli_bridge` | `hide-backend` / `hide-protocol` | consolidated; visual clients deferred behind VMCP |
 | durable HIDE sessions and receipts | `hide-backend::services`, `replay`, `rewind` | `hide-backend` | Rust authority; no Python duplicate for this surface |
 | local model/runtime serving | `hawking-serve` and `hide-backend::supervisor` | Hawking runtime crates + `hide-backend` | Rust authority; Python may supervise its resident body |
+| host process observation and startup reaping | former `hcli.processes` implementation | `hide-backend::process_inspector` via `hcli processes` | consolidated; Python is a thin compatibility adapter and model tools remain read-only |
 | AgentOS resident loop and comparative provider integrations | `hcli.agentos`, `hcli.runtime`, provider modules | none yet | retained in Python until a parity-tested Rust owner exists |
 | ordinary crash-safe Python writes | `hcli.persist` | none yet | retained; narrow, tested Python advantage, not a second HIDE store |
 | VMCP perception | external `visionmcp` plus `tools/vmcp` adapters | external VMCP boundary | retained as a boundary; visual rebuild waits for hardening |
@@ -114,6 +120,7 @@ role, a measured caller, and a clear Rust owner.
 | bridge | owner | reason it exists now | removal condition |
 |---|---|---|---|
 | Python AgentOS -> resident/native provider | Python `hcli.agentos` | long-lived resident and hardware-specific provider work is not yet parity-ported | a Rust resident loop passes restart, receipt, and negative-control parity |
+| Python process skin -> native HCLI | `hcli.processes` -> `hcli processes --json` | preserves legacy REPL/tool result shape while Rust owns host inspection and signals | Python process callers migrate directly once the native binary is the installed entry point |
 | HCLI backend -> `hawking serve` | Rust `hide-backend::supervisor` over HTTP | keeps the engine crate boundary narrow while the runtime remains independently served | a stable hardened VMCP/runtime transport replaces the compatibility launcher |
 | VMCP adapter -> external `visionmcp` | `hcli.vmcp_adapter` / `tools/vmcp` | VMCP is an external package and must remain an independent sensory authority | hardened VMCP contract covers visual/IDE clients and evidence semantics |
 

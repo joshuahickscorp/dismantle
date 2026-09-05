@@ -52,6 +52,15 @@ hawking is a Rust workspace compiling to a single CLI binary that wraps a Metal-
 
 **Shaders are embedded.** `.metal` sources are compiled into the binary via `include_str!` and compiled at runtime through `MTLDevice newLibraryWithSource:`. No `metallib` artifact; no `xcrun` needed to build.
 
+**HCLI is the current headless HIDE product boundary.** `hide-backend` owns
+durable sessions, receipts, tools, runtime supervision, managed process
+lifecycle, and the native `hcli` command surface. Its `process_inspector`
+module also owns host-wide Hawking process classification, footprint
+observation, owner claims, and startup-only orphan reaping. The Python `hcli`
+package is an orchestration/resident compatibility skin where AgentOS and
+provider-specific behavior is still not parity-ported. Visual/IDE surfaces
+remain deferred until the external VMCP boundary is hardened.
+
 ## Workspace layout
 
 ```

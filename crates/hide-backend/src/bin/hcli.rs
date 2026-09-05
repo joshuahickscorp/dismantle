@@ -100,6 +100,7 @@ fn usage() -> &'static str {
        hcli source list [--workspace PATH] [--json]\n\
        hcli source show (--ref OREF | --hash BLAKE3) [--workspace PATH] [--json]\n\
        hcli source context --attach OREF_OR_BLAKE3 [--attach OREF_OR_BLAKE3]... [--workspace PATH] [--json]\n\
+       hcli processes [--workspace PATH] [--no-footprint] [--json]\n\
        hcli bench --prompt TEXT --model-url URL [--warmup N] [--runs N]\n\
                   [--max-output-tokens N] [--receipt PATH]\n\
        hcli bridge jsonl [--workspace PATH] [--model-url URL]\n\
@@ -131,7 +132,17 @@ fn usage() -> &'static str {
 }
 
 fn parse_options(args: &[String]) -> Result<Options> {
-    const BOOL_FLAGS: &[&str] = &["json", "allow-incomplete", "help", "stdin", "no-synthesis"];
+    const BOOL_FLAGS: &[&str] = &[
+        "json",
+        "allow-incomplete",
+        "help",
+        "stdin",
+        "no-synthesis",
+        "no-footprint",
+        "orphaned",
+        "reap",
+        "dry-run",
+    ];
     let mut parsed = Options::default();
     let mut index = 0usize;
     while index < args.len() {
@@ -257,6 +268,36 @@ fn command_envelope(command: &str, value: Value) -> Value {
         "command": command,
         "result": value,
     })
+}
+
+fn cmd_processes(options: &Options) -> Result<Value> {
+    let root = workspace(options)?;
+    if options.flag("reap") && options.flag("orphaned") {
+        bail!("--reap and --orphaned are mutually exclusive");
+    }
+    if options.flag("reap") {
+        return Ok(command_envelope(
+            "processes.reap",
+            serde_json::to_value(hide_backend::reap_host_processes(
+                &root,
+                options.flag("dry-run"),
+            ))?,
+        ));
+    }
+    if options.flag("orphaned") {
+        return Ok(command_envelope(
+            "processes.orphaned",
+            json!({
+                "orphaned": hide_backend::orphaned_host_processes(&root),
+            }),
+        ));
+    }
+    Ok(command_envelope(
+        "processes",
+        serde_json::to_value(hide_backend::inspect_host_processes(
+            !options.flag("no-footprint"),
+        ))?,
+    ))
 }
 
 fn emit(value: Value, compact: bool) -> Result<()> {
@@ -2739,6 +2780,7 @@ async fn main() -> Result<()> {
         "swarm" => cmd_swarm(&options).await?,
         "research" => cmd_research(&options).await?,
         "bench" => cmd_bench(&options).await?,
+        "processes" => cmd_processes(&options)?,
         "session" => cmd_session(subcommand, &options).await?,
         "source" => cmd_source(subcommand, &options).await?,
         "tool" => cmd_tool(subcommand, &options).await?,

@@ -1479,7 +1479,7 @@ def _git_diff(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _git_safe_revert_refusal(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
-    del context, args
+    del args
     return {
         "status": "REFUSED",
         "reason": "safe checkout/revert requires a caller-owned backup and explicit destructive policy; use git.diff first",
@@ -1851,40 +1851,48 @@ def _grok_swarm_launch(context: ToolContext, args: Dict[str, Any]) -> Dict[str, 
 
 
 def _processes_list(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
-    """Every live Hawking process, classified by argv. Read-only: this wraps
-    hcli.processes.live_processes() and nothing else. Killing a process is
+    """Every live Hawking process, classified by the native Rust authority.
+    Read-only: this wraps the Python compatibility skin and nothing else. Killing a process is
     deliberately NOT reachable here -- that stays on the owned-signal path in
     hcli/agentos/resident.py (_owned_signal), which checks a
     process_start_token before it will ever send a signal.
     """
-    del context, args
+    del args
     from . import processes
 
-    return {"processes": [p.to_dict() for p in processes.live_processes()]}
+    return {
+        "processes": [
+            p.to_dict()
+            for p in processes.live_processes(workspace=context.workspace)
+        ]
+    }
 
 
 def _processes_summary(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     """Roll-up counts and total footprint for every live Hawking process --
-    the same hcli.processes.summary() entry point the process audit receipt
-    uses. Read-only."""
-    del context, args
+    the same native Rust entry point the process audit receipt uses. Read-only."""
+    del args
     from . import processes
 
-    return processes.summary()
+    return processes.summary(workspace=context.workspace)
 
 
 def _processes_orphaned(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     """Resident model bodies with no live owner (reparented to pid 1, unclaimed
-    by any resident state file). Enumeration only: this calls
-    hcli.processes.orphaned_resident_bodies(), never reap_orphaned_bodies(),
-    which sends SIGTERM. Reaping stays a startup-only self-heal in
+    by any resident state file). Enumeration only: this calls the native Rust
+    inspector, never the reaper, which sends SIGTERM. Reaping stays a startup-only self-heal in
     hcli/runtime.py._reap_orphans_once, not something the model can trigger
     through the tool surface.
     """
-    del context, args
+    del args
     from . import processes
 
-    return {"orphaned": [p.to_dict() for p in processes.orphaned_resident_bodies()]}
+    return {
+        "orphaned": [
+            p.to_dict()
+            for p in processes.orphaned_resident_bodies(workspace=context.workspace)
+        ]
+    }
 
 
 def default_tool_registry(
@@ -2025,16 +2033,8 @@ def default_tool_registry(
     # and gave the resident no way to look at one. These three close that gap
     # by wrapping hcli/processes.py's existing read paths only -- nothing new
     # is taught to reap or signal anything. Killing a process is not reachable
-    # through this registry at all; see the handler docstrings.
-    # G009 (receipts/sovereign/G009_reachability.json) found process truth
-    # REACHABLE FROM PRODUCTION CODE (hcli/runtime.py's startup reaper,
-    # hcli/commands.py's /processes command) but UNREACHABLE FROM THE MODEL:
-    # no registered tool named a process, and shell.readonly above refuses
-    # `ps` outright. The live goal's first law names processes as authority
-    # and gave the resident no way to look at one. These three close that gap
-    # by wrapping hcli/processes.py's existing read paths only -- nothing new
-    # is taught to reap or signal anything. Killing a process is not reachable
-    # through this registry at all; see the handler docstrings.
+    # through this registry at all; see the handler docstrings. Observation is
+    # now owned by hide-backend::process_inspector.
     registry.register(ToolSpec(
         "processes.list",
         "Every live Hawking process, classified by argv: role, PID, memory, "

@@ -1,11 +1,3 @@
-I'll read the campaign packet first, then gather the published extreme-quant results those proposals have to sit on.Packet read. Next I’ll pull Hawking’s existing numbers and the published extreme-quant papers so the proposals sit on complete-BPW, not slogans.I’ll pull Hawking’s measured sub-bit results and the paper PDFs in parallel so the complete-BPW table is sourced, not inferred.AQLM’s complete-BPW formula is in hand. Next I’ll pull QMoE, LittleBit, QTIP, and Hawking’s measured sub-bit receipts so the proposals don’t re-invent those numbers.I have the main paper numbers. Next I’ll lock Hawking’s measured GLM/Qwen results and the remaining sub-1 papers (LittleBit, BTC-LLM, NanoQuant) so the proposals stay on measured complete-BPW.Paper complete-BPW is enough to draft the table. I’ll now read Hawking’s measured GLM/Qwen results and the cost-model files so the search proposals don’t fight existing negatives.I have the SOTA numbers. One last pass on Hawking’s GLM 0.167 receipt, then I’ll write the prior-art table and the structured proposals.I have the published complete-BPW numbers and Hawking’s negatives. Next I’ll write the SOTA table and the search proposals in the packet schema.
-
----
-
-# Prior-art SOTA + sub-1 search (priorart-search lane)
-
-**Headline:** published PTQ that stays *generation-usable* bottoms out near **~2 complete BPW** on dense LLMs (QTIP / AQLM / QuIP#). Honest **stored sub-1** exists in three families only: **QMoE entropy-of-ternary** (0.81 complete on a 1.6T Switch MoE), **binary-codebook PQ of ±1** (BTC-LLM ~0.77–0.88 complete on Llama-2-7B, PPL still single-digit), and **binary low-rank factors** (LittleBit/NanoQuant: “0.1 BPW” is **not** complete on 7B ≈0.75; on 70B ≈0.23). Hawking’s one real sub-⅕ (GLM **0.755 cos @ 0.167 BPW**) is activation-aware, not a published PTQ codec. **Active** sub-1 on Odyssey MoE is cheaper than stored sub-1 and does not need a new codec.
-
 All quality numbers below are the papers’ PPL / zeroshot, **not Doctor**. Treat them as existence proofs + accounting templates, not Odyssey gates.
 
 ---

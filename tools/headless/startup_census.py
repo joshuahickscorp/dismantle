@@ -79,7 +79,6 @@ MODULE_CAPABILITY = {
     "hcli.verifier_pipeline": "verify: command admission",
     "hcli.index": "index: WorkspaceIndex (no production importer found)",
     "hcli.mutation": "mutate: file ops (tests import it; no production importer found)",
-    "hcli.context": "mission: re-export of WorkerPacket",
 }
 
 WATCHED_FAIL: List[str] = []
@@ -779,7 +778,7 @@ def classify_reachable(
         # --help path is the Controller graph.
         if name in ("hcli.app", "hcli.tui", "hcli.commands", "hcli.grok_bridge",
                     "hcli.ledger", "hcli.verifier_pipeline", "hcli.index",
-                    "hcli.mutation", "hcli.context"):
+                    "hcli.mutation"):
             paid_only_because_of_controller = False
         out.append(
             {

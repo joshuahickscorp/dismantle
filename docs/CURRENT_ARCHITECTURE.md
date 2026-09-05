@@ -32,7 +32,7 @@ unmeasured artifact.
 |---|---|---|
 | Product CLI and command ingress | Python `hcli.cli`, `hcli.commands`, `hcli.controller` plus Rust `hide-backend`/`hcli` | One HCLI product surface; Python is the orchestration skin and Rust is the backend authority |
 | AgentOS work and lifecycle | `hcli.agentos` plus canonical `hcli.goal`, `hcli.workunit`, `hcli.scheduler`, `hcli.mission`, `hcli.verifier_pipeline` | Scheduling/proposal is not verification |
-| Runtime and provider execution | `hcli.runtime`, `hcli.engine`, `hcli.backends`, `hcli.session`, `hcli.context`, `hcli.models` | Provider output is evidence only after the verifier accepts it |
+| Runtime and provider execution | `hcli.runtime`, `hcli.engine`, `hcli.backends`, `hcli.session`, `hcli.models` | Provider output is evidence only after the verifier accepts it |
 | Crash-safe persistence | `hcli.persist` | The shared text/bytes/JSON atomic writers; specialized compare-and-swap remains in its owner |
 | Doctor diagnosis | `tools.doctor.engine` and `tools.doctor.*` | Metadata/receipt diagnosis; no weight loading or hardware claim |
 | Gravity representation search | `hcli.gravity`, `hcli.agentos.flash_representation_experiment`, `tools/gravity_*.py`, Rust runtime crates | Search/compile is distinct from physical qualification |

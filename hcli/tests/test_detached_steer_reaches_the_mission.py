@@ -103,3 +103,40 @@ def test_absorbing_does_not_duplicate_on_repeated_reads(tmp_path):
     first = len(q.all())
     for _ in range(5):
         assert len(q.all()) == first, "repeated reads duplicated events"
+
+
+def test_the_whole_chain_a_detached_steer_reaches_the_worker_packet(tmp_path):
+    """End to end: inject from outside -> mission absorbs -> it lands in the packet.
+
+    Each link was broken separately. Routing sent the steer to a file the mission
+    never read; the queue then held a stale in-memory copy. This asserts the whole
+    path, because two working halves and a broken joint is still a steer nobody
+    acted on.
+    """
+    import time
+
+    from hcli.goal import compile_worker_context
+    from hcli.steering import SteeringQueue
+    from hcli.workunit import WorkUnit
+
+    mission_q = SteeringQueue(str(tmp_path), "S-LIVE")   # mission starts first
+    time.sleep(0.02)
+    SteeringQueue(str(tmp_path), "S-LIVE").enqueue(       # DETACHED supervisor
+        "USE prefill_profile totals", kind="knowledge",
+        mission_id="M-LIVE", source_session_id="SUPERVISOR")
+
+    events = mission_q.all()          # exactly what Mission._unit_context passes
+    assert [e.text for e in events] == ["USE prefill_profile totals"]
+    assert events[0].mission_id == "M-LIVE"
+    assert events[0].source_session_id == "SUPERVISOR"
+
+    wu = WorkUnit(id="implement", role="implementation", description="do the thing")
+    packet = compile_worker_context(
+        wu, {}, phase="running", units={"implement": wu}, steering=events,
+        failure_context=None, ledger=None, goal_ref="ref",
+    )
+    blob = packet if isinstance(packet, str) else str(packet)
+    assert "USE prefill_profile totals" in blob, (
+        "the steer reached the mission's queue but never entered the worker packet"
+    )
+    assert "[knowledge]" in blob, "the steer's kind was dropped on the way in"

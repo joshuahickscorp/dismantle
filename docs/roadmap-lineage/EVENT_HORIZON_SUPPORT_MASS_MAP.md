@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 664,274 | 1,839 |
-| active total | 1,162,286 | 2,474 |
+| support | 661,685 | 1,837 |
+| active total | 1,159,697 | 2,472 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -35,7 +35,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 3 | `tools/future` | 54,763 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 33,482 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 6 | `tools/headless` | 31,409 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
+| 6 | `tools/headless` | 28,820 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 25,942 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |
@@ -98,7 +98,8 @@ also included in the total and must not become an UNKNOWN bucket.
   retained in `QWEN_SCIENTIFIC_OPTIMIZER_ARCHIVE.md`.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
-  surviving `frontier_adversary` owns the small accounting predicate it needs.
+  remaining adversary evidence is receipt-backed after its broken
+  Noetic/VisionMCP runners were retired.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

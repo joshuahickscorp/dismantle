@@ -39,6 +39,13 @@ from .workunit import (
 )
 
 MISSION_DIRNAME = "mission"
+
+# A mission that has stopped for good, so reissuing its goal is a restart
+# rather than a resume. Canonical here because it is a property of
+# Mission.phase; hcli.agentos.resident re-exports it.
+TERMINAL_MISSION_PHASES = frozenset(
+    {"completed", "failed", "cancelled", "no_progress"}
+)
 STATE_FILENAME = "state.json"
 LOG_FILENAME = "mission.log"
 MISSION_VERSION = 1

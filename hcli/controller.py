@@ -17,7 +17,12 @@ from .events import EventBus
 from .goal_bank import GoalBank, GoalBankError
 from .knowledge import KnowledgeStore
 from .max_policy import grok_pool_snapshot
-from .mission import Mission
+from .mission import (
+    TERMINAL_MISSION_PHASES,
+    Mission,
+    load_state,
+    mission_state_path,
+)
 from .models import ModelInfo, ModelRegistry
 from .resources import MutationLock, can_admit, normalize_resource_class, occupancy_of
 from .runtime import RuntimePool, load_observed_overlap
@@ -1283,17 +1288,65 @@ class Controller:
             if goal is not None
             else self.session.goal
         )
-        self.mission = Mission(
-            self.workspace_root,
-            engine=engine if engine is not None else self.engine,
-            units=units,
-            goal=text or "",
-            runtime_count=self.runtime_count,
-            runtime_pool=self.runtime_pool,
-            session_id=self.session.id,
-            context_memory=kwargs.pop("context_memory", self._context_memory_for_turn()),
-            **kwargs,
-        )
+        # Popped once, before the fork: both branches pass the same value, and
+        # a failed adopt must not consume it on its way to the replace path.
+        if "context_memory" in kwargs:
+            memory = kwargs.pop("context_memory")
+        else:
+            memory = self._context_memory_for_turn()
+        # Reissuing a goal used to MINT a new mission over the old one: the
+        # constructor's Scheduler._persist() rewrites dag.json, and because
+        # content_identity() ignores status, a content-identical graph is not
+        # an IdentityConflict and is not retired -- completed units came back
+        # `pending` and the prior id survived only in mission.log. Adopt
+        # instead, but only on a verified match: same goal text, and a phase
+        # the mission can still be advanced from. Agent.run() already forks
+        # this way (runtime.py); it just never had the identity check because
+        # its resume path is the one that passes no goal at all.
+        adopt = False
+        if units is None:
+            try:
+                prior = load_state(mission_state_path(self.workspace_root))
+            except Exception:
+                prior = {}
+            adopt = (
+                str(prior.get("goal") or "") == (text or "")
+                and str(prior.get("phase") or "") not in TERMINAL_MISSION_PHASES
+            )
+        if adopt:
+            # A corrupt state.json, a retired dag, a WorkUnit schema that moved
+            # -- any of these raise in from_workspace. None of them may make
+            # /mission unusable: restoring is the optimisation, minting a fresh
+            # mission is still a correct answer, so fall through on failure.
+            try:
+                self.mission = Mission.from_workspace(
+                    self.workspace_root,
+                    engine=engine if engine is not None else self.engine,
+                    goal=text or "",
+                    runtime_count=self.runtime_count,
+                    runtime_pool=self.runtime_pool,
+                    session_id=self.session.id,
+                    context_memory=memory,
+                    **kwargs,
+                )
+            except Exception:
+                adopt = False
+            else:
+                # An adopted mission inherits the on-disk obligations too. Without
+                # this, /steer against a resumed mission reads a None ledger.
+                self._reload_ledger()
+        if not adopt:
+            self.mission = Mission(
+                self.workspace_root,
+                engine=engine if engine is not None else self.engine,
+                units=units,
+                goal=text or "",
+                runtime_count=self.runtime_count,
+                runtime_pool=self.runtime_pool,
+                session_id=self.session.id,
+                context_memory=memory,
+                **kwargs,
+            )
         self.session.mission_id = self.mission.id
         self._persist_session()
         result = self.mission.run()
@@ -1965,6 +2018,16 @@ class Controller:
         self.session.mission_id = mission.id
         if mission.goal and not self.session.goal:
             self.session.goal = mission.goal
+        self._reload_ledger()
+        return mission
+
+    def _reload_ledger(self) -> None:
+        """Re-read the on-disk GOAL.md into `_ledger`.
+
+        Any path that adopts a mission off disk must also adopt its ledger:
+        `_steer` reads `self._ledger`, so a restored mission with a None
+        ledger silently drops every constraint the operator files against it.
+        """
         goal_md = Path(self.workspace_root) / ".hcli" / "GOAL.md"
         if goal_md.is_file():
             try:
@@ -1973,7 +2036,6 @@ class Controller:
                 self._ledger = Ledger.parse(goal_md)
             except Exception:
                 pass
-        return mission
 
     def request_exit(
         self,

@@ -57,7 +57,6 @@ impl GateBook {
             None => false,
         }
     }
-
 }
 
 /// Classify a command as genuinely destructive / system-level. Returns `Some(reason)` to block, `None`

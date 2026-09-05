@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 673,372 | 1,873 |
-| active total | 1,171,384 | 2,507 |
+| support | 668,723 | 1,843 |
+| active total | 1,166,735 | 2,478 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -34,7 +34,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,763 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 5 | `research/hawking-experiments` | 38,129 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 5 | `research/hawking-experiments` | 33,482 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 6 | `tools/headless` | 32,994 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 25,958 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
@@ -89,6 +89,9 @@ also included in the total and must not become an UNKNOWN bucket.
   Ascension contract/workflow modules were reduced to
   `ASCENSION_ORPHANED_CONTRACTS_ARCHIVE.md`; 41 concluded G1 reports were
   reduced to the complete `G1_ARCHIVE_LEDGER.md` decision record.
+  The duplicate Frankenstein `condense/` wrapper and test tree was then
+  retired; live tooling remains in `tools/condense/`, operators remain under
+  `frankenstein/operators/`, and all Frankenstein data/evidence is preserved.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

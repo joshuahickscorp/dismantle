@@ -44,6 +44,5 @@ pythonpath = [
     # under research/ without this leaves every one of them unresolvable.
     "research",
     "research/hawking-experiments/frankenstein/operators",
-    "research/hawking-experiments/frankenstein/condense",
     "research/hawking-experiments/prometheus/tools",
 ]

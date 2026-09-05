@@ -11,7 +11,7 @@ and receipts/headless/CONSOLIDATION2.json.
 ## Layout (CONSOLIDATE-2)
 
 - `frankenstein/operators/` — live frankenstein Python operators (moved from lab/operators, files named frankenstein_*.py)
-- `frankenstein/condense/` — CLI wrappers + tests (moved from tools/condense, files named frankenstein_* / test_frankenstein_*)
+- Frankenstein wrapper/test duplicates were retired; live tooling remains under `tools/condense/` and operator source under `frankenstein/operators/`.
 - `frankenstein/data/` — campaign evidence (moved from workspace/campaign/evidence/models, frankenstein tree)
 - `prometheus/tools/` — prometheus package (moved from tools, prometheus tree)
 - `prometheus/config/` — allocation profiles (moved from workspace/campaign/config/profiles, prometheus tree)

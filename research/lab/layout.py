@@ -17,7 +17,6 @@ HAWKING_EXPERIMENTS_ROOT: Final = REPO_ROOT / "hawking-experiments"
 FRANKENSTEIN_ROOT: Final = HAWKING_EXPERIMENTS_ROOT / "frankenstein"
 FRANKENSTEIN_DATA_ROOT: Final = FRANKENSTEIN_ROOT / "data"
 FRANKENSTEIN_OPERATORS_ROOT: Final = FRANKENSTEIN_ROOT / "operators"
-FRANKENSTEIN_CONDENSE_ROOT: Final = FRANKENSTEIN_ROOT / "condense"
 PROMETHEUS_ROOT: Final = HAWKING_EXPERIMENTS_ROOT / "prometheus"
 PROMETHEUS_TOOLS_ROOT: Final = PROMETHEUS_ROOT / "tools"
 PROMETHEUS_CONFIG_ROOT: Final = PROMETHEUS_ROOT / "config"
@@ -127,7 +126,6 @@ def experiment_pythonpath() -> tuple[Path, ...]:
     """
     return (
         PROMETHEUS_TOOLS_ROOT,
-        FRANKENSTEIN_CONDENSE_ROOT,
         FRANKENSTEIN_OPERATORS_ROOT,
     )
 
@@ -217,8 +215,6 @@ def resolve_workspace_path(value: str | Path) -> Path:
         (("workspace", "superwave"), SUPERWAVE_ROOT),
         (("tools", "prometheus"), PROMETHEUS_TOOLS_ROOT),
         (("lab", "operators"), FRANKENSTEIN_OPERATORS_ROOT),
-        (("tools", "condense", "tests"), FRANKENSTEIN_CONDENSE_ROOT / "tests"),
-        (("tools", "condense"), FRANKENSTEIN_CONDENSE_ROOT),
     )
     for prefix, dest in moved_prefixes:
         n = len(prefix)
@@ -227,7 +223,7 @@ def resolve_workspace_path(value: str | Path) -> Path:
         rest = path.parts[n:]
         # lab/operators and tools/condense prefixes are only remapped for
         # frankenstein_* module files that actually moved.
-        if dest in {FRANKENSTEIN_OPERATORS_ROOT, FRANKENSTEIN_CONDENSE_ROOT, FRANKENSTEIN_CONDENSE_ROOT / "tests"}:
+        if dest is FRANKENSTEIN_OPERATORS_ROOT:
             leaf = str(rest[0]) if rest else ""
             if not leaf.startswith(("frankenstein", "test_frankenstein")):
                 continue

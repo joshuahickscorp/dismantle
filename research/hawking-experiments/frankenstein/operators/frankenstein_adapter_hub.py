@@ -1122,7 +1122,7 @@ def hub_design_document() -> dict[str, Any]:
         },
         "implementation": {
             "module": "hawking-experiments/frankenstein/operators/frankenstein_adapter_hub.py",
-            "tests": "hawking-experiments/frankenstein/condense/tests/test_frankenstein_adapter_hub.py",
+            "tests": "retired duplicate wrapper test; verification is receipt-backed",
             "config": f"research/evidence/models/frankenstein/{DEFAULT_HUB_CONFIG_NAME}",
         },
         "non_goals": [

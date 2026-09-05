@@ -5,7 +5,6 @@ members = [
     "crates/hawking-core",
     "crates/hawking-speculate",
     "crates/hawking-serve",
-    "crates/hawking-bench",
     # HIDE product backend, rehydrated from sealed pack 5a99d0e2 on 2026-07-19 (Phase 1a).
     # HTTP-coupled to the runtime (no Rust dep on hawking-core/serve), so it compiles
     # independent of the core's API drift. hide-fleet/personalize=REDESIGN, research=ARCHIVE
@@ -58,7 +57,6 @@ default-members = [
     "crates/hawking",
     "crates/hawking-core",
     "crates/hawking-serve",
-    "crates/hawking-bench",
     "crates/hawking-speculate",
     "crates/hawking-context",
     "crates/hawking-index",

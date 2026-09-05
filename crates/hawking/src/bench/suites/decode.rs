@@ -1,5 +1,5 @@
-use crate::competitors::{Competitor, LlamaCppBackend, MlxBackend};
-use crate::{measured_decode_tps, BenchOptions};
+use super::super::competitors::{Competitor, LlamaCppBackend, MlxBackend};
+use super::super::{measured_decode_tps, BenchOptions};
 use anyhow::{anyhow, Result};
 use hawking_core::{
     profile::KernelProfile, EngineConfig, GenerateRequest, SamplingParams, SpeculateMode,

@@ -79,10 +79,10 @@ hawking/
 │   │   │   └── tokenizer/        # wrapper over tokenizers crate
 │   │   └── shaders/              # .metal source, embedded at build
 │   ├── hawking-serve/          # axum HTTP server
-│   ├── hawking-bench/          # benchmark suites
+│   ├── hawking/src/bench/      # benchmark suites owned by the CLI
 │   ├── hawking-adapters/       # model-family registry; generated/ is codegen output
-│   └── hide-*/                 # HIDE product crates (backend, protocol, acp, ...)
-├── app/                          # HIDE front end (Vite + React + Tauri)
+│   └── hide-*/                 # HIDE product crates (backend, protocol, kernel, fleet, ...)
+├── (visual/IDE surface deferred until the external VMCP boundary is hardened)
 ├── tools/                        # Python + shell instruments
 │   ├── bench/                    # shell bench harness + oracle scripts
 │   ├── graph/                    # semantic-graph extractor, analyses, viewer
@@ -135,8 +135,8 @@ re-filed without breaking a seal.
 | `hawking-core::tokenizer` | Tokenize / detokenize | `tokenizers` crate |
 | `hawking-core::model` | Per-architecture forward passes | everything above |
 | `hawking-serve` | HTTP, SSE, continuous batching | `hawking-core` |
-| `hawking-bench` | Benchmark suites | `hawking-core` |
-| `hawking` (umbrella) | CLI dispatch | `hawking-serve`, `hawking-bench`, `hawking-core` |
+| `hawking/src/bench` | Benchmark suites | `hawking-core` |
+| `hawking` | CLI dispatch and benchmark lifecycle | `hawking-serve`, `hawking-core` |
 
 ## Invariants
 

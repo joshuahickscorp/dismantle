@@ -1,5 +1,5 @@
-use crate::competitors::{Competitor, HawkingBackend, LlamaCppBackend};
-use crate::BenchOptions;
+use super::super::competitors::{Competitor, HawkingBackend, LlamaCppBackend};
+use super::super::BenchOptions;
 use anyhow::Result;
 use serde_json::json;
 

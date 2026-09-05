@@ -1,4 +1,4 @@
-use crate::BenchOptions;
+use super::super::BenchOptions;
 use anyhow::Result;
 
 /// Measure sustained device-side buffer-copy throughput.  This is a hardware

@@ -1,5 +1,5 @@
 use super::{Competitor, Measurement};
-use crate::measured_decode_tps;
+use super::super::measured_decode_tps;
 use anyhow::{anyhow, Result};
 use hawking_core::{Engine, EngineConfig, GenStats, GenerateRequest, SamplingParams, StreamEvent};
 use std::path::{Path, PathBuf};

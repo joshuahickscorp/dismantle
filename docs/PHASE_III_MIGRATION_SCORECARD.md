@@ -39,12 +39,15 @@ Rust example/shader files (168,974 physical lines) and 74 caller-free
 headless Python files (39,566 physical lines). The current LOC measurement
 includes this scorecard, which is now part of the tracked branch.
 
-The Rust workspace census is now 19 packages, 12 binaries, and 73 examples.
+The Rust workspace census is now 18 packages, 12 binaries, and 73 examples.
 The two retired resident-server entry points were `hide-headless` and the old
 dirty-tier `research_server`; HCLI is the remaining HIDE backend binary.
 The former one-consumer `hawking-index-query` package is now a binary and
 Python-facts module owned by `hawking-index`; its command name and
 `hawking.index.python_facts.v1` wire schema are unchanged.
+The former library-only `hawking-bench` package is now the private
+`hawking/src/bench` module owned by the `hawking` CLI; benchmark subcommands
+and report schemas remain unchanged.
 
 The branch must report the post-pruning measurement after the deletion commit;
 historical receipts and generated graphs are not counted as source reduction.
@@ -81,6 +84,7 @@ gate is closed.
 | full Python HCLI suite | 1,529 passed, 49 protected/evidence failures, 7 skipped (1,585 collected) | open; no failures hidden |
 | no new unexplained failures | focused regressions closed; missing live sovereign receipts remain | open |
 | examples and launch surface reduced | 235 -> 73 examples; 14 -> 12 binaries | met |
+| remaining Rust packages have an ownership boundary | 18 packages after folding two one-consumer facades | met |
 | clean working tree | `git status --short` empty | met |
 
 The 49 HCLI failures are not converted into green receipts: 48 require ten

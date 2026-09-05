@@ -1019,7 +1019,6 @@ dependencies = [
  "anyhow",
  "clap",
  "ctrlc",
- "hawking-bench",
  "hawking-core",
  "hawking-serve",
  "hawking-speculate",
@@ -1040,17 +1039,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
-]
-
-[[package]]
-name = "hawking-bench"
-version = "0.2.2"
-dependencies = [
- "anyhow",
- "hawking-core",
- "serde",
- "serde_json",
- "sha2",
 ]
 
 [[package]]

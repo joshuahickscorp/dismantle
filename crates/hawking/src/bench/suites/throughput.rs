@@ -1,4 +1,4 @@
-use crate::BenchOptions;
+use super::super::BenchOptions;
 use anyhow::Result;
 
 pub fn run(_opts: &BenchOptions) -> Result<serde_json::Value> {

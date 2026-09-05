@@ -1,4 +1,4 @@
-use crate::BenchOptions;
+use super::super::BenchOptions;
 use anyhow::Result;
 use hawking_core::{EngineConfig, GenerateRequest, SamplingParams, StreamEvent};
 use std::time::Instant;

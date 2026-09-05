@@ -110,7 +110,7 @@ impl Competitor for MlxBackend {
 
 #[cfg(test)]
 mod tests {
-    use crate::competitors::extract_after;
+    use super::extract_after;
     #[test]
     fn parses_mlx_summary_lines() {
         let blob = "==========\n\

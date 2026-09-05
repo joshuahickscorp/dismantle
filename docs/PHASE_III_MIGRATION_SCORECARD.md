@@ -20,6 +20,29 @@ intentionally absent from this phase. They are recoverable from Git history and
 may be rebuilt only after the external VMCP boundary is hardened. No current
 visual authority is implied by this document.
 
+## Phase IV minimum-operational steering
+
+The Phase IV steer is now the active decision filter for this branch. The
+ladder is `<1M` active LOC, then `<750K`, then `<500K`; if the remaining tree
+still contains obvious semantic bloat, continue toward 400K/350K. Every
+checkpoint reports both measures from `tools/loc/hawking_loc.py`:
+
+* **Total active LOC** counts every tracked, non-archived, non-generated,
+  non-vendored source line, including tests, research, shaders, and Markdown.
+* **Minimum product LOC** counts only non-test HCLI Python, Rust/shader
+  implementation under crate `src`/`shaders`, and the retained `tools/vmcp`
+  boundary. It excludes research, acceptance/oracle harnesses, examples,
+  documentation, and receipts.
+
+The current minimum-product boundary is already below 500K, but total active
+LOC is not: this is a valid product checkpoint and an open condensation target,
+not a claim that the branch has reached the total-LOC floor. Repatriation must
+follow profile → collapse → define minimum authority → implement Rust → switch
+callers → verify → delete the Python owner → delete the bridge. Rust owns
+durable machinery and computer/runtime state; Python remains for earned
+cognition, research, and orchestration policy. VMCP remains an external,
+independent boundary until hardened; no visual/IDE rebuild is in scope.
+
 ## Measured checkpoint
 
 All LOC values come from `tools/loc/hawking_loc.py`; they are physical lines of
@@ -32,15 +55,18 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after HCLI boundary deletion | 1,803,951 | 3,550 | 945,772 | 657,320 | 1,095 | 40.872% |
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
-| current clean-tree census | 1,394,820 | 3,013 | 707,288 | 489,679 | 1,095 | 40.736% |
+| current clean-tree census | 1,392,082 | 3,010 | 704,995 | 489,194 | 1,095 | 40.790% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
-Python lines), leaving 60 tracked future-farm files: 57 retained Python
+Python lines), leaving 60 tracked future-farm files at the Phase III
+checkpoint: 57 retained Python
 modules, the existing ledger and memory-traffic probe, and the retained test
 helper shell script. The later Rust/headless compaction removed 171 uncalled
 Rust example/shader files (168,974 physical lines) and 74 caller-free
 headless Python files (39,566 physical lines). The current LOC measurement
-includes this scorecard, which is now part of the tracked branch.
+includes this scorecard, which is now part of the tracked branch. Phase IV has
+since promoted the VMCP/bench survivors and retired the dead headless Doctor
+producers; the live namespace counts are recorded below.
 
 The Rust workspace census is now 18 packages, 12 binaries, and 73 examples.
 The two retired resident-server entry points were `hide-headless` and the old
@@ -64,16 +90,16 @@ Rust share is computed as
 `Rust / (Rust + Python + TypeScript + shell)`; it is not inflated by excluding
 the deleted Rust examples or by treating Markdown as executable source.
 
-Against the Phase III base, the current tree is down 432,520 active physical
-LOC and 644 active files. Python is down 238,484 LOC; Rust is down 174,969 LOC
+Against the Phase III base, the current tree is down 435,258 active physical
+LOC and 647 active files. Python is down 240,777 LOC; Rust is down 175,454 LOC
 because the deletion wave removed uncalled historical examples rather than
 restoring them to improve a ratio. The code-only Rust share therefore moved
-from the historical 40.736% checkpoint to 40.736%; the native process
-authority recovers some Rust share, but this remains an open migration target
-rather than a claimed success.
+from the historical 40.736% checkpoint to 40.790%; the native process
+authority and Python-side deletions recover some Rust share, but this remains
+an open migration target rather than a claimed success.
 
-The tracked tree is 10,334 files / 461,358,544 bytes versus the Phase III base
-of 11,058 files / 479,552,373 bytes: down 724 files and 18,199,204 bytes.
+The tracked tree is 10,329 files / 461,220,117 bytes versus the Phase III base
+of 11,058 files / 479,552,373 bytes: down 729 files and 18,332,256 bytes.
 
 ## Closure status
 
@@ -82,8 +108,10 @@ gate is closed.
 
 | gate | current evidence | status |
 |---|---|---|
-| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,394,820 | met |
-| Rust active share materially increased | historical 40.736% -> current 40.736% after native process migration | open |
+| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,392,082 | met |
+| minimum product LOC below 500K | `product_LOC=498,094`, `product_files=635` | met; conservative boundary |
+| total active LOC below 500K | `total_LOC=1,392,082` | open; Phase IV ladder in progress |
+| Rust active share materially increased | historical 40.736% -> current 40.790% after native process/VMCP boundary migration | open |
 | Rust workspace check | `cargo check --workspace` | pass |
 | relevant Rust tests | `cargo test --workspace --lib --bins` | pass |
 | full Python HCLI suite | 1,522 passed, 49 protected/evidence failures, 7 skipped (1,578 collected) | open; no failures hidden; seven moved process-policy assertions now run in Rust |
@@ -132,6 +160,18 @@ identity, schema, or authority semantics, so deleting Python now would create a
 dual-translation layer rather than consolidation. The next real migration
 target is the resident/mission boundary, gated by a Rust owner that can replay
 the same work-unit identity, repair budget, receipts, and restart behavior.
+
+## Phase IV namespace dispositions
+
+The first namespace wave applies the explicit Phase IV rule that `future` and
+`headless` are not architectural kingdoms. The live VMCP disposition, VMCP
+capability/oracle probes, HCLI VMCP integration, and structured-output probe
+were promoted to `tools/vmcp` or `tools/bench`. The uncalled headless Doctor
+producer and the nested benchmark driver were deleted; their receipts remain
+historical evidence. At this checkpoint `tools/future` has 59 tracked files and
+`tools/headless` has 54. Remaining files are not silently treated as product:
+they are the next PROMOTE/MERGE/ORACLE/RESEARCH/DELETE queue, ranked by active
+LOC, callers, authority, and evidence coverage.
 
 ## Build and test performance evidence
 

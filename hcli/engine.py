@@ -594,6 +594,12 @@ def _if_is_main_guard(node: ast.If) -> bool:
     )
 
 
+def _looks_like_a_test_filename(path: Path) -> bool:
+    """`test_*.py` / `*_test.py`. A file that calls itself a test is one."""
+    name = path.name
+    return name.endswith(".py") and (name.startswith("test_") or name.endswith("_test.py"))
+
+
 def _ast_is_pytest_idiom(tree: ast.AST) -> bool:
     has_tests = False
     has_main = False
@@ -5809,7 +5815,25 @@ class Engine:
                 "argv": None,
             }
 
-        use_pytest = wants_pytest or self._file_is_pytest_idiom(path)
+        # A file that NAMES ITSELF a test is scored as a test, always.
+        #
+        # _file_is_pytest_idiom inspects CONTENT, so a file with no test
+        # functions is not "pytest idiom" and used to fall through to the
+        # `script` runner -- plain `python file.py`, scored on exit code alone.
+        # Measured 2026-09-05: HCLI named tools/sovereign/test_g002_attribution.py
+        # as its proving test, wrote a file containing only a docstring, and the
+        # mutation was ACCEPTED on runner=script exit 0 with collected=None.
+        # Its two previous attempts wrote real tests and were correctly rejected
+        # (runner=pytest, collected 1, passed 0, TEST_FAILED) -- so the heuristic
+        # routed the EMPTY file to the one runner that cannot notice it is empty.
+        #
+        # Under pytest an empty test file returns rc 5, which _pytest_evidence
+        # already scores as NO_EVIDENCE. Forcing pytest by NAME closes the hole.
+        use_pytest = (
+            wants_pytest
+            or _looks_like_a_test_filename(path)
+            or self._file_is_pytest_idiom(path)
+        )
         if use_pytest:
             if not self._pytest_importable():
                 return {

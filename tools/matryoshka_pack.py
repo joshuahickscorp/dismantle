@@ -648,7 +648,7 @@ def write_report(
     a(f"- **BASE** = HGRAVU01 uniform-q{BASE_BITS} group-{GROUP} of the BF16 MLP weight.")
     a(f"  This is the packing scheme already in `{MIXED_Q3MLP}`")
     a(f"  (CITED complete BPW {MIXED_Q3MLP_BPW:.6f}, MLP BPW {MIXED_Q3MLP_MLP_BPW:.6f},")
-    a("  coherent on the campaign gate; see `g1-mlp-family-generate.md` for")
+    a("  coherent on the campaign gate; see `G1_ARCHIVE_LEDGER.md` for")
     a("  `mixed-q3mlp-v1` and the `mixed-q3mlp-q3attn-v1` PACK_REPORT / Genesis.nr).")
     a(f"  The base is a valid standalone: that artifact loads and generates without a")
     a("  correction plane.")
@@ -862,7 +862,7 @@ def write_report(
         "| coherent generate | `mixed-q3mlp-v1` (same MLP recipe, richer attention) "
         "cleared the campaign gate (France/Paris, 17×19); "
         f"`{MIXED_Q3MLP}` is the 3.34 BPW sibling with attention also at q3 | CITED "
-        "`g1-mlp-family-generate.md`, `claude-generate/q3mlp-generate.json` |"
+        "`G1_ARCHIVE_LEDGER.md`, `claude-generate/q3mlp-generate.json` |"
     )
     a(
         "| this BASE equals that scheme | packer-screen (f32, stride-17) cosine on the "

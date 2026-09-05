@@ -1573,15 +1573,22 @@ mod tests {
     }
 
     fn live_schedule() -> Value {
-        serde_json::from_str(include_str!("../../../workspace/campaign/records/ascension-sandbox/physical/qwen80/complete-runtime/QWEN80_48_LAYER_PAYLOAD_SCHEDULE_SEALED_WRAPPER_20260809T083400Z.json")).unwrap()
+        load_physical_receipt("QWEN80_48_LAYER_PAYLOAD_SCHEDULE_SEALED_WRAPPER_20260809T083400Z.json")
     }
 
     fn live_continuation() -> Value {
-        serde_json::from_str(include_str!("../../../workspace/campaign/records/ascension-sandbox/physical/qwen80/complete-runtime/QWEN80_L1_SOURCE_TOKEN_CONTINUATION_READINESS_WITH_SEALED_SCHEDULE_20260809T084000Z.json")).unwrap()
+        load_physical_receipt("QWEN80_L1_SOURCE_TOKEN_CONTINUATION_READINESS_WITH_SEALED_SCHEDULE_20260809T084000Z.json")
     }
 
     fn live_binding() -> Value {
-        serde_json::from_str(include_str!("../../../workspace/campaign/records/ascension-sandbox/physical/qwen80/complete-runtime/QWEN80_L0_STATE_HANDOFF_POST_CAPTURE_ASSESSOR_BINDING_20260809T085000Z.json")).unwrap()
+        load_physical_receipt("QWEN80_L0_STATE_HANDOFF_POST_CAPTURE_ASSESSOR_BINDING_20260809T085000Z.json")
+    }
+
+    fn load_physical_receipt(name: &str) -> Value {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let path = root.join("../../workspace/campaign/records/ascension-sandbox/physical/qwen80/complete-runtime").join(name);
+        let bytes = fs::read(&path).unwrap_or_else(|e| panic!("missing physical receipt {}: {e}", path.display()));
+        serde_json::from_slice(&bytes).unwrap_or_else(|e| panic!("invalid physical receipt {}: {e}", path.display()))
     }
 
     fn parity_pair(character: char) -> Value {

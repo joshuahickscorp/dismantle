@@ -637,7 +637,7 @@ def propose_specimen_curriculum(census_doc: Mapping[str, Any] | None = None) -> 
     """First specimen set by curriculum role. Not 'every model in the lake'."""
     if census_doc is None:
         probe = _probe_json(
-            "receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json",
+            "receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
             "receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json",
             "receipts/headless/MODELLAKE_FLASH_NEXT_CENSUS.json",
         )
@@ -908,7 +908,7 @@ def build(*, writer=None) -> dict[str, Any]:
             "tools/future/specimen_verify.py — offline whole-tree recomputation",
             "tools/future/external_specimen_seal.py — authorized external tree digest",
             "ModelLake manifests under /Volumes/corpdrive/hawking-modellake/manifests",
-            "receipts/future/evidence/HCLI_MODELLAKE_FLASH_CENSUS.json (census is a cache; disk is authority)",
+            "receipts/headless/HCLI_MODELLAKE_FLASH_CENSUS.json (census is a cache; disk is authority)",
         ],
         "gaps_closed": [
             "curriculum readiness had no module of its own; the gate inlined a proposal and refused it",

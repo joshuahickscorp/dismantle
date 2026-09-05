@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 716,993 | 1,943 |
-| active total | 1,215,005 | 2,578 |
+| support | 716,994 | 1,943 |
+| active total | 1,215,006 | 2,578 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's
@@ -31,7 +31,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
 | 1 | `research/lab` | 137,936 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
-| 2 | `crates/hawking-core` | 79,207 | CURRENT_VERIFICATION |
+| 2 | `crates/hawking-core` | 79,208 | CURRENT_VERIFICATION |
 | 3 | `research/hawking-experiments` | 65,137 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 4 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 5 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |

@@ -53,6 +53,12 @@ class SteerEvent:
     applied: bool = False
     applied_at: Optional[float] = None
     kind: str = "knowledge"
+    # Provenance. A supervisor injecting from a DETACHED process is the normal
+    # case, so the record has to say which mission the steer was aimed at and
+    # which session aimed it -- otherwise an orphaned steer is indistinguishable
+    # from an applied one.
+    mission_id: Optional[str] = None
+    source_session_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.kind not in STEER_KINDS:
@@ -66,6 +72,8 @@ class SteerEvent:
             "id": self.id,
             "text": self.text,
             "session_id": self.session_id,
+            "mission_id": self.mission_id,
+            "source_session_id": self.source_session_id,
             "timestamp": self.timestamp,
             "applied": self.applied,
             "applied_at": self.applied_at,
@@ -107,13 +115,22 @@ class SteeringQueue:
     def _save(self):
         atomic_write_json(self._path, [e.to_dict() for e in self._events])
 
-    def enqueue(self, text: str, kind: str = "knowledge") -> SteerEvent:
+    def enqueue(
+        self,
+        text: str,
+        kind: str = "knowledge",
+        *,
+        mission_id: Optional[str] = None,
+        source_session_id: Optional[str] = None,
+    ) -> SteerEvent:
         event = SteerEvent(
             id=str(uuid.uuid4()),
             text=text,
             session_id=self.session_id,
             timestamp=time.time(),
             kind=kind,
+            mission_id=mission_id,
+            source_session_id=source_session_id,
         )
         self._events.append(event)
         self._save()

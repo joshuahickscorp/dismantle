@@ -68,6 +68,27 @@ _MEMORY_LIST_LIMIT = 12
 _MEMORY_TEXT_LIMIT = 600
 
 
+def _live_mission_identity(workspace_root: Any) -> Optional[Dict[str, Any]]:
+    """The running mission's id and session_id from disk, or None.
+
+    Disk is authority. A supervising process that did not start the mission has
+    no mission object, but the mission's own state file names the session whose
+    steering queue it polls.
+    """
+    try:
+        path = Path(str(workspace_root)) / ".hcli" / "mission" / "state.json"
+        if not path.is_file():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return None
+        if str(data.get("phase") or "").lower() not in ("running", "paused"):
+            return None
+        return {"id": data.get("id"), "session_id": data.get("session_id")}
+    except Exception:
+        return None
+
+
 class Controller:
     """HCLI product controller and owner of the native Engine."""
 
@@ -1221,11 +1242,24 @@ class Controller:
                 except Exception:
                     pass
         else:
-            queue = SteeringQueue(
-                self.workspace_root,
-                self.session.id,
+            # No mission object attached -- the DETACHED SUPERVISOR case, which the
+            # Odyssey contract treats as normal: Claude attaches, injects, detaches.
+            # Keying the queue on THIS process's session id wrote the steer to a file
+            # the running mission never reads, and the CLI still printed a success
+            # tick. Measured: mission session 3f254d6d..., steer landed in
+            # c22b3aa4..., no file for the mission at all.
+            #
+            # Target the LIVE mission's session when one is on disk, so the steer
+            # reaches the queue the mission actually polls.
+            live = _live_mission_identity(self.workspace_root)
+            target_session = (live or {}).get("session_id") or self.session.id
+            queue = SteeringQueue(self.workspace_root, target_session)
+            event = queue.enqueue(
+                body,
+                kind=token,
+                mission_id=(live or {}).get("id"),
+                source_session_id=self.session.id,
             )
-            event = queue.enqueue(body, kind=token)
         self.session.steering.append(body)
         try:
             self.knowledge.record_note(body, kind=token)

@@ -8,8 +8,8 @@ collapsed into the current Rust/HCLI path:
 - `noetic_fused_subbit.py` — historical fused-subbit producer.
 
 Their sealed receipts remain under `receipts/headless/`, including bandwidth,
-dispatch-fusion, and fused-subbit findings. `frontier_adversary.py` retains
-the small dispatch accounting predicate it still needs, while its live source
-and parent-weight checks now use the Rust fused-subbit source plus the surviving
-parent observer. No measured result or negative control is promoted by this
-retirement; the producers were only parallel execution surfaces.
+dispatch-fusion, fused-subbit, frontier-adversary, and gate-adversary findings.
+The frontier and gate runners were also retired because their Noetic/VisionMCP
+dependencies are absent from the current HCLI path. No measured result or
+negative control is promoted by this retirement; the deleted files were
+parallel execution surfaces, not the evidence record.

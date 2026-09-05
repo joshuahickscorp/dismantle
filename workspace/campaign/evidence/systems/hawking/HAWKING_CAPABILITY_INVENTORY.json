@@ -513,8 +513,6 @@
     "tools/headless/deltanet_organ.py",
     "tools/headless/dirty_tree_preservation.py",
     "tools/headless/dispatch_ledger.py",
-    "tools/headless/frontier_adversary.py",
-    "tools/headless/gate_adversary.py",
     "tools/headless/hcli_grokbridge_test.py",
     "tools/headless/hcli_max_isolation_test.py",
     "tools/headless/hcli_persistence_audit.py",

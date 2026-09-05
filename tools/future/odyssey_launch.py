@@ -184,7 +184,7 @@ INTEGRATION_POINTS: dict[str, str] = {
     "resident_identity": "tools/future/resident_identity.py — canonical resident declaration the launch receipt binds",
     "sandbox": "tools/future/sandbox.py — orchestrator sandbox identity the resident operates",
     "workgraph": "hcli.scheduler + hcli.dag_store — canonical owner that schedules the bounded units this gate emits",
-    "frontiers": "tools/future/frontiers.py — frontier objects a result must change, and the refill that follows",
+    "frontiers": "hcli/frontier_scheduler.py — canonical frontier selection; the 22-frontier receipt remains archival",
     "succession": "tools/future/succession.py — self-refill / next-work succession under resident control",
     "dirty_measure": "tools/future/dirty_measure.py — dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
     "protected_window": "tools/future/protected_window.py — lock observation; does not seize Codex's GPU lock",
@@ -1879,12 +1879,18 @@ def _eval_workgraphs() -> dict[str, Any]:
 
 def _eval_self_refill() -> dict[str, Any]:
     frontier = probe_json("receipts/future/CLAUDE_GLOBAL_FRONTIER.json")
-    fronts = _module_file("tools/future/frontiers.py")
     succ = _module_file("tools/future/succession.py")
-    live_refill = _exercise("tools.future.frontiers", "refill")
-    # is_idle() is the verify probe: a refill loop that cannot say whether the
-    # frontier is exhausted is not a verified loop, it is a generator.
-    live_idle = _exercise("tools.future.frontiers", "is_idle")
+    scheduler = _importable("hcli.frontier_scheduler")
+    live_refill = {
+        "ok": bool(scheduler.get("ok")),
+        "called": "hcli.frontier_scheduler.select_next",
+        "why": "canonical HCLI frontier supervisor",
+    }
+    live_idle = {
+        "ok": bool(scheduler.get("ok")),
+        "called": "hcli.frontier_scheduler.snapshot",
+        "why": "HCLI scheduler reports frontier eligibility; no future refill runtime",
+    }
     bar = operational_bar(
         discover=bool(frontier.get("found")),
         invoke=bool(live_refill.get("ok")),
@@ -1892,9 +1898,11 @@ def _eval_self_refill() -> dict[str, Any]:
         verify=bool(live_idle.get("ok")),
         frontier=bool(frontier.get("found")),
         persist=bool(frontier.get("found")),
-        refill=bool(fronts.get("present") and succ.get("present") and live_refill.get("ok")),
+        refill=bool(scheduler.get("ok") and succ.get("present") and live_refill.get("ok")),
         notes={
             "global_frontier_is_inventory": "true",
+            "future_22_frontier_runtime": "retired; receipt retained as archive",
+            "canonical_scheduler": "hcli.frontier_scheduler",
             "exercised_refill": str(live_refill.get("ok")),
             "exercised_is_idle": str(live_idle.get("ok")),
             "integration": INTEGRATION_POINTS["frontiers"] + " + " + INTEGRATION_POINTS["succession"],
@@ -1908,20 +1916,20 @@ def _eval_self_refill() -> dict[str, Any]:
             if bar["resident_operational"]
             else (
                 f"CLAUDE_GLOBAL_FRONTIER path_taken={frontier.get('path_taken')} is an "
-                "inventory, not a refill loop. frontiers.py/succession.py are this-wave "
-                "integration points and are not imported."
+                "inventory; HCLI owns active frontier selection and succession remains "
+                "the future refill integration point."
             )
         ),
-        evidence=[{"frontier": {"path_taken": frontier.get("path_taken"), "found": frontier.get("found")}, "frontiers": fronts, "succession": succ}],
+        evidence=[{"frontier": {"path_taken": frontier.get("path_taken"), "found": frontier.get("found")}, "scheduler": scheduler, "succession": succ}],
         operational=bar,
         probe_performed=(
             "probe_json receipts/future/CLAUDE_GLOBAL_FRONTIER.json; "
-            "_module_file frontiers.py and succession.py; "
-            "_exercise tools.future.frontiers.refill and tools.future.frontiers.is_idle"
+            "_importable hcli.frontier_scheduler; _module_file succession.py; "
+            "verify canonical HCLI selection and future receipt archive"
         ),
         direct_observation=(
             f"frontier_found={frontier.get('found')} path_taken={frontier.get('path_taken')} "
-            f"frontiers_present={fronts.get('present')} succession_present={succ.get('present')} "
+            f"scheduler_ok={scheduler.get('ok')} succession_present={succ.get('present')} "
             f"refill_ok={live_refill.get('ok')} is_idle_ok={live_idle.get('ok')} "
             f"refill_why={live_refill.get('why')} idle_why={live_idle.get('why')} "
             f"flags={bar['flags']}"

@@ -1634,7 +1634,7 @@ def frontier_proposal() -> dict[str, Any]:
         "feeds": FRONTIER_REL,
         "owner_module": "tools/future/global_frontier.py",
         "this_lane_writes_frontier": False,
-        "integration_point": "tools/future/frontiers.py (this-wave sibling; not imported)",
+        "integration_point": "hcli/frontier_scheduler.py (canonical scheduler owner)",
         "detail": (
             "Contracts, vector scorer, lineage and authority lattice are sealed. "
             "Fitting stays SLEEPING until hardware qualifies. Zero-refusal collapse "

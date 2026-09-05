@@ -110,7 +110,6 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "freshness.py":                ("FT.EXPERIMENT_TURNAROUND.refresh", "DERIVED_REFRESH"),
     "propagate.py":                ("FT.TOOLS.propagate-skips", "INGEST_PROPAGATE"),
     "codex_ingest.py":             ("FT.TOOLS.propagate-skips", "INGEST_PROPAGATE"),
-    "frontiers.py":                ("FT.TOOLS.frontiers-refill", "FRONTIER_REFILL"),
     "evidence_snapshot.py":        ("FT.CONTEXT.disk-authority", "EVIDENCE_PIN"),
     "global_frontier.py":          ("FT.CONTEXT.open-question", "FRONTIER_REFILL"),
     "mutation_surface.py":         ("FT.CONTEXT.disk-authority", "EVIDENCE_PIN"),
@@ -243,8 +242,7 @@ def frontier_view() -> dict[str, Any]:
         "present": True,
         "by_probe_receipt": by_receipt,
         "by_integration_module": by_module,
-        "writes_frontier_modules": ["tools/future/global_frontier.py",
-                                    "tools/future/frontiers.py"],
+        "writes_frontier_modules": ["tools/future/global_frontier.py"],
         "source": "tools/future/orchestration.py BINDINGS (validated)",
     }
 
@@ -404,7 +402,6 @@ def build() -> Path:
         "recovered_implementation": [
             "tools/future/resident_api.py evaluate_five_questions already accepts a "
             "frontier mapping; this supplies it rather than re-implementing scoring",
-            "tools/future/frontiers.py FrontierBook provides the 63 frontier items",
             "tools/future/workunit_species.py provides the WorkUnit shape",
         ],
         "gaps_closed": [

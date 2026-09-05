@@ -30,7 +30,7 @@ REQUIRED = {
     "emit_receipts":          ("hcli/agentos/modellake_receipts.py", None),
     "derive_laws_scars":      ("tools/future/campaign_scars.py", None),
     "compare_candidates":     ("tools/odyssey/tournament.py", None),
-    "schedule_followups":     ("tools/future/frontiers.py", None),
+    "schedule_followups":     ("hcli/frontier_scheduler.py", "select_next"),
 }
 
 

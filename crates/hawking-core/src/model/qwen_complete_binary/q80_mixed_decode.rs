@@ -1463,7 +1463,6 @@ pub fn mixed_gpu_layout(codec: u8, payload: &[u8]) -> Result<MixedGpuLayout> {
             let shape = header_shape(&header, "shape", "HGRAVB01")?;
             let elements = header_usize(&header, "elements", "HGRAVB01")?;
             let group_size = header_usize(&header, "group_size", "HGRAVB01")?;
-            let groups = header_usize(&header, "groups", "HGRAVB01")?;
             let scale_bytes = header_usize(&header, "scale_bytes", "HGRAVB01")?;
             let sign_bytes = header_usize(&header, "sign_bytes", "HGRAVB01")?;
             if body.len() != scale_bytes + sign_bytes {

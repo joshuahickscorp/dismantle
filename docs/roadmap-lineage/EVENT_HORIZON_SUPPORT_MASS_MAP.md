@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 661,685 | 1,837 |
-| active total | 1,159,697 | 2,472 |
+| support | 661,728 | 1,837 |
+| active total | 1,159,740 | 2,472 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -30,12 +30,12 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 128,449 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 128,414 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
-| 3 | `tools/future` | 54,763 | ACTIVE_RESEARCH / SUPERSEDED audit required |
+| 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 5 | `research/hawking-experiments` | 33,482 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 6 | `tools/headless` | 28,820 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
+| 5 | `research/hawking-experiments` | 33,481 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 6 | `tools/headless` | 28,801 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 25,942 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |

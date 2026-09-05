@@ -1293,7 +1293,7 @@ def _resident_schedulable(owned: Sequence[str]) -> dict[str, Any]:
     result = {"schedule": False, "frontier": None, "refill": False,
               "why": "no orchestration binding drives this tool"}
     try:
-        from tools.future import frontiers as _fr
+        from hcli import frontier_scheduler as _scheduler
         from tools.future import orchestration as _orch
     except Exception as exc:
         result["why"] = f"connector unavailable: {type(exc).__name__}"
@@ -1328,19 +1328,12 @@ def _resident_schedulable(owned: Sequence[str]) -> dict[str, Any]:
             continue
         result.update({"schedule": True, "frontier": frontier_id,
                        "driver_module": module, "why": "bound via orchestration"})
-        try:
-            result["refill"] = any(
-                str(item.get("id")) == frontier_id
-                # The frontier's own lane vocabulary, not a second list. These
-                # were spelled CPU_ANALYSIS / CPU_VERIFY / CPU_REPRESENTATION,
-                # which match no frontier item, so the refill probe could only
-                # ever return empty and refill was structurally unreachable. The
-                # same defect was fixed in the autonomy driver and survived here
-                # -- which is exactly why the scar says derive, never restate.
-                for item in (_fr.refill(_fr.THIS_HOST_LANES) or [])
-            )
-        except Exception:
-            result["refill"] = False
+        # HCLI owns frontier selection now; the deleted future refill list was
+        # a parallel vocabulary and never represented active schedulability.
+        result["refill"] = any(
+            state.name == frontier_id and state.kind == _scheduler.ELIGIBLE
+            for state in _scheduler.snapshot()
+        )
         break
     return result
 

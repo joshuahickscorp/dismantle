@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 645,015 | 1,812 |
-| active total | 1,143,017 | 2,447 |
+| support | 639,624 | 1,803 |
+| active total | 1,137,636 | 2,438 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -30,7 +30,7 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 111,790 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 108,238 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -101,6 +101,10 @@ also included in the total and must not become an UNKNOWN bucket.
   test chain was then retired as one broken legacy family: 14,997 active LOC
   disappeared while current manager-protocol surfaces, Qwen30 physical
   research, and receipts remained.
+  The uncalled GLM52 Gravity selection/benchmark/fixture and repack-score
+  cluster was then removed as a research-only generation: 3,393 operator LOC
+  plus its dedicated test harnesses disappeared, while the current
+  `gravity_metal` decoder and archival evidence boundaries remained.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

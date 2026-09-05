@@ -1761,8 +1761,7 @@ HCLI slash commands (only real HCLI operations are listed):
 
 Profiles are balanced, power, or maximum.  They expand bounded exploration,
 not tool permissions.  The wider HIDE protocol command catalog contains
-surface-specific UI commands that are not silently exposed through HCLI.
-Legacy colon commands remain available unchanged; use :help for their list.";
+surface-specific UI commands that are not silently exposed through HCLI.";
 
     match topic.map(|value| value.trim().to_ascii_lowercase()) {
         None => GENERAL.to_string(),
@@ -2572,7 +2571,7 @@ async fn cmd_repl(options: &Options) -> Result<()> {
     let host = BackendHost::open_workspace(&root)?;
     let mut session = ReplSession::named(&host, options.value("session").unwrap_or("hcli"));
     eprintln!(
-        "HCLI REPL — session={}; /help for slash commands, :help for legacy commands, /quit to leave.",
+        "HCLI REPL — session={}; /help for commands, /quit to leave.",
         session.label
     );
     let stdin = io::stdin();
@@ -2603,87 +2602,6 @@ async fn cmd_repl(options: &Options) -> Result<()> {
                 Err(error) => {
                     eprintln!("invalid slash command: {error}\nTry /help for supported operations.")
                 }
-            }
-            continue;
-        }
-        if let Some(command) = line.strip_prefix(':') {
-            match command.trim() {
-                "quit" | "q" | "exit" => break,
-                "help" => {
-                    eprintln!(":help  :quit  :session NAME  :status  :agent GOAL  :swarm GOAL  :research TOPIC\nplain text sends a contextual model turn");
-                }
-                "status" => {
-                    let projection = host.rebuild_session_projection(session.id.clone()).await?;
-                    emit(
-                        json!({ "session": session.label, "session_id": session.id, "projection": projection }),
-                        false,
-                    )?;
-                }
-                other if other.starts_with("session ") => {
-                    let name = other.trim_start_matches("session ").trim();
-                    if name.is_empty() {
-                        eprintln!("usage: :session NAME");
-                    } else {
-                        session = ReplSession::named(&host, name);
-                    }
-                }
-                other if other.starts_with("agent ") => {
-                    let goal = other.trim_start_matches("agent ").trim();
-                    let result = run_headless_audit(
-                        &host,
-                        HeadlessRunConfig {
-                            goal: goal.to_string(),
-                            model_url: Some(endpoint.clone()),
-                            session_id: None,
-                            max_transitions: HcliProfile::Power.budget().max_steps,
-                            profile: HcliProfile::Power,
-                            source_context: None,
-                        },
-                    )
-                    .await?;
-                    emit(
-                        json!({ "status": result.status.as_str(), "receipt": result.receipt }),
-                        false,
-                    )?;
-                }
-                other if other.starts_with("swarm ") => {
-                    let goal = other.trim_start_matches("swarm ").trim();
-                    let power = HcliProfile::Power;
-                    let result = run_parallel_analysis_swarm(
-                        &host,
-                        HcliSwarmConfig {
-                            goal: goal.to_string(),
-                            model_url: Some(endpoint.clone()),
-                            profile: power,
-                            lanes: power.budget().search_breadth as usize,
-                            max_concurrency: power.budget().search_breadth as usize,
-                            max_transitions: power.budget().max_steps,
-                            synthesize: true,
-                        },
-                    )
-                    .await?;
-                    emit(
-                        json!({ "complete": result.complete, "receipt": result.receipt }),
-                        false,
-                    )?;
-                }
-                other if other.starts_with("research ") => {
-                    let topic = other.trim_start_matches("research ").trim();
-                    let result = run_hcli_research(
-                        &host,
-                        HcliResearchConfig {
-                            topic: topic.to_string(),
-                            model_url: Some(endpoint.clone()),
-                            ..HcliResearchConfig::default()
-                        },
-                    )
-                    .await?;
-                    emit(
-                        json!({ "complete": result.complete, "receipt": result.receipt }),
-                        false,
-                    )?;
-                }
-                _ => eprintln!("unknown command; :help"),
             }
             continue;
         }

@@ -90,6 +90,12 @@ class SteerEvent:
             applied=data.get("applied", False),
             applied_at=data.get("applied_at"),
             kind=data.get("kind", "knowledge"),
+            # Round-trip the provenance. Writing it in to_dict without reading it
+            # back here lost it on every reload, which is precisely the state this
+            # provenance exists to prevent: an orphaned steer indistinguishable
+            # from a delivered one.
+            mission_id=data.get("mission_id"),
+            source_session_id=data.get("source_session_id"),
         )
 
 

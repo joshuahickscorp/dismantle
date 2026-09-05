@@ -1488,7 +1488,7 @@ async fn bridge_dispatch(
             limits: Default::default(),
             notes: vec![
                 "HCLI is local-endpoint oriented and does not proxy model traffic.".to_string(),
-                "Gravity is the canonical public model-optimization identity; Condense is its engine operation. This bridge reports identity only and does not claim optimization execution or promote a live V4 diagnostic into a full-model, numeric-parity, Metal, or TPS result.".to_string(),
+                "Gravity/Condense identity only; this bridge never executes optimization or promotes V4 diagnostics into full-model, parity, Metal, or TPS claims.".to_string(),
                 "Machine requests report effective behavior and reject unsupported controls instead of silently downgrading them.".to_string(),
             ],
         })),

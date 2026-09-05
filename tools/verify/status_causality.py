@@ -620,7 +620,7 @@ HISTORICAL_CASES: tuple[dict[str, Any], ...] = (
     {
         "id": "HC.MODEL_MISSING",
         "status": "MODEL_MISSING",
-        "source": "tools/odyssey/doctor_tournament.py declared Path (via tools/future/odyssey_launch.py)",
+        "source": "tools/future/odyssey_launch.py::_resolve_stale_input (model path)",
         "recovered_from": [
             "tools/future/autonomy_scars.py::SISTER_SYMPTOMS",
             "tools/future/odyssey_launch.py::_resolve_stale_input",

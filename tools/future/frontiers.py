@@ -433,7 +433,7 @@ def _catalog() -> tuple[dict[str, Any], ...]:
                 "were structurally unreachable. That is no longer the state: "
                 "odyssey_tool_driver.py invokes doctor_seal for real and routes "
                 "the receipt, and the remaining tools have named, checkable "
-                "blockers rather than unknown ones -- doctor_tournament needs "
+                "blockers rather than unknown ones -- the retained doctor receipt needs "
                 "torch importable in the resident interpreter for its 52GB SVD, "
                 "and the gravity mains need prior measurement files that are "
                 "absent and must not be invented. The pending CPU work is to "

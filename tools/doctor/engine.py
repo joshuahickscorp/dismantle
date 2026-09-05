@@ -591,10 +591,6 @@ def _found_prior() -> list[dict[str, str]]:
             "what": "Historical CANONICAL_ORDER + THREE_ZEROS evidence retained as a receipt; the redundant producer is retired.",
         },
         {
-            "path": "tools/odyssey/doctor_tournament.py",
-            "what": "9.1-like order with safetensors probes. probes() is not called.",
-        },
-        {
             "path": "tools/future/specimen_events.py",
             "what": "fingerprint_from_config (config+index, weights_opened=False). Algorithm reused; module not imported (hcli.persist absent in this sparse cone).",
         },
@@ -733,7 +729,6 @@ def build(repo: Path | None = None) -> Path:
         ],
         "negative_findings": [
             "Historical parent-tensor diagnosis is receipt-only; this lane does not load parent weights.",
-            "tools/odyssey/doctor_tournament.py.probes() opens safetensors; not called.",
             "Activation/logit/hidden-state probes and Hessian are ABSENT (named, not invented).",
             "FPGA/U50, DGX, eGPU are ABSENT hardware; DEVICE COMPILE stays STATIC_ONLY.",
         ],

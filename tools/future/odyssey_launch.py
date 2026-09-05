@@ -1526,7 +1526,7 @@ def _eval_callable_tool(*, cid: str, owned: Sequence[str], prior_glob: str, titl
 
 
 def _eval_doctor() -> dict[str, Any]:
-    owned = ["tools/odyssey/doctor_tournament.py", "tools/doctor_seal.py"]
+    owned = ["tools/doctor_seal.py"]
     hcli = _importable("hcli.doctor")
     extra: list[str] = []
     if hcli.get("ok"):
@@ -2706,7 +2706,7 @@ def _gate_workunit(verdict: Mapping[str, Any]) -> dict[str, Any]:
 def recovered_implementation() -> dict[str, Any]:
     return {
         "prior_odyssey_i": {
-            "tools": "tools/odyssey/ (READ-ONLY): doctor_tournament, decoding_gravity, state_gravity, modellake, resident_seal, protected_window, pareto_archive, noetic_compiler",
+            "tools": "tools/odyssey/ (READ-ONLY): decoding_gravity, state_gravity, modellake, resident_seal, protected_window, pareto_archive, noetic_compiler",
             "receipts": "receipts/odyssey-i/ patient/doctor/gravity/nx seals — recovered, not duplicated",
             "package_fence": (
                 "workspace/campaign/governance/odyssey/program/launch/ODYSSEY_LAUNCH.md "

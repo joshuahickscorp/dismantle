@@ -36,7 +36,6 @@ from typing import Any, Callable, Mapping, Sequence
 
 from hcli.persist import atomic_write_json
 from tools.future import negative_index as ni
-from tools.future import workgraph as wg
 from tools.future._common import RECEIPTS, REPO, load_json, write_receipt
 
 
@@ -136,6 +135,74 @@ CLAIM_BOUNDARY = (
     "ODYSSEY_I_LAUNCH.json, does not re-hash a sealed source, and does not "
     "record a partial-weight experiment as specimen science."
 )
+
+# HCLI owns execution and durable scheduling (`hcli.scheduler` + `hcli.dag_store`).
+# Specimen arrival only needs this small data builder; keeping a second
+# WorkGraph runtime here would recreate the authority that Event Horizon is
+# removing. These values preserve the old emitted-unit contract.
+INFO_HIGH, INFO_MEDIUM = 3, 2
+_LANE_TO_HCLI = {"CPU_VERIFY": "TEST", "CPU_ANALYSIS": "STATIC_ANALYSIS"}
+
+
+def _make_unit(
+    *, id: str, role: str, description: str, dependencies: Sequence[str],
+    resource_lane: str, mutation_scope: Sequence[str], verifier: str,
+    expected_information_gain: int, cost_units: int, species: str,
+    effect_class: str, requires_hardware: bool = False,
+    extras: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the bounded arrival payload that HCLI later schedules."""
+    if resource_lane not in _LANE_TO_HCLI or not verifier or cost_units < 1:
+        raise SpecimenEventError("invalid bounded HCLI work-unit contract")
+    unit: dict[str, Any] = {
+        "id": id, "role": role, "description": description,
+        "dependencies": list(dependencies), "resource_lane": resource_lane,
+        "mutation_scope": sorted(mutation_scope), "verifier": verifier,
+        "expected_information_gain": int(expected_information_gain),
+        "cost_units": int(cost_units), "verification_depends_on": [],
+        "requires_hardware": requires_hardware, "status": "pending", "skipped_ticks": 0,
+        "assigned_tick": None, "completed_tick": None,
+        "hcli_resource_class": _LANE_TO_HCLI[resource_lane], "species": species,
+        "effect_class": effect_class, "claim_boundary": CLAIM_BOUNDARY,
+        "classification": "STATIC_ONLY", "blocked_reason": None,
+        "evidence_class": "STATIC_ONLY", "bench_state": "UNKNOWN",
+        "gpu_authority": False,
+    }
+    if extras:
+        unit.update({k: v for k, v in extras.items() if unit.get(k) in (None, "", [])})
+    identity = {k: unit[k] for k in (
+        "role", "description", "dependencies", "resource_lane", "verifier",
+        "mutation_scope", "verification_depends_on")}
+    unit["content_hash"] = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    return unit
+
+
+class _ArrivalGraph:
+    """Minimal bounded payload collector; HCLI remains the scheduler."""
+
+    def __init__(self) -> None:
+        self.units: dict[str, dict[str, Any]] = {}
+
+    def admit(self, unit: Mapping[str, Any]) -> dict[str, Any]:
+        uid = str(unit["id"])
+        prior = self.units.get(uid)
+        if prior is not None:
+            if prior["content_hash"] == unit["content_hash"]:
+                return {"kind": "idempotent", "unit": prior}
+            raise SpecimenEventError(f"duplicate arrival unit {uid!r} differs")
+        self.units[uid] = dict(unit)
+        return {"kind": "inserted", "unit": self.units[uid]}
+
+    def to_durable(self) -> dict[str, Any]:
+        return {
+            "schema": "hawking.hcli.arrival_graph.v1",
+            "units": {k: self.units[k] for k in sorted(self.units)},
+            "scheduler": "hcli.scheduler + hcli.dag_store",
+            "executes": False, "gpu_authority": False,
+            "evidence_class": "STATIC_ONLY", "bench_state": "UNKNOWN",
+        }
 
 
 class SpecimenEventError(ValueError):
@@ -715,7 +782,7 @@ def cheapest_first_experiments(
                 "scope": law.get("scope"),
                 "organ_class": law.get("organ_class"),
                 "cost_units": 1,
-                "expected_information_gain": wg.INFO_HIGH,
+                "expected_information_gain": INFO_HIGH,
                 "requires_weights": False,
                 "why": "transferable law is cheaper than cold search",
             }
@@ -730,7 +797,7 @@ def cheapest_first_experiments(
             "closed_families": [s["hypothesis_family"] for s in closed],
             "still_visible_gap": [s["hypothesis_family"] for s in open_dead],
             "cost_units": 1,
-            "expected_information_gain": wg.INFO_HIGH,
+            "expected_information_gain": INFO_HIGH,
             "requires_weights": False,
             "why": "a scar the index can see prunes the family before a unit is emitted",
         }
@@ -745,7 +812,7 @@ def cheapest_first_experiments(
                 "kind": "new_search_where_transfer_inapplicable",
                 "campaign_phase": CAMPAIGN_NEW_SEARCH,
                 "cost_units": 3,
-                "expected_information_gain": wg.INFO_MEDIUM,
+            "expected_information_gain": INFO_MEDIUM,
                 "requires_weights": False,
                 "why": (
                     "open new search only after transfer and scar lookup; "
@@ -816,7 +883,7 @@ def _unit(
     }
     if extras:
         extra.update(dict(extras))
-    return wg.make_unit(
+    return _make_unit(
         id=uid,
         role=role,
         description=description,
@@ -845,7 +912,7 @@ def plan_bounded_workgraph(
     revision = specimen.get("revision")
     tag = str(specimen.get("tag") or lake_tag(repo, str(revision or "")))
     prefix = f"odyssey-i.arrival.{slug(repo, str(revision) if revision else None)}"
-    graph = wg.WorkGraph(ncpu=8)
+    graph = _ArrivalGraph()
     budget = experiment_budget(fingerprint.get("size_bytes") or specimen.get("bytes_hashed"))
 
     cite_id = f"{prefix}.cite_existing_seal"
@@ -870,7 +937,7 @@ def plan_bounded_workgraph(
             description=f"cite existing whole-tree seal for {tag}; do not re-hash",
             dependencies=[],
             lane="CPU_VERIFY",
-            info=wg.INFO_HIGH,
+            info=INFO_HIGH,
             cost=1,
             phase=CAMPAIGN_TRANSFER,
             extras={"cite": {"rehashed": cite.get("rehashed"), "action": cite.get("action")}},
@@ -883,7 +950,7 @@ def plan_bounded_workgraph(
             description=f"fingerprint architecture and organ families from config/index for {tag}",
             dependencies=[cite_id],
             lane="CPU_ANALYSIS",
-            info=wg.INFO_HIGH,
+            info=INFO_HIGH,
             cost=1,
             phase=CAMPAIGN_TRANSFER,
             extras={
@@ -901,7 +968,7 @@ def plan_bounded_workgraph(
             description=f"test transferable laws on {tag} before opening new search",
             dependencies=[fp_id],
             lane="CPU_ANALYSIS",
-            info=wg.INFO_HIGH,
+            info=INFO_HIGH,
             cost=1,
             phase=CAMPAIGN_TRANSFER,
             extras={
@@ -917,7 +984,7 @@ def plan_bounded_workgraph(
             description=f"query relevant scars (including WAVE_DEAD families) for {tag} before new search",
             dependencies=[fp_id],
             lane="CPU_ANALYSIS",
-            info=wg.INFO_HIGH,
+            info=INFO_HIGH,
             cost=1,
             phase=CAMPAIGN_TRANSFER,
             extras={
@@ -938,7 +1005,7 @@ def plan_bounded_workgraph(
                 ),
                 dependencies=[transfer_id, scars_id],
                 lane="CPU_ANALYSIS",
-                info=wg.INFO_MEDIUM,
+                info=INFO_MEDIUM,
                 cost=3,
                 phase=CAMPAIGN_NEW_SEARCH,
                 extras={"pruned_families": list(WAVE_DEAD_FAMILIES)},
@@ -1575,7 +1642,7 @@ def build() -> Path:
         "recovered_implementation": [
             "tools/odyssey/modellake_watch.py emits download_started / already_complete / watcher_sample; it does not emit a scientific event",
             "tools/future/wakeup.py is the receipt-completion bus; this module is the specimen-seal event on that idea, keyed on ModelLake state not a receipt poll",
-            "tools/future/workgraph.py WorkGraph.admit inserts units; identity conflict refuses a silent overwrite",
+            "bounded arrival builder inserts units; identity conflict refuses a silent overwrite; HCLI owns scheduling",
             "tools/future/odyssey_launch.py emit_first_workgraphs is the first-wave graph; this module ADDS a later graph and does not call launch()",
             "tools/future/negative_index.py refuse_if_dead keys MLP_FUNCTION_REPLACEMENT, MONARCH, BUTTERFLY, FACTORIZE_THE_FACTORS, PRODUCT_DICTIONARY, CONDITIONAL_PROGRAM, GENERATED_BLOCK, NONLINEAR_GENERATOR",
             "tools/future/odyssey2_law_store.py is the transferable-law store; MODEL_LOCAL on another parent is not a transfer",

@@ -442,7 +442,6 @@
     "tools/future/static_kernel_verify.py",
     "tools/future/tabula.py",
     "tools/future/wakeup.py",
-    "tools/future/workgraph.py",
     "tools/future/workunit_species.py",
     "tools/gate_report.py",
     "tools/genesis_agentos.py",

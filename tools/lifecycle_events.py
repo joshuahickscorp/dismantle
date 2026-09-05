@@ -182,19 +182,8 @@ def on_hardware_profile_changed(
     woken: list[Any] = []
     if activable and wake_sleeping is not None:
         woken = list(wake_sleeping() or [])
-    elif activable:
-        # Optional future WorkGraph — only imported when a device is actually
-        # present, so an absent FPGA does not load that stack.
-        try:
-            from tools.future.workgraph import WorkGraph
-            from tools.future._common import RECEIPTS
-            ledger = RECEIPTS / "WORKGRAPH.json"
-            if ledger.is_file():
-                wg = WorkGraph.load(ledger) if hasattr(WorkGraph, "load") else None
-                if wg is not None:
-                    woken = list(wg.wake_sleeping(hardware_qualified=True) or [])
-        except Exception:
-            woken = []
+    # HCLI's scheduler/DAG store is the execution owner. Arrival graphs are
+    # payloads only; this router does not revive a parallel future scheduler.
 
     return {
         "schema": SCHEMA,
@@ -208,7 +197,8 @@ def on_hardware_profile_changed(
         "evidence_tier": "STATIC",
         "note": (
             "activable is empty unless a wake_condition_detail.present is true; "
-            "absent FPGA/DGX/eGPU is a model of this host, not a measurement "
+            "absent FPGA/DGX/eGPU is a model of this host, not a measurement; "
+            "HCLI owns any eventual wake/schedule operation, "
             "of those boards"
         ),
     }

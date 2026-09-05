@@ -98,7 +98,6 @@ BINDINGS: dict[str, tuple[str, str]] = {
     # --- hcli self --------------------------------------------------------
     "workunit_species.py":         ("FT.HCLI_SELF.emit-workunits", "HCLI_SELF_OPTIMIZE"),
     "codex_behaviors.py":          ("FT.HCLI_SELF.emit-workunits", "HCLI_SELF_OPTIMIZE"),
-    "workgraph.py":                ("FT.HCLI_SELF.no-launch", "HCLI_SELF_OPTIMIZE"),
     "detached.py":                 ("FT.HCLI_SELF.no-launch", "HCLI_SELF_OPTIMIZE"),
     "wakeup.py":                   ("FT.HCLI_SELF.no-launch", "HCLI_SELF_OPTIMIZE"),
     "resident_api.py":             ("FT.HCLI_SELF.emit-workunits", "HCLI_SELF_OPTIMIZE"),

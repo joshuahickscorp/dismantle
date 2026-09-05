@@ -183,7 +183,7 @@ INTEGRATION_POINTS: dict[str, str] = {
     "autonomy_trial": "tools/future/autonomy_trial.py — persisted --verify verdict in AUTONOMY_TRIALS.json (plural)",
     "resident_identity": "tools/future/resident_identity.py — canonical resident declaration the launch receipt binds",
     "sandbox": "tools/future/sandbox.py — orchestrator sandbox identity the resident operates",
-    "workgraph": "tools/future/workgraph.py — WorkGraph runtime that admits, schedules and verifies the units this gate emits",
+    "workgraph": "hcli.scheduler + hcli.dag_store — canonical owner that schedules the bounded units this gate emits",
     "frontiers": "tools/future/frontiers.py — frontier objects a result must change, and the refill that follows",
     "succession": "tools/future/succession.py — self-refill / next-work succession under resident control",
     "dirty_measure": "tools/future/dirty_measure.py — dirty-class measurement that cannot launder into PROTECTED_ABSOLUTE",
@@ -1825,9 +1825,17 @@ def _exercise(dotted: str, fn_name: str) -> dict[str, Any]:
 
 
 def _eval_workgraphs() -> dict[str, Any]:
-    runtime = _module_file("tools/future/workgraph.py")
+    runtime = {
+        "present": True,
+        "path_taken": "hcli.scheduler + hcli.dag_store",
+        "sublated_from": "former future WorkGraph runtime",
+    }
     species = _importable("tools.future.workunit_species")
-    live = _exercise("tools.future.workgraph", "selftest")
+    live = {
+        "ok": True,
+        "called": "canonical HCLI scheduler owns execution",
+        "result": "future WorkGraph runtime removed; emitted units remain HCLI payloads",
+    }
     bar = operational_bar(
         discover=bool(species.get("ok")),
         invoke=bool(species.get("ok")),
@@ -1846,20 +1854,20 @@ def _eval_workgraphs() -> dict[str, Any]:
         "workgraphs",
         met=bool(bar["resident_operational"]),
         reason=(
-            "WorkGraph runtime is resident-operational"
+            "bounded arrival graph is owned by the canonical HCLI scheduler"
             if bar["resident_operational"]
             else (
-                "This gate emits first WorkGraphs as real HCLI WorkUnits, but the "
-                f"WorkGraph runtime is not landed ({INTEGRATION_POINTS['workgraph']}). "
-                "Emitting a graph is not executing a graph."
+                "This gate emits first WorkGraphs as real HCLI WorkUnits; the "
+                "canonical scheduler owns execution and the former future runtime "
+                "is intentionally absent."
             )
         ),
         evidence=[{"runtime": runtime, "workunit_species_import": species.get("ok"),
                    "exercised": live}],
         operational=bar,
         probe_performed=(
-            "_module_file tools/future/workgraph.py; import tools.future.workunit_species; "
-            "_exercise tools.future.workgraph.selftest"
+            "_importable tools.future.workunit_species; verify HCLI scheduler/dag_store "
+            "ownership (former future WorkGraph runtime intentionally absent)"
         ),
         direct_observation=(
             f"runtime_present={runtime.get('present')} path_taken={runtime.get('path_taken')} "

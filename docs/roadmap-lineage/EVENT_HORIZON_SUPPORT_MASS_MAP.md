@@ -1,6 +1,6 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` at the post-headless-design wave. This is the support
+Measured on `refactor/event-horizon` at the post-G1-execution wave. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 795,186 | 2,031 |
-| active total | 1,293,198 | 2,666 |
+| support | 767,950 | 1,995 |
+| active total | 1,265,962 | 2,630 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's
@@ -31,8 +31,8 @@ also included in the total and must not become an UNKNOWN bucket.
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
 | 1 | `research/lab` | 141,899 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
-| 2 | `research/hawking-experiments` | 111,162 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 3 | `crates/hawking-core` | 106,832 | CURRENT_VERIFICATION |
+| 2 | `crates/hawking-core` | 106,832 | CURRENT_VERIFICATION |
+| 3 | `research/hawking-experiments` | 83,926 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 4 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 5 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 6 | `tools/headless` | 34,903 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
@@ -69,7 +69,8 @@ also included in the total and must not become an UNKNOWN bucket.
   reproducer and deletion.
 - `research/hawking-experiments`: retain decisive findings and minimal
   reproducers; delete superseded executable campaign machinery after checking
-  provenance and negative controls.
+  provenance and negative controls. The G1 evidence runners are now retired;
+  their result payloads and experiment notes remain the archival signal.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

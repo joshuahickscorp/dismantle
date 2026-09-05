@@ -555,7 +555,6 @@
     "tools/headless/organ_roof_ledger.py",
     "tools/headless/prefill_kv.py",
     "tools/headless/representation_library.py",
-    "tools/headless/sensitivity_allocation.py",
     "tools/headless/state_gravity.py",
     "tools/headless/whole_model_native.py",
     "tools/hide_plan.py",

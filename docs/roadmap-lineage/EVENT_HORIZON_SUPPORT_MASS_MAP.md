@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 661,728 | 1,837 |
-| active total | 1,159,740 | 2,472 |
+| support | 660,975 | 1,836 |
+| active total | 1,158,987 | 2,471 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -30,7 +30,7 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 128,414 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 127,648 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -43,7 +43,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 11 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 12 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 13 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 14 | `docs/roadmap-lineage` | 9,817 | IMPORTANT_ARCHIVE |
+| 14 | `docs/roadmap-lineage` | 9,892 | IMPORTANT_ARCHIVE |
 | 15 | `workspace/docs` | 9,554 | IMPORTANT_ARCHIVE / SUPERSEDED audit required |
 | 16 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |
 | 17 | `tools/odyssey_ctl.py` | 8,132 | CURRENT_CORE_SUPPORT |
@@ -100,6 +100,9 @@ also included in the total and must not become an UNKNOWN bucket.
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken
   Noetic/VisionMCP runners were retired.
+- `research/lab/tests`: two test files that imported already-deleted Ascension
+  modules were removed; the current `ascension_contracts` tests remain the
+  owner of the surviving blocked-state contract.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

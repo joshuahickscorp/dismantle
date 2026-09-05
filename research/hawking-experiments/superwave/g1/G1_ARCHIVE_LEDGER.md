@@ -25,6 +25,11 @@ measured result, and the condition under which a result may be reopened.
 | `g1-sub15-repair-plan.md` | Native sub15 repair was a fail-closed decision tree targeting the 1.291 pack plus a minimal correction, not a global 2.0 BPW raise. | recovery policy |
 | `g1-identity-contract.md` | Identity is multidimensional; cosine, capability bars, and folded `None` values cannot alone certify survival. Missing measurements remain `NOT_MEASURABLE`. | acceptance law |
 | `g1-sub15-composition.md` | Sub15 repeated the mixed-2p0 down-proj starvation (0.131617 BPW; same-fit 256-token risk) and inverted attention allocation; the vehicle was not a coherence result. | negative/research result |
+| `g1-overflow-source-fix.md` | The `uint32` extraction overflow was fixed and parity passed above the wrap; corrected `mixed-floor-q7-v1` remained INCOHERENT, leaving the located G0 floor at 4.252735 BPW. | negative control / bug correction |
+| `g1-vector-quantization.md` | Real Qwen3.8 attention VQ cleared the 0.99 output-cosine bar only at roughly Q4-rate; sub-4 BPW codebook/residual variants failed, with no GPU or token claim. | measured negative |
+| `g1-deltanet-geometry.md` | DeltaNet used 6,144 threadgroups per layer with serial scratch reduction and idle lanes; the 264,830,976-FLOP count was derived, not a measured token wall. | geometry analysis |
+| `g1-gqa-and-attention-geometry.md` | The 2.443 ms GQA row was not correctly attributable to a simple bandwidth floor; it combined mixer remainder and attention/cache work, so component arithmetic did not become a token claim. | attribution correction |
+| `g1-promotion-packet.md` | Mixed-q3mlp was implementation-ready but not accepted: its seated kernel was 3.78× slower than live G0 and the projected ~31 TPS was explicitly not a complete-token measurement. | promotion refusal |
 
 The retained ledger is not a substitute for executable reproducers. None of
 these reports had a live caller or current verifier; current code and current

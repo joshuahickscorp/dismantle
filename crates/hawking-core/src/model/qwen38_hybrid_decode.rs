@@ -281,6 +281,19 @@ pub fn qwen38_batched_prefill_enabled() -> bool {
     crate::env_opt_out("HAWKING_QWEN38_BATCH_PREFILL")
 }
 
+/// The batched prompt path is valid only for a cold request. Prefix reuse
+/// starts from an already-populated recurrent/KV state, while a checkpoint
+/// needs the state at an interior prompt boundary; both require the sequential
+/// route. Keeping this predicate pure makes the guard independently testable
+/// without loading the 27B artifact or mutating process-global environment.
+pub fn qwen38_batched_prefill_allowed(
+    batch_enabled: bool,
+    reuse: usize,
+    snapshot_at: Option<usize>,
+) -> bool {
+    batch_enabled && reuse == 0 && snapshot_at.is_none()
+}
+
 /// Tokens per prefill GEMM chunk. Clamped to 1..=64 (the MMA N tile).
 pub fn qwen38_prefill_chunk_tokens() -> usize {
     crate::env_usize("HAWKING_QWEN38_PREFILL_CHUNK", QWEN38_PREFILL_CHUNK)
@@ -8839,8 +8852,8 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let mut next = 0u32;
         let prefill = Instant::now();
         let mut first_step_wall_ns = 0u64;
-        let mut prefill_gpu_ns = None;
-        let mut prefill_dispatches = 0u64;
+        let prefill_gpu_ns;
+        let prefill_dispatches;
         // The batched path consumes the WHOLE prompt in one pass, so it can
         // honour neither `reuse` (which skips an already-computed prefix) nor
         // `snapshot_at` (which needs the recurrent state part-way through the
@@ -8848,8 +8861,11 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         // the batched path anyway would silently drop both — a faster wall and
         // a different answer. It is therefore selected only when neither is in
         // play, and prefix reuse keeps its own sequential route.
-        let batched_prefill =
-            qwen38_batched_prefill_enabled() && reuse == 0 && snapshot_at.is_none();
+        let batched_prefill = qwen38_batched_prefill_allowed(
+            qwen38_batched_prefill_enabled(),
+            reuse,
+            snapshot_at,
+        );
         if batched_prefill {
             let step_wall = Instant::now();
             let (sampled, timing) = session.prefill_prompt(prompt)?;
@@ -9027,8 +9043,11 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         // and that state is a running summary with no rewind). Both keep the
         // sequential route, and taking the batched one anyway would buy a faster
         // wall and a different answer.
-        let batched_prefill =
-            qwen38_batched_prefill_enabled() && reuse == 0 && snapshot_at.is_none();
+        let batched_prefill = qwen38_batched_prefill_allowed(
+            qwen38_batched_prefill_enabled(),
+            reuse,
+            snapshot_at,
+        );
         if batched_prefill {
             let step_wall = Instant::now();
             // The sampled id is discarded on purpose: the constraint picks the
@@ -9730,6 +9749,20 @@ pub fn generate_greedy_complete_wall(
     _max_new: usize,
 ) -> Result<Qwen38CompleteWallResult> {
     Err(Error::Model("qwen38 native decode is Metal-only".into()))
+}
+
+#[cfg(test)]
+mod constrained_prefill_guard_tests {
+    use super::qwen38_batched_prefill_allowed;
+
+    #[test]
+    fn only_cold_constrained_prefill_can_batch() {
+        assert!(qwen38_batched_prefill_allowed(true, 0, None));
+        assert!(!qwen38_batched_prefill_allowed(false, 0, None));
+        assert!(!qwen38_batched_prefill_allowed(true, 1, None));
+        assert!(!qwen38_batched_prefill_allowed(true, 0, Some(2)));
+        assert!(!qwen38_batched_prefill_allowed(false, 3, Some(2)));
+    }
 }
 
 #[cfg(test)]

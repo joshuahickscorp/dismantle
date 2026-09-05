@@ -116,6 +116,9 @@ class TestStructuredOutputTruncationRetry(unittest.TestCase):
         self.assertEqual(so["attempts"], 2)
         self.assertEqual(so["retries"], 1)
         self.assertFalse(so["exhausted"])
+        assert len(so["structured_attempt_budgets"]) == 2
+        assert so["structured_attempt_budgets"][0]["requested_max_tokens"] > 0
+        assert so["structured_attempt_budgets"][1]["completion_tokens"] == 2048
 
         # The model was TOLD it was truncated and asked for less, not simply
         # asked again. A retry that repeats the same request repeats the same

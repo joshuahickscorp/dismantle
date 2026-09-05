@@ -1159,6 +1159,10 @@ class StructuredOutputContract:
     # argument-pair representation. Keep that boundary repair separate from
     # key renames so receipts and degraded-feature metrics say what happened.
     value_repairs: List[str] = field(default_factory=list)
+    # One bounded budget record per provider attempt. Retries belong to one
+    # logical call, so the receipt needs to show whether prompt growth or the
+    # runtime ceiling made the structured reply unaffordable.
+    attempt_budgets: List[Dict[str, Any]] = field(default_factory=list)
 
     def apply(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         prepared = deepcopy(payload)
@@ -1184,6 +1188,24 @@ class StructuredOutputContract:
         value_repairs: List[str] = []
         repair_tool_argument_values(parsed, value_repairs)
         err = validate_against_schema(parsed, self.schema)
+        # A truncation repair is allowed only when the model had already
+        # emitted the complete envelope. The mode-specific arrays are optional
+        # for ordinary short answers, but accepting a half-written object just
+        # because those arrays were omitted would turn a length failure into a
+        # silent success.
+        if err is None and any(
+            note.startswith("TRUNCATION_REPAIR: ") for note in diag
+        ):
+            missing_envelope = [
+                key for key in ("operations", "tests", "tool_calls")
+                if key not in parsed
+            ]
+            if missing_envelope:
+                err = (
+                    "$: missing required property "
+                    + ", ".join(repr(key) for key in missing_envelope)
+                    + " after truncation repair; the complete envelope was not emitted"
+                )
         if err and diag:
             # The syntax error is the cause; the schema error is its shadow.
             err = diag[0] + " || " + err
@@ -1255,9 +1277,21 @@ class StructuredOutputContract:
                 # this contract owns. Retrying only what validate() raised
                 # let a length-truncation escape enforce() entirely, so no
                 # attempt was ever counted against max_attempts.
+                budget: Dict[str, Any] = {"attempt": attempt}
+                if to_send.get("max_tokens") is not None:
+                    budget["requested_max_tokens"] = to_send.get("max_tokens")
+                self.attempt_budgets.append(budget)
                 result = complete_fn(to_send, timeout)
                 if not isinstance(result, CompletionResult):
                     result = CompletionResult(raw=result, text=str(result))
+                for key, value in (
+                    ("prompt_tokens", result.prompt_tokens),
+                    ("completion_tokens", result.completion_tokens),
+                    ("total_tokens", result.total_tokens),
+                    ("finish_reason", result.finish_reason),
+                ):
+                    if value is not None:
+                        budget[key] = value
                 last_text = result.text
                 parsed = self.validate(result.text)
             except SchemaViolation as exc:

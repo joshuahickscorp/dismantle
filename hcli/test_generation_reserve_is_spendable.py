@@ -1,11 +1,9 @@
 """The window must not be reserved for generation the engine cannot request.
 
-`context_budget` withholds DEFAULT_GENERATION_RESERVE (4096) from every window,
-but `engine._MAX_TOKENS_CEILING` caps every completion request at 2048. On the
-resident's 8192-token window that stranded 2048 tokens -- 25% of the whole
-window -- reserved for tokens nothing will ever ask for. Combined with the 512
-framing reserve it left usable_input 3584 against a measured packet floor of
-6501, so no mission of any length could be admitted.
+`context_budget` withholds DEFAULT_GENERATION_RESERVE (4096) from every window.
+The engine must not cap structured completion below that reserve: doing so
+strands capacity that the caller cannot spend and shortens mutation replies
+before their JSON can close.
 
 Reserving headroom the requester is structurally incapable of using is not
 safety, it is waste. The reserve is now clamped to what the engine can actually
@@ -30,15 +28,15 @@ class TestGenerationReserveIsSpendable(unittest.TestCase):
             f"can never request more than {_MAX_TOKENS_CEILING}",
         )
 
-    def test_the_stranded_tokens_are_returned_to_input(self) -> None:
-        """The whole point: usable input must actually grow."""
+    def test_default_reserve_matches_the_spendable_completion_ceiling(self) -> None:
+        """The input budget never reserves more than the engine can spend."""
         budget = resolve(model_path=None, n_parallel=1)
         stranded = DEFAULT_GENERATION_RESERVE - _MAX_TOKENS_CEILING
-        self.assertGreater(stranded, 0, "fixture assumes the default exceeds the ceiling")
+        self.assertGreaterEqual(stranded, 0)
         self.assertEqual(
             budget.usable_input_tokens,
             budget.per_request_ctx - _MAX_TOKENS_CEILING - budget.framing_reserve,
-            "the reclaimed tokens did not reach usable input",
+            "the generation reserve is not the spendable completion ceiling",
         )
 
     def test_an_explicit_smaller_reserve_is_still_honoured(self) -> None:

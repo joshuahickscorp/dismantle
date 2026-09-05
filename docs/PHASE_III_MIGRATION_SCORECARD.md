@@ -29,7 +29,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after HCLI boundary deletion | 1,803,951 | 3,550 | 945,772 | 657,320 | 1,095 | 40.872% |
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
-| current clean-tree census | 1,394,547 | 3,012 | 707,555 | 489,215 | 1,095 | 40.704% |
+| current clean-tree census | 1,394,555 | 3,012 | 707,556 | 489,218 | 1,095 | 40.704% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
 Python lines), leaving 60 tracked future-farm files: 57 retained Python
@@ -60,15 +60,15 @@ Rust share is computed as
 `Rust / (Rust + Python + TypeScript + shell)`; it is not inflated by excluding
 the deleted Rust examples or by treating Markdown as executable source.
 
-Against the Phase III base, the current tree is down 432,793 active physical
-LOC and 645 active files. Python is down 238,217 LOC; Rust is down 175,433 LOC
+Against the Phase III base, the current tree is down 432,785 active physical
+LOC and 645 active files. Python is down 238,216 LOC; Rust is down 175,430 LOC
 because the deletion wave removed uncalled historical examples rather than
 restoring them to improve a ratio. The code-only Rust share therefore moved
 from 40.736% to 40.704%, which is recorded as an open migration target rather
 than presented as a success.
 
-The tracked tree is 10,334 files / 461,349,302 bytes versus the Phase III base
-of 11,058 files / 479,552,373 bytes: down 724 files and 18,203,071 bytes.
+The tracked tree is 10,333 files / 461,349,086 bytes versus the Phase III base
+of 11,058 files / 479,552,373 bytes: down 725 files and 18,203,287 bytes.
 
 ## Closure status
 
@@ -77,7 +77,7 @@ gate is closed.
 
 | gate | current evidence | status |
 |---|---|---|
-| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,394,547 | met |
+| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,394,555 | met |
 | Rust active share materially increased | 40.736% -> 40.704% after honest example pruning | open |
 | Rust workspace check | `cargo check --workspace` | pass |
 | relevant Rust tests | `cargo test --workspace --lib --bins` | pass |

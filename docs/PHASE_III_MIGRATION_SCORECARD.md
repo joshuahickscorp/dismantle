@@ -31,7 +31,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
-Python lines), leaving 61 tracked future-farm files: 57 retained Python
+Python lines), leaving 60 tracked future-farm files: 57 retained Python
 modules, the existing ledger and memory-traffic probe, and the retained test
 helper shell script. The later Rust/headless compaction removed 171 uncalled
 Rust example/shader files (168,974 physical lines) and 74 caller-free

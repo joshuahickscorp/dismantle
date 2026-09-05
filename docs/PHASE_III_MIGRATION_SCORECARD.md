@@ -173,7 +173,7 @@ capability/oracle probes, HCLI VMCP integration, and structured-output probe
 were promoted to `tools/vmcp` or `tools/bench`. The uncalled headless Doctor
 producer and the nested benchmark driver were deleted; their receipts remain
 historical evidence. The follow-up reachability pass also deleted one orphan
-Objective-C probe, leaving `tools/future` at 54 tracked files; `tools/headless`
+Objective-C probe, leaving `tools/future` at 55 tracked files; `tools/headless`
 has 54. Remaining files are not silently treated as product:
 they are the next PROMOTE/MERGE/ORACLE/RESEARCH/DELETE queue, ranked by active
 LOC, callers, authority, and evidence coverage. A second pass then removed

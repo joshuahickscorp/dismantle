@@ -275,3 +275,53 @@ That is input for Odyssey I, not a reason to keep re-running the same specimen.
     G014  decode        36.67 tok/s   against a >=40 floor
     G015  fresh prefill 48.4 / 34.8 / 21.5 tok/s at 8K / 16K / 32K, against a >=100 floor
     G001  bootstrap streak: 0 of 3
+
+---
+
+# LATE FINDING — the prefix optimization has two paths pointing opposite ways
+
+An anomaly in the 9-cell timings turned into the night's most actionable physical result.
+
+    F017 observed   the same 16K prompt took 446 s fresh and 1,998 s as a third call
+    F036 refuted    process age costs NOTHING. With disjoint-vocabulary prompts sharing no
+                    prefix, a short call made second and third in a process that had already
+                    served a 14,487-token request ran 60.35 s and 60.32 s -- FASTER than the
+                    66.28 s fresh control.
+    F037 explained  it is the prefix path, and it is a pessimization:
+
+        cold                        3,911 tok    66.46 s    58.84 tok/s
+        shares prefix with call 1   3,912 tok   150.62 s    25.97 tok/s   2.27x SLOWER
+        shares prefix with call 2   3,911 tok     0.80 s  4905.66 tok/s   ~83x FASTER
+
+    APPEND   the prompt strictly extends what the session already holds     ~83x
+    RESTORE  the prompt diverges but still matches the stored checkpoint    2.27x SLOWER
+             than having no checkpoint at all
+
+Not route selection: cold and restoring calls both set snapshot_at and both ran the
+sequential route. The 2.27x is on top of that.
+
+The needle cells were the same filler with the needle MOVED, so consecutive prompts diverged
+at the needle and repeatedly took the restore path. Every number that looked like
+"degradation" tonight was a restore.
+
+## Why this is the top frontier item
+
+HCLI's tool loop appends an observation and re-sends, which is APPEND-shaped and should hit
+the 83x path. Its traces instead show prefix_source "checkpoint_restore" repeatedly
+(1,151 / 1,421 / 3,130 / 3,222 reused tokens). It is landing on the slow path in production.
+
+Making HCLI's packets strictly append-shaped -- stable prefix, new material only at the tail
+-- is a CONTROL-PLANE change, needs no kernel work, and on these numbers is worth more than
+anything else measured tonight.
+
+Frontier input: receipts/runtime/FRONTIER_INPUT_RESTORE_IS_A_PESSIMIZATION.md
+
+## Corrections to earlier sections of this report
+
+F017 was stated too broadly as "the resident degrades ~4.5x across requests in one process",
+and that was used to claim every A/B ordering and every late-mission WorkUnit wall is biased.
+The degradation requires a SHARED PREFIX; process age alone costs nothing. The practical
+consequence survives -- HCLI missions share prefixes heavily, so real WorkUnits do take the
+affected path -- but the mechanism in the earlier text is wrong and is corrected here.
+
+The fresh-process measurement protocol used throughout remains correct: it avoids the path.

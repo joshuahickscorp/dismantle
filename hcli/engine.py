@@ -1225,6 +1225,60 @@ def _python_syntax_violation(content: str) -> Optional[str]:
     return None
 
 
+_UNCHECKABLE_SOURCE_SUFFIXES = frozenset(
+    {".metal", ".c", ".cc", ".cpp", ".h", ".hpp", ".m", ".mm", ".swift", ".go"}
+)
+
+
+def _owning_cargo_package(path: Path, root: Path) -> Optional[str]:
+    """The Cargo package that owns `path`, from the nearest Cargo.toml ancestor."""
+    here = path.parent if path.is_file() or path.suffix else path
+    while True:
+        manifest = here / "Cargo.toml"
+        if manifest.is_file():
+            try:
+                text = manifest.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                return None
+            in_package = False
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("["):
+                    in_package = stripped == "[package]"
+                    continue
+                if in_package and stripped.startswith("name"):
+                    _, _, value = stripped.partition("=")
+                    return value.strip().strip('"').strip("'") or None
+            return None
+        if here == root or here.parent == here:
+            return None
+        here = here.parent
+
+
+def check_rust_file(path: Path, root: Path) -> Dict[str, Any]:
+    """`cargo check` the package owning `path`. Absent cargo is NOT a pass."""
+    package = _owning_cargo_package(path, root)
+    argv = ["cargo", "check", "--offline"]
+    if package:
+        argv += ["-p", package]
+    try:
+        proc = subprocess.run(
+            argv, cwd=str(root), capture_output=True, text=True, timeout=900
+        )
+        return {
+            "package": package,
+            "exit_code": proc.returncode,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+        }
+    except FileNotFoundError:
+        return {"package": package, "exit_code": 127, "stdout": "",
+                "stderr": "cargo not found; a Rust mutation cannot be verified here"}
+    except subprocess.TimeoutExpired:
+        return {"package": package, "exit_code": 124, "stdout": "",
+                "stderr": "cargo check timed out"}
+
+
 class Engine:
     """Native HCLI execution boundary.
 
@@ -5931,13 +5985,44 @@ class Engine:
             except ValueError:
                 rel = str(path)
 
-            if path.suffix != ".py":
+            if path.suffix == ".rs":
+                # A Rust mutation used to record `no_checker_available` and pass,
+                # so acceptance rested entirely on whatever test the reply named
+                # -- and a Python test passes no matter what the Rust says.
+                # Measured: a mutation that deleted the correctness guard in
+                # qwen38_batched_prefill_allowed (reuse == 0 && snapshot_at
+                # .is_none()) was ACCEPTED on `test hcli/test_engine_tool_loop.py
+                # exit 0`. That change compiles and produces a faster wall with a
+                # different answer, which is the one outcome the guard exists to
+                # prevent. `cargo check` on the owning crate costs 13.5 s.
+                checked = check_rust_file(path, self.root)
                 checks.append(
                     {
-                        "kind": "no_checker_available",
+                        "kind": "cargo_check",
                         "path": rel,
+                        "package": checked.get("package"),
+                        "exit_code": checked["exit_code"],
+                        "stdout": checked["stdout"][-4000:],
+                        "stderr": checked["stderr"][-4000:],
                     }
                 )
+                if checked["exit_code"] != 0:
+                    ok = False
+                continue
+
+            if path.suffix != ".py":
+                record = {"kind": "no_checker_available", "path": rel}
+                if path.suffix.lower() in _UNCHECKABLE_SOURCE_SUFFIXES:
+                    # Source the verifier cannot check must not be accepted on
+                    # unrelated evidence. Silence here is not a passing check.
+                    record["fatal"] = True
+                    record["reason"] = (
+                        f"{path.suffix} is source and this verifier has no checker "
+                        "for it; a mutation to it cannot be accepted on a test in "
+                        "another language"
+                    )
+                    ok = False
+                checks.append(record)
                 continue
 
             compiled = compile_python_file(path)

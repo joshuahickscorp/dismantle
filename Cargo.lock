@@ -1142,16 +1142,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hawking-index-query"
-version = "0.2.2"
-dependencies = [
- "serde",
- "serde_json",
- "tree-sitter",
- "tree-sitter-python",
-]
-
-[[package]]
 name = "hawking-orch"
 version = "0.2.2"
 dependencies = [

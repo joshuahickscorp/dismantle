@@ -39,9 +39,12 @@ Rust example/shader files (168,974 physical lines) and 74 caller-free
 headless Python files (39,566 physical lines). The current LOC measurement
 includes this scorecard, which is now part of the tracked branch.
 
-The Rust workspace census is now 20 packages, 12 binaries, and 73 examples.
+The Rust workspace census is now 19 packages, 12 binaries, and 73 examples.
 The two retired resident-server entry points were `hide-headless` and the old
 dirty-tier `research_server`; HCLI is the remaining HIDE backend binary.
+The former one-consumer `hawking-index-query` package is now a binary and
+Python-facts module owned by `hawking-index`; its command name and
+`hawking.index.python_facts.v1` wire schema are unchanged.
 
 The branch must report the post-pruning measurement after the deletion commit;
 historical receipts and generated graphs are not counted as source reduction.

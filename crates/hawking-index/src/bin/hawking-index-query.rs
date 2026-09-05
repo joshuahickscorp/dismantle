@@ -8,7 +8,7 @@
 //! where `hcli/` is absent from disk still index those files. Untracked
 //! files are invisible.
 
-use hawking_index_query::python_facts::{
+use hawking_index::python_facts::{
     default_repo, dump_python_facts_at_commit, dump_python_facts_from_overlay, read_overlay_ndjson,
     PYTHON_FACTS_SCHEMA,
 };

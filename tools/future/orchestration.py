@@ -169,7 +169,6 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "hardware_doctor.py":          ("FT.FPGA.hardware-doctor", "HARDWARE_DOCTOR"),
     "ane_preboard.py":             ("FT.ANE.preboard", "ANE_PREBOARD"),
     # --- architecture repatriation ----------------------------------------
-    "cuda_lowbit_hypotheses.py":   ("FT.ARCHITECTURE_REPATRIATION.compile-specs", "SEARCH_ARCHITECTURE_LAWS"),
     "device_ascension_pipeline.py": ("FT.ARCHITECTURE_REPATRIATION.device-run", "DEVICE_ASCENSION"),
     # --- verification ------------------------------------------------------
     "negative_index.py":           ("FT.VERIFICATION.negative-index", "UPDATE_SCAR"),

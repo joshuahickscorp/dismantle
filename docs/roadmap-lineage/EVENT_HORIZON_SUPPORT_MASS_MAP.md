@@ -120,6 +120,10 @@ also included in the total and must not become an UNKNOWN bucket.
   scaffolding where a smaller canonical representation carries the signal. The
   superseded TG `matched/` receipt root is now represented by canonical
   `matched-v2/`; its v1 timing caveat remains in the v2 evidence root.
+  Generated governance rung snapshots are counted outside the active LOC
+  authority; three intermediate before/after pairs were compressed to the
+  canonical comparison pair, final verification snapshot, and
+  `GOVERNANCE_RUNG_ARCHIVE.md`.
 
 The next checkpoint is support <=500K, then <=250K, with the current product
 boundary held at approximately 498K.

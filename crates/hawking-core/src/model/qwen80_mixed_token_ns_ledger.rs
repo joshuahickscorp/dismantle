@@ -13,7 +13,7 @@ use super::qwen80_complete_runtime::{
     QWEN80_VOCAB,
 };
 use super::qwen80_mixed_hybrid_decode::{
-    MixedExclusiveSnap, MixedGpuOrganNs, MixedHostExclusiveNs, MixedTokenSample,
+    MixedExclusiveSnap, MixedTokenSample,
 };
 use serde::Serialize;
 

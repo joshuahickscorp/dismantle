@@ -8,6 +8,12 @@ nothing and returns non-zero with the reason.
 
 Two things this deliberately does NOT do:
 
+  * It does not measure several samples in ONE resident process and take their
+    median. That resident degrades ~4.5x by its third request (measured: the same
+    16K prompt takes 446 s on a fresh process and 1,998 s as the third call on a
+    warm one), so a median over a degrading series is not a rate. Every arm here
+    runs in a FRESH subprocess, and the drift between arms is reported rather
+    than averaged away.
   * It does not reuse a historical 34/36/45/62 tok/s figure. `reused_historical_figure`
     is hardcoded False because the number is taken here, now, or not at all.
   * It does not report `vm.swapusage used=` as live swap. That counter is a BOOT
@@ -103,22 +109,60 @@ def _decode_rate(conn, prompt: str, max_tokens: int) -> dict:
     }
 
 
+def _run_arm(streams: int, tokens: int) -> dict:
+    """One arm, in a FRESH interpreter. Process exit is the only reset available."""
+    out = subprocess.run(
+        [sys.executable, str(REPO / PRODUCED_BY), "--arm", "--streams", str(streams),
+         "--tokens", str(tokens)],
+        capture_output=True, text=True, timeout=7200, cwd=str(REPO),
+    )
+    for line in out.stdout.splitlines():
+        if line.startswith("ARM "):
+            return json.loads(line[4:])
+    raise RuntimeError(f"arm produced no result: {out.stderr[-400:]}")
+
+
+def _arm_main(args) -> int:
+    from hcli.hawking_native import HawkingNativeConnector, config_for_model_path
+    cfg = config_for_model_path(str(ENVELOPE))
+    conn = HawkingNativeConnector(cfg)
+    prompt = ("Count upward from one, one number per line, and do not stop early. "
+              "Write nothing else.")
+    t0 = time.perf_counter()
+    if args.streams <= 1:
+        res = [_decode_rate(conn, prompt, args.tokens)]
+    else:
+        with ThreadPoolExecutor(max_workers=args.streams) as pool:
+            futures = [pool.submit(_decode_rate, conn, prompt, args.tokens)
+                       for _ in range(args.streams)]
+            res = [f.result() for f in futures]
+    wall = time.perf_counter() - t0
+    toks = sum(r["completion_tokens"] for r in res)
+    print("ARM " + json.dumps({
+        "streams": args.streams, "wall_s": wall, "completion_tokens": toks,
+        "tok_s": (toks / wall) if wall > 0 else 0, "calls": res,
+    }), flush=True)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--arm", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--tokens", type=int, default=128,
                     help="decoded tokens per single-stream sample")
     ap.add_argument("--samples", type=int, default=3)
     ap.add_argument("--streams", type=int, default=2,
                     help="concurrent streams for the saturation retest")
     args = ap.parse_args()
+    if args.arm:
+        return _arm_main(args)
 
-    from hcli.hawking_native import HawkingNativeConnector, config_for_model_path
-
-    cfg = config_for_model_path(str(ENVELOPE))
-    conn = HawkingNativeConnector(cfg)
-
-    prompt = ("Count upward from one, one number per line, and do not stop early. "
-              "Write nothing else.")
+    cfg = None
+    try:
+        from hcli.hawking_native import config_for_model_path
+        cfg = config_for_model_path(str(ENVELOPE))
+    except Exception:
+        pass
 
     swap_before = _swapouts()
     conds_before = {
@@ -128,29 +172,23 @@ def main() -> int:
         "swapouts_cumulative_before": swap_before,
     }
 
-    singles = []
-    for _ in range(max(1, args.samples)):
-        singles.append(_decode_rate(conn, prompt, args.tokens))
-
-    usable = [s for s in singles if s["completion_tokens"] > 0]
-    if not usable:
-        print("REFUSED: no sample decoded a single token", file=sys.stderr)
+    # Arm 1: single stream, FRESH process. This is the authority.
+    single = _run_arm(1, args.tokens)
+    if not single["completion_tokens"]:
+        print("REFUSED: the single-stream arm decoded no tokens", file=sys.stderr)
         return 2
+    single_ns = single["wall_s"] * 1e9 / single["completion_tokens"]
 
-    # complete token = the whole call divided by the tokens it produced. This is
-    # deliberately the COMPLETE wall, not a kernel time.
-    per_token_ns = [s["wall_s"] * 1e9 / s["completion_tokens"] for s in usable]
-    best = min(per_token_ns)
-    median = sorted(per_token_ns)[len(per_token_ns) // 2]
+    # Arm 2: a REPEAT of arm 1, also fresh. Two fresh arms bound the run-to-run
+    # spread, which is the only spread worth quoting once the degradation is
+    # controlled for.
+    repeat = _run_arm(1, args.tokens)
+    repeat_ns = (repeat["wall_s"] * 1e9 / repeat["completion_tokens"]
+                 if repeat["completion_tokens"] else None)
 
-    # Saturation retest: N concurrent streams against the same body.
-    t0 = time.perf_counter()
-    with ThreadPoolExecutor(max_workers=args.streams) as pool:
-        futures = [pool.submit(_decode_rate, conn, prompt, args.tokens)
-                   for _ in range(args.streams)]
-        agg = [f.result() for f in futures]
-    agg_wall = time.perf_counter() - t0
-    agg_tokens = sum(a["completion_tokens"] for a in agg)
+    # Arm 3: the saturation retest, FRESH, so it is not compared against a
+    # degraded single.
+    agg = _run_arm(args.streams, args.tokens)
 
     swap_after = _swapouts()
     doc = {
@@ -163,18 +201,23 @@ def main() -> int:
         "reused_historical_figure": False,
         "resident_identity": getattr(cfg, "resident_identity", None),
         "envelope": str(ENVELOPE.relative_to(REPO)),
-        "complete_token_ns": median,
-        "complete_token_ns_best": best,
-        "decode_tok_s": 1e9 / median,
-        "decode_tok_s_best": 1e9 / best,
-        "samples": singles,
-        "spread_pct": (max(per_token_ns) - min(per_token_ns)) / min(per_token_ns) * 100.0,
+        "complete_token_ns": single_ns,
+        "complete_token_ns_repeat": repeat_ns,
+        "decode_tok_s": 1e9 / single_ns,
+        "decode_tok_s_repeat": (1e9 / repeat_ns) if repeat_ns else None,
+        "fresh_process_per_arm": True,
+        "run_to_run_spread_pct": (
+            abs(repeat_ns - single_ns) / min(repeat_ns, single_ns) * 100.0
+            if repeat_ns else None
+        ),
+        "arms": {"single": single, "single_repeat": repeat, "aggregate": agg},
         "aggregate_vs_single": {
-            "single_tok_s": 1e9 / median,
-            "aggregate_tok_s": (agg_tokens / agg_wall) if agg_wall > 0 else 0,
+            "single_tok_s": 1e9 / single_ns,
+            "aggregate_tok_s": agg["tok_s"],
             "streams": args.streams,
-            "aggregate_wall_s": agg_wall,
-            "aggregate_completion_tokens": agg_tokens,
+            "aggregate_wall_s": agg["wall_s"],
+            "aggregate_completion_tokens": agg["completion_tokens"],
+            "both_arms_fresh": True,
         },
         "conditions": {
             "free_bytes": conds_before["free_bytes"],
@@ -207,8 +250,9 @@ def main() -> int:
     RECEIPT.parent.mkdir(parents=True, exist_ok=True)
     RECEIPT.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wrote {RECEIPT}")
-    print(f"  decode_tok_s   {doc['decode_tok_s']:.3f}  (best {doc['decode_tok_s_best']:.3f}, "
-          f"spread {doc['spread_pct']:.1f}%)")
+    print(f"  decode_tok_s   {doc['decode_tok_s']:.3f}  "
+          f"(fresh repeat {doc['decode_tok_s_repeat']}, "
+          f"run-to-run spread {doc['run_to_run_spread_pct']}%)")
     a = doc["aggregate_vs_single"]
     print(f"  single {a['single_tok_s']:.3f} tok/s   aggregate {a['aggregate_tok_s']:.3f} tok/s "
           f"across {a['streams']} streams")

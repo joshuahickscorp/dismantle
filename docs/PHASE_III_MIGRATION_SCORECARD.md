@@ -29,6 +29,7 @@ tracked executable source, including comments and blanks. The Phase III base is
 | after HCLI boundary deletion | 1,803,951 | 3,550 | 945,772 | 657,320 | 1,095 | 40.872% |
 | after future-farm pruning | 1,609,847 | 3,273 | 751,583 | 657,320 | 1,095 | 46.485% |
 | after Rust/headless compaction | 1,399,893 | 3,025 | 712,010 | 490,150 | 1,095 | 40.599% |
+| current `225bc6346` | 1,399,930 | 3,025 | 712,032 | 490,165 | 1,095 | 40.600% |
 
 The future farm deletion removed 278 uncalled Python files (192,748 physical
 Python lines), leaving 60 tracked future-farm files: 57 retained Python
@@ -44,6 +45,41 @@ dirty-tier `research_server`; HCLI is the remaining HIDE backend binary.
 
 The branch must report the post-pruning measurement after the deletion commit;
 historical receipts and generated graphs are not counted as source reduction.
+
+The current row is the clean-tree measurement at commit `225bc6346ae6e4c1f16b1b4f98fb6dab062c5395`.
+It includes the small ABI, contract, and receipt-path corrections made after
+the historical compaction checkpoint. The code-only Rust share is computed as
+`Rust / (Rust + Python + TypeScript + shell)`; it is not inflated by excluding
+the deleted Rust examples or by treating Markdown as executable source.
+
+Against the Phase III base, the current tree is down 427,410 active physical
+LOC and 632 active files. Python is down 233,740 LOC; Rust is down 174,483 LOC
+because the deletion wave removed uncalled historical examples rather than
+restoring them to improve a ratio. The code-only Rust share therefore moved
+from 40.736% to 40.600%, which is recorded as an open migration target rather
+than presented as a success.
+
+## Closure status
+
+This scorecard is an active checkpoint, not a declaration that every Phase III
+gate is closed.
+
+| gate | current evidence | status |
+|---|---|---|
+| at least 10,000 active source LOC removed | base 1,827,340 -> current 1,399,930 | met |
+| Rust active share materially increased | 40.736% -> 40.600% after honest example pruning | open |
+| Rust workspace check | `cargo check --workspace` | pass |
+| relevant Rust tests | `cargo test --workspace --lib --bins` | pass |
+| full Python HCLI suite | 1,645 passed, 49 protected/evidence failures, 7 skipped | open; no failures hidden |
+| no new unexplained failures | focused regressions closed; missing live sovereign receipts remain | open |
+| examples and launch surface reduced | 235 -> 73 examples; 14 -> 12 binaries | met |
+| clean working tree | `git status --short` empty | met |
+
+The 49 HCLI failures are not converted into green receipts: 48 require ten
+missing live sovereign receipts (G002-G008, G012-G013, G015), and one existing
+G014 negative-science receipt still reports a non-zero dead-family duration.
+Those are evidence prerequisites for a later closure run, not source-code
+failures that this branch may fabricate away.
 
 ## Python-to-Rust migration register
 

@@ -53,7 +53,7 @@ Rust share is computed as
 `Rust / (Rust + Python + TypeScript + shell)`; it is not inflated by excluding
 the deleted Rust examples or by treating Markdown as executable source.
 
-Against the Phase III base, the current tree is down 428,419 active physical
+Against the Phase III base, the current tree is down 428,415 active physical
 LOC and 633 active files. Python is down 233,848 LOC; Rust is down 175,420 LOC
 because the deletion wave removed uncalled historical examples rather than
 restoring them to improve a ratio. The code-only Rust share therefore moved

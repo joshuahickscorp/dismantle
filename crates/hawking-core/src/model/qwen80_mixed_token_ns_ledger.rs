@@ -203,60 +203,6 @@ fn split_gpu(full: u64, probe: Option<&ProbeSplit>) -> (f64, f64, f64) {
     (addr, dec, fma)
 }
 
-fn median_snap(snaps: &[MixedExclusiveSnap]) -> MixedExclusiveSnap {
-    if snaps.is_empty() {
-        return MixedExclusiveSnap::default();
-    }
-    let pick = |f: fn(&MixedExclusiveSnap) -> u64| -> u64 {
-        median_u64(&snaps.iter().map(f).collect::<Vec<_>>())
-    };
-    MixedExclusiveSnap {
-        encode_ns: pick(|s| s.encode_ns),
-        submit_ns: pick(|s| s.submit_ns),
-        wait_ns: pick(|s| s.wait_ns),
-        gpu_ns: pick(|s| s.gpu_ns),
-        wait_minus_gpu_ns: pick(|s| s.wait_minus_gpu_ns),
-        cbs: pick(|s| s.cbs),
-        dispatches: pick(|s| s.dispatches),
-        timestamps_missing: pick(|s| s.timestamps_missing),
-        gpu_organ: MixedGpuOrganNs {
-            deltanet: pick(|s| s.gpu_organ.deltanet),
-            gqa: pick(|s| s.gpu_organ.gqa),
-            moe_shared: pick(|s| s.gpu_organ.moe_shared),
-            moe_routed: pick(|s| s.gpu_organ.moe_routed),
-            moe_router: pick(|s| s.gpu_organ.moe_router),
-            moe_combine_gate: pick(|s| s.gpu_organ.moe_combine_gate),
-            terminal: pick(|s| s.gpu_organ.terminal),
-            other: pick(|s| s.gpu_organ.other),
-        },
-        host_excl: MixedHostExclusiveNs {
-            embed: pick(|s| s.host_excl.embed),
-            dn_rms: pick(|s| s.host_excl.dn_rms),
-            dn_rearrange_l2: pick(|s| s.host_excl.dn_rearrange_l2),
-            dn_conv: pick(|s| s.host_excl.dn_conv),
-            dn_recurrent: pick(|s| s.host_excl.dn_recurrent),
-            dn_gated: pick(|s| s.host_excl.dn_gated),
-            dn_residual: pick(|s| s.host_excl.dn_residual),
-            gqa_rms: pick(|s| s.host_excl.gqa_rms),
-            gqa_interleave: pick(|s| s.host_excl.gqa_interleave),
-            gqa_rope: pick(|s| s.host_excl.gqa_rope),
-            gqa_kv_copy: pick(|s| s.host_excl.gqa_kv_copy),
-            gqa_attn: pick(|s| s.host_excl.gqa_attn),
-            gqa_residual: pick(|s| s.host_excl.gqa_residual),
-            post_rms: pick(|s| s.host_excl.post_rms),
-            final_rms: pick(|s| s.host_excl.final_rms),
-            silu: pick(|s| s.host_excl.silu),
-            topk: pick(|s| s.host_excl.topk),
-            combine: pick(|s| s.host_excl.combine),
-            argmax: pick(|s| s.host_excl.argmax),
-            buffer_prep: pick(|s| s.host_excl.buffer_prep),
-            expert_bind: pick(|s| s.host_excl.expert_bind),
-            catalog_reparse: pick(|s| s.host_excl.catalog_reparse),
-            vector_clone: pick(|s| s.host_excl.vector_clone),
-        },
-    }
-}
-
 /// Exclusive 14-component cover of the complete token wall.
 pub fn seal_components(
     wall_ns: u64,

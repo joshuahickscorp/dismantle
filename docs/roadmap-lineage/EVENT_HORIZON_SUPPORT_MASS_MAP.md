@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 668,723 | 1,843 |
-| active total | 1,166,735 | 2,478 |
+| support | 665,856 | 1,841 |
+| active total | 1,163,868 | 2,476 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -30,13 +30,13 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 131,322 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 128,449 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,763 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 33,482 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 6 | `tools/headless` | 32,994 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
-| 7 | `tools/condense` | 25,958 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
+| 7 | `tools/condense` | 25,942 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |
 | 10 | `workspace/campaign` | 15,668 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
@@ -92,6 +92,10 @@ also included in the total and must not become an UNKNOWN bucket.
   The duplicate Frankenstein `condense/` wrapper and test tree was then
   retired; live tooling remains in `tools/condense/`, operators remain under
   `frankenstein/operators/`, and all Frankenstein data/evidence is preserved.
+- `research/lab/operators`: the blocked Qwen scientific optimizer watcher had
+  no live caller or material physical state; its implementation, launcher, and
+  dedicated fixture were deleted while its blocked-runtime claim boundary was
+  retained in `QWEN_SCIENTIFIC_OPTIMIZER_ARCHIVE.md`.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

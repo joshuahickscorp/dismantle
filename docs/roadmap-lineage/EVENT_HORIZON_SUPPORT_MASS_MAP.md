@@ -1,8 +1,8 @@
 # Event Horizon support mass map
 
 Measured on `refactor/event-horizon` after the Qwen30 future-oracle, N051
-one-shot analysis, CUDA hypothesis, WorkGraph, and frontier-runtime sublation
-waves. This is the support
+one-shot analysis, CUDA hypothesis, WorkGraph, frontier-runtime, and legacy
+Ascension-supervisor retirement waves. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 660,975 | 1,836 |
-| active total | 1,158,987 | 2,471 |
+| support | 645,015 | 1,812 |
+| active total | 1,143,017 | 2,447 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -30,7 +30,7 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 127,648 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 111,790 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -96,13 +96,18 @@ also included in the total and must not become an UNKNOWN bucket.
   no live caller or material physical state; its implementation, launcher, and
   dedicated fixture were deleted while its blocked-runtime claim boundary was
   retained in `QWEN_SCIENTIFIC_OPTIMIZER_ARCHIVE.md`.
+  The dependent Ascension V3 lifecycle/campaign, physical gatekeeper,
+  tournament, notifier, source-admission, sandbox, launch-gate, launchd, and
+  test chain was then retired as one broken legacy family: 14,997 active LOC
+  disappeared while current manager-protocol surfaces, Qwen30 physical
+  research, and receipts remained.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken
   Noetic/VisionMCP runners were retired.
-- `research/lab/tests`: two test files that imported already-deleted Ascension
-  modules were removed; the current `ascension_contracts` tests remain the
-  owner of the surviving blocked-state contract.
+- `research/lab/tests`: tests for already-deleted Ascension supervisors and
+  absent JSON contract fixtures were removed; current manager-protocol and
+  Qwen30 physical tests remain.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

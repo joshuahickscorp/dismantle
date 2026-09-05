@@ -17,5 +17,14 @@ constitute current Ascension capability.
 | `ascension_tournament_workflow.py` | manager tournament protocol |
 
 The compact table preserves the disposition and ownership map. Original
-implementations remain recoverable in Git history; no current runtime, test, or
-receipt was rewritten.
+implementations remain recoverable in Git history. The remaining callers were
+then audited as one legacy supervisor family: they formed a broken Ascension
+V3 controller/gatekeeper/notifier chain around these absent contracts, with no
+live production owner and only stale launchd/test wiring. That dependent
+family was retired as a unit. The separate `ascension_qwen30_physical_campaign.py`
+worker remains because it is an active, independent physical research path.
+
+The same audit found the now-unreferenced `ascension_contracts.py` verifier
+also depended on four contract JSONs absent from HEAD. Its 670-line operator
+and 191-line test were retired with the dead fixtures; the durable contract
+ideas remain represented by the current receipt and manager-protocol surfaces.

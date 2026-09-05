@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 767,950 | 1,995 |
-| active total | 1,265,962 | 2,630 |
+| support | 767,951 | 1,995 |
+| active total | 1,265,963 | 2,630 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's

@@ -1,6 +1,6 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` at the post-G1-execution wave. This is the support
+Measured on `refactor/event-horizon` at the closed-contract and matched-receipt wave. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -15,12 +15,10 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 714,823 | 1,932 |
-| active total | 1,212,835 | 2,567 |
+| support | 712,990 | 1,925 |
+| active total | 1,211,002 | 2,560 |
 
-The five-line difference from the headline LOC tool is newline accounting in
-this independent cross-check; the authoritative headline remains the tool's
-reported value.
+The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
 ## Top 30 support subtrees
 
@@ -30,7 +28,7 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 137,936 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 136,082 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,208 | CURRENT_VERIFICATION |
 | 3 | `research/hawking-experiments` | 65,137 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 4 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
@@ -40,7 +38,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,836 | CURRENT_VERIFICATION |
 | 10 | `workspace/campaign` | 15,668 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 11 | `workspace/docs` | 9,529 | IMPORTANT_ARCHIVE / SUPERSEDED audit required |
+| 11 | `workspace/docs` | 9,554 | IMPORTANT_ARCHIVE / SUPERSEDED audit required |
 | 12 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 13 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 14 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -73,7 +71,9 @@ also included in the total and must not become an UNKNOWN bucket.
   their result payloads and selected experiment notes remain the archival signal;
   eight unreferenced superseded reports and 22 unreferenced G1 reports were
   compressed into `G1_ARCHIVE_LEDGER.md`; the closed Qwen30 admission-probe
-  family was reduced to `QWEN30_CLOSED_ADMISSION_ARCHIVE.md`.
+  family was reduced to `QWEN30_CLOSED_ADMISSION_ARCHIVE.md`; eight unreferenced
+  Ascension contract/workflow modules were reduced to
+  `ASCENSION_ORPHANED_CONTRACTS_ARCHIVE.md`.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.
@@ -83,7 +83,9 @@ also included in the total and must not become an UNKNOWN bucket.
 - `workspace/*`, `docs/*`, and `receipts/*`: classify information separately
   from executable machinery. Preserve current metadata, decisive evidence,
   Laws/Scars, and necessary provenance; compress or retire stale execution
-  scaffolding where a smaller canonical representation carries the signal.
+  scaffolding where a smaller canonical representation carries the signal. The
+  superseded TG `matched/` receipt root is now represented by canonical
+  `matched-v2/`; its v1 timing caveat remains in the v2 evidence root.
 
 The next checkpoint is support <=500K, then <=250K, with the current product
 boundary held at approximately 498K.

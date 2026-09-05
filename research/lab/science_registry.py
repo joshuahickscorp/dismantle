@@ -115,7 +115,6 @@ IRREDUCIBLE_MODULES: tuple[OperatorRecord, ...] = (
     _m("deepseek_v4_stream_executor", OP, "plan.deepseek_v4_header", "Pinned header-only DeepSeek-V4 source admission.", sealed=True, path="tools/condense/deepseek_v4_stream_executor.py"),
     _m("deepseek_v4_xet_slice", OP, "exec.deepseek_v4_xet_slice", "Bounded zero-cache DeepSeek-V4 Xet range stream.", sealed=True, path="tools/condense/deepseek_v4_xet_slice.py"),
     _m("glm52_activation_aware_pack", OP, "pack.activation_v1", "Activation-aware pack v1.", sci=True),
-    _m("glm52_activation_aware_pack_v2", OP, "pack.activation_v2", "Activation-aware pack v2.", sci=True),
     _m("glm52_pack", OP, "pack.stream", "Sub-bit compact shard serializer.", sci=True),
     _m("glm52_adapter", DA, "adapt.checkpoint", "Checkpoint adapter.", sealed=True, sci=True),
     _m("glm52_assemble", OP, "assemble.model", "Assemble packed shards.", sci=True),
@@ -277,7 +276,6 @@ def build_operator_handlers() -> dict[str, Handler]:
     handlers: dict[str, Handler] = {
         "pack.stream": bind("glm52_pack", "pack_indices"),
         "pack.activation_v1": bind("glm52_activation_aware_pack", "selftest"),
-        "pack.activation_v2": bind("glm52_activation_aware_pack_v2", "assert_no_gaussian_promotion_path"),
         "fetch.source": bind("glm52_source_fetch", "selftest"),
         "ledger.flop": bind("gravity_flop_ledger", "official_geometry"),
         "notify.telegram": bind("glm52_telegram", "credential_status"),

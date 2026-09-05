@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 630,774 | 1,792 |
-| active total | 1,128,786 | 2,427 |
+| support | 629,226 | 1,791 |
+| active total | 1,127,238 | 2,426 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -30,7 +30,7 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 99,385 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 1 | `research/lab` | 98,403 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -112,6 +112,8 @@ also included in the total and must not become an UNKNOWN bucket.
   metadata-preflight cluster was then compressed to
   `STALE_RESEARCH_CLUSTER_ARCHIVE.md`; no live DeepSeek stream or Qwen capture
   owner was changed.
+  The duplicate, uncalled GLM52 activation-pack v2 generation was retired;
+  v1 remains the active pack owner and the campaign registry was corrected.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

@@ -306,7 +306,6 @@
       "metadata": {
         "controllers_restored_as_live": [
           "glm52_activation_aware_pack",
-          "glm52_activation_aware_pack_v2",
           "glm52_functional_gauntlet",
           "glm52_moe_student",
           "glm52_shard_probe",

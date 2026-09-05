@@ -101,7 +101,12 @@ class SteeringQueue:
         os.makedirs(self._dir, exist_ok=True)
         self._path = os.path.join(self._dir, f"{session_id}.json")
         self._events: List[SteerEvent] = []
+        self._seen_mtime: Optional[float] = None
         self._load()
+        try:
+            self._seen_mtime = os.path.getmtime(self._path) if os.path.isfile(self._path) else None
+        except OSError:
+            self._seen_mtime = None
 
     def _load(self):
         if os.path.isfile(self._path):
@@ -155,7 +160,40 @@ class SteeringQueue:
         self._save()
 
     def all(self) -> List[SteerEvent]:
+        """Every steer, INCLUDING any a detached supervisor appended since load.
+
+        The queue is loaded once at construction, so a running mission held a
+        stale in-memory copy and never saw an externally injected steer. Routing
+        the steer to the right file (Controller.queue_steer) was only half the
+        path; this is the half that lets the mission read it.
+
+        Merge, never replace: the mission's own unsaved events must survive, so
+        only ids not already in memory are adopted.
+        """
+        self._absorb_external()
         return list(self._events)
+
+    def _absorb_external(self) -> None:
+        try:
+            mtime = os.path.getmtime(self._path) if os.path.isfile(self._path) else None
+        except OSError:
+            return
+        if mtime is None or mtime == getattr(self, "_seen_mtime", None):
+            return
+        self._seen_mtime = mtime
+        try:
+            with open(self._path) as f:
+                data = json.load(f)
+        except Exception:
+            return
+        known = {e.id for e in self._events}
+        for raw in data:
+            try:
+                event = SteerEvent.from_dict(raw)
+            except Exception:
+                continue
+            if event.id not in known:
+                self._events.append(event)
 
     def apply_constraint(self, event: SteerEvent, ledger: "Ledger") -> None:
         """Amend ``ledger`` from a constraint steer. Never marks VERIFIED.

@@ -64,3 +64,42 @@ def test_a_detached_steer_lands_in_the_missions_queue_with_provenance(tmp_path):
     assert events[0]["source_session_id"] == "SUPERVISOR-1", (
         "the steer does not record who injected it"
     )
+
+
+def test_a_running_queue_absorbs_a_steer_appended_by_another_process(tmp_path):
+    """Routing the steer to the right FILE was only half the path.
+
+    SteeringQueue loads once at construction and `all()` returned that cached
+    list, so a running mission held a stale copy and never saw an externally
+    injected steer. Mission._unit_context feeds `self._steering.all()` into the
+    worker packet, so an unseen steer is an unread steer.
+    """
+    import time
+    from hcli.steering import SteeringQueue
+
+    mission_q = SteeringQueue(str(tmp_path), "S-1")
+    mission_q.enqueue("the mission's own", kind="knowledge")
+    assert len(mission_q.all()) == 1
+
+    time.sleep(0.02)
+    supervisor_q = SteeringQueue(str(tmp_path), "S-1")   # a DETACHED process
+    supervisor_q.enqueue("injected from outside", kind="knowledge")
+
+    seen = [e.text for e in mission_q.all()]
+    assert "injected from outside" in seen, (
+        "the running queue still cannot see a steer another process appended"
+    )
+    assert "the mission's own" in seen, (
+        "absorbing external events dropped the queue's own; merge, never replace"
+    )
+
+
+def test_absorbing_does_not_duplicate_on_repeated_reads(tmp_path):
+    """Negative control: all() is called per WorkUnit, so it must be idempotent."""
+    from hcli.steering import SteeringQueue
+
+    q = SteeringQueue(str(tmp_path), "S-2")
+    q.enqueue("one", kind="knowledge")
+    first = len(q.all())
+    for _ in range(5):
+        assert len(q.all()) == first, "repeated reads duplicated events"

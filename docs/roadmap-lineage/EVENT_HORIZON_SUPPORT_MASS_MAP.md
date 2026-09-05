@@ -1,7 +1,8 @@
 # Event Horizon support mass map
 
 Measured on `refactor/event-horizon` after the Qwen30 future-oracle, N051
-one-shot analysis, CUDA hypothesis, and WorkGraph sublation waves. This is the support
+one-shot analysis, CUDA hypothesis, WorkGraph, and frontier-runtime sublation
+waves. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -16,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 675,850 | 1,874 |
-| active total | 1,173,862 | 2,508 |
+| support | 673,372 | 1,873 |
+| active total | 1,171,384 | 2,507 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -31,7 +32,7 @@ also included in the total and must not become an UNKNOWN bucket.
 |---:|---|---:|---|
 | 1 | `research/lab` | 131,322 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
-| 3 | `tools/future` | 57,243 | ACTIVE_RESEARCH / SUPERSEDED audit required |
+| 3 | `tools/future` | 54,763 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 38,129 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 6 | `tools/headless` | 32,994 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
@@ -76,6 +77,8 @@ also included in the total and must not become an UNKNOWN bucket.
   schema vocabulary needed to read those hypotheses.
   The parallel future WorkGraph runtime was then sublated into a bounded
   arrival-payload builder; HCLI `scheduler`/`dag_store` now own scheduling.
+  The parallel 22-frontier runtime was subsequently retired; its sealed state
+  remains archival while `hcli/frontier_scheduler.py` owns active selection.
 - `research/hawking-experiments`: retain decisive findings and minimal
   reproducers; delete superseded executable campaign machinery after checking
   provenance and negative controls. The G1 evidence runners are now retired;

@@ -15,8 +15,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 761,095 | 1,982 |
-| active total | 1,259,107 | 2,617 |
+| support | 750,190 | 1,966 |
+| active total | 1,248,202 | 2,601 |
 
 The five-line difference from the headline LOC tool is newline accounting in
 this independent cross-check; the authoritative headline remains the tool's
@@ -32,7 +32,7 @@ also included in the total and must not become an UNKNOWN bucket.
 |---:|---|---:|---|
 | 1 | `research/lab` | 139,287 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
 | 2 | `crates/hawking-core` | 106,832 | CURRENT_VERIFICATION |
-| 3 | `research/hawking-experiments` | 79,682 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 3 | `research/hawking-experiments` | 68,777 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 4 | `tools/future` | 60,654 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 5 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 6 | `tools/headless` | 34,903 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
@@ -44,7 +44,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 12 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 13 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 14 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 15 | `docs/roadmap-lineage` | 9,725 | IMPORTANT_ARCHIVE |
+| 15 | `docs/roadmap-lineage` | 9,812 | IMPORTANT_ARCHIVE |
 | 16 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |
 | 17 | `tools/odyssey_ctl.py` | 8,132 | CURRENT_CORE_SUPPORT |
 | 18 | `crates/hide-backend` | 7,571 | CURRENT_CORE_SUPPORT |
@@ -71,7 +71,8 @@ also included in the total and must not become an UNKNOWN bucket.
   reproducers; delete superseded executable campaign machinery after checking
   provenance and negative controls. The G1 evidence runners are now retired;
   their result payloads and selected experiment notes remain the archival signal;
-  eight unreferenced superseded reports were also removed.
+  eight unreferenced superseded reports and 17 unreferenced G1 reports were
+  compressed into `G1_ARCHIVE_LEDGER.md`.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

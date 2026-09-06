@@ -541,7 +541,6 @@
     "tools/odyssey/data_verify.py",
     "tools/odyssey/decoding_gravity.py",
     "tools/odyssey/device_profiles.py",
-    "tools/odyssey/expert_family_genome.py",
     "tools/odyssey/feasibility.py",
     "tools/odyssey/gpu_cleanliness.py",
     "tools/odyssey/hidden_memberships.py",

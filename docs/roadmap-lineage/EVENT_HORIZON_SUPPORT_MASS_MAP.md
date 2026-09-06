@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 489,266 | 1,419 |
-| active total | 987,278 | 2,054 |
+| support | 489,097 | 1,418 |
+| active total | 987,109 | 2,053 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -78,6 +78,8 @@ also included in the total and must not become an UNKNOWN bucket.
   The uncalled fidelity-hierarchy producer was then retired; its sealed
   receipt remains archival evidence.
   The uncalled MAXX resource-pipeline producer was then retired; its sealed
+  receipt remains archival evidence.
+  The uncalled ExpertFamilyGenome producer was then retired; its sealed
   receipt remains archival evidence.
   The parallel future WorkGraph runtime was then sublated into a bounded
   arrival-payload builder; HCLI `scheduler`/`dag_store` now own scheduling.

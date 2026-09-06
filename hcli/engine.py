@@ -177,13 +177,14 @@ _AGENTIC_SYSTEM_PROMPT = """HCLI worker for one bounded WorkUnit. Disk state and
 Return one JSON object with kind=answer|mutation|tool_use and concise content/action.
 Mutation: {"kind":"mutation","content":"what changed","operations":[{"op":"create","path":"dir/file.txt","new_lines":["line one","line two"]}],"tests":["cmd"]}
 operations is an ARRAY of 1..20 objects; op is one of replace|create|replace_file|insert_before|insert_after|append; op and path are REQUIRED; path is relative to the workspace ROOT and must NOT begin with "workspace/"; use old_lines/new_lines (arrays of plain lines, no escaping); no other keys are allowed.
-tool_use includes flat name/value tool_calls. Omit empty arrays.
+tool_use: {"kind":"tool_use","content":"why","tool_calls":[{"tool":"fs.read","arguments":[{"name":"path","value":"dir/file.json"}]}]}
+tool_calls is an ARRAY of at most 16 objects; each REQUIRES "tool" (a name from the catalog) and "arguments" (an array of {"name","value"} pairs, values as STRINGS).
 No reasoning, markdown, or essay. Paths are workspace-relative; never modify .git. HCLI supplies receipts."""
 
 _AGENTIC_SCHEMA_INSTRUCTION = """
 JSON only: kind=answer|mutation|tool_use; content is short.
 Mutation: operations is an ARRAY of 1..20 objects, each requiring "op" (replace|create|replace_file|insert_before|insert_after|append) and "path", with old_lines/new_lines arrays; no other keys. tests is an array of commands.
-tool_use includes tool_calls with flat name/value arguments. Omit empty arrays and rationale."""
+tool_use: tool_calls is an ARRAY of <=16 objects, each requiring "tool" (catalog name) and "arguments" ([{"name","value"}], values as strings). Omit empty arrays and rationale."""
 
 _AGENTIC_TOOL_CATALOG = (
     "fs.read(path,start_line,end_line); fs.search(pattern,root,glob,max_results); "

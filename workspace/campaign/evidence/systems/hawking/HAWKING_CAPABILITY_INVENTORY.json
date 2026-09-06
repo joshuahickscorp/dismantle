@@ -317,7 +317,6 @@
     "tools/condense/kimi_k3_source_admission.py",
     "tools/condense/merge_glm_teacher_forced_shards.py",
     "tools/condense/sandbox_ready_preflight.py",
-    "tools/condense/seal_deepseek_v4_hcli_encoding_contract.py",
     "tools/condense/tests/test_gptoss_real_forward_adversarial.py",
     "tools/cost_vector_t.py",
     "tools/deepseek_q4k_gravity_pack.py",

@@ -11,7 +11,8 @@ use super::qwen38_geometry::{
     qwen38_layer_name, Qwen38DeltaNetLayout, Qwen38MixerKind, ARGMAX_GROUPS,
     QWEN38_DELTANET_LAYERS, QWEN38_FULL_ATTENTION_INTERVAL, QWEN38_GQA_HEADS, QWEN38_GQA_HEAD_DIM,
     QWEN38_GQA_KV_HEADS, QWEN38_GQA_LAYERS, QWEN38_GQA_ROTARY_DIM, QWEN38_HIDDEN,
-    QWEN38_INTERMEDIATE, QWEN38_LAYERS, QWEN38_RMS_EPS, QWEN38_ROPE_THETA, QWEN38_VOCAB,
+    QWEN38_INTERMEDIATE, QWEN38_LAYERS, QWEN38_PREFILL_CHUNK, QWEN38_RMS_EPS, QWEN38_ROPE_THETA,
+    QWEN38_VOCAB,
 };
 use super::qwen38_pack::{
     load_qwen38_manifest, read_qwen38_f32_payload, QWEN38_EXPECTED_CATALOG_TENSORS,
@@ -257,6 +258,16 @@ fn qwen38_fuse_add_rmsnorm_from_env_with_fast(fast: bool) -> (bool, bool) {
 
 pub fn qwen38_fuse_add_rmsnorm_enabled() -> bool {
     qwen38_fuse_add_rmsnorm_from_env().0
+}
+
+pub fn qwen38_batched_prefill_enabled() -> bool {
+    crate::env_opt_out("HAWKING_QWEN38_BATCH_PREFILL")
+}
+
+/// Tokens per prefill GEMM chunk. Clamped to 1..=64 (the MMA N tile).
+pub fn qwen38_prefill_chunk_tokens() -> usize {
+    crate::env_usize("HAWKING_QWEN38_PREFILL_CHUNK", QWEN38_PREFILL_CHUNK)
+        .clamp(1, QWEN38_PREFILL_CHUNK)
 }
 
 /// Mixer residual + MLP RMSNorm, and MLP residual + next mixer RMSNorm
@@ -2854,6 +2865,33 @@ mod device {
         }
     }
 
+    struct Qwen38PrefillWorkspace {
+        cap: usize,
+        tokens: PinnedBuffer,
+        hidden: PinnedBuffer,
+        normalized: PinnedBuffer,
+        mixer: PinnedBuffer,
+        first_residual: PinnedBuffer,
+        down: PinnedBuffer,
+        gate: PinnedBuffer,
+        up: PinnedBuffer,
+        act: PinnedBuffer,
+        qkvz: PinnedBuffer,
+        ba: PinnedBuffer,
+        repeated_q: PinnedBuffer,
+        repeated_k: PinnedBuffer,
+        conv_v: PinnedBuffer,
+        z: PinnedBuffer,
+        rec_out: PinnedBuffer,
+        gated: PinnedBuffer,
+        q_proj: PinnedBuffer,
+        k_proj: PinnedBuffer,
+        v_proj: PinnedBuffer,
+        query: PinnedBuffer,
+        attn: PinnedBuffer,
+        gated_attn: PinnedBuffer,
+    }
+
     pub struct Qwen38HybridDecodeSession {
         context: MetalContext,
         weights: Arc<Qwen38HybridWeights>,
@@ -2947,6 +2985,9 @@ mod device {
         /// for Qwen3.8, so decoding it once at attach removes repeated modulo
         /// and error-path construction from the token graph.
         mixer_kinds: [Qwen38MixerKind; QWEN38_LAYERS],
+        /// Token-chunk activation buffers. Allocated on first batched prefill
+        /// so a decode-only session never pays for them.
+        prefill: Option<Qwen38PrefillWorkspace>,
     }
 
     impl Qwen38HybridDecodeSession {
@@ -3033,6 +3074,7 @@ mod device {
                 active_weight_accounting: true,
                 layer_names: Qwen38LayerNameCache::new(),
                 mixer_kinds,
+                prefill: None,
             };
             // `MetalContext` clones share `Arc<DispatchTrace>`. If that ever
             // becomes a fresh buffer, `drain_trace` on the session would miss
@@ -8670,6 +8712,8 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         }
     }
 
+    include!("qwen38_hybrid_prefill.rs");
+
     pub fn generate_greedy(
         session: &mut Qwen38HybridDecodeSession,
         prompt: &[u32],
@@ -8758,29 +8802,78 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let mut next = 0u32;
         let prefill = Instant::now();
         let mut first_step_wall_ns = 0u64;
-        let prefill_step_count = prompt.len().saturating_sub(reuse);
-        for (i, &token) in prompt.iter().enumerate().skip(reuse) {
+        let mut prefill_step_count = prompt.len().saturating_sub(reuse);
+        let prefill_gpu_ns;
+        let prefill_dispatches;
+        // The batched path consumes the WHOLE prompt in one pass, so it can
+        // honour neither `reuse` (which skips an already-computed prefix) nor
+        // `snapshot_at` (which needs the recurrent state part-way through the
+        // prefill, and that state is a running summary with no rewind). Taking
+        // the batched path anyway would silently drop both — a faster wall and
+        // a different answer. It is therefore selected only when neither is in
+        // play, and prefix reuse keeps its own sequential route.
+        let batched_prefill =
+            qwen38_batched_prefill_enabled() && reuse == 0 && snapshot_at.is_none();
+        if batched_prefill {
             let step_wall = Instant::now();
-            let (sampled, timing) = session.step(token)?;
+            let (sampled, timing) = session.prefill_prompt(prompt)?;
             let step_ns = step_wall.elapsed().as_nanos() as u64;
-            if i == reuse {
-                first_step_wall_ns = step_ns;
-            }
+            first_step_wall_ns = step_ns;
             wall_ns_per_step.push(step_ns);
             gpu_ns.push(timing.gpu_ns);
             wait_ns.push(timing.wait_ns);
             encode_ns.push(timing.encode_ns);
             submit_ns.push(timing.submit_ns);
             dispatches.push(timing.dispatches);
-            active_weight_bytes.push(session.last_active_weight_bytes());
+            active_weight_bytes.push(timing.active_weight_bytes);
+            prefill_gpu_ns = timing.gpu_ns;
+            prefill_dispatches = timing.dispatches;
+            prefill_step_count = 1;
             next = sampled;
-            if snapshot.is_none() && snapshot_at == Some(i + 1) {
-                // i + 1 prompt tokens have been stepped, so the carry is exactly
-                // the state after that prefix. Captured HERE because it cannot
-                // be recovered once the prefill moves past it: the recurrent
-                // state is a running summary with no rewind.
-                snapshot = Some(session.prefix_checkpoint()?);
+        } else {
+            for (i, &token) in prompt.iter().enumerate().skip(reuse) {
+                let step_wall = Instant::now();
+                let (sampled, timing) = session.step(token)?;
+                let step_ns = step_wall.elapsed().as_nanos() as u64;
+                if i == reuse {
+                    first_step_wall_ns = step_ns;
+                }
+                wall_ns_per_step.push(step_ns);
+                gpu_ns.push(timing.gpu_ns);
+                wait_ns.push(timing.wait_ns);
+                encode_ns.push(timing.encode_ns);
+                submit_ns.push(timing.submit_ns);
+                dispatches.push(timing.dispatches);
+                active_weight_bytes.push(session.last_active_weight_bytes());
+                next = sampled;
+                if snapshot.is_none() && snapshot_at == Some(i + 1) {
+                    // i + 1 prompt tokens have been stepped, so the carry is exactly
+                    // the state after that prefix. Captured HERE because it cannot
+                    // be recovered once the prefill moves past it: the recurrent
+                    // state is a running summary with no rewind.
+                    snapshot = Some(session.prefix_checkpoint()?);
+                }
             }
+            prefill_gpu_ns = {
+                let mut total = 0u64;
+                let mut any = false;
+                let mut missing = false;
+                for value in gpu_ns.iter().copied() {
+                    match value {
+                        Some(v) => {
+                            total = total.saturating_add(v);
+                            any = true;
+                        }
+                        None => missing = true,
+                    }
+                }
+                if any && !missing {
+                    Some(total)
+                } else {
+                    None
+                }
+            };
+            prefill_dispatches = dispatches.iter().copied().fold(0u64, u64::saturating_add);
         }
         let prefill_wall_ns = prefill.elapsed().as_nanos() as u64;
         tokens.push(next);
@@ -8828,6 +8921,9 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
                 workspace_resident_bytes: session.workspace_resident_bytes(),
                 first_step_wall_ns,
                 prefill_wall_ns,
+                prefill_gpu_ns,
+                prefill_dispatches,
+                batched_prefill,
                 decode_wall_ns,
                 decode_steps,
                 wall_ns_per_step,
@@ -8885,58 +8981,74 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         boundary_trace("prefill_begin", &format!("prompt_tokens={}", prompt.len()));
         let mut first_step_wall_ns = 0u64;
         let mut prefill_step_count = 0usize;
-        let requested_chunk = std::env::var("HAWKING_QWEN38_PREFILL_CHUNK")
-            .ok()
-            .and_then(|value| value.parse::<usize>().ok())
-            .unwrap_or(1)
-            .clamp(1, 4);
-        if requested_chunk > 1 {
-            if session.mlp_fusion != Qwen38MlpFusion::GateUpSwiglu {
-                return Err(Error::Model(format!(
-                    "HAWKING_QWEN38_PREFILL_CHUNK needs GateUpSwiglu; this session is {:?}",
-                    session.mlp_fusion
-                )));
-            }
-            let mut cursor = reuse;
-            while cursor < prompt.len() {
-                let mut end = (cursor + requested_chunk).min(prompt.len());
-                // A recurrent prefix checkpoint is exact only at the requested
-                // boundary. Split one chunk around it instead of silently
-                // losing the reusable state that later O003 turns depend on.
-                if let Some(boundary) = snapshot_at {
-                    if boundary > cursor && boundary < end {
-                        end = boundary;
-                    }
+        // The JSON mask applies to SAMPLING, and prefill samples nothing except
+        // at the final position -- so a constrained decode does not need a
+        // sequential prefill, it needs host-side logits for ONE position. Both
+        // routes leave exactly that: `encode_prefill_terminal` runs lm_head into
+        // `workspace.logits` -- the buffer read a few lines below -- before its
+        // own argmax, and this path already discards that argmax to pick under
+        // the mask on the host. Prefilling one token at a time to satisfy a
+        // constraint that only reads the last position was paying decode prices
+        // for every prompt token: measured on a real mission packet, 6616 prompt
+        // tokens took 313.8 s at 916 dispatches each, 73% of the whole call.
+        //
+        // The two REAL blockers are the ones the unconstrained path already
+        // names: the batched route consumes the whole prompt in one pass, so it
+        // can honour neither `reuse` (which skips an already-computed prefix)
+        // nor `snapshot_at` (which needs the recurrent state part-way through,
+        // and that state is a running summary with no rewind). Both keep the
+        // sequential route, and taking the batched one anyway would buy a faster
+        // wall and a different answer.
+        let batched_prefill =
+            qwen38_batched_prefill_enabled() && reuse == 0 && snapshot_at.is_none();
+        if batched_prefill {
+            let step_wall = Instant::now();
+            // The sampled id is discarded on purpose: the constraint picks the
+            // first new token from masked logits below, exactly as it does after
+            // a sequential prefill's final step.
+            let (_, timing) = session.prefill_prompt(prompt)?;
+            let step_ns = step_wall.elapsed().as_nanos() as u64;
+            first_step_wall_ns = step_ns;
+            wall_ns_per_step.push(step_ns);
+            gpu_ns.push(timing.gpu_ns);
+            wait_ns.push(timing.wait_ns);
+            encode_ns.push(timing.encode_ns);
+            submit_ns.push(timing.submit_ns);
+            dispatches.push(timing.dispatches);
+            active_weight_bytes.push(timing.active_weight_bytes);
+            prefill_step_count = 1;
+        } else {
+            let requested_chunk = std::env::var("HAWKING_QWEN38_PREFILL_CHUNK")
+                .ok()
+                .and_then(|value| value.parse::<usize>().ok())
+                .unwrap_or(1)
+                .clamp(1, 4);
+            if requested_chunk > 1 {
+                if session.mlp_fusion != Qwen38MlpFusion::GateUpSwiglu {
+                    return Err(Error::Model(format!(
+                        "HAWKING_QWEN38_PREFILL_CHUNK needs GateUpSwiglu; this session is {:?}",
+                        session.mlp_fusion
+                    )));
                 }
-                if end - cursor == requested_chunk {
-                    let chunk_t0 = Instant::now();
-                    let (_, timing) = session.prefill_chunk(&prompt[cursor..end], 4)?;
-                    let chunk_wall_ns = chunk_t0.elapsed().as_nanos() as u64;
-                    if first_step_wall_ns == 0 {
-                        first_step_wall_ns = chunk_wall_ns;
-                    }
-                    wall_ns_per_step.push(chunk_wall_ns);
-                    gpu_ns.push(timing.gpu_ns);
-                    wait_ns.push(timing.wait_ns);
-                    encode_ns.push(timing.encode_ns);
-                    submit_ns.push(timing.submit_ns);
-                    dispatches.push(timing.dispatches);
-                    active_weight_bytes.push(session.last_active_weight_bytes());
-                    prefill_step_count += 1;
-                } else {
-                    // The current fused kernel family is instantiated only at
-                    // k4. Checkpoint-aligned tails (for example k3 before the
-                    // 895-token checkpoint) stay sequential rather than
-                    // inventing an unsupported k3 kernel or losing the exact
-                    // recurrent boundary.
-                    for (offset, &token) in prompt[cursor..end].iter().enumerate() {
-                        let step_wall = Instant::now();
-                        let (_, timing) = session.step(token)?;
-                        let step_ns = step_wall.elapsed().as_nanos() as u64;
-                        if first_step_wall_ns == 0 {
-                            first_step_wall_ns = step_ns;
+                let mut cursor = reuse;
+                while cursor < prompt.len() {
+                    let mut end = (cursor + requested_chunk).min(prompt.len());
+                    // A recurrent prefix checkpoint is exact only at the requested
+                    // boundary. Split one chunk around it instead of silently
+                    // losing the reusable state that later O003 turns depend on.
+                    if let Some(boundary) = snapshot_at {
+                        if boundary > cursor && boundary < end {
+                            end = boundary;
                         }
-                        wall_ns_per_step.push(step_ns);
+                    }
+                    if end - cursor == requested_chunk {
+                        let chunk_t0 = Instant::now();
+                        let (_, timing) = session.prefill_chunk(&prompt[cursor..end], 4)?;
+                        let chunk_wall_ns = chunk_t0.elapsed().as_nanos() as u64;
+                        if first_step_wall_ns == 0 {
+                            first_step_wall_ns = chunk_wall_ns;
+                        }
+                        wall_ns_per_step.push(chunk_wall_ns);
                         gpu_ns.push(timing.gpu_ns);
                         wait_ns.push(timing.wait_ns);
                         encode_ns.push(timing.encode_ns);
@@ -8944,34 +9056,56 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
                         dispatches.push(timing.dispatches);
                         active_weight_bytes.push(session.last_active_weight_bytes());
                         prefill_step_count += 1;
-                        if snapshot.is_none() && snapshot_at == Some(cursor + offset + 1) {
-                            snapshot = Some(session.prefix_checkpoint()?);
+                    } else {
+                        // The current fused kernel family is instantiated only at
+                        // k4. Checkpoint-aligned tails (for example k3 before the
+                        // 895-token checkpoint) stay sequential rather than
+                        // inventing an unsupported k3 kernel or losing the exact
+                        // recurrent boundary.
+                        for (offset, &token) in prompt[cursor..end].iter().enumerate() {
+                            let step_wall = Instant::now();
+                            let (_, timing) = session.step(token)?;
+                            let step_ns = step_wall.elapsed().as_nanos() as u64;
+                            if first_step_wall_ns == 0 {
+                                first_step_wall_ns = step_ns;
+                            }
+                            wall_ns_per_step.push(step_ns);
+                            gpu_ns.push(timing.gpu_ns);
+                            wait_ns.push(timing.wait_ns);
+                            encode_ns.push(timing.encode_ns);
+                            submit_ns.push(timing.submit_ns);
+                            dispatches.push(timing.dispatches);
+                            active_weight_bytes.push(session.last_active_weight_bytes());
+                            prefill_step_count += 1;
+                            if snapshot.is_none() && snapshot_at == Some(cursor + offset + 1) {
+                                snapshot = Some(session.prefix_checkpoint()?);
+                            }
                         }
                     }
+                    cursor = end;
+                    if snapshot.is_none() && snapshot_at == Some(cursor) {
+                        snapshot = Some(session.prefix_checkpoint()?);
+                    }
                 }
-                cursor = end;
-                if snapshot.is_none() && snapshot_at == Some(cursor) {
-                    snapshot = Some(session.prefix_checkpoint()?);
-                }
-            }
-        } else {
-            for (i, &token) in prompt.iter().enumerate().skip(reuse) {
-                let step_wall = Instant::now();
-                let (_, timing) = session.step(token)?;
-                let step_ns = step_wall.elapsed().as_nanos() as u64;
-                if i == reuse {
-                    first_step_wall_ns = step_ns;
-                }
-                wall_ns_per_step.push(step_ns);
-                gpu_ns.push(timing.gpu_ns);
-                wait_ns.push(timing.wait_ns);
-                encode_ns.push(timing.encode_ns);
-                submit_ns.push(timing.submit_ns);
-                dispatches.push(timing.dispatches);
-                active_weight_bytes.push(session.last_active_weight_bytes());
-                prefill_step_count += 1;
-                if snapshot.is_none() && snapshot_at == Some(i + 1) {
-                    snapshot = Some(session.prefix_checkpoint()?);
+            } else {
+                for (i, &token) in prompt.iter().enumerate().skip(reuse) {
+                    let step_wall = Instant::now();
+                    let (_, timing) = session.step(token)?;
+                    let step_ns = step_wall.elapsed().as_nanos() as u64;
+                    if i == reuse {
+                        first_step_wall_ns = step_ns;
+                    }
+                    wall_ns_per_step.push(step_ns);
+                    gpu_ns.push(timing.gpu_ns);
+                    wait_ns.push(timing.wait_ns);
+                    encode_ns.push(timing.encode_ns);
+                    submit_ns.push(timing.submit_ns);
+                    dispatches.push(timing.dispatches);
+                    active_weight_bytes.push(session.last_active_weight_bytes());
+                    prefill_step_count += 1;
+                    if snapshot.is_none() && snapshot_at == Some(i + 1) {
+                        snapshot = Some(session.prefix_checkpoint()?);
+                    }
                 }
             }
         }
@@ -8980,6 +9114,29 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             "prefill_end",
             &format!("prompt_tokens={} wall_ns={prefill_wall_ns}", prompt.len()),
         );
+        // Captured HERE, before decode appends to the same vectors. Summing at
+        // the initializer would silently fold decode into the prefill figures.
+        let prefill_dispatches = dispatches.iter().copied().fold(0u64, u64::saturating_add);
+        let prefill_gpu_ns = {
+            let mut total = 0u64;
+            let mut any = false;
+            let mut missing = false;
+            for value in gpu_ns.iter().copied() {
+                match value {
+                    Some(v) => {
+                        total = total.saturating_add(v);
+                        any = true;
+                    }
+                    None => missing = true,
+                }
+            }
+            // A partial sum would read as a smaller prefill than actually ran.
+            if any && !missing {
+                Some(total)
+            } else {
+                None
+            }
+        };
         // Last prefill step already dispatched GPU argmax; discard it and pick
         // the first generated id on the host so the JSON mask applies.
         let mut logits = session.read_f32_workspace("logits", QWEN38_VOCAB)?;
@@ -9081,6 +9238,9 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
                 workspace_resident_bytes: session.workspace_resident_bytes(),
                 first_step_wall_ns,
                 prefill_wall_ns,
+                prefill_gpu_ns,
+                prefill_dispatches,
+                batched_prefill,
                 decode_wall_ns,
                 decode_steps,
                 wall_ns_per_step,
@@ -9114,8 +9274,20 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let wall = Instant::now();
         let prefill = Instant::now();
         let mut next = 0u32;
-        for &token in prompt {
-            next = session.step_unmeasured(token)?;
+        let mut prefill_gpu_ns = None;
+        let mut prefill_dispatches = 0u64;
+        let mut prefill_step_count = prompt.len();
+        let batched_prefill = qwen38_batched_prefill_enabled();
+        if batched_prefill {
+            let (sampled, timing) = session.prefill_prompt(prompt)?;
+            prefill_gpu_ns = timing.gpu_ns;
+            prefill_dispatches = timing.dispatches;
+            prefill_step_count = 1;
+            next = sampled;
+        } else {
+            for &token in prompt {
+                next = session.step_unmeasured(token)?;
+            }
         }
         let prefill_wall_ns = prefill.elapsed().as_nanos() as u64;
         tokens.push(next);
@@ -9139,7 +9311,7 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             stop_reason: "",
             tokens,
             prompt_len: prompt.len(),
-            prefill_step_count: prompt.len(),
+            prefill_step_count,
             wall_ns: wall.elapsed().as_nanos() as u64,
             gpu_ns: Vec::new(),
             wait_ns: Vec::new(),
@@ -9153,6 +9325,9 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             workspace_resident_bytes: session.workspace_resident_bytes(),
             first_step_wall_ns: 0,
             prefill_wall_ns,
+            prefill_gpu_ns,
+            prefill_dispatches,
+            batched_prefill,
             decode_wall_ns,
             decode_steps,
             wall_ns_per_step: Vec::new(),
@@ -9181,33 +9356,82 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let wall = Instant::now();
         let mut next = 0u32;
         let prefill = Instant::now();
-        for (i, &token) in prompt.iter().enumerate() {
+        // The batched route consumes the whole prompt in one pass, so it emits
+        // ONE record covering every prompt token rather than one per token.
+        // Fabricating N per-token rows from a single measurement would invent
+        // per-token detail that was never measured; the role name and
+        // `tokens_covered` say plainly what the row represents.
+        //
+        // This function always resets and takes neither `reuse` nor
+        // `snapshot_at`, so the guard those need elsewhere does not apply here.
+        let batched_prefill = qwen38_batched_prefill_enabled();
+        if batched_prefill {
             let complete = Instant::now();
-            let (sampled, step) = session.step_complete(token)?;
-            let last_prompt = i + 1 == prompt.len();
-            let (tokenizer_decode_ns, bookkeeping_ns) = if last_prompt {
-                finish_new_token(tokenizer, &mut tokens, sampled)?
-            } else {
-                next = sampled;
-                (0, 0)
-            };
-            if last_prompt {
-                next = sampled;
-            }
+            let (sampled, timing) = session.prefill_prompt(prompt)?;
+            let (tokenizer_decode_ns, bookkeeping_ns) =
+                finish_new_token(tokenizer, &mut tokens, sampled)?;
+            next = sampled;
             steps.push(Qwen38CompleteToken {
-                role: if last_prompt {
-                    "prefill_emits_first_new"
-                } else {
-                    "prefill"
-                },
-                step_index: i,
-                token_in: token,
+                role: "prefill_batched_emits_first_new",
+                step_index: 0,
+                token_in: prompt[0],
                 token_out: sampled,
-                step,
+                step: Qwen38StepWall {
+                    wall_ns: complete.elapsed().as_nanos() as u64,
+                    encode_ns: timing.encode_ns,
+                    submit_ns: timing.submit_ns,
+                    wait_ns: timing.wait_ns,
+                    gpu_ns: timing.gpu_ns,
+                    gpu_start_s: None,
+                    gpu_end_s: None,
+                    gpu_start_ns: None,
+                    gpu_end_ns: None,
+                    // NOT_INSTRUMENTED on this route rather than zero: the
+                    // batched encoder does not break these out, and a zero
+                    // would read as "measured, and free".
+                    allocation_ns: 0,
+                    encoder_count: 0,
+                    commit_epilogue_ns: 0,
+                    sample_readback_ns: 0,
+                    state_update_ns: 0,
+                    tcb_encode_ns: 0,
+                    dispatches: timing.dispatches,
+                    command_buffers: 0,
+                    active_weight_bytes: timing.active_weight_bytes,
+                },
                 tokenizer_decode_ns,
                 bookkeeping_ns,
                 complete_wall_ns: complete.elapsed().as_nanos() as u64,
             });
+        } else {
+            for (i, &token) in prompt.iter().enumerate() {
+                let complete = Instant::now();
+                let (sampled, step) = session.step_complete(token)?;
+                let last_prompt = i + 1 == prompt.len();
+                let (tokenizer_decode_ns, bookkeeping_ns) = if last_prompt {
+                    finish_new_token(tokenizer, &mut tokens, sampled)?
+                } else {
+                    next = sampled;
+                    (0, 0)
+                };
+                if last_prompt {
+                    next = sampled;
+                }
+                steps.push(Qwen38CompleteToken {
+                    role: if last_prompt {
+                        "prefill_emits_first_new"
+                    } else {
+                        "prefill"
+                    },
+                    step_index: i,
+                    token_in: token,
+                    token_out: sampled,
+                    step,
+                    tokenizer_decode_ns,
+                    bookkeeping_ns,
+                    complete_wall_ns: complete.elapsed().as_nanos() as u64,
+                });
+            }
         }
         let prefill_wall_ns = prefill.elapsed().as_nanos() as u64;
         let decode = Instant::now();
@@ -9528,6 +9752,13 @@ pub struct Qwen38GenerateResult {
     pub workspace_resident_bytes: u64,
     pub first_step_wall_ns: u64,
     pub prefill_wall_ns: u64,
+    /// GPU nanoseconds spent on the prompt, from command-buffer timestamps.
+    /// Sequential path sums per-token `gpu_ns`; batched path is the chunk sum.
+    pub prefill_gpu_ns: Option<u64>,
+    pub prefill_dispatches: u64,
+    /// True when `prefill_prompt` ran. A test that stays green with this
+    /// false is comparing the sequential path to itself.
+    pub batched_prefill: bool,
     pub decode_wall_ns: u64,
     pub decode_steps: usize,
     pub wall_ns_per_step: Vec<u64>,

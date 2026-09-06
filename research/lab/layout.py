@@ -18,7 +18,6 @@ FRANKENSTEIN_ROOT: Final = HAWKING_EXPERIMENTS_ROOT / "frankenstein"
 FRANKENSTEIN_DATA_ROOT: Final = FRANKENSTEIN_ROOT / "data"
 FRANKENSTEIN_OPERATORS_ROOT: Final = FRANKENSTEIN_ROOT / "operators"
 PROMETHEUS_ROOT: Final = HAWKING_EXPERIMENTS_ROOT / "prometheus"
-PROMETHEUS_TOOLS_ROOT: Final = PROMETHEUS_ROOT / "tools"
 PROMETHEUS_CONFIG_ROOT: Final = PROMETHEUS_ROOT / "config"
 PROMETHEUS_EVIDENCE_ROOT: Final = PROMETHEUS_ROOT / "evidence"
 SUPERWAVE_ROOT: Final = HAWKING_EXPERIMENTS_ROOT / "superwave"
@@ -116,22 +115,20 @@ EVIDENCE_AREAS: Final = {
 
 
 def experiment_pythonpath() -> tuple[Path, ...]:
-    """Directories that expose frankenstein_* and prometheus as importable modules.
+    """Directories that expose retained Frankenstein modules as importable modules.
 
     ``hawking-experiments`` contains a dash, so it is not a Python package.
-    Putting these three directories on ``sys.path`` makes the moved modules
-    importable by their bare filenames (retained experiment operators and
-    ``import prometheus``). Operators is last-inserted / first-searched so it
+    Putting the operator directory on ``sys.path`` makes retained modules
+    importable by their bare filenames. Operators is inserted first so it
     wins the frankenstein_* name collision with the thin condense CLI wrappers.
     """
     return (
-        PROMETHEUS_TOOLS_ROOT,
         FRANKENSTEIN_OPERATORS_ROOT,
     )
 
 
 def ensure_experiment_imports() -> None:
-    """Put moved frankenstein/prometheus module dirs on ``sys.path``."""
+    """Put the retained Frankenstein module dir on ``sys.path``."""
     for path in experiment_pythonpath():
         rendered = str(path)
         if path.is_dir() and rendered not in sys.path:
@@ -213,7 +210,6 @@ def resolve_workspace_path(value: str | Path) -> Path:
         (("workspace", "campaign", "config", "profiles", "prometheus"), PROMETHEUS_CONFIG_ROOT),
         (("workspace", "campaign", "evidence", "research", "prometheus"), PROMETHEUS_EVIDENCE_ROOT),
         (("workspace", "superwave"), SUPERWAVE_ROOT),
-        (("tools", "prometheus"), PROMETHEUS_TOOLS_ROOT),
         (("lab", "operators"), FRANKENSTEIN_OPERATORS_ROOT),
     )
     for prefix, dest in moved_prefixes:

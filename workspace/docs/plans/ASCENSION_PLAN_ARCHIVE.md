@@ -155,3 +155,13 @@ the old training launcher, and `test_odyssey_t0.py`. The independently used
 `runtime_authority.py` and claim-regression registry remain. Existing T0
 receipts and negative findings remain archival evidence; current Odyssey
 readiness and ModelLake owners are unchanged.
+
+## Retired Prometheus executable archive (2026-09-05)
+
+The paused Prometheus tool package was removed from active HEAD as executable
+support: its six Python tools/tests had no current production caller. The
+Prometheus config, evidence, sealed receipts, and allocation findings remain
+under `research/hawking-experiments/prometheus/`; current HCLI/AgentOS and
+accelerator owners remain active. Import-path plumbing was reduced accordingly,
+so Prometheus is now unambiguously archive data rather than a second executable
+authority.

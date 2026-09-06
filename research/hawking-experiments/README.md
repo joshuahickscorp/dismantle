@@ -13,15 +13,14 @@ and receipts/headless/CONSOLIDATION2.json.
 - `frankenstein/operators/` — live frankenstein Python operators (moved from lab/operators, files named frankenstein_*.py)
 - Frankenstein wrapper/test duplicates were retired; live tooling remains under `tools/condense/` and operator source under `frankenstein/operators/`.
 - `frankenstein/data/` — campaign evidence (moved from workspace/campaign/evidence/models, frankenstein tree)
-- `prometheus/tools/` — prometheus package (moved from tools, prometheus tree)
 - `prometheus/config/` — allocation profiles (moved from workspace/campaign/config/profiles, prometheus tree)
 - `prometheus/evidence/` — research evidence (moved from workspace/campaign/evidence/research, prometheus tree)
 - `superwave/` — dead Superwave data (moved from workspace, superwave tree)
 
-`hawking-experiments` is not a valid Python package name (dash). Import the
-moved modules by bare name (`import frankenstein_ablation`, `import prometheus`)
-after `lab.layout.ensure_experiment_imports()` (also invoked from
-`lab.operators` import and repo-root `conftest.py`). Ramanujan is retained
+`hawking-experiments` is not a valid Python package name (dash). The retained
+Frankenstein operators are imported by bare name after
+`lab.layout.ensure_experiment_imports()`. Prometheus is evidence/config only;
+its executable package was retired. Ramanujan is retained
 under `research/ramanujan/` as evidence only; live verification code is under
 `tools/verify/`.
 

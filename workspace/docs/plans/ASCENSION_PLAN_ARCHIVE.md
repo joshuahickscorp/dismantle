@@ -189,3 +189,8 @@ The separate Qwen80 multi-layer completion-assessor example and its adversarial
 harness were also retired: they had no current acceptance caller or registry
 owner and only exercised that obsolete standalone example. Current Qwen80
 runtime tests and receipt-backed assessment boundaries remain.
+
+The CPU-only Qwen30 packed-matvec exactness producer was likewise retired
+after its result and negative boundary were already captured by the Noetic
+census and sealed receipts. The current Qwen30 runtime's packed-matvec path
+and its defining tests are independent of that historical producer.

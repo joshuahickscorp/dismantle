@@ -165,3 +165,12 @@ under `research/hawking-experiments/prometheus/`; current HCLI/AgentOS and
 accelerator owners remain active. Import-path plumbing was reduced accordingly,
 so Prometheus is now unambiguously archive data rather than a second executable
 authority.
+
+## Retired Ascension scaffold-only verification family (2026-09-05)
+
+The uncalled manager-tournament readiness/protocol pair and the generic parity
+ladder scaffold were removed from active HEAD. Their only consumers were their
+own tests and a stale capability-inventory listing; no current HCLI/AgentOS or
+protected qualification path invoked them. The current Rust paired-cognition,
+Doctor, and acceptance authorities remain. The deleted scaffold schemas and
+tests are recoverable from Git history; no sealed result depended on them.

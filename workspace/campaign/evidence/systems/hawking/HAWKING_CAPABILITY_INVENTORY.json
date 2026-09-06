@@ -214,7 +214,6 @@
     "research/lab/hcli/claude_offload_bench.py",
     "research/lab/hcli/special_unit.py",
     "research/lab/operators/ascension_dual_gravity_worker.py",
-    "research/lab/operators/ascension_manager_tournament_readiness_report.py",
     "research/lab/operators/ascension_qwen30_activation_weighted_svd_repack.py",
     "research/lab/operators/ascension_qwen30_complete_gravity.py",
     "research/lab/operators/ascension_qwen30_physical_campaign.py",

@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 499,181 | 1,431 |
-| active total | 997,193 | 2,066 |
+| support | 498,506 | 1,429 |
+| active total | 996,518 | 2,064 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -182,6 +182,9 @@ also included in the total and must not become an UNKNOWN bucket.
   Noetic/VisionMCP runners were retired. The uncalled Qwen3.8 native benchmark
   launcher was then retired; its timing, coherence failure, and blocked-run
   evidence remain in the sealed QWEN38 native receipts and performance ledger.
+- `tools/condense`: the non-live HCLI product-suite scaffold and its dedicated
+  test were retired; current HCLI acceptance and DeepSeek suite evidence remain
+  authoritative.
 - `research/lab/tests`: tests for already-deleted Ascension supervisors and
   absent JSON contract fixtures were removed; current manager-protocol and
   Qwen30 physical tests remain. The uncalled manager-tournament readiness /

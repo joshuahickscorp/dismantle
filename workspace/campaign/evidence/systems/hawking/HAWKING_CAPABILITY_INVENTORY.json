@@ -317,7 +317,6 @@
     "tools/condense/glm52_teacher_forced_executor.py",
     "tools/condense/glm_teacher_forced_parallelism_probe.py",
     "tools/condense/gravity_global_allocator.py",
-    "tools/condense/hcli_product_test_harness.py",
     "tools/condense/kimi_k3_source_admission.py",
     "tools/condense/merge_fullseq_capture_shards.py",
     "tools/condense/merge_glm_teacher_forced_shards.py",

@@ -216,3 +216,12 @@ The uncalled Q80 capture-coverage auditor and its dedicated test were also
 retired. The active Q80 `capture_index` remains the source of truth for capture
 identity and the current activation-weighted path retains its own quality
 controls; no capture data or qualified artifact was removed.
+
+## Retired HCLI product-suite scaffold
+
+The non-live `tools/condense/hcli_product_test_harness.py` scaffold and its
+dedicated test were removed after confirming that they were the only executable
+consumers and referenced three already-retired Ascension JSON plans. The
+scaffold explicitly reported `HCLI_PRODUCT_SUITE_CATALOG_SCAFFOLD_NOT_LIVE`;
+current HCLI product acceptance and DeepSeek evidence sealing remain in their
+active owners. No product evidence or acceptance gate was removed.

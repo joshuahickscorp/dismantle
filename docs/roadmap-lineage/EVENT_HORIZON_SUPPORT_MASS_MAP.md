@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 505,766 | 1,460 |
-| active total | 1,003,778 | 2,095 |
+| support | 505,325 | 1,459 |
+| active total | 1,003,337 | 2,094 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -145,7 +145,9 @@ also included in the total and must not become an UNKNOWN bucket.
   example remains the executable authority for that capability. The dead future
   orchestration bindings for retired launch/specimen producers were removed,
   and the orphan Odyssey decoding producer was deleted; its durable G038
-  receipt and independent receipt tests remain.
+  receipt and independent receipt tests remain. The uncalled future
+  orchestration connector was then retired as well; its binding receipt remains
+  archival while HCLI/AgentOS owns active scheduling.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

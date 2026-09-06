@@ -788,7 +788,7 @@ def build() -> Path:
         "missing required input is REFUSED, never silently PASSED",
     ]
     negative_findings = [
-        "this module is not in tools/future/orchestration.py BINDINGS; invoke() will raise UnknownBinding until the connector is extended. Naming a frontier here is not a binding",
+            "this module is not a resident-callable binding. Naming a frontier here is not a binding",
         "saved() names funnel gates, not candidate_planner descendants — queue lineage is a different child-work graph and was not merged",
         "cheapest_falsifier is a prose kill criterion; without falsifier_observation the cheapest stage REFUSES rather than inventing a measurement",
         f"negative-index consult during recovered-family screens: {index_state}",

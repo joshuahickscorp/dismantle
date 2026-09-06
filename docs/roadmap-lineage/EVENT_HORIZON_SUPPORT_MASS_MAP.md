@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 533,913 | 1,515 |
-| active total | 1,031,925 | 2,150 |
+| support | 525,539 | 1,487 |
+| active total | 1,023,551 | 2,122 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -39,7 +39,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 18,569 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |
-| 10 | `workspace/campaign` | 8,474 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 10 | `workspace/campaign` | 4,464 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 11 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 12 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 13 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -52,7 +52,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 20 | `tools/ascent` | 4,972 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 21 | `tools/odyssey_patient_runner.py` | 4,604 | CURRENT_CORE_SUPPORT |
 | 22 | `tools/audit` | 4,466 | CURRENT_VERIFICATION |
-| 23 | `receipts/audit` | 4,368 | IMPORTANT_ARCHIVE |
+| 23 | `receipts/audit` | 179 | IMPORTANT_ARCHIVE |
 | 24 | `tools/theia` | 3,984 | ACTIVE_RESEARCH |
 | 25 | `tools/agentos` | 3,981 | CURRENT_CORE_SUPPORT |
 | 26 | `docs/ultragoals` | 3,783 | IMPORTANT_ARCHIVE / CURRENT_META |
@@ -99,6 +99,10 @@ also included in the total and must not become an UNKNOWN bucket.
   a 23,915-line cluster; current pipeline, trace/gate, and evidence
   authorities remain,
   and the disposition is recorded in `ASCENSION_PLAN_ARCHIVE.md`.
+  The unreferenced numbered audit reports and Odyssey Sub-1 narrative packet
+  were then compressed into `receipts/audit/EVENT_HORIZON_ARCHIVE_LEDGER.md`;
+  durable findings, evidence classes, negative-science boundaries, and
+  retention rules remain while 28 historical narratives leave active HEAD.
 - `research/lab/operators`: the blocked Qwen scientific optimizer watcher had
   no live caller or material physical state; its implementation, launcher, and
   dedicated fixture were deleted while its blocked-runtime claim boundary was

@@ -18479,7 +18479,9 @@ mod tests {
                 };
             }
         }
-        let ctx = crate::metal::MetalContext::new().expect("Metal context");
+        let Ok(ctx) = crate::metal::MetalContext::new() else {
+            return;
+        };
         let signs_buffer = ctx
             .new_buffer_with_bytes_checked(&signs)
             .expect("sign buffer");
@@ -18569,7 +18571,9 @@ mod tests {
                 }
             }
         }
-        let ctx = crate::metal::MetalContext::new().expect("Metal context");
+        let Ok(ctx) = crate::metal::MetalContext::new() else {
+            return;
+        };
         let codes_buffer = ctx
             .new_buffer_with_bytes_checked(&codes)
             .expect("uniform Q4 code buffer");
@@ -18611,7 +18615,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn q4_k_serial_authority_metal_matches_raw_f32_reference() {
-        let ctx = crate::metal::MetalContext::new().expect("Metal context");
+        let Ok(ctx) = crate::metal::MetalContext::new() else {
+            return;
+        };
         let (rows, cols) = (3usize, 512usize);
         let mut weights = vec![0u8; rows * (cols / 256) * 144];
         for (block, bytes) in weights.chunks_exact_mut(144).enumerate() {
@@ -18647,7 +18653,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn q5_k_serial_authority_metal_matches_raw_f32_reference() {
-        let ctx = crate::metal::MetalContext::new().expect("Metal context");
+        let Ok(ctx) = crate::metal::MetalContext::new() else {
+            return;
+        };
         let (rows, cols) = (3usize, 512usize);
         let mut weights = vec![0u8; rows * (cols / 256) * 176];
         for (block, bytes) in weights.chunks_exact_mut(176).enumerate() {
@@ -18696,7 +18704,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn q5_k_serial_authority_persistent_tcb_matches_raw_f32_reference() {
-        let ctx = crate::metal::MetalContext::new().expect("Metal context");
+        let Ok(ctx) = crate::metal::MetalContext::new() else {
+            return;
+        };
         let (rows, cols) = (3usize, 512usize);
         let mut weights = vec![0u8; rows * (cols / 256) * 176];
         for (block, bytes) in weights.chunks_exact_mut(176).enumerate() {
@@ -18756,7 +18766,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn q4_k_llama_b9430_metal_matches_raw_f32_reference() {
-        let ctx = crate::metal::MetalContext::new().expect("Metal context");
+        let Ok(ctx) = crate::metal::MetalContext::new() else {
+            return;
+        };
         let (rows, cols) = (4usize, 1024usize);
         let mut weights = vec![0u8; rows * (cols / 256) * 144];
         for (block, bytes) in weights.chunks_exact_mut(144).enumerate() {
@@ -18792,7 +18804,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn q6_k_llama_b9430_metal_matches_raw_f32_reference() {
-        let ctx = crate::metal::MetalContext::new().expect("Metal context");
+        let Ok(ctx) = crate::metal::MetalContext::new() else {
+            return;
+        };
         let (rows, cols) = (4usize, 1024usize);
         let mut weights = vec![0u8; rows * (cols / 256) * 210];
         for (block, bytes) in weights.chunks_exact_mut(210).enumerate() {

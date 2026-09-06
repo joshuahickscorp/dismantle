@@ -3062,6 +3062,15 @@ mod imp {
 
         pub fn new_with_trace(trace_dispatch: bool) -> Result<Self> {
             crate::startup_timing::time_ms_result("metal_context_new_with_trace", || {
+                // Dummy Metal devices still abort at buffer allocation, so this
+                // must fire before any Metal call. Present and not 0/false/off/no.
+                if std::env::var_os("HAWKING_NO_GPU").is_some()
+                    && crate::env_opt_out("HAWKING_NO_GPU")
+                {
+                    return Err(Error::Metal(
+                        "HAWKING_NO_GPU is set; skipping Metal device construction".into(),
+                    ));
+                }
                 let device = Device::system_default()
                     .ok_or_else(|| Error::Metal("no Metal-capable GPU".into()))?;
                 let queue = device.new_command_queue();
@@ -3098,6 +3107,14 @@ mod imp {
             crate::startup_timing::time_ms_result(
                 "metal_context_new_with_trace_strict_math",
                 || {
+                    // Same abort-before-Metal gate as new_with_trace.
+                    if std::env::var_os("HAWKING_NO_GPU").is_some()
+                        && crate::env_opt_out("HAWKING_NO_GPU")
+                    {
+                        return Err(Error::Metal(
+                            "HAWKING_NO_GPU is set; skipping Metal device construction".into(),
+                        ));
+                    }
                     let device = Device::system_default()
                         .ok_or_else(|| Error::Metal("no Metal-capable GPU".into()))?;
                     let queue = device.new_command_queue();
@@ -4960,7 +4977,9 @@ mod imp {
         #[test]
         #[ignore = "requires a Metal device with compute indirect-command-buffer support"]
         fn replayable_icb_reuses_addresses_and_one_submit() {
-            let ctx = MetalContext::new_with_trace(true).unwrap();
+            let Ok(ctx) = MetalContext::new_with_trace(true) else {
+                return;
+            };
             let n = 257u32;
             let bytes = n as usize * std::mem::size_of::<f32>();
             let output = ctx.new_buffer(bytes);
@@ -5073,7 +5092,9 @@ mod imp {
         #[test]
         #[ignore = "requires a Metal device with compute indirect-command-buffer support"]
         fn replayable_icb_binds_scalar_buffers_for_b9430_rmsnorm() {
-            let ctx = MetalContext::new().unwrap();
+            let Ok(ctx) = MetalContext::new() else {
+                return;
+            };
             let x = ctx.new_buffer_with_bytes(bytemuck::cast_slice(&[1.0_f32; 8]));
             let weight = ctx.new_buffer_with_bytes(bytemuck::cast_slice(&[1.0_f32; 8]));
             let out = ctx.new_buffer(8 * std::mem::size_of::<f32>());
@@ -5145,7 +5166,9 @@ mod imp {
             use std::time::Instant;
             const N: u32 = 257;
             const SAMPLES: usize = 257;
-            let ctx = MetalContext::new_with_trace(true).unwrap();
+            let Ok(ctx) = MetalContext::new_with_trace(true) else {
+                return;
+            };
             let output = ctx.new_buffer(N as usize * std::mem::size_of::<f32>());
             let n_buffer = ctx.new_buffer_with_bytes(&N.to_ne_bytes());
             let split_9 =

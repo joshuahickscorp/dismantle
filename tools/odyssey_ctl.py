@@ -2067,138 +2067,11 @@ def oxx_from_task(name: str, parsed: dict) -> str | None:
     return f"O{m.group(1)}" if m else None
 
 
-def should_escalate(text: str, evidence: str) -> tuple[str, str] | None:
-    if evidence == "REFUTED":
-        return "CONTRADICTION", "evidence classified REFUTED"
-    if re.search(r"two (high-quality )?receipts disagree", text, re.I):
-        return "CONTRADICTION", "receipts disagree"
-    if re.search(r"\bANOMALY\b|\bESCALATE(?: TO OPUS)?\b", text):
-        return "ANOMALY", "explicit nomination"
-    if re.search(r"\bHARMFUL\b.*\btransfer\b", text, re.I):
-        return "MAJOR FALSE WIN", "harmful transfer"
-    return None
-
-
 def _task_status(task_dir: Path) -> str:
     p = task_dir / "status"
     if not p.is_file():
         return "unknown"
     return p.read_text(errors="replace").strip().splitlines()[0].strip().lower()
-
-
-def harvest(*, tasks_root: Path | None = None, receipt_dir: Path | None = None,
-            escalate_path: Path | None = None, state: dict | None = None,
-            classify: bool = False, dry_run: bool = False,
-            worktrees_root: Path | None = None, dest_root: Path | None = None,
-            review_queue: Path | None = None, cleanup_fn=None,
-            persist: bool | None = None) -> list[dict]:
-    """Scan completed odyssey-* grok lanes. Reject reports with no structured result.
-
-    classify/dry_run: hardened lane harvest (DATA-ONLY vs CODE). Default stays
-    the original report harvester so --self-check fixtures keep working.
-    """
-    if classify or dry_run:
-        return harvest_lanes(
-            tasks_root=tasks_root, receipt_dir=receipt_dir,
-            escalate_path=escalate_path, state=state, dry_run=dry_run,
-            worktrees_root=worktrees_root, dest_root=dest_root,
-            review_queue=review_queue, cleanup_fn=cleanup_fn, persist=persist,
-        )
-    root = Path(tasks_root) if tasks_root else GROK_TASKS
-    out_dir = Path(receipt_dir) if receipt_dir else RECEIPT_DIR
-    esc_path = Path(escalate_path) if escalate_path else ESCALATIONS
-    st = state if state is not None else ensure_state()
-    already = set(st.get("harvested") or [])
-    rows = []
-    if not root.is_dir():
-        return rows
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for d in sorted(p for p in root.iterdir() if p.is_dir() and p.name.startswith("odyssey-")):
-        report = d / "grok-report.md"
-        stat = _task_status(d)
-        if stat in {"running", "queued", "starting"}:
-            continue
-        rec = {
-            "schema": "hawking.odyssey.harvest.v1",
-            "task": d.name,
-            "slug": re.sub(r"-\d{8}-\d{6}$", "", d.name),
-            "task_status": stat,
-            "verdict": "REJECTED",
-            "reason": "",
-            "evidence": "UNKNOWN",
-            "oxx": None,
-            "patient_hash": None,
-            "representation_hash": None,
-            "nx_hash": None,
-            "machine_state": None,
-            "command": "harvest",
-            "inputs": {"task_dir": str(d)},
-            "outputs": {},
-            "controls": [],
-            "assumptions": ["only odyssey-* slugs; running lanes skipped"],
-            "reopen_if": "structured result later appears in grok-report.md",
-            "_evidence": "DERIVED (harvester)",
-        }
-        if not report.is_file():
-            rec["reason"] = "malformed: no grok-report.md"
-        else:
-            try:
-                text = report.read_text(errors="replace")
-            except OSError as exc:
-                rec["reason"] = f"malformed: unreadable report ({exc})"
-                text = ""
-            if text:
-                parsed = parse_report(text)
-                rec["oxx"] = oxx_from_task(d.name, parsed)
-                rec["evidence"] = parsed["evidence"]
-                rec["_evidence"] = parsed["evidence"]
-                if not parsed["ok"]:
-                    rec["reason"] = "malformed: no structured result"
-                else:
-                    rec["verdict"] = "ACCEPTED"
-                    rec["reason"] = "ok"
-                    rec["outputs"] = {
-                        "finding": (parsed.get("completion") or "")[:400],
-                        "structured": parsed.get("structured"),
-                    }
-                    trig = should_escalate(text, parsed["evidence"])
-                    if trig:
-                        rec["escalation"] = {"trigger": trig[0], "note": trig[1]}
-                        esc_path.parent.mkdir(parents=True, exist_ok=True)
-                        with esc_path.open("a") as fh:
-                            fh.write(json.dumps({
-                                "task": d.name,
-                                "oxx": rec["oxx"],
-                                "trigger": trig[0],
-                                "note": trig[1],
-                                "evidence": parsed["evidence"],
-                                "_evidence": "INFERRED (harvester nomination, bible §9/§12)",
-                            }) + "\n")
-                    if receipt_dir is None:
-                        record_ctl_event(
-                            rec["oxx"], "grok", 0.0,
-                            grok_lane=d.name,
-                            opus=bool(trig),
-                            extra={"verdict": rec["verdict"], "harvest": "report"},
-                            persist=True,
-                        )
-        dest = out_dir / f"{d.name}.json"
-        write_json(dest, rec)
-        rows.append({"task": d.name, "verdict": rec["verdict"],
-                     "reason": rec["reason"], "oxx": rec["oxx"],
-                     "receipt": str(dest)})
-        if rec["verdict"] == "ACCEPTED" and rec["oxx"] and receipt_dir is None:
-            # only mutate real packets when writing to the real receipt dir
-            try:
-                write_packet(rec["oxx"], st)
-            except SystemExit:
-                pass
-        if d.name not in already:
-            already.add(d.name)
-    st["harvested"] = sorted(already)
-    if receipt_dir is None and escalate_path is None and tasks_root is None:
-        save_state(st)
-    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -6783,42 +6656,7 @@ def _self_check() -> int:
     for sec in schema.get("fields") or {}:
         assert sec in assemble_packet("O005", st2), sec
 
-    # 5. harvest tolerates a malformed task dir
-    with tempfile.TemporaryDirectory() as td:
-        td = Path(td)
-        tasks, recs, esc = td / "tasks", td / "recs", td / "esc.jsonl"
-        mal = tasks / "odyssey-malformed-xyz"
-        mal.mkdir(parents=True)
-        (mal / "status").write_text("done\n")
-        (mal / "grok-report.md").write_text("just chatting, no result\n")
-        empty = tasks / "odyssey-empty-xyz"
-        empty.mkdir()
-        (empty / "status").write_text("done\n")
-        running = tasks / "odyssey-running-xyz"
-        running.mkdir()
-        (running / "status").write_text("running\n")
-        ignore = tasks / "not-odyssey-xyz"
-        ignore.mkdir()
-        (ignore / "grok-report.md").write_text("**Completion report**\n\nok\n")
-        good = tasks / "odyssey-o005-fixture-xyz"
-        good.mkdir()
-        (good / "status").write_text("done\n")
-        (good / "grok-report.md").write_text(
-            "**Completion report**\n\n"
-            "```json\n"
-            + json.dumps({"oxx": "O005", "finding": "fixture", "evidence": "HYPOTHESIS"})
-            + "\n```\n"
-        )
-        rows = harvest(tasks_root=tasks, receipt_dir=recs, escalate_path=esc, state=dict(st2))
-        by_task = {r["task"]: r for r in rows}
-        assert "odyssey-running-xyz" not in by_task
-        assert by_task["odyssey-malformed-xyz"]["verdict"] == "REJECTED"
-        assert by_task["odyssey-empty-xyz"]["verdict"] == "REJECTED"
-        assert by_task["odyssey-o005-fixture-xyz"]["verdict"] == "ACCEPTED"
-        assert by_task["odyssey-o005-fixture-xyz"]["oxx"] == "O005"
-        assert (recs / "odyssey-malformed-xyz.json").is_file()
-
-    # 6. governors: worker_gate refuses injected pressure; doctor_seal refuses empty
+    # 5. governors: worker_gate refuses injected pressure; doctor_seal refuses empty
     obs = {
         "total_gb": 100.0, "wired_gb": 4.63, "free_gb": 50.0, "inactive_gb": 10.0,
         "compressed_gb": 0.05, "swap_used_mb": 512.0, "workers_resident": 0,

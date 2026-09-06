@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 499,651 | 1,432 |
-| active total | 997,663 | 2,067 |
+| support | 499,181 | 1,431 |
+| active total | 997,193 | 2,066 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -179,7 +179,9 @@ also included in the total and must not become an UNKNOWN bucket.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken
-  Noetic/VisionMCP runners were retired.
+  Noetic/VisionMCP runners were retired. The uncalled Qwen3.8 native benchmark
+  launcher was then retired; its timing, coherence failure, and blocked-run
+  evidence remain in the sealed QWEN38 native receipts and performance ledger.
 - `research/lab/tests`: tests for already-deleted Ascension supervisors and
   absent JSON contract fixtures were removed; current manager-protocol and
   Qwen30 physical tests remain. The uncalled manager-tournament readiness /
@@ -215,3 +217,10 @@ also included in the total and must not become an UNKNOWN bucket.
 
 The next checkpoint is support <=500K, then <=250K, with the current product
 boundary held at approximately 498K.
+
+The current wave removed 470 counted LOC from the uncalled Qwen3.8 native
+benchmark launcher. It also removed an exact duplicate of the pinned Python
+requirements freeze from scaffolding; `.txt` is outside the active LOC
+authority, so that 459-line physical reduction is tracked as file/namespace
+compression rather than target LOC. `workspace/docs/plans/studio_pinned_requirements.txt`
+is the sole canonical copy.

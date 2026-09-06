@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 560,715 | 1,593 |
-| active total | 1,058,727 | 2,228 |
+| support | 546,153 | 1,581 |
+| active total | 1,044,165 | 2,216 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -31,7 +31,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
 | 1 | `research/lab` | 93,616 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
-| 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
+| 2 | `crates/hawking-core` | 64,643 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 4,695 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
@@ -135,6 +135,9 @@ also included in the total and must not become an UNKNOWN bucket.
   Qwen30 physical tests remain. The uncalled manager-tournament readiness /
   protocol pair and generic parity-ladder scaffold were then retired as one
   family; current Rust paired-cognition and Doctor authorities remain.
+- `crates/hawking-core/examples`: twelve uncalled Ascension packing, capture,
+  drift, and contract programs were retired as historical executable
+  scaffolding; current Flash acceptance examples and runtime modules remain.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

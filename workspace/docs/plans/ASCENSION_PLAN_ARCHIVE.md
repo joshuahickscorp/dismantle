@@ -166,6 +166,16 @@ accelerator owners remain active. Import-path plumbing was reduced accordingly,
 so Prometheus is now unambiguously archive data rather than a second executable
 authority.
 
+## Retired uncalled Rust Ascension examples (2026-09-05)
+
+Twelve standalone `crates/hawking-core/examples/` programs covering old
+Qwen30/Qwen38/Qwen80 packing, capture, drift, and paired-cognition contract
+experiments were removed from active HEAD. None had a current caller, registry
+owner, or acceptance-path use; they were executable campaign scaffolding, not
+the product runtime. Current Rust model/runtime modules, Flash acceptance
+examples, and receipt-backed findings remain. Git history retains every exact
+example for forensic recovery.
+
 ## Retired Ascension scaffold-only verification family (2026-09-05)
 
 The uncalled manager-tournament readiness/protocol pair and the generic parity

@@ -33,15 +33,31 @@ also included in the total and must not become an UNKNOWN bucket.
 | 2 | `crates/hawking-core` | 52,758 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 44,685 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,185 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 5 | `research/hawking-experiments` | 4,695 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 6 | `tools/headless` | 24,243 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
-| 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
-| 8 | `tools/odyssey` | 18,569 | CURRENT_CORE_SUPPORT |
-| 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |
-| 10 | `workspace/campaign` | 4,464 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 11 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
-| 12 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
-| 13 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
+| 5 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |
+| 6 | `tools/condense` | 19,211 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
+| 7 | `tools/headless` | 14,434 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
+| 8 | `tools/odyssey` | 12,659 | CURRENT_CORE_SUPPORT |
+| 9 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
+| 10 | `tools/roadmap` | 10,136 | CURRENT_CORE_SUPPORT |
+| 11 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
+| 12 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |
+| 13 | `crates/hide-backend` | 7,571 | CURRENT_CORE_SUPPORT |
+| 14 | `tools/ascent` | 4,972 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
+| 15 | `research/hawking-experiments` | 4,695 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 16 | `workspace/campaign` | 4,571 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 17 | `tools/theia` | 3,984 | ACTIVE_RESEARCH |
+| 18 | `tools/agentos` | 3,981 | CURRENT_CORE_SUPPORT |
+| 19 | `docs/ultragoals` | 3,786 | IMPORTANT_ARCHIVE / CURRENT_META |
+| 20 | `workspace/docs` | 2,831 | IMPORTANT_ARCHIVE / CURRENT_META |
+| 21 | `civilization/build_state.py` | 2,685 | CURRENT_CORE_SUPPORT |
+| 22 | `tools/sovereign` | 2,602 | CURRENT_VERIFICATION |
+| 23 | `tools/doctor` | 2,361 | CURRENT_VERIFICATION |
+| 24 | `tools/foundry` | 2,038 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
+| 25 | `docs/contracts` | 2,013 | CURRENT_META |
+| 26 | `tools/ascent_daemon.py` | 1,919 | CURRENT_VERIFICATION |
+| 27 | `crates/hide-kernel` | 1,796 | CURRENT_CORE_SUPPORT |
+| 28 | `docs/roadmap` | 1,671 | CURRENT_META |
+| 29 | `receipts/runtime` | 1,662 | IMPORTANT_ARCHIVE |
 | 14 | `docs/roadmap-lineage` | 273 | IMPORTANT_ARCHIVE |
 | 15 | `workspace/docs` | 2,587 | IMPORTANT_ARCHIVE / CURRENT_META |
 | 16 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |

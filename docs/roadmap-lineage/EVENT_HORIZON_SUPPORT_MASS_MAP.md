@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 504,510 | 1,454 |
-| active total | 1,002,522 | 2,089 |
+| support | 504,235 | 1,452 |
+| active total | 1,002,247 | 2,087 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -154,6 +154,8 @@ also included in the total and must not become an UNKNOWN bucket.
   The uncalled Odyssey resident-seal generator and its self-contained mutation
   tests were retired; the sealed resident receipt and current HCLI/AgentOS
   resident verification remain authoritative.
+  The superseded Odyssey G037 state-gravity producer and its coupled test were
+  removed; the current headless N048 state-gravity authority remains.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

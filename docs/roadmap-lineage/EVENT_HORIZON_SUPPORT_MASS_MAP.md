@@ -1,7 +1,7 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` after the receipt-only Flash NX audit
-producer retirement wave. This is the support
+Measured on `refactor/event-horizon` at HEAD `940b64099`, after the Odyssey
+novelty-registry cleanup. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -29,10 +29,10 @@ also included in the total and must not become an UNKNOWN bucket.
 
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
-| 1 | `research/lab` | 93,616 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
-| 2 | `crates/hawking-core` | 52,454 | CURRENT_VERIFICATION |
-| 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
-| 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
+| 1 | `research/lab` | 85,031 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
+| 2 | `crates/hawking-core` | 52,758 | CURRENT_VERIFICATION |
+| 3 | `tools/future` | 44,685 | ACTIVE_RESEARCH / SUPERSEDED audit required |
+| 4 | `tools/accelerator` | 39,185 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 4,695 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 6 | `tools/headless` | 24,243 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |

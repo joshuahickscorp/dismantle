@@ -504,7 +504,6 @@
     "tools/headless/negative_science.py",
     "tools/headless/noetic_ir.py",
     "tools/headless/noetic_kernel_census.py",
-    "tools/headless/noetic_negative_science.py",
     "tools/headless/noetic_organ_census.py",
     "tools/headless/organ_bandwidth.py",
     "tools/headless/organ_roof_ledger.py",

@@ -5,7 +5,7 @@ Nothing queried that corpus before a new experiment was proposed, so
 rediscovery was free. This module is the keyed index and the refusal path.
 
 It extends the existing stores (tools/headless/negative_science.py,
-noetic_negative_science.py, foundry/doctor atlases, campaign JSONL) — it
+foundry/doctor atlases, campaign JSONL) — it
 does not restate them and it does not write onto the Codex surface.
 
     python3 tools/future/negative_index.py --build
@@ -46,7 +46,6 @@ UNPARSED = "UNPARSED"
 # sweep found. discover() unions this with a git ls-tree name scan.
 SEED_SOURCES: tuple[str, ...] = (
     "tools/headless/negative_science.py",
-    "tools/headless/noetic_negative_science.py",
     "tools/foundry/NEGATIVE_TRANSFER_ATLAS.json",
     "receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
     "receipts/ascent-2026-08-16/NEGATIVE_SCIENCE_REGISTER.json",
@@ -1405,12 +1404,6 @@ def recovered_implementation() -> list[dict[str, str]]:
             "role": "nine-field failure store, prior_failures(organ, technique), three-level promotion gate",
             "adequate": "no",
             "gap": "query is organ/technique substring only; no representation/family keys; no refuse_if_dead; writes receipts/headless (Codex surface)",
-        },
-        {
-            "path": "tools/headless/noetic_negative_science.py",
-            "role": "32-entry archaeology catalog + sweep; writes receipts/headless/NOETIC_NEGATIVE_SCIENCE.json",
-            "adequate": "no",
-            "gap": "hand catalog, not a keyed retrieval API a generator can call before proposing",
         },
         {
             "path": "tools/foundry/NEGATIVE_TRANSFER_ATLAS.json",

@@ -1057,11 +1057,6 @@ def _recovered_implementation() -> list[dict[str, Any]]:
             "gap": "query-before-experiment, not attack generation against a live law",
         },
         {
-            "path": "tools/headless/noetic_negative_science.py",
-            "role": "killed-idea archaeology; PROPERTY_OF_IDEA vs ARTIFACT_OF_METHOD",
-            "gap": "catalog of past refutations, not a generator of new attack specs",
-        },
-        {
             "path": "receipts/headless/ODYSSEY_ADVERSARIAL_SWEEP.json",
             "role": "G031 sweep receipt (27 gates, 1 weakened on stale_cache)",
             "gap": "evidence of a different adversary; not a law store",

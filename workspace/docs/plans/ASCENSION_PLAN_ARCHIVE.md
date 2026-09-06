@@ -86,6 +86,18 @@ execution machinery is recoverable from commit history rather than carried as
 a second active authority; current promotion semantics live in
 `research/lab/verification_authority.py`.
 
+## Retired dated design-only notes (2026-09-05)
+
+The dated HCLI bootstrap snapshots and Qwen representation blueprints were
+removed from active HEAD after confirming they were prose-only, had no runtime
+callers, and duplicated current decoder/contracts or sealed measurements:
+`tools/hcli/bootstrap/`, `workspace/campaign/metal_shared_op_blueprint.md`,
+`workspace/campaign/decoder_affine_plan.md`, `workspace/campaign/moe_arch_map.md`,
+and `workspace/campaign/exec_lever_map.md`. Their useful signal remains in the
+current Rust/shader owners and the corresponding `receipts/ascent-2026-08-18/`
+and `receipts/headless/` evidence. Git history retains the complete drafts;
+the active tree keeps only current implementation and compact archival metadata.
+
 The unregistered scaffold-only `ascension_tg_gauntlet` and the Proto-era
 `sandbox_ready_preflight` operator/test/wrapper family were also removed. Their
 boundary is historical; the live `lab.execution_sandbox` policy remains.

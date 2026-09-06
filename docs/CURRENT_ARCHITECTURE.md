@@ -53,8 +53,9 @@ product authority. The uncalled producer/test farm was removed; its fixtures
 and receipts remain available for audit and reproducibility. The retained
 scientific metabolism and resident-supervisor records use explicit sidecar
 names so they cannot be mistaken for `hcli.workunit.WorkUnit` or the live
-resident control loop. `tools/hcli/bootstrap/` remains historical bootstrap
-documentation only.
+resident control loop. The dated `tools/hcli/bootstrap/` notes were retired;
+their disposition is recorded in
+`workspace/docs/plans/ASCENSION_PLAN_ARCHIVE.md`.
 
 ## Rust workspace boundary
 

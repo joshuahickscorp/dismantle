@@ -264,9 +264,9 @@ real hardware. A receipt must never claim a capability that did not act.
 dependency was already gone and audited; the name and the framing were not.
 Both are now.
 
-- 65 test files moved to `hcli/tests/`; bootstrap history to `tools/hcli/bootstrap/`
-  with a README saying why its contents still read "haider" (a snapshot named for
-  a file that really was called that is a record).
+- 65 test files moved to `hcli/tests/`; the dated bootstrap prose was compressed
+  into the Event Horizon archive note after its implementation history was
+  superseded.
 - `tools/haider/aider_patches/` held a VERBATIM copy of upstream aider's
   `CoderPrompts` plus a patch. Nothing read it. Deleted.
 - `HAIDER_SYSTEM_PROMPT.txt` ("You are HAIDER, the bootstrap form of HCLI") had

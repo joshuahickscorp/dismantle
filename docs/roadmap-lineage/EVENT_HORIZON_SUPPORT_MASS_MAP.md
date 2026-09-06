@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 581,984 | 1,706 |
-| active total | 1,079,996 | 2,341 |
+| support | 576,305 | 1,692 |
+| active total | 1,074,317 | 2,327 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -39,7 +39,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |
-| 10 | `workspace/campaign` | 15,668 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 10 | `workspace/campaign` | 12,274 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 11 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 12 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 13 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
@@ -59,7 +59,6 @@ also included in the total and must not become an UNKNOWN bucket.
 | 27 | `civilization/build_state.py` | 2,685 | CURRENT_CORE_SUPPORT |
 | 28 | `tools/sovereign` | 2,602 | CURRENT_VERIFICATION |
 | 29 | `tools/doctor` | 2,361 | CURRENT_VERIFICATION |
-| 30 | `tools/hcli` | 2,297 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 
 ## Disposition rules for the next waves
 

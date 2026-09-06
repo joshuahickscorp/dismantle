@@ -145,3 +145,13 @@ notification, bounded-runner, and after-Proto-monitor package was also retired
 as one legacy control-plane family. HCLI resources/autonomy and the current
 receipt/evidence authorities remain; the package's tests and implementation are
 recoverable from Git history.
+
+## Retired obsolete Odyssey T0 launcher layer (2026-09-05)
+
+The unused T0 launcher and its missing-artifact-dependent verifier layer were
+removed: `t0_run.py`, `data_verify.py`, `contracts.py`, `feasibility.py`,
+`substrate_verify.py`, `hidden_memberships.py`, `substrate_capability.py`,
+the old training launcher, and `test_odyssey_t0.py`. The independently used
+`runtime_authority.py` and claim-regression registry remain. Existing T0
+receipts and negative findings remain archival evidence; current Odyssey
+readiness and ModelLake owners are unchanged.

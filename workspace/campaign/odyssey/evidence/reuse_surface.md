@@ -601,9 +601,16 @@ python3 -m tools.odyssey.cli teacher
 python3 -m tools.odyssey.cli all
 ```
 
-Schemas: `hawking.odyssey.data_inventory.v1`, `.membership_record.v1`, `.contamination_barrier.v1`, plus T0 `hawking.odyssey.t0.v1` (`t0_run.py`), tournament `hawking.odyssey.checkpoint_tournament.v1` (math-profile + support-halo, **training checkpoints**, not NX patients).
+Schemas: `hawking.odyssey.data_inventory.v1`, `.membership_record.v1`, and
+`.contamination_barrier.v1`. The former T0 launcher/checkpoint schemas are
+archival only; their implementation generation was retired under Event
+Horizon after its required campaign artifacts were no longer present.
 
-Source files present: `ingest, dedup, contamination, inventory, membership, normalize, data_verify, feasibility, hidden_memberships, known_failures, runtime_authority, substrate_*, teacher_assess, tournament, contracts, t0_run, cli`. `__pycache__` still has deleted modules (`scheduler, apparatus, trainer, qat, trajectory, …`) — **not on disk as `.py`**.
+Current source files present: `ingest, dedup, contamination, inventory,
+membership, normalize, known_failures, runtime_authority, teacher_assess,
+tournament, cli`. The former `data_verify`, `feasibility`, `hidden_memberships`,
+`substrate_*`, `contracts`, and `t0_run` generation is preserved by Git and
+receipts, not carried as active executable support.
 
 Governance tree: `workspace/campaign/governance/odyssey/` (fence, T0 receipts, eval contracts, checkpoints). This is the **training launch** program.
 

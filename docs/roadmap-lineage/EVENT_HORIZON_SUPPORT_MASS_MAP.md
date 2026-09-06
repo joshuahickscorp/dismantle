@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 524,348 | 1,485 |
-| active total | 1,022,360 | 2,120 |
+| support | 523,396 | 1,483 |
+| active total | 1,021,408 | 2,118 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -106,6 +106,8 @@ also included in the total and must not become an UNKNOWN bucket.
   Two dated ascent snapshots and the test-only Q80 capture-coverage auditor
   were then compressed into `receipts/ascent-2026-08-18/ARCHIVE_LEDGER.md` and
   the existing Ascension archive; the live capture index remains authoritative.
+  The test-only retired-controller shell harness was then removed; current
+  campaign-engine and HCLI verification tests remain.
 - `research/lab/operators`: the blocked Qwen scientific optimizer watcher had
   no live caller or material physical state; its implementation, launcher, and
   dedicated fixture were deleted while its blocked-runtime claim boundary was

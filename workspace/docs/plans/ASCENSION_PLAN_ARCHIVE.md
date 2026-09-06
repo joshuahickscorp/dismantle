@@ -23,3 +23,39 @@ Retired drafts:
 Disposition: SUPERSEDED planning representation. Reopen only from the current
 roadmap and current owner contracts; do not revive a draft merely because its
 old prose is present in Git history.
+
+## Additional superseded planning cluster
+
+The following older planning representations were removed from active HEAD.
+Their current evidence or successor ownership is retained at the listed
+canonical locations; the full prose remains recoverable from Git history:
+
+- `RESIDENT_MEMORY_AND_BPW_PLAN.md` → Frankenstein resident-memory data and
+  current ModelLake/HCLI contracts.
+- `POST_FINAL_GRAVITY_HCLI_PLAN.md` → current HCLI/AgentOS roadmap and
+  `research/hawking-experiments/frankenstein/data/POST_FINAL_GRAVITY_HCLI_PLAN.json`.
+- `STAGE2_KIMI_STREAMING_DISTILL_PLAN.md` → sealed Frankenstein Kimi stage data
+  and `research/hawking-experiments/frankenstein/data/KIMI_STAGE2_STREAMING_PLAN.md`.
+- `FRANKENSTEIN_PROGRAM.md` → `FUNCTIONAL_TRANSFER_PROGRAM.md` plus the sealed
+  Frankenstein program manifests under `research/hawking-experiments/frankenstein/data/`.
+- `history/COMMIT_MAP_20260728.txt` → Git history itself; it was a dated commit
+  narrative with no current consumer.
+- `ascension/RESIDUAL_TEACHER_ADMISSION_GATE.md` and
+  `ascension/ASCENSION_QWEN_METADATA_PREFLIGHT_DECISION.md` → the corresponding
+  stale research gates were retired with their executable owners; their
+  disposition is recorded in the Event Horizon reduction history.
+
+Disposition: SUPERSEDED / redundant planning and history representation.
+
+## Residual Ascension directory
+
+The remaining `workspace/docs/plans/ascension/` directory was also collapsed.
+It was a parallel planning/control surface, not a live owner. Its current
+surviving signal is represented by `docs/ultragoals/HCLI_SUPER_AGENT_OS.md`,
+the current four-part roadmap, `tools/agentos/`, `hcli/agentos/`, and the
+sealed research/verification artifacts named by those owners. Git retains the
+complete drafts and JSON schedules for historical recovery.
+
+The retired Proto steer is likewise represented by
+`workspace/docs/plans/FUNCTIONAL_TRANSFER_PROGRAM.md` and the sealed
+Frankenstein program data.

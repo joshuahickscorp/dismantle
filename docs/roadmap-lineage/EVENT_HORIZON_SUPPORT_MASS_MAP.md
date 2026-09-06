@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 619,473 | 1,791 |
-| active total | 1,117,485 | 2,426 |
+| support | 612,567 | 1,785 |
+| active total | 1,110,579 | 2,420 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -44,7 +44,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 12 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 13 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 14 | `docs/roadmap-lineage` | 273 | IMPORTANT_ARCHIVE |
-| 15 | `workspace/docs` | 9,554 | IMPORTANT_ARCHIVE / SUPERSEDED audit required |
+| 15 | `workspace/docs` | 2,587 | IMPORTANT_ARCHIVE / CURRENT_META |
 | 16 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |
 | 17 | `tools/odyssey_ctl.py` | 8,132 | CURRENT_CORE_SUPPORT |
 | 18 | `crates/hide-backend` | 7,571 | CURRENT_CORE_SUPPORT |

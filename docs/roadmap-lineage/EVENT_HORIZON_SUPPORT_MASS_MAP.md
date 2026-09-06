@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 502,322 | 1,442 |
-| active total | 1,000,334 | 2,077 |
+| support | 501,225 | 1,438 |
+| active total | 999,237 | 2,073 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -164,6 +164,9 @@ also included in the total and must not become an UNKNOWN bucket.
   private protected-window helper, and their coupled tests. Their sealed
   measurements remain archival; HCLI/AgentOS and accelerator qualification own
   current protected benchmarking.
+  The uncalled Q80 activation-weighted repack/readiness/null-first research
+  cluster and its dedicated coherence test were retired; the active Q80 capture
+  index and Q30 activation-weighted owner remain.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

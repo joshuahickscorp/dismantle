@@ -5,7 +5,7 @@
   "gpu_authority": false,
   "machine": "Apple host CPU; receipt/header metadata only",
   "measurement_state": "STATIC_ONLY",
-  "recorded_at": "2026-09-05T02:28:43Z",
+  "recorded_at": "2026-09-06T04:10:19Z",
   "recorded_by": "tools/future/modellake_events.py",
   "rule": "no hardware measurement claim without hardware",
   "state": "UNKNOWN"
@@ -15,7 +15,7 @@
  "detection": {
   "authority": "a lake manifest with resolved_sha and bytes",
   "complete_unsealed_do_not_emit": true,
-  "n_complete_unsealed": 0,
+  "n_complete_unsealed": 1,
   "n_sealed_on_disk": 55,
   "n_sealed_registry": 55,
   "not_authority": "a watcher download_exit or already_complete claim, a lifecycle label, or a human saying the model is ready",
@@ -4709,10 +4709,12 @@
     "warm_load_seconds": 32.68
    },
    "family": {
-    "is_novel_architecture": true,
+    "is_novel_architecture": false,
     "model_type": "qwen4_exp",
-    "n_siblings": 0,
-    "sibling_ids": []
+    "n_siblings": 1,
+    "sibling_ids": [
+     "windowsxp811203--Qwen3.8-Flash-Next-Abliterated@deb02632504b"
+    ]
    },
    "lifecycle": "FINGERPRINTED",
    "model_type": "qwen4_exp",
@@ -4845,7 +4847,7 @@
      "bench_state": "UNKNOWN",
      "candidate_id": "Qwen--Qwen3.8-Flash-Next@34567a4712bc",
      "claim_boundary": "Static sidecar artifact. No hardware measurement. Does not produce DIAGNOSTIC_RELATIVE or PROTECTED_ABSOLUTE. SLEEPING physical work is never filled in with a synthetic result.",
-     "detail": "architecture qwen4_exp is the role signal. no other specimen on the lake shares model_type=qwen4_exp - novel architecture. Distance from the incumbent is computed from that field, not from a human assignment.",
+     "detail": "architecture qwen4_exp is the role signal. 1 sealed/complete specimen(s) already share model_type=qwen4_exp: windowsxp811203--Qwen3.8-Flash-Next-Abliterated@deb02632504b. Distance from the incumbent is computed from that field, not from a human assignment.",
      "effect_class": "READ_ONLY",
      "evidence": [
       "/Volumes/corpdrive/hawking-modellake/manifests/Qwen--Qwen3.8-Flash-Next@34567a4712bc.json",
@@ -16296,7 +16298,7 @@
   "claims_without_seal": [],
   "n_claims_without_seal": 0,
   "n_completion_claims": 47,
-  "n_parseable_events": 1295
+  "n_parseable_events": 1321
  },
  "n_emitted_specimens": 55,
  "n_emitted_units": 330,
@@ -16305,7 +16307,7 @@
  "obligation": "G101",
  "question": "When a model seals, does anything happen without a human noticing?",
  "schema": "hawking.future.modellake_events.v1",
- "seal_sha256": "3859306fe4302282a54e2140745b7a144f3f47a91f593cd72c8a14a3dbf101f3",
+ "seal_sha256": "0d726fd898745615e60d6e2b5d88155dd1aadc58f094ce9e94263afb9208ab6d",
  "seal_triggers": [
   "fingerprint",
   "role evaluation",

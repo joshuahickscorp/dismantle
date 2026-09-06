@@ -161,29 +161,20 @@ HCLI_COMPACT_RESULT_SCHEMA: Dict[str, Any] = {
 # consumed ~6K characters in the measured O003 prompt. Keep the validator and
 # executor contract unchanged, but send the resident the smaller operational
 # envelope it needs for this one decision.
-_AGENTIC_SYSTEM_PROMPT = """You are the HCLI engineering worker for one bounded WorkUnit.
-DISK STATE and deterministic evidence are authority. Return exactly one JSON object.
-Choose kind=answer, mutation, or tool_use. Keep content concise and emit one next useful action.
-For mutation, operations and tests must be present and tests must name real verification.
-For tool_use, emit only the needed tool_calls; arguments are flat name/value string pairs.
-Omit empty operations, tests, and tool_calls arrays. Do not emit reasoning, markdown, or an essay.
-Paths are workspace-relative; never modify .git. HCLI adds receipt metadata and fills omitted arrays."""
+_AGENTIC_SYSTEM_PROMPT = """HCLI worker for one bounded WorkUnit. Disk state and deterministic evidence are authority.
+Return one JSON object with kind=answer|mutation|tool_use and concise content/action.
+Mutation includes operations/tests; tool_use includes flat name/value tool_calls. Omit empty arrays.
+No reasoning, markdown, or essay. Paths are workspace-relative; never modify .git. HCLI supplies receipts."""
 
 _AGENTIC_SCHEMA_INSTRUCTION = """
-Return exactly one JSON object and nothing else. Keep it compact and satisfy this contract:
-kind is one of answer|mutation|tool_use; content is a short string.
-Include operations only for mutations (each has op and path, with optional old/new text or lines).
-Include tests only for mutations. Include tool_calls only for tool_use; each has tool and flat
-string name/value arguments. Omit empty arrays. Do not restate evidence or rationale."""
+JSON only: kind=answer|mutation|tool_use; content is short. Mutations include operations/tests;
+tool_use includes tool_calls with flat name/value arguments. Omit empty arrays and rationale."""
 
 _AGENTIC_TOOL_CATALOG = (
-    "fs.read(path*:string,start_line:integer,end_line:integer); "
-    "fs.search(pattern*:string,root:string,glob:string,max_results:integer); "
-    "fs.list(path:string,recursive:boolean,glob:string); "
-    "filesystem.write(path*:string,content*:string,overwrite:boolean); "
-    "tests.run(paths:array); receipt.read(path*:string); git.diff(path:string); "
-    "git.status(path:string); tools.catalog(focus:string). "
-    "Use tools.catalog for an exact signature in an omitted domain."
+    "fs.read(path,start_line,end_line); fs.search(pattern,root,glob,max_results); "
+    "fs.list(path,recursive,glob); filesystem.write(path,content,overwrite); "
+    "tests.run(paths); receipt.read(path); git.diff(path); git.status(path); "
+    "tools.catalog(focus). Use tools.catalog for omitted signatures."
 )
 
 _SYSTEM_PROMPT = """You are the HCLI engineering worker.

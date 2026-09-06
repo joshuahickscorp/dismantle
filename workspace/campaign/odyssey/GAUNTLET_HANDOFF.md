@@ -546,3 +546,38 @@ made default and the temporary mission knob was removed. The verified
 production result remains the `22.047--22.266 s` compact-envelope O003 floor;
 the next implementation must trace why a manually compact packet is expanded
 before attempting another 10-second A/B.
+
+## O003 compact-contract and worker-memory correction — 2026-09-06
+
+The expansion boundary was found and repaired. The agentic path selected the
+compact schema, but the backend contract factory could clone the schema; an
+identity check therefore failed and the full pretty-printed schema was added
+to the user message. Separately, the worker was replaying an 18,269-character
+historical `context_memory` object. The worker now uses the compact agentic
+schema instruction independent of schema object identity and does not replay
+that whole-history cache. Disk state, named evidence, and the bounded WorkUnit
+packet remain authoritative.
+
+The real O003 dispatcher was then measured with a reversible
+`HCLI_WORKER_PACKET_CHAR_CAP` A/B and zero inline evidence:
+
+- packet cap `1,400`: `838` resident tokens, `15.503 s` prefill;
+- packet cap `900`: `669` resident tokens, `12.032 s` prefill;
+- compact micro packet cap `700` (honest compiler output `634` chars): `446`
+  resident tokens, `7.746 s` prefill, first decode reached.
+
+The last measurement is the first traced O003 path under `10 s`, a `14.301 s`
+improvement over the prior `22.047 s` floor. It was stopped before generation
+completion, so it proves prefill only and promotes no scientific result. The
+`600`-character full-mission attempt was correctly refused by the packet
+compiler because the minimum honest packet for the affected units was
+`631--638` characters; it performed no inference and is a rejected A/B.
+
+The stable worker envelope is now `384` system characters plus the minimal
+packet/contract. Approximate measured budgets are `~575` resident tokens for
+`10 s`, `~288` for `5 s`, and `~58` for `1 s`. The current honest micro packet
+is already below the 10-second budget. Five and one seconds still require a
+separate micro-packet contract or resident-kernel improvement and are not
+claimed. Focused regression coverage remains `57 passed`; two broader legacy
+context-compiler tests still fail on pre-existing over-cap expectations and
+were not altered by this lane.

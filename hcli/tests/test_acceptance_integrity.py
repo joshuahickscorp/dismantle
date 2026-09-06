@@ -128,6 +128,20 @@ class TestAcceptanceIntegrity(unittest.TestCase):
         self.assertNotEqual(files[0]["sha256_before"], files[0]["sha256_after"])
         self.assertTrue(files[0]["changed"])
 
+    def test_python_comment_only_change_is_a_noop_and_is_restored(self):
+        self._write("a.py", "x = 1\n")
+        with self.assertRaises(NoOpMutation):
+            self.engine._apply_operations(
+                [
+                    {
+                        "op": "append",
+                        "path": "a.py",
+                        "new_text": "# model marker\n",
+                    }
+                ]
+            )
+        self.assertEqual((self.engine.root / "a.py").read_text(), "x = 1\n")
+
     def test_append_empty_is_noop(self):
         self._write("a.py", "x = 1\n")
         with self.assertRaises(NoOpMutation):

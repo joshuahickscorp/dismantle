@@ -1058,6 +1058,13 @@ class Mission:
             if isinstance(found, dict):
                 units = found
         compiled = self._compiled if isinstance(self._compiled, dict) else {}
+        packet_cap = 4000
+        configured_packet_cap = os.environ.get("HCLI_WORKER_PACKET_CHAR_CAP")
+        if configured_packet_cap:
+            try:
+                packet_cap = max(256, int(configured_packet_cap))
+            except ValueError:
+                packet_cap = 4000
         packet = compile_worker_context(
             wu,
             compiled,
@@ -1067,6 +1074,7 @@ class Mission:
             failure_context=wu.failure_context,
             ledger=getattr(self, "ledger", None) or getattr(self, "_ledger", None),
             goal_ref=self._goal_ref_text(),
+            char_cap=packet_cap,
         )
         return {
             "unit_id": wu.id,

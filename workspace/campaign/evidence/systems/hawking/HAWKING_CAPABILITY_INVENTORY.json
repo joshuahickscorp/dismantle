@@ -315,7 +315,6 @@
     "tools/condense/glm52_teacher_forced_executor.py",
     "tools/condense/gravity_global_allocator.py",
     "tools/condense/kimi_k3_source_admission.py",
-    "tools/condense/merge_glm_teacher_forced_shards.py",
     "tools/condense/sandbox_ready_preflight.py",
     "tools/condense/tests/test_gptoss_real_forward_adversarial.py",
     "tools/cost_vector_t.py",

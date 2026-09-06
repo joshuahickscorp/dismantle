@@ -246,7 +246,6 @@
     "research/lab/operators/q80_rank_bits_sweep.py",
     "research/lab/operators/qwen30b_gravity_pack.py",
     "research/lab/operators/qwen38_genesis_children.py",
-    "research/lab/operators/qwen38_mlp_not_r160_pack.py",
     "research/lab/operators/sandbox_ready_preflight.py",
     "research/lab/qwen38_protected_run_verifier.py",
     "research/lab/runtime.py",

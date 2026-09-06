@@ -205,3 +205,9 @@ Within the low-level kernel-test family, 18 unreferenced predecode, Q4K,
 RoPE, output-projection, SwiGLU, and pair-accumulation tests were also retired.
 The two MHA tests named by the active prefill-KV census remain; the deleted
 micro-tests had no external caller or current acceptance role.
+
+The remaining unreferenced generic micro-kernel test cluster was then retired:
+QKV/RoPE append, batched MMA/predecode, pair/SwiGLU, KV scatter, int8
+quantization, byte-cut, sidecar, and multisequence tail probes. These were
+standalone historical probes with no current production or acceptance caller;
+model-specific and census-linked verification remains.

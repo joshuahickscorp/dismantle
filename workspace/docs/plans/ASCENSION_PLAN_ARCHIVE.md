@@ -59,3 +59,7 @@ complete drafts and JSON schedules for historical recovery.
 The retired Proto steer is likewise represented by
 `workspace/docs/plans/FUNCTIONAL_TRANSFER_PROGRAM.md` and the sealed
 Frankenstein program data.
+
+The unregistered scaffold-only `ascension_tg_gauntlet` and the Proto-era
+`sandbox_ready_preflight` operator/test/wrapper family were also removed. Their
+boundary is historical; the live `lab.execution_sandbox` policy remains.

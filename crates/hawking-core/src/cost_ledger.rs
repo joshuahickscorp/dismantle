@@ -2315,11 +2315,24 @@ mod tests {
                 "covered={covered} wall={} delta={delta} budget={delta_budget}",
                 report.wall_us
             );
+            // Exclusivity is checked against WALL, not against `enc`. The four
+            // sleeps do not overshoot uniformly under load, so attn/enc compares
+            // two independently-stretched groups and drifts badly: measured
+            // 1.755, 2.224 and 2.330 across three idle runs here and 2.27 and
+            // 2.55 on CI. attn/wall is a part against the whole that contains
+            // it, so a stretch moves both together -- 0.481, 0.508, 0.518 over
+            // the same runs, a 4% spread against 33% for the ratio to enc.
+            //
+            // attn spans two of the four sleeps, so exclusive sits at ~0.50; a
+            // ledger that let attn absorb the nested encode would span three and
+            // sit at ~0.75. 0.62 splits them with room on both sides.
             assert!(
-                attn * 2 < enc * 5,
+                attn * 100 < report.wall_us * 62,
                 "attn should exclude nested encode: attn={attn} enc={enc} \
-                 ratio={:.2} (exclusive is ~2.0, an inclusive ledger is ~3.0)",
-                attn as f64 / enc.max(1) as f64
+                 wall={} attn/wall={:.3} (exclusive is ~0.50, an inclusive \
+                 ledger is ~0.75)",
+                report.wall_us,
+                attn as f64 / report.wall_us.max(1) as f64
             );
             assert!(
                 report.profiler_overhead_us > 0 || report.profiler_overhead_fraction >= 0.0,

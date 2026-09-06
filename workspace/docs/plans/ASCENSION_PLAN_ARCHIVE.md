@@ -194,3 +194,9 @@ The CPU-only Qwen30 packed-matvec exactness producer was likewise retired
 after its result and negative boundary were already captured by the Noetic
 census and sealed receipts. The current Qwen30 runtime's packed-matvec path
 and its defining tests are independent of that historical producer.
+
+The versioned `hawking-core` parity-test generation (`v030` through `v2s`,
+Phase-2, draft, vocabulary-prune, and W4A8 prototype tests) was also retired
+as superseded standalone verification scaffolding. It had no current
+production or acceptance caller; current named Gravity/Qwen/Flash tests remain
+the active proof boundary. Git retains the historical tests.

@@ -1,6 +1,6 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` after the duplicate Noetic negative-science
+Measured on `refactor/event-horizon` after the receipt-only Flash NX audit
 producer retirement wave. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 491,324 | 1,422 |
-| active total | 989,336 | 2,057 |
+| support | 489,722 | 1,421 |
+| active total | 987,734 | 2,056 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -73,6 +73,8 @@ also included in the total and must not become an UNKNOWN bucket.
 - `tools/future`: the static CUDA literature adapter was retired after its
   sealed receipt became the canonical record; `science_corpus` retains the
   schema vocabulary needed to read those hypotheses.
+  The uncalled Flash NX completeness producer was then retired; its sealed
+  audit receipt remains the live causality source.
   The parallel future WorkGraph runtime was then sublated into a bounded
   arrival-payload builder; HCLI `scheduler`/`dag_store` now own scheduling.
   The parallel 22-frontier runtime was subsequently retired; its sealed state

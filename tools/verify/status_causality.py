@@ -421,11 +421,11 @@ CONSEQUENTIAL_GATES: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "flash_nx_audit",
-        "module": "tools/future/flash_nx_audit.py",
+        "module": None,
         "receipt": "receipts/future/FLASH_NX_COMPLETENESS_AUDIT.json",
-        "emit_fn": "build",
-        "why": "seven_all_met is the completeness door for the Flash NX path",
-        "selection": "scan already reaches FLASH_NX_COMPLETENESS_AUDIT",
+        "emit_fn": None,
+        "why": "sealed receipt records the completeness door for the Flash NX path",
+        "selection": "scan reaches FLASH_NX_COMPLETENESS_AUDIT; producer is retired",
         "named_statuses": ["seven_all_met_is_false"],
     },
     {

@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 500,389 | 1,436 |
-| active total | 998,401 | 2,071 |
+| support | 499,997 | 1,434 |
+| active total | 998,009 | 2,069 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -132,6 +132,9 @@ also included in the total and must not become an UNKNOWN bucket.
   physical-metric audit producer and its self-contained test were retired after
   sealed audit/canary receipts became the evidence owner; the current EBPW
   category gate remains.
+  The standalone retirement-gate producer and receipt-only test were retired;
+  `tools/odyssey_ctl.py` remains the live retirement authority and the sealed
+  QWEN retirement receipt remains archival.
   The uncalled DeepSeek schedule/oracle, residual-teacher admission, and Qwen
   metadata-preflight cluster was then compressed to
   `STALE_RESEARCH_CLUSTER_ARCHIVE.md`; no live DeepSeek stream or Qwen capture

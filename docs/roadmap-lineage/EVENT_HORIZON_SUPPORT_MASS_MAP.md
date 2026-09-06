@@ -202,6 +202,10 @@ also included in the total and must not become an UNKNOWN bucket.
   its measured bit-exact parallelism result and reproduction command remain in
   the research evidence archive. The live GLM shard merger remains because its
   probe and test import it (391 counted LOC removed).
+- `tools/condense`: the uncalled GLM teacher-forced parallelism probe was retired;
+  its measured result and two-worker command remain in the research evidence
+  archive. The underlying shard merger and its test remain live (498 counted
+  LOC removed).
 - `research/lab/tests`: tests for already-deleted Ascension supervisors and
   absent JSON contract fixtures were removed; current manager-protocol and
   Qwen30 physical tests remain. The uncalled manager-tournament readiness /

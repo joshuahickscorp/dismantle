@@ -19,15 +19,21 @@ Prompt budget is tight on purpose -- usable input is 7,168 tokens against a
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-W = Path(__file__).resolve().parent
-PROFILE = W / "ascension_envelope.hawking.json"
-LOG = W / "drive_rounds.jsonl"
+# The envelope lives at the REPO ROOT, not in tools/. As written this resolved to
+# tools/ascension_envelope.hawking.json, which does not exist, so every round died
+# in 0.2s with "model path ... not found" and the loop scored the error string as
+# a weak answer instead of a broken invocation. HCLI_HAWKING_PROFILE overrides it
+# so a variant profile (e.g. sampled decoding) can be driven without editing this.
+W = Path(__file__).resolve().parent.parent
+PROFILE = Path(os.environ.get("HCLI_HAWKING_PROFILE") or (W / "ascension_envelope.hawking.json"))
+LOG = Path(__file__).resolve().parent / "drive_rounds.jsonl"
 
 # Signals that an answer is soft. Each maps to the pressure that answers it.
 HEDGES = re.compile(r"\b(might|could|may|possibly|likely|appears|seems|probably|suggests)\b", re.I)

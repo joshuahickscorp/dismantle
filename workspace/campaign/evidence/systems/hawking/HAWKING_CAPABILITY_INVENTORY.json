@@ -371,7 +371,6 @@
     "tools/future/ebpw_categories.py",
     "tools/future/expert_bank_school.py",
     "tools/future/external_specimen_seal.py",
-    "tools/future/fidelity_hierarchy.py",
     "tools/future/flash_schools.py",
     "tools/future/fusion_sim.py",
     "tools/future/hmf_objects.py",

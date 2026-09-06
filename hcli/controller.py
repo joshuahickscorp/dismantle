@@ -15,7 +15,7 @@ from .config import Config
 from .engine import Engine
 from .events import EventBus
 from .goal_bank import GoalBank, GoalBankError
-from .knowledge import KnowledgeStore
+from .knowledge import KnowledgeStore, _sanitise_text
 from .max_policy import grok_pool_snapshot
 from .mission import (
     TERMINAL_MISSION_PHASES,
@@ -1364,7 +1364,14 @@ class Controller:
 
     @staticmethod
     def _memory_text(value: Any, limit: int = _MEMORY_TEXT_LIMIT) -> str:
-        text = str(value or "").strip()
+        # Every compaction-memory string reaches a worker prompt through here, so
+        # this is where control tokens have to die. HCLI's own error text names
+        # `<think>` and `reasoning_content`; pasting that into the next prompt
+        # steers the resident into a reasoning-only reply, which trips the guard
+        # that rejects reasoning, which records the same text again. Sanitising
+        # only the knowledge store missed this path -- receipts carry `error` and
+        # `blocker` straight from disk.
+        text = _sanitise_text(str(value or "").strip())
         if len(text) > limit:
             return text[: limit - 1].rstrip() + "…"
         return text

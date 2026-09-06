@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 503,841 | 1,450 |
-| active total | 1,001,853 | 2,085 |
+| support | 502,322 | 1,442 |
+| active total | 1,000,334 | 2,077 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -159,6 +159,11 @@ also included in the total and must not become an UNKNOWN bucket.
   Two uncalled Odyssey worker scripts were also retired, and their stale process
   needles were removed from qualification; the matched-bits and teacher-capture
   receipts remain archival.
+  The superseded Odyssey G005/G013 performance producer cluster was then
+  retired: performance qualification, GPU cleanliness, perf addendum, the
+  private protected-window helper, and their coupled tests. Their sealed
+  measurements remain archival; HCLI/AgentOS and accelerator qualification own
+  current protected benchmarking.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

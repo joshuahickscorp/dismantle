@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 470,417 | 1,385 |
-| active total | 968,445 | 2,020 |
+| support | 469,985 | 1,385 |
+| active total | 968,013 | 2,020 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -79,6 +79,8 @@ also included in the total and must not become an UNKNOWN bucket.
   probe/repack and its independent tests remain.
   The uncalled GLM teacher-forced shard merger and producer-only test were
   retired; retained GLM/Frankenstein receipts preserve the prior evidence.
+  The uncalled C2M-T3 source-admission census was retired; its sealed project
+  receipt and current C2M/AKB validators remain.
   The uncalled fidelity-hierarchy producer was then retired; its sealed
   receipt remains archival evidence.
   The uncalled MAXX resource-pipeline producer was then retired; its sealed

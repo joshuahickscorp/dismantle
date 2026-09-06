@@ -794,7 +794,7 @@ def harvest_sealed_specimens(
     when tools.future.sleeping_specimens.sealed_source_ready(tag) is true.
     Disk is authority; this never mints a synthetic COMPLETED.
     """
-    from tools.future.sleeping_specimens import (
+    from tools.odyssey.modellake_watch import (
         WAKE_SEALED_SOURCE_READY,
         sealed_source_ready,
     )

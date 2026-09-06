@@ -32,6 +32,7 @@ claims belong to the live roadmap, receipts, HCLI/AgentOS contracts, and
 | Python reachability artifact index | uncalled duplicate query/index implementation; the Rust `hawking-index` artifact owner remains the live sidecar authority and the JSON receipt remains immutable evidence | `crates/hawking-index/src/artifact.rs` |
 | Odyssey manifest-backfill and read-budget utilities | zero current callers or tests; ModelLake manifest ownership and specimen-open budget gates remain authoritative | `tools/odyssey/modellake_index.py`, `tools/odyssey/specimen_open.py` |
 | Headless mixed-max and affine2-g64 harnesses | no executable callers or evidence consumers; the mixed-backend no-NullEngine rule remains in acceptance, while no sealed affine2 result required the harness | `tools/acceptance/context/gates.py` |
+| Future sleeping-specimen adapter | watcher-log tailing and sealed-source wake predicates were sublated into the live ModelLake watcher; the standalone future workunit/curriculum wrapper was deleted | `tools/odyssey/modellake_watch.py`, `tools/future/wakeup.py` |
 | nomenclature lexicon | a noun earns a live owner only when it has a caller, verifier, or current receipt; aliases and dead namespace labels are not capability | HCLI nomenclature and catalogs |
 
 ## Sub-1 evidence packet disposition

@@ -1461,7 +1461,7 @@ def _live_complete_tags_from_watcher() -> list[str]:
     while this lane ran. A live arrival is a pending acquisition that finished.
     """
     try:
-        from tools.future.sleeping_specimens import (
+        from tools.odyssey.modellake_watch import (
             _read_jsonl_tail,
             read_latest_watcher_sample,
             watcher_log_path,

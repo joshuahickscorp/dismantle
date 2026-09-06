@@ -58,22 +58,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 27 | `crates/hide-kernel` | 1,796 | CURRENT_CORE_SUPPORT |
 | 28 | `docs/roadmap` | 1,671 | CURRENT_META |
 | 29 | `receipts/runtime` | 1,662 | IMPORTANT_ARCHIVE |
-| 14 | `docs/roadmap-lineage` | 273 | IMPORTANT_ARCHIVE |
-| 15 | `workspace/docs` | 2,587 | IMPORTANT_ARCHIVE / CURRENT_META |
-| 16 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |
-| 17 | `tools/odyssey_ctl.py` | 8,132 | CURRENT_CORE_SUPPORT |
-| 18 | `crates/hide-backend` | 7,571 | CURRENT_CORE_SUPPORT |
-| 19 | `workspace/ops` | 386 | CURRENT_CORE_SUPPORT / IMPORTANT_ARCHIVE |
-| 20 | `tools/ascent` | 4,972 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 21 | `tools/odyssey_patient_runner.py` | 4,604 | CURRENT_CORE_SUPPORT |
-| 22 | `tools/audit` | 4,466 | CURRENT_VERIFICATION |
-| 23 | `receipts/audit` | 53 | IMPORTANT_ARCHIVE |
-| 24 | `tools/theia` | 3,984 | ACTIVE_RESEARCH |
-| 25 | `tools/agentos` | 3,981 | CURRENT_CORE_SUPPORT |
-| 26 | `docs/ultragoals` | 3,783 | IMPORTANT_ARCHIVE / CURRENT_META |
-| 27 | `civilization/build_state.py` | 2,685 | CURRENT_CORE_SUPPORT |
-| 28 | `tools/sovereign` | 2,602 | CURRENT_VERIFICATION |
-| 29 | `tools/doctor` | 2,361 | CURRENT_VERIFICATION |
+| 30 | `tools/qwen38_recon_disc` | 1,465 | IMPORTANT_ARCHIVE / ACTIVE_RESEARCH |
 
 ## Disposition rules for the next waves
 

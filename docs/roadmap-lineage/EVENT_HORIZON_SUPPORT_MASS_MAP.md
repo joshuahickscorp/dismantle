@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 481,732 | 1,408 |
-| active total | 979,744 | 2,043 |
+| support | 476,691 | 1,399 |
+| active total | 974,703 | 2,034 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -85,6 +85,9 @@ also included in the total and must not become an UNKNOWN bucket.
   retired; their sealed measurement receipts remain archival evidence.
   The broken, uncalled headless dispatch/organ measurement generation was then
   retired; its dispatch, roof, organ, and whole-model receipts remain archival.
+  The sealed DeepSeek public-Xet autotune, sustained-transfer, and range-slice
+  generators were retired; frozen campaign evidence remains archival and the
+  live native header executor remains.
   The parallel future WorkGraph runtime was then sublated into a bounded
   arrival-payload builder; HCLI `scheduler`/`dag_store` now own scheduling.
   The parallel 22-frontier runtime was subsequently retired; its sealed state

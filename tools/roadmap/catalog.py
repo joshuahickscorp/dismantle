@@ -549,7 +549,6 @@ DISK_TRUTH_MODULES: tuple[str, ...] = (
     "tools/accelerator/machine_genome.py",
     "tools/odyssey/device_profiles.py",
     "tools/future/autonomy_scars.py",
-    "tools/odyssey/pareto_archive.py",
     "tools/accelerator/device_ascension.py",
     "tools/future/tabula.py",
     "tools/accelerator/fusion_planner.py",
@@ -625,8 +624,8 @@ GENES: dict[str, dict[str, Any]] = {
            paths=("tools/future/qualification_pipeline.py",),
            modules=("tools.future.qualification_pipeline",)),
     VD: _p(era="V", gene=VD, acc=(953, 974),
-           paths=("tools/odyssey/pareto_archive.py", "tools/odyssey/tournament.py"),
-           modules=("tools.odyssey.pareto_archive", "tools.odyssey.tournament")),
+           paths=("tools/odyssey/tournament.py",),
+           modules=("tools.odyssey.tournament",)),
     VE: _p(era="V", gene=VE, acc=(976, 996), paths=(), modules=()),
 }
 

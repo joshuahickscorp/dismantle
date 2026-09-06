@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 474,734 | 1,388 |
-| active total | 972,746 | 2,023 |
+| support | 474,165 | 1,385 |
+| active total | 972,177 | 2,020 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -91,6 +91,8 @@ also included in the total and must not become an UNKNOWN bucket.
   The closed Odyssey corpus-ingestion sidecar and tests for absent streaming/
   rate-binding producers were retired; its barrier semantics remain in the
   compact disposition note and current ModelLake/HCLI paths remain unchanged.
+  Dormant Odyssey T0 tournament/runtime-reproduction and adapter surfaces were
+  retired; sealed governance evidence and the accelerator-owned bridge remain.
   The parallel future WorkGraph runtime was then sublated into a bounded
   arrival-payload builder; HCLI `scheduler`/`dag_store` now own scheduling.
   The parallel 22-frontier runtime was subsequently retired; its sealed state

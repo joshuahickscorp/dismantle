@@ -623,9 +623,7 @@ GENES: dict[str, dict[str, Any]] = {
     VC: _p(era="V", gene=VC, acc=(932, 951),
            paths=("tools/future/qualification_pipeline.py",),
            modules=("tools.future.qualification_pipeline",)),
-    VD: _p(era="V", gene=VD, acc=(953, 974),
-           paths=("tools/odyssey/tournament.py",),
-           modules=("tools.odyssey.tournament",)),
+    VD: _p(era="V", gene=VD, acc=(953, 974), paths=(), modules=()),
     VE: _p(era="V", gene=VE, acc=(976, 996), paths=(), modules=()),
 }
 

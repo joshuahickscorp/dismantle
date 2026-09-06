@@ -33,6 +33,7 @@ claims belong to the live roadmap, receipts, HCLI/AgentOS contracts, and
 | Odyssey manifest-backfill and read-budget utilities | zero current callers or tests; ModelLake manifest ownership and specimen-open budget gates remain authoritative | `tools/odyssey/modellake_index.py`, `tools/odyssey/specimen_open.py` |
 | Headless mixed-max and affine2-g64 harnesses | no executable callers or evidence consumers; the mixed-backend no-NullEngine rule remains in acceptance, while no sealed affine2 result required the harness | `tools/acceptance/context/gates.py` |
 | Future sleeping-specimen adapter | watcher-log tailing and sealed-source wake predicates were sublated into the live ModelLake watcher; the standalone future workunit/curriculum wrapper was deleted | `tools/odyssey/modellake_watch.py`, `tools/future/wakeup.py` |
+| Future Odyssey launch-gate wrappers | no HCLI or acceptance production imports; launch orchestration, curriculum, specimen verification, and external-seal wrappers were speculative future-only machinery, while historical causality remains receipt-backed | `receipts/future/REACHABILITY_TRIAGE.json`, `tools/verify/status_causality.py` |
 | nomenclature lexicon | a noun earns a live owner only when it has a caller, verifier, or current receipt; aliases and dead namespace labels are not capability | HCLI nomenclature and catalogs |
 
 ## Sub-1 evidence packet disposition

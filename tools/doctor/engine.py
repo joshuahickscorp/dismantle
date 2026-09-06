@@ -591,8 +591,8 @@ def _found_prior() -> list[dict[str, str]]:
             "what": "Historical CANONICAL_ORDER + THREE_ZEROS evidence retained as a receipt; the redundant producer is retired.",
         },
         {
-            "path": "tools/future/specimen_events.py",
-            "what": "fingerprint_from_config (config+index, weights_opened=False). Algorithm reused; module not imported (hcli.persist absent in this sparse cone).",
+            "path": "receipts/future/SPECIMEN_EVENTS.json",
+            "what": "Historical specimen-event transition evidence retained; its one-shot producer is retired and Doctor keeps only the small fingerprint rule it needs.",
         },
         {
             "path": "tools/future/negative_index.py",

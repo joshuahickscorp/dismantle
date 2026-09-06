@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 474,164 | 1,385 |
-| active total | 972,176 | 2,020 |
+| support | 472,470 | 1,384 |
+| active total | 970,482 | 2,019 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -93,6 +93,8 @@ also included in the total and must not become an UNKNOWN bucket.
   compact disposition note and current ModelLake/HCLI paths remain unchanged.
   Dormant Odyssey T0 tournament/runtime-reproduction and adapter surfaces were
   retired; sealed governance evidence and the accelerator-owned bridge remain.
+  The uncalled future specimen-events/workgraph producer was retired; its
+  sealed transition receipt remains and Doctor retains only the needed rule.
   The parallel future WorkGraph runtime was then sublated into a bounded
   arrival-payload builder; HCLI `scheduler`/`dag_store` now own scheduling.
   The parallel 22-frontier runtime was subsequently retired; its sealed state

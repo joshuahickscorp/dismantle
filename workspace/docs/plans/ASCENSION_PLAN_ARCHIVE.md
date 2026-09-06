@@ -79,3 +79,9 @@ the negative-science reader. The retired lane names are preserved here:
 `q80-deltanet-gqa2`, `q80-lowrank-algebra`, and `q80-runtime-residency`.
 Their detailed prose remains recoverable in Git history; current findings live
 in sealed receipts and the canonical HCLI/AgentOS research surfaces.
+
+The uncalled `workspace/ops/ascension/` pressure-governor, garbage-ecosystem,
+notification, bounded-runner, and after-Proto-monitor package was also retired
+as one legacy control-plane family. HCLI resources/autonomy and the current
+receipt/evidence authorities remain; the package's tests and implementation are
+recoverable from Git history.

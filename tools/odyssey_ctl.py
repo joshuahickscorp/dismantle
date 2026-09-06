@@ -2769,10 +2769,6 @@ def arch_kind(oxx: str, pkt: dict | None, census: dict | None) -> str:
     return "dense"
 
 
-def has_census(oxx: str) -> bool:
-    return census_path(oxx).is_file()
-
-
 def load_census(oxx: str) -> dict | None:
     p = census_path(oxx)
     if not p.is_file():
@@ -2791,14 +2787,6 @@ def _unknownish(val) -> bool:
     return False
 
 
-def has_routing(pkt: dict | None) -> bool:
-    r = (pkt or {}).get("routing") or {}
-    if _unknownish(r.get("entropy")):
-        return False
-    ev = evidence_class(r.get("_evidence"))
-    return ev not in (None, "UNKNOWN")
-
-
 def has_baseline(pkt: dict | None) -> bool:
     ex = (pkt or {}).get("execution") or {}
     tps = ex.get("baseline_tps")
@@ -2810,21 +2798,6 @@ def has_baseline(pkt: dict | None) -> bool:
     if ev in (None, "UNKNOWN") and _unknownish(ex.get("baseline_tps")):
         # specimen tps still counts as a baseline for sensitivity gating
         return not _unknownish(ex.get("tps_specimen"))
-    return True
-
-
-def missing_sensitivity(pkt: dict | None) -> bool:
-    rep = (pkt or {}).get("representation") or {}
-    return rep.get("per_organ_sensitivity") in (None, "", {}, [])
-
-
-def needs_ssm_accounting(pkt: dict | None, kind: str) -> bool:
-    if kind != "hybrid":
-        return False
-    rep = (pkt or {}).get("representation") or {}
-    organs = rep.get("organs_bytes_GB") or {}
-    if "ssm" in organs:
-        return False
     return True
 
 
@@ -3017,84 +2990,6 @@ def pick_aggressive_spec(oxx: str, template: str,
             continue
         return str(spec)
     return default
-
-
-def _families_tried(oxx: str, pkt: dict | None, entries: list | None) -> list:
-    tried: list = []
-    grav = (pkt or {}).get("gravity") or {}
-    for key in ("wins", "kills"):
-        for item in grav.get(key) or []:
-            tried.append(item)
-    last = grav.get("last")
-    if isinstance(last, dict):
-        tried.append(last)
-    for e in entries or []:
-        if e.get("patient_id") != oxx:
-            continue
-        mech = str(e.get("mechanism_id") or "")
-        if mech.startswith("gravity") or is_aggressive_mechanism(mech):
-            tried.append(e)
-    return tried
-
-
-def _patient_best_class(oxx: str, pkt: dict | None, entries: list | None) -> str:
-    grav = (pkt or {}).get("gravity") or {}
-    if grav.get("candidate_class"):
-        return str(grav["candidate_class"])
-    last = grav.get("last") if isinstance(grav.get("last"), dict) else {}
-    if last.get("candidate_class"):
-        return str(last["candidate_class"])
-    for e in reversed(list(entries or [])):
-        if e.get("patient_id") == oxx and e.get("candidate_class"):
-            return str(e["candidate_class"])
-    if conventional_anchor_exists(oxx, entries):
-        return "CONVENTIONAL_ANCHOR"
-    return ""
-
-
-def _patient_target_delta(oxx: str, pkt: dict | None):
-    man = manifest_entry(oxx)
-    pressure = None
-    raw_p = man.get("stored_bpw_pressure")
-    try:
-        if raw_p is not None and raw_p != "UNKNOWN":
-            pressure = float(raw_p)
-    except (TypeError, ValueError):
-        pressure = None
-    if pressure is None:
-        zones = load_odyssey_policy().get("target_pressure_zones_bpw") or {}
-        try:
-            pressure = float(zones.get("pressure") or 2.5)
-        except (TypeError, ValueError):
-            pressure = 2.5
-    stored = None
-    grav = (pkt or {}).get("gravity") or {}
-    last = grav.get("last") if isinstance(grav.get("last"), dict) else {}
-    for src in (last, (pkt or {}).get("representation") or {}):
-        if not isinstance(src, dict):
-            continue
-        for key in ("complete_bpw", "stored_bpw", "best_stored_bpw_eq"):
-            if src.get(key) is None:
-                continue
-            try:
-                stored = float(src[key])
-                break
-            except (TypeError, ValueError):
-                continue
-        if stored is not None:
-            break
-    if stored is None:
-        return None
-    return stored - float(pressure)
-
-
-def should_novelty_escalate(oxx: str, pkt: dict | None,
-                            entries: list | None,
-                            state: dict | None = None) -> bool:
-    # The former Grok novelty lane was optional scaffolding, not a current
-    # HCLI/AgentOS authority. Keep the predicate as a stable false boundary so
-    # old state cannot silently schedule an unowned external lane.
-    return False
 
 
 def _ob_record(work: dict, template: str, *, source: str) -> dict:

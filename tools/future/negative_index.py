@@ -709,46 +709,6 @@ def _parse_register(rel: str, obj: dict[str, Any], origin: str) -> list[Scar]:
     return out or [_unparsed(rel, "register had no entries", origin)]
 
 
-def _parse_noetic(rel: str, obj: dict[str, Any], origin: str) -> list[Scar]:
-    out = []
-    for rec in obj.get("entries") or []:
-        if not isinstance(rec, dict):
-            continue
-        scope = rec.get("scope") if isinstance(rec.get("scope"), dict) else {}
-        oid = rec.get("id") or rec.get("seed") or "NNS"
-        kind = _pick(rec, "kind")
-        reopen_today = rec.get("reopen_satisfied_today")
-        verd = kind or "NEGATIVE"
-        # PROPERTY_OF_IDEA stays refuse-eligible unless reopen already holds.
-        eligible_override = None
-        if reopen_today is True:
-            eligible_override = False
-            verd = "LIVE_REOPEN_HOLDS"
-        scar = _scar(
-            rel,
-            origin,
-            str(oid),
-            model_text=_pick(scope, "model") or _pick(rec, "model"),
-            organ_text=_pick(scope, "organ") or _pick(rec, "organ"),
-            representation_text=_pick(scope, "codec", "regime") or _pick(rec, "representation"),
-            family_text=_pick(rec, "seed", "id") + " " + _pick(rec, "claim_refuted"),
-            mechanism=_pick(rec, "seed") or _pick(rec, "claim_refuted"),
-            verdict=verd,
-            status=kind,
-            reopen=_pick(rec, "reopen_condition"),
-            claim=_pick(rec, "claim_refuted", "kind_reasoning"),
-        )
-        if eligible_override is False:
-            scar.refuse_eligible = False
-        elif kind == "PROPERTY_OF_IDEA" and reopen_today is not True:
-            scar.refuse_eligible = True
-        elif kind == "ARTIFACT_OF_METHOD":
-            # The idea is not dead; the method is. Do not blanket-refuse the idea.
-            scar.refuse_eligible = False
-        out.append(scar)
-    return out or [_unparsed(rel, "noetic receipt had no entries", origin)]
-
-
 def _parse_odyssey(rel: str, obj: dict[str, Any], origin: str) -> list[Scar]:
     out = []
     for rec in obj.get("entries") or []:
@@ -925,8 +885,6 @@ def parse_json(rel: str, text: str, origin: str) -> list[Scar]:
             return _parse_foundry(rel, obj, origin)
     if schema.endswith("negative_science_register.v1"):
         return _parse_register(rel, obj, origin)
-    if schema.endswith("noetic_negative_science.v1"):
-        return _parse_noetic(rel, obj, origin)
     if schema.endswith("negative_science.v2") and "entries" in obj:
         return _parse_negative_science_v2(rel, obj, origin)
     if schema.endswith("odyssey.negative_science.v1") or rel.endswith("odyssey/NEGATIVE_SCIENCE.json"):

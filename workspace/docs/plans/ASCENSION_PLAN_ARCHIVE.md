@@ -110,6 +110,16 @@ decisions remain. The retired card generation is recoverable from Git history;
 its surviving information is the patient state, evidence, and current owner
 paths rather than repeated prompt prose.
 
+## Retired settled Odyssey composition analyzers (2026-09-05)
+
+The uncalled rebuild/composition analysis generation was removed from active
+HEAD: `clean_rebuild.py`, `cold_vs_transfer.py`, `model2_select.py`,
+`composition_attribution.py`, `composition_isolation.py`,
+`reconstruction_isolation.py`, `feasibility.py`, and their two dedicated
+tests. The settled findings remain in the corresponding headless receipts;
+current ModelLake, acceptance, performance-qualification, transfer-rehearsal,
+and T0 ownership paths remain intact. Git history retains the exact analyzers.
+
 The unregistered scaffold-only `ascension_tg_gauntlet` and the Proto-era
 `sandbox_ready_preflight` operator/test/wrapper family were also removed. Their
 boundary is historical; the live `lab.execution_sandbox` policy remains.

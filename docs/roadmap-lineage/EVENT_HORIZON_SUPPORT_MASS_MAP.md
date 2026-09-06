@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 629,226 | 1,791 |
-| active total | 1,127,238 | 2,426 |
+| support | 619,470 | 1,791 |
+| active total | 1,117,482 | 2,426 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -43,7 +43,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 11 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 12 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 13 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 14 | `docs/roadmap-lineage` | 9,892 | IMPORTANT_ARCHIVE |
+| 14 | `docs/roadmap-lineage` | 273 | IMPORTANT_ARCHIVE |
 | 15 | `workspace/docs` | 9,554 | IMPORTANT_ARCHIVE / SUPERSEDED audit required |
 | 16 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |
 | 17 | `tools/odyssey_ctl.py` | 8,132 | CURRENT_CORE_SUPPORT |
@@ -114,6 +114,9 @@ also included in the total and must not become an UNKNOWN bucket.
   owner was changed.
   The duplicate, uncalled GLM52 activation-pack v2 generation was retired;
   v1 remains the active pack owner and the campaign registry was corrected.
+  The superseded H-ROADMAP copy was then removed from active HEAD; its digest,
+  provenance, and recoverability through Git history remain in PRESERVATION.md,
+  while the operator-owned current roadmap remains the only resolver authority.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

@@ -95,17 +95,11 @@ def test_no_gate_claims_a_physical_measurement_it_does_not_have():
     )
 
 
-def test_the_preserved_lineage_still_matches_its_recorded_hash():
-    """Old authority must remain byte-identical to what was preserved."""
-    import hashlib
-
+def test_the_superseded_lineage_identity_remains_compacted():
+    """Historical identity survives without a duplicate active roadmap copy."""
     record = (LINEAGE / "PRESERVATION.md").read_text()
-    m = re.search(r"sha256\s+([0-9a-f]{64})", record)
-    assert m, "PRESERVATION.md no longer records a hash"
-    copy = LINEAGE / "H-ROADMAP.superseded-2026-09-02.md"
-    assert copy.is_file(), "the preserved roadmap copy is gone"
-    got = hashlib.sha256(copy.read_bytes()).hexdigest()
-    assert got == m.group(1), "the preserved lineage copy was modified"
+    assert re.search(r"sha256\s+[0-9a-f]{64}", record)
+    assert "Git history" in record
 
 
 def test_blocker_class_is_derived_from_evidence_not_assigned():

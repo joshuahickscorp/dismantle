@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 505,325 | 1,459 |
-| active total | 1,003,337 | 2,094 |
+| support | 504,933 | 1,456 |
+| active total | 1,002,945 | 2,091 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -148,6 +148,9 @@ also included in the total and must not become an UNKNOWN bucket.
   receipt and independent receipt tests remain. The uncalled future
   orchestration connector was then retired as well; its binding receipt remains
   archival while HCLI/AgentOS owns active scheduling.
+  The uncalled Odyssey transfer-rehearsal producer and its producer-only tests
+  were retired; QWEN/FLASH transfer receipts remain as historical evidence and
+  the current Odyssey II harness remains separate.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

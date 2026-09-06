@@ -24,6 +24,7 @@ claims belong to the live roadmap, receipts, HCLI/AgentOS contracts, and
 | retired-controller shell test harness | former controller cases had no live implementation or receipt owner; the campaign engine and HCLI verification paths remain | current campaign-engine/HCLI tests |
 | orphan research registry / DSV4F source verifier | each was referenced only by its own dedicated test and had no current caller or receipt owner; their verdicts remain recoverable in Git | current Gravity/Doctor capture authorities |
 | optional Odyssey Grok novelty engine | disabled-by-default external hypothesis lanes had no HCLI/AgentOS owner or current receipt authority; deterministic model work remains | deterministic Odyssey/HCLI lanes |
+| HCLI persistence audit runner | one-shot crash/atomicity demonstrations were already sealed; runtime persistence code is live and the receipt remains the evidence authority | `receipts/headless/HCLI_PERSISTENCE_AUDIT.json` |
 | nomenclature lexicon | a noun earns a live owner only when it has a caller, verifier, or current receipt; aliases and dead namespace labels are not capability | HCLI nomenclature and catalogs |
 
 ## Sub-1 evidence packet disposition

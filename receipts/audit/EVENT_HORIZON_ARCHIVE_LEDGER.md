@@ -26,6 +26,7 @@ claims belong to the live roadmap, receipts, HCLI/AgentOS contracts, and
 | optional Odyssey Grok novelty engine | disabled-by-default external hypothesis lanes had no HCLI/AgentOS owner or current receipt authority; deterministic model work remains | deterministic Odyssey/HCLI lanes |
 | HCLI persistence audit runner | one-shot crash/atomicity demonstrations were already sealed; runtime persistence code is live and the receipt remains the evidence authority | `receipts/headless/HCLI_PERSISTENCE_AUDIT.json` |
 | Qwen3.8 Python genesis-child manager | uncalled process wrapper had no live caller beyond its CLI shim; the Rust `ascension_qwen38_shared_sessions` example remains the executable authority | current Rust Qwen3.8 example |
+| TG32 DeepSeek Flash-MLA GPU trace | 4,383 dispatch samples were archival forensic detail, not a live input; the exact trace is gzip-retained and its hash-bound result is active in the compact summary | `workspace/campaign/evidence/runtime/tg/archive/TG32_DEEPSEEK_V2_LITE_FLASH_MLA_GPU_TRACE_SUMMARY.json` |
 | nomenclature lexicon | a noun earns a live owner only when it has a caller, verifier, or current receipt; aliases and dead namespace labels are not capability | HCLI nomenclature and catalogs |
 
 ## Sub-1 evidence packet disposition

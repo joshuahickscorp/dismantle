@@ -2,8 +2,8 @@
 
 Odyssey is real and running under ``tools/odyssey_ctl.py`` (~8k lines: queue,
 patient packets, harvester, compiler-rule inference, run loop). O003 is
-already SEALED. HCLI has no odyssey verb, so a resident cannot see or drive
-any of it. This module is the connector, not a rewrite: every function here
+already SEALED. HCLI exposes a resident-facing Odyssey surface through this
+module. This module is the connector, not a rewrite: every driver function
 shells out to the existing driver's own subcommands. It adds nothing to the
 curriculum and encodes none of it.
 

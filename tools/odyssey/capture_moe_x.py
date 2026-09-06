@@ -173,6 +173,10 @@ def main():
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     meta = {"model_dir": a.model_dir, "n_layers_captured": a.layers,
+            # A truncated model is still constructed and run (model(**enc) above
+            # is a real forward pass), which is exactly the residency this
+            # class names -- distinct from a header/tensor-only probe.
+            "classification": "EXECUTION_REQUIRES_RESIDENCY_OR_OFFLOAD",
             "exact_because": "layers 0..K-1 do not depend on any later layer, so truncation "
                              "does not change their activations",
             "n_prompts": len(PROMPTS), "n_tokens": ids_seen,

@@ -133,6 +133,9 @@ def main():
         "schema": "hawking.headless.matched_bits_probe.v1",
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "generated_by": "tools/odyssey/matched_bits_probe.py",
+        # load_mlp reads named tensors via safe_open and evaluates candidates with
+        # numpy; same posture as cold_vs_transfer.py, whose evaluator this reuses.
+        "classification": "STATIC_STREAMABLE",
         "obligation": "G028 extension — can LAW-FITTED-AFFINE-BEATS-RTN reach "
                       "ARCHITECTURE_GENERAL (directive §91)",
         "git_head": subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],

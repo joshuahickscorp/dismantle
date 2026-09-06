@@ -28,6 +28,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from tools.odyssey import assert_execution_evidence
 from tools.odyssey._paths import EXPECTED_INDEX_SHA256, LAUNCH_DIR, MATH_ARTIFACT
 
 CAPABILITY = LAUNCH_DIR / "SUBSTRATE_CAPABILITY.json"
@@ -118,6 +119,28 @@ def assert_trainable(index_sha256: str, artifact: Path | None = None) -> None:
             f"  Capability does not inherit across rates: every rung must be proven at that\n"
             f"  rung. Re-run the capability gate against this pack."
         )
+
+
+def assert_capability_evidence_is_executed(verdict: dict) -> None:
+    """Refuse an APPROVED verdict whose cited evidence is all STATIC_STREAMABLE.
+
+    Separate from assert_trainable's hash+rate binding gate above, and not
+    called from it: assert_trainable is the existing admission check and
+    verdicts recorded before probes carried a `classification` (every entry
+    in SUBSTRATE_CAPABILITY.json today) must keep passing it unchanged. This is
+    the additional question -- "was the APPROVED verdict itself earned by
+    running the model, or only by inspecting its weight shards" -- and a
+    caller opts into asking it explicitly.
+
+    A verdict that is not APPROVED, or carries no capability_evidence at all,
+    is not this function's concern -- it neither approves nor refuses.
+    """
+    if verdict.get("capability_verdict") != "APPROVED":
+        return
+    probes = ((verdict.get("capability_evidence") or {}).get("probes")) or []
+    if not probes:
+        return
+    assert_execution_evidence(probes, context=f"capability_verdict for {verdict.get('name', '<unnamed>')}")
 
 
 def main() -> int:

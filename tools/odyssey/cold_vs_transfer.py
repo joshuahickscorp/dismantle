@@ -336,6 +336,11 @@ def main():
         "schema": "hawking.headless.cold_vs_transfer.v1",
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "generated_by": "tools/odyssey/cold_vs_transfer.py",
+        # load_layer reads named tensors via safe_open and does numpy matmuls on
+        # them; it never constructs or runs the nn.Module, so this probe itself
+        # is static even though its input activations were captured by a prior
+        # execution-class run (capture_moe_x.py).
+        "classification": "STATIC_STREAMABLE",
         "obligation": "G009/G025 — COLD CONTROL vs ODYSSEY TRANSFER START (directive §16, §88)",
         "git_head": subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                                    capture_output=True, text=True).stdout.strip(),

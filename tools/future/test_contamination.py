@@ -426,3 +426,66 @@ def test_coverage_receipt_names_contamination_as_recording():
     doc = json.loads(path.read_text())
     assert "contamination" in doc["recording_five_fields"]
     assert doc["n_gates"] == 18
+
+
+# ---------------------------------------------------------------------------
+# gravity-run utilization sampler (G-UTIL): GPU occupancy + disk + working set
+# over time, for a running gravity specimen.
+# ---------------------------------------------------------------------------
+
+def test_sample_gravity_run_classifies_gpu_bound(monkeypatch):
+    monkeypatch.setattr(C, "probe_gpu_occupancy", lambda: {"status": "OK", "device_utilization_pct": 85})
+    monkeypatch.setattr(C, "_iostat_sample", lambda interval_s: {"status": "OK", "mb_s_total": 4.0})
+    monkeypatch.setattr(C, "probe_processes", lambda: {"status": "OK", "all": []})
+    run = C.sample_gravity_run(duration_s=0.3, interval_s=0.1)
+    assert run["n_samples"] == 3
+    assert run["gpu_device_utilization_pct"] == {"mean": 85, "peak": 85}
+    assert run["disk_mb_s"] == {"mean": 4.0, "peak": 4.0}
+    assert run["bound_class"] == "GPU_BOUND"
+
+
+def test_sample_gravity_run_classifies_io_bound_when_gpu_quiet(monkeypatch):
+    monkeypatch.setattr(C, "probe_gpu_occupancy", lambda: {"status": "OK", "device_utilization_pct": 3})
+    monkeypatch.setattr(C, "_iostat_sample", lambda interval_s: {"status": "OK", "mb_s_total": 150.0})
+    monkeypatch.setattr(C, "probe_processes", lambda: {"status": "OK", "all": []})
+    run = C.sample_gravity_run(duration_s=0.2, interval_s=0.1)
+    assert run["bound_class"] == "IO_BOUND"
+    assert run["disk_mb_s"]["peak"] == 150.0
+
+
+def test_sample_gravity_run_unknown_when_every_probe_fails(monkeypatch):
+    monkeypatch.setattr(C, "probe_gpu_occupancy", lambda: {"status": "FAILED", "device_utilization_pct": None})
+    monkeypatch.setattr(C, "_iostat_sample", lambda interval_s: {"status": "FAILED", "mb_s_total": None})
+    monkeypatch.setattr(C, "probe_processes", lambda: {"status": "OK", "all": []})
+    run = C.sample_gravity_run(duration_s=0.1, interval_s=0.1)
+    assert run["bound_class"] == "UNKNOWN"
+
+
+def test_sample_gravity_run_stops_polling_a_dead_pid(monkeypatch):
+    monkeypatch.setattr(C, "probe_gpu_occupancy", lambda: {"status": "OK", "device_utilization_pct": 1})
+    monkeypatch.setattr(C, "_iostat_sample", lambda interval_s: {"status": "OK", "mb_s_total": 0.0})
+    monkeypatch.setattr(C, "probe_processes", lambda: {"status": "OK", "all": []})
+    monkeypatch.setattr(C, "_pid_rss_bytes", lambda pid: None)
+    run = C.sample_gravity_run(pid=999999, duration_s=1.0, interval_s=0.1)
+    assert run["n_samples"] == 1
+
+
+def test_specimen_utilization_record_distinguishes_20pct_from_95pct(monkeypatch):
+    def canned(mean, peak):
+        return {
+            "pid": None,
+            "bound_class": "GPU_BOUND",
+            "bound_class_reason": "x",
+            "gpu_device_utilization_pct": {"mean": mean, "peak": peak},
+            "disk_mb_s": {"mean": 1.0, "peak": 2.0},
+            "working_set_bytes": {"mean": None, "peak": None, "source": "UNKNOWN (no pid given)"},
+            "contaminated_by": [],
+            "n_samples": 5,
+            "duration_s": 5.0,
+        }
+
+    light = C.specimen_utilization_record("specimen-light", canned(20.0, 22.0))
+    heavy = C.specimen_utilization_record("specimen-heavy", canned(95.0, 98.0))
+    assert light["specimen"] == "specimen-light"
+    assert heavy["specimen"] == "specimen-heavy"
+    assert light["gpu_device_utilization_pct"]["peak"] < heavy["gpu_device_utilization_pct"]["peak"]

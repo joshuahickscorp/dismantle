@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 501,225 | 1,438 |
-| active total | 999,237 | 2,073 |
+| support | 500,389 | 1,436 |
+| active total | 998,401 | 2,071 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -128,7 +128,10 @@ also included in the total and must not become an UNKNOWN bucket.
   `gravity_metal` decoder and archival evidence boundaries remained.
   The uncalled Qwen state-KV and Q80 mixed-representation experiments were
   subsequently removed as a second research-only cluster; active Qwen30
-  activation-weighted and Q80 capture-index owners remain.
+  activation-weighted and Q80 capture-index owners remain. The orphaned
+  physical-metric audit producer and its self-contained test were retired after
+  sealed audit/canary receipts became the evidence owner; the current EBPW
+  category gate remains.
   The uncalled DeepSeek schedule/oracle, residual-teacher admission, and Qwen
   metadata-preflight cluster was then compressed to
   `STALE_RESEARCH_CLUSTER_ARCHIVE.md`; no live DeepSeek stream or Qwen capture

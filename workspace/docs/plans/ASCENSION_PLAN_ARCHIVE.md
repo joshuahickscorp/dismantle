@@ -98,6 +98,18 @@ current Rust/shader owners and the corresponding `receipts/ascent-2026-08-18/`
 and `receipts/headless/` evidence. Git history retains the complete drafts;
 the active tree keeps only current implementation and compact archival metadata.
 
+## Retired Odyssey contract-card generation (2026-09-05)
+
+The 68 dated markdown cards under `workspace/campaign/odyssey/contracts/`
+were compressed out of active HEAD. They were delegation prompts and
+auto-generated contract variants, not executable authorities. The one retained
+exception, `o005_external_science.md`, is read by `tools/odyssey_ctl.py` and
+remains the canonical execution contract. The live `ODYSSEY_STATE.json`,
+retained Odyssey evidence, current `tools/odyssey*` owners, and receipt-backed
+decisions remain. The retired card generation is recoverable from Git history;
+its surviving information is the patient state, evidence, and current owner
+paths rather than repeated prompt prose.
+
 The unregistered scaffold-only `ascension_tg_gauntlet` and the Proto-era
 `sandbox_ready_preflight` operator/test/wrapper family were also removed. Their
 boundary is historical; the live `lab.execution_sandbox` policy remains.

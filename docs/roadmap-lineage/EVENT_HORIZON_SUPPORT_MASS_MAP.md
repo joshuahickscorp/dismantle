@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 576,305 | 1,692 |
-| active total | 1,074,317 | 2,327 |
+| support | 572,732 | 1,625 |
+| active total | 1,070,744 | 2,260 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -39,7 +39,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |
-| 10 | `workspace/campaign` | 12,274 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 10 | `workspace/campaign` | 8,744 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 11 | `tools/verify` | 10,467 | CURRENT_VERIFICATION |
 | 12 | `tools/roadmap` | 10,262 | CURRENT_CORE_SUPPORT |
 | 13 | `tools/graph` | 9,826 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |

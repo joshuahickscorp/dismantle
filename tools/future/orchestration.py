@@ -135,7 +135,6 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "accelerator_workunits.py":   ("FT.GPU_KERNELS.ready-protected", "ACCELERATOR_SPECIES"),
     "hcli_self_profile.py":       ("FT.LATENCY.cpu-turnaround", "HCLI_SELF_OPTIMIZATION"),
     "flash_organ_workgraphs.py":  ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "ORGAN_WORKGRAPH"),
-    "external_specimen_seal.py":  ("FT.MODEL_CAPABILITY.hard-gates", "EXTERNAL_SPECIMEN"),
     "odyssey_tool_driver.py":     ("FT.MODEL_CAPABILITY.hard-gates.drive-tools", "ODYSSEY_TOOL_DRIVER"),
     "nr_nx_path.py":              ("FT.GPU_KERNELS.flash-nx", "NR_NX_PATH_MAP"),
     "rival_codec_screen.py":      ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "RIVAL_CODEC_SCREEN"),
@@ -159,7 +158,6 @@ BINDINGS: dict[str, tuple[str, str]] = {
     "teacher_corpus_expansion.py": ("FT.MODEL_REPRESENTATION.teacher-capture", "TEACHER_PLAN"),
     "flash_bpw_ladder.py":        ("FT.MODEL_REPRESENTATION.meta-gates-3-9", "EBPW_LADDER"),
     "metal_reachability.py":      ("FT.MODEL_EXECUTION.complete-token", "HOST_CAPABILITY"),
-    "specimen_verify.py":          ("FT.MODEL_CAPABILITY.hard-gates", "SPECIMEN_VERIFY"),
     # --- physical graph / fpga / ane --------------------------------------
     "hwir.py":                     ("FT.PHYSICAL_GRAPH.hwir-lower", "HWIR_LOWER"),
     "fpga_engines.py":             ("FT.FPGA.engine-sim", "FPGA_SIMULATION"),
@@ -181,7 +179,6 @@ BINDINGS: dict[str, tuple[str, str]] = {
     # --- odyssey -----------------------------------------------------------
     "odyssey2_law_store.py":       ("FT.ODYSSEY_TRANSFER.flash-qwen27", "TRANSFER_LAW"),
     "odyssey3_adversary.py":       ("FT.ODYSSEY_ADVERSARY.attacks", "ATTACK_LAW"),
-    "odyssey_launch.py":           ("FT.ODYSSEY_TRANSFER.re-earn", "ODYSSEY_LAUNCH_GATE"),
 }
 
 
@@ -350,9 +347,8 @@ def invoke(module: str, *, argv: list[str] | None = None) -> dict[str, Any]:
     out = getattr(mod, entry)()
     if isinstance(out, dict):
         # Some modules return a result record rather than the path alone --
-        # odyssey_launch returns {gate_path, doc, launch} because the gate
-        # receipt and the launch receipt are different artifacts. Take the path
-        # it names; str() of the dict is not one, and silently failed the bind.
+        # Some modules return a result record rather than the path alone. Take
+        # the named receipt path; str() of the dict is not one.
         out = out.get("path") or out.get("gate_path") or out.get("receipt")
     receipt_path = Path(str(out)) if out else None
     if receipt_path is None or not receipt_path.exists():

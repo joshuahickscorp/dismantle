@@ -656,7 +656,7 @@ def fingerprint_on_disk(specimen_path: str | os.PathLike[str] | None) -> dict[st
 
 
 def candidate_curriculum_roles(fingerprint: Mapping[str, Any], *, size_bytes: int | None) -> list[dict[str, Any]]:
-    """CANDIDATE roles. Ready-ness stays with specimen_curriculum.py."""
+    """CANDIDATE roles. Ready-ness is recorded by the current receipt owners."""
     family = str(fingerprint.get("architecture_family") or "")
     hidden = fingerprint.get("hidden_size")
     multimodal = bool(fingerprint.get("multimodal"))
@@ -1643,10 +1643,10 @@ def build() -> Path:
             "tools/odyssey/modellake_watch.py emits download_started / already_complete / watcher_sample; it does not emit a scientific event",
             "tools/future/wakeup.py is the receipt-completion bus; this module is the specimen-seal event on that idea, keyed on ModelLake state not a receipt poll",
             "bounded arrival builder inserts units; identity conflict refuses a silent overwrite; HCLI owns scheduling",
-            "tools/future/odyssey_launch.py emit_first_workgraphs is the first-wave graph; this module ADDS a later graph and does not call launch()",
+            "retired odyssey launch tooling emitted the first-wave graph; this module ADDS a later graph and does not launch it",
             "tools/future/negative_index.py refuse_if_dead keys MLP_FUNCTION_REPLACEMENT, MONARCH, BUTTERFLY, FACTORIZE_THE_FACTORS, PRODUCT_DICTIONARY, CONDITIONAL_PROGRAM, GENERATED_BLOCK, NONLINEAR_GENERATOR",
             "tools/future/odyssey2_law_store.py is the transferable-law store; MODEL_LOCAL on another parent is not a transfer",
-            "tools/future/specimen_verify.py already sealed the demonstration specimen; this lane cites that receipt and does not re-hash",
+            "the historical specimen receipt already sealed the demonstration specimen; this lane cites that receipt and does not re-hash",
         ],
         "gaps_closed": [
             "DOWNLOADING -> COMPLETE_UNSEALED -> SEALED_SOURCE_SPECIMEN is a durable replayable event",

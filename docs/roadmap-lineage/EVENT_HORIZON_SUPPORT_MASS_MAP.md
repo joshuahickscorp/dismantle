@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 505,982 | 1,461 |
-| active total | 1,003,994 | 2,096 |
+| support | 505,766 | 1,460 |
+| active total | 1,003,778 | 2,095 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -142,7 +142,10 @@ also included in the total and must not become an UNKNOWN bucket.
   planning archive; shared density/common references and sealed findings remain.
   The uncalled Python Qwen3.8 genesis-child manager and its CLI shim were then
   deleted as an orphan execution pair; the Rust `ascension_qwen38_shared_sessions`
-  example remains the executable authority for that capability.
+  example remains the executable authority for that capability. The dead future
+  orchestration bindings for retired launch/specimen producers were removed,
+  and the orphan Odyssey decoding producer was deleted; its durable G038
+  receipt and independent receipt tests remain.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

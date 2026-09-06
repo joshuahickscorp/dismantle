@@ -120,7 +120,7 @@ def experiment_pythonpath() -> tuple[Path, ...]:
 
     ``hawking-experiments`` contains a dash, so it is not a Python package.
     Putting these three directories on ``sys.path`` makes the moved modules
-    importable by their bare filenames (``import frankenstein_ablation``,
+    importable by their bare filenames (retained experiment operators and
     ``import prometheus``). Operators is last-inserted / first-searched so it
     wins the frankenstein_* name collision with the thin condense CLI wrappers.
     """

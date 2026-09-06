@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 605,859 | 1,727 |
-| active total | 1,103,871 | 2,362 |
+| support | 581,984 | 1,706 |
+| active total | 1,079,996 | 2,341 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -34,7 +34,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 5 | `research/hawking-experiments` | 33,481 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 5 | `research/hawking-experiments` | 9,579 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 6 | `tools/headless` | 28,801 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 24,488 | CURRENT_CORE_SUPPORT |
@@ -92,6 +92,10 @@ also included in the total and must not become an UNKNOWN bucket.
   The duplicate Frankenstein `condense/` wrapper and test tree was then
   retired; live tooling remains in `tools/condense/`, operators remain under
   `frankenstein/operators/`, and all Frankenstein data/evidence is preserved.
+  The uncalled Frankenstein prototype operator generation was then retired as
+  a 23,915-line cluster; current pipeline, trace/gate, and evidence
+  authorities remain,
+  and the disposition is recorded in `ASCENSION_PLAN_ARCHIVE.md`.
 - `research/lab/operators`: the blocked Qwen scientific optimizer watcher had
   no live caller or material physical state; its implementation, launcher, and
   dedicated fixture were deleted while its blocked-runtime claim boundary was

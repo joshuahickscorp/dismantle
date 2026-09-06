@@ -60,6 +60,32 @@ The retired Proto steer is likewise represented by
 `workspace/docs/plans/FUNCTIONAL_TRANSFER_PROGRAM.md` and the sealed
 Frankenstein program data.
 
+## Retired unowned operator generation (2026-09-05)
+
+The uncalled prototype operator layer was removed from active HEAD after its
+Python import surface and current registry callers reached zero.  This was
+not a loss of current capability: the live research authorities remain in
+`research/lab/operators/`, `tools/condense/`, and HCLI AgentOS.  Git history
+retains the exact implementations.  The retired names were:
+
+`frankenstein_latent_v0`, `frankenstein_adapter_trainer`,
+`frankenstein_transfer`, `frankenstein_bridge_train_real`,
+`frankenstein_proto_run`, `frankenstein_direct`,
+`frankenstein_correspondence_loader`, `frankenstein_adapter_hub`,
+`frankenstein_corpus`, `frankenstein_aligner`, `frankenstein_adapter_modules`,
+`frankenstein_cartography`, `frankenstein_receipts`, `frankenstein_fusion_op`,
+`frankenstein_trace_format`, `frankenstein_baseline_freeze`,
+`frankenstein_functional_transfer`, `frankenstein_gates`,
+`frankenstein_verifier_loop`, `frankenstein_v0_seal`, `frankenstein_bridges`,
+`frankenstein_ablation`, and `frankenstein_promotion_gate`.
+
+Their preserved information is the sealed campaign data, evidence receipts,
+current research registry mappings, the active teacher-forced trace schema and
+runtime gates, and the compact functional-transfer plan above. The superseded
+execution machinery is recoverable from commit history rather than carried as
+a second active authority; current promotion semantics live in
+`research/lab/verification_authority.py`.
+
 The unregistered scaffold-only `ascension_tg_gauntlet` and the Proto-era
 `sandbox_ready_preflight` operator/test/wrapper family were also removed. Their
 boundary is historical; the live `lab.execution_sandbox` policy remains.

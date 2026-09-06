@@ -156,7 +156,7 @@ def test_the_reducer_accounts_for_what_the_contract_will_add():
     from hcli.engine import Engine
 
     src = inspect.getsource(Engine._call_model)
-    build_at = src.index("_schema_contract(backend)")
+    build_at = src.index("_schema_contract(")
     fit_at = src.index("_fit_payload_to_budget")
     assert build_at < fit_at, (
         "the contract must be built BEFORE fitting, so its cost can be reserved"
@@ -183,3 +183,72 @@ def test_a_reserve_makes_the_ladder_shed_sooner(tmp_path):
 
     with pytest.raises(ContextPreflightError):
         eng._fit_payload_to_budget(build, [], None, reserve=100_000)
+
+
+def test_tool_history_is_compacted_when_the_next_round_overflows(tmp_path):
+    """A real tool round must not bypass the reducer through ``history``."""
+    eng = _engine(tmp_path)
+
+    history = [
+        {"role": "assistant", "content": "old assistant " + "x" * 9000},
+        {"role": "user", "content": "old observation " + "x" * 9000},
+        {"role": "assistant", "content": "latest assistant " + "x" * 9000},
+        {"role": "user", "content": "latest observation " + "x" * 9000},
+    ]
+
+    def build(ev, cm, tr="", *, history=None):
+        del ev, cm, tr
+        return {
+            "messages": [
+                {"role": "system", "content": "stable"},
+                {"role": "user", "content": "goal"},
+                *(history or []),
+            ]
+        }
+
+    eng._estimate_prompt_tokens = lambda messages: sum(
+        len(str(item.get("content") or "")) // 4 for item in messages
+    )
+    payload, reduction = eng._fit_payload_to_budget(
+        build, [], None, history=history
+    )
+
+    assert reduction is not None
+    assert reduction["dropped_history"] == 2
+    assert payload["messages"][-2]["content"].startswith("latest assistant")
+    assert payload["messages"][-1]["content"].startswith("latest observation")
+
+
+def test_tool_history_is_truncated_before_it_is_dropped(tmp_path):
+    """A tight real packet keeps a bounded latest decision trace."""
+    eng = _engine(tmp_path)
+    history = [
+        {"role": "assistant", "content": "assistant " + "a" * 9000},
+        {"role": "user", "content": "observation " + "b" * 9000},
+    ]
+
+    def build(ev, cm, tr="", *, history=None):
+        del ev, cm, tr
+        return {
+            "messages": [
+                {"role": "system", "content": "stable"},
+                {"role": "user", "content": "goal"},
+                *(history or []),
+            ]
+        }
+
+    # Model the already-large O003 base packet. The raw pair cannot fit, but
+    # the bounded pair can; dropping it would make the next model turn repeat
+    # the same tool request with no explanation of the prior result.
+    eng._estimate_prompt_tokens = lambda messages: 4500 + sum(
+        len(str(item.get("content") or "")) // 4
+        for item in messages[2:]
+    )
+    payload, reduction = eng._fit_payload_to_budget(
+        build, [], None, history=history
+    )
+
+    assert reduction is not None
+    assert reduction["history_compacted"] is True
+    assert [m["role"] for m in payload["messages"][-2:]] == ["assistant", "user"]
+    assert "history content truncated from" in payload["messages"][-1]["content"]

@@ -1759,6 +1759,23 @@ def _odyssey_cycle(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]
     return odyssey.cycle(confirm=True, max_lanes=args.get("max_lanes"))
 
 
+def _odyssey_gravity_gauntlet(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    from . import odyssey
+
+    if args.get("confirm") is not True:
+        raise PermissionError("odyssey.gravity_gauntlet writes search state and requires confirm=True")
+    state_path = context.resolve_write_path(args["state_path"]) if args.get("state_path") else None
+    receipt_dir = context.resolve_read_path(args["receipt_dir"]) if args.get("receipt_dir") else None
+    return odyssey.gravity_gauntlet(
+        oxx=str(args["oxx"]),
+        candidate_specs=list(args["candidate_specs"]),
+        budget=int(args.get("budget") or 2),
+        state_path=str(state_path) if state_path else None,
+        receipt_dir=str(receipt_dir) if receipt_dir else None,
+        confirm=True,
+    )
+
+
 def _forbidden_fruit_lab(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     """Run the ANE probe lab and report OBSERVED placement.
 
@@ -2190,6 +2207,26 @@ def default_tool_registry(
          "properties": {"confirm": {"type": "boolean"}, "max_lanes": {"type": "integer"}}},
         mutation=COSTLY, deterministic=False, resources=("cpu",),
         handler=_odyssey_cycle,
+    ))
+    registry.register(ToolSpec(
+        "odyssey.gravity_gauntlet",
+        "Run one bounded, resumable, evidence-guided Gravity search; requires confirm=True.",
+        {"type": "object", "additionalProperties": False,
+         "required": ["oxx", "candidate_specs", "confirm"],
+         "properties": {
+             "oxx": {"type": "string"},
+             "candidate_specs": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+             "budget": {"type": "integer", "minimum": 1},
+             "state_path": {"type": "string"},
+             "receipt_dir": {"type": "string"},
+             "confirm": {"type": "boolean"},
+         }},
+        mutation=COSTLY, deterministic=False, resources=("cpu", "ssd"),
+        verifier_expectations=(
+            "TARGET_HIT requires complete EBPW <= 1 plus independent capability/execution verification",
+            "BUDGET_EXHAUSTED is never a pass",
+        ),
+        handler=_odyssey_gravity_gauntlet,
     ))
     registry.register(ToolSpec(
         "forbidden_fruit.lab",

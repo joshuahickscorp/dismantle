@@ -17,7 +17,8 @@ Two capability classes:
   is read-only despite the name.
 
 * **continue** -- ``harvest``, ``write_packet``, ``run``, ``cycle``,
-  ``retire``, ``acquire_next``, ``completions(rebuild=True)``. Every one of
+  ``retire``, ``acquire_next``, ``completions(rebuild=True)``,
+  ``gravity_gauntlet``. Every one of
   these can mutate persistent Odyssey state, spawn a subprocess, or start a
   download. Each requires ``confirm=True`` or raises ``PermissionError``,
   mirroring the gate ``benchmark.run``/``accelerator.benchmark`` already use
@@ -206,6 +207,30 @@ def acquire_next(confirm: bool = False, dry_run: bool = True) -> dict:
         return _run(["acquire-next", "--dry-run"])
     _require_confirm(confirm, "acquire-next --go (starts a Hugging Face download)")
     return _run(["acquire-next", "--go"])
+
+
+def gravity_gauntlet(
+    oxx: str,
+    candidate_specs: list[str],
+    budget: int = 2,
+    state_path: Optional[str] = None,
+    receipt_dir: Optional[str] = None,
+    confirm: bool = False,
+) -> dict:
+    """Run one bounded, resumable Gravity search from existing patient receipts.
+
+    HCLI owns the checkpoint and next-candidate decision; the existing patient
+    runner remains the evaluator. This helper intentionally requires explicit
+    confirmation because it writes the gauntlet checkpoint.
+    """
+    _require_confirm(confirm, "odyssey.gravity_gauntlet")
+    if not candidate_specs:
+        raise ValueError("candidate_specs must not be empty")
+    from .gravity_gauntlet import run_from_receipts
+
+    state = state_path or str(ODYSSEY_DIR / "gauntlets" / f"{oxx}.json")
+    receipts = receipt_dir or str(REPO / "receipts" / "odyssey-i")
+    return run_from_receipts(state, oxx, candidate_specs, budget, receipts)
 
 
 # --------------------------------------------------------------------------

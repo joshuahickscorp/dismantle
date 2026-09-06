@@ -49,6 +49,7 @@ from .goal import GoalCompiler
 from .mutation import compile_python_file
 from .runtime import store_observed_overlap
 from .workspace import Workspace
+from .hawking_native import _boundary_trace
 
 
 _REASONING_KEYS = {
@@ -147,6 +148,44 @@ HCLI_RESULT_SCHEMA: Dict[str, Any] = {
     "additionalProperties": False,
 }
 
+# Degraded agentic cognition does not need to serialize empty arrays on every
+# turn.  HCLI supplies omitted operations/tests/tool_calls as empty lists after
+# validation; mutation support remains available when those fields are used.
+HCLI_COMPACT_RESULT_SCHEMA: Dict[str, Any] = {
+    **HCLI_RESULT_SCHEMA,
+    "required": ["kind", "content"],
+}
+
+# Worker turns already receive the compiled WorkUnit packet. Repeating the
+# full root-oriented policy block and pretty-printed schema on every decision
+# consumed ~6K characters in the measured O003 prompt. Keep the validator and
+# executor contract unchanged, but send the resident the smaller operational
+# envelope it needs for this one decision.
+_AGENTIC_SYSTEM_PROMPT = """You are the HCLI engineering worker for one bounded WorkUnit.
+DISK STATE and deterministic evidence are authority. Return exactly one JSON object.
+Choose kind=answer, mutation, or tool_use. Keep content concise and emit one next useful action.
+For mutation, operations and tests must be present and tests must name real verification.
+For tool_use, emit only the needed tool_calls; arguments are flat name/value string pairs.
+Omit empty operations, tests, and tool_calls arrays. Do not emit reasoning, markdown, or an essay.
+Paths are workspace-relative; never modify .git. HCLI adds receipt metadata and fills omitted arrays."""
+
+_AGENTIC_SCHEMA_INSTRUCTION = """
+Return exactly one JSON object and nothing else. Keep it compact and satisfy this contract:
+kind is one of answer|mutation|tool_use; content is a short string.
+Include operations only for mutations (each has op and path, with optional old/new text or lines).
+Include tests only for mutations. Include tool_calls only for tool_use; each has tool and flat
+string name/value arguments. Omit empty arrays. Do not restate evidence or rationale."""
+
+_AGENTIC_TOOL_CATALOG = (
+    "fs.read(path*:string,start_line:integer,end_line:integer); "
+    "fs.search(pattern*:string,root:string,glob:string,max_results:integer); "
+    "fs.list(path:string,recursive:boolean,glob:string); "
+    "filesystem.write(path*:string,content*:string,overwrite:boolean); "
+    "tests.run(paths:array); receipt.read(path*:string); git.diff(path:string); "
+    "git.status(path:string); tools.catalog(focus:string). "
+    "Use tools.catalog for an exact signature in an omitted domain."
+)
+
 _SYSTEM_PROMPT = """You are the HCLI engineering worker.
 
 You may be backed by a local resident, a local server, or a remote provider;
@@ -237,6 +276,8 @@ Rules:
 - use exact old_text anchors
 - use create only for nonexistent files
 - if asked only a question, do not mutate
+- operations and tests are needed only for a mutation; tool_calls is needed
+  only for a tool_use; omitted arrays are treated as empty by HCLI
 - do not include reasoning_content, hidden reasoning, chain-of-thought, or <think>
 """
 
@@ -1930,21 +1971,26 @@ class Engine:
             if observations:
                 parts.append(self._observations_block(observations, final=True))
             return "\n\n".join(part for part in parts if part)
-        catalog = (
-            self._compact_tool_catalog(
-                registry,
-                focus=" ".join(
-                    [
-                        str(prompt or ""),
-                        *(str(item.get("tool") or "") for item in observations),
-                    ]
-                ),
+        if compact_catalog and getattr(self, "_agentic_execution", False):
+            catalog = _AGENTIC_TOOL_CATALOG
+            catalog_mode = "agentic-minimal"
+        else:
+            catalog = (
+                self._compact_tool_catalog(
+                    registry,
+                    # The catalog is part of the stable prefix. Including the
+                    # names of tools already observed made its contents change
+                    # on every round, defeating prefix reuse exactly where
+                    # Odyssey pays for long prefill. Observation text remains
+                    # the only mutable suffix below.
+                    focus=str(prompt or ""),
+                )
+                if compact_catalog
+                else self._tool_catalog(registry)
             )
-            if compact_catalog
-            else self._tool_catalog(registry)
-        )
+            catalog_mode = "compact" if compact_catalog else "full"
         self._tool_catalog_chars = len(catalog)
-        self._tool_catalog_mode = "compact" if compact_catalog else "full"
+        self._tool_catalog_mode = catalog_mode
         parts = [prompt]
         if catalog:
             parts.append(
@@ -2056,7 +2102,9 @@ class Engine:
         self._active_goal_text = prompt
         self._model_calls = []
         self._tool_calls_seen = {}
+        self._last_model_text = None
         self._last_call_plan = {}
+        self._agentic_execution = False
         self._reset_evidence_efficiency()
 
         started = datetime.now(timezone.utc)
@@ -2136,20 +2184,23 @@ class Engine:
             # answer "no evidence provided". Now a tool_use reply is executed and
             # fed back, bounded, until the model answers or the budget runs out.
             observations: List[Dict[str, Any]] = []
+            conversation_history: List[Dict[str, Any]] = []
+            self._agentic_execution = True
+            cognition_prompt = self._prompt_with_observations(
+                prompt,
+                [],
+                compact_catalog=True,
+            )
             for round_index in range(self.MAX_TOOL_ROUNDS):
                 # Observations go LAST in the payload, not into the prompt
                 # body: they are the only part that grows between rounds, and
                 # every stable byte after them is re-prefilled for nothing.
                 raw = self._call_model(
-                    self._prompt_with_observations(
-                        prompt,
-                        [],
-                        compact_catalog=True,
-                    ),
+                    cognition_prompt,
                     evidence,
                     compiled,
-                    trailing=self._observations_block(observations),
                     context_memory=context_memory,
+                    history=conversation_history,
                 )
                 result = self._sanitize_result(raw)
                 if result.get("kind") != "tool_use":
@@ -2162,25 +2213,42 @@ class Engine:
                     break
                 if self._cancelled:
                     return self._cancel_result(goal_id, evidence)
+                assistant_text = getattr(self, "_last_model_text", None)
+                if isinstance(assistant_text, str) and assistant_text:
+                    conversation_history.append(
+                        {"role": "assistant", "content": assistant_text}
+                    )
                 observations.extend(self._run_tool_calls(calls, goal_id))
+                conversation_history.append(
+                    {
+                        "role": "user",
+                        "content": self._observations_block(observations),
+                    }
+                )
             else:
                 # Budget exhausted still asking to look. Answer from what was
                 # actually observed rather than reporting nothing.
                 result = self._sanitize_result(
                     self._call_model(
-                        self._prompt_with_observations(
-                            prompt,
-                            [],
-                            compact_catalog=True,
-                        ),
+                        cognition_prompt,
                         evidence,
                         compiled,
-                        trailing=self._observations_block(observations, final=True),
                         context_memory=context_memory,
+                        history=conversation_history
+                        + [
+                            {
+                                "role": "user",
+                                "content": self._observations_block(
+                                    observations, final=True
+                                ),
+                            }
+                        ],
                     )
                 )
                 if result.get("kind") == "tool_use":
                     result["kind"] = "answer"
+
+            self._agentic_execution = False
 
             if self._cancelled:
                 return self._cancel_result(goal_id, evidence)
@@ -2739,6 +2807,15 @@ class Engine:
                 return max(0, min(int(explicit), cap))
             except ValueError:
                 pass
+
+        # A WorkUnit already carries the exact named paths and a bounded
+        # packet. Keep only a small inline cache for the next decision; the
+        # complete files remain disk authority and are available through the
+        # worker's tools. The real O003 A/B reached 20.951 s at 400 chars and
+        # the 1,200-char setting retains more specimen evidence while staying
+        # near the sub-30-second prefill target.
+        if getattr(self, "_worker_execution", False):
+            return max(0, min(1200, cap))
 
         return max(0, cap)
 
@@ -3327,16 +3404,18 @@ class Engine:
     def _schema_contract(
         self,
         backend: Any,
+        schema: Optional[Dict[str, Any]] = None,
     ) -> StructuredOutputContract:
+        active_schema = schema or HCLI_RESULT_SCHEMA
         contract = make_structured_output_contract(
             backend,
-            HCLI_RESULT_SCHEMA,
+            active_schema,
         )
         if contract is not None:
             return contract
         return StructuredOutputContract(
-            schema=HCLI_RESULT_SCHEMA,
-            instruction=schema_instruction(HCLI_RESULT_SCHEMA),
+            schema=active_schema,
+            instruction=schema_instruction(active_schema),
             max_attempts=structured_output_attempts(),
             degraded_features=["response_format"],
         )
@@ -3723,6 +3802,15 @@ class Engine:
                 raise SchemaViolation(syntax, text=content)
             return result
 
+        _boundary_trace(
+            "structured_parser_begin",
+            attempts=getattr(contract, "max_attempts", None),
+            prompt_tokens=plan.get("prompt_tokens_est"),
+            goal_id=self._active_goal_id,
+            prompt_sha256=hashlib.sha256(
+                (self._last_rendered_prompt or "").encode("utf-8")
+            ).hexdigest()[:16],
+        )
         try:
             result = contract.enforce(complete_fn, payload, timeout)
         except StructuredOutputExhausted as exc:
@@ -3738,7 +3826,19 @@ class Engine:
                 last_text=exc.last_text,
             )
             self._last_call_plan = plan
+            _boundary_trace(
+                "structured_parser_end",
+                outcome="exhausted",
+                attempts=int(exc.attempts),
+                error=str(exc),
+            )
             raise
+
+        # Preserve the exact provider text for the next tool round. The
+        # resident already has this assistant turn in its recurrent/KV state;
+        # replaying it as a real assistant message is what makes the following
+        # user observation a pure append and unlocks prefix reuse.
+        self._last_model_text = result.text
 
         attempts = int(
             getattr(result, "schema_attempts", None)
@@ -3756,6 +3856,12 @@ class Engine:
             parsed = result.raw.get("_structured")
         if not isinstance(parsed, dict):
             parsed = contract.validate(result.text)
+        _boundary_trace(
+            "structured_parser_end",
+            outcome="success",
+            attempts=attempts,
+            result_kind=parsed.get("kind") if isinstance(parsed, dict) else None,
+        )
         return parsed
 
     def _resolve_max_tokens(
@@ -3961,6 +4067,7 @@ class Engine:
         context_memory: Any,
         trailing: str = "",
         reserve: int = 0,
+        history: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
         """Build the payload, shrinking re-derivable context until it fits.
 
@@ -4047,15 +4154,72 @@ class Engine:
         if keep_floor:
             attempts.append(([], None, "evidence 0 (floor abandoned to fit)", floor))
 
+        # Real tool rounds use chat history, not the legacy ``trailing`` field.
+        # Keep the immediate assistant/tool-result pair when possible, but make
+        # older rounds re-derivable just like old observations.  Before this
+        # ladder knew about history, an O003 tool round could pass its first
+        # model call and then refuse the next one at 25K tokens because the
+        # reducer had no way to shed the history it had just added.
+        history_values: List[Optional[List[Dict[str, Any]]]] = [history]
+        if history:
+            raw_latest_pair = list(history[-2:])
+            if raw_latest_pair != history:
+                history_values.append(raw_latest_pair)
+
+            # A raw latest pair can still be too large even after every older
+            # turn is dropped: tool output is deliberately bounded, but the
+            # base O003 packet plus the schema reserve can leave only a small
+            # remainder.  Preserve a compact decision trace before abandoning
+            # the observation entirely.  The tool can always be re-run from
+            # the durable evidence; an identical base prompt cannot tell the
+            # resident why its previous request was made.
+            compacted: List[Dict[str, Any]] = []
+            for item in history[-2:]:
+                if not isinstance(item, dict):
+                    continue
+                value = dict(item)
+                content = value.get("content")
+                if isinstance(content, str):
+                    cap = 1200 if value.get("role") == "assistant" else 2400
+                    if len(content) > cap:
+                        value["content"] = content[:cap] + (
+                            f"\n[history content truncated from {len(content)} "
+                            "characters; use the durable evidence/tool result "
+                            "rather than reconstructing the omitted tail]"
+                        )
+                compacted.append(value)
+            if compacted and compacted != raw_latest_pair:
+                history_values.append(compacted)
+            for keep_n in (1, 0):
+                if keep_n < len(history):
+                    history_values.append(list(history[-keep_n:]) if keep_n else [])
+
+        try:
+            import inspect
+
+            accepts_history = "history" in inspect.signature(build).parameters
+        except Exception:
+            accepts_history = False
+
+        def invoke_build(
+            keep: Any,
+            memory: Any,
+            observed: str,
+            hist: Optional[List[Dict[str, Any]]],
+        ) -> Dict[str, Any]:
+            if accepts_history:
+                return build(keep, memory, observed, history=hist)
+            if observed:
+                return build(keep, memory, observed)
+            return build(keep, memory)
+
         last = None
         for keep, memory, label, cut in attempts:
             # The two-argument form is the contract every existing caller uses.
             # A third argument appears only once observations are being shed, so
             # a build() that knows nothing about `trailing` keeps working.
-            if cut:
-                payload = build(keep, memory, _join_observations(blocks[cut:]))
-            else:
-                payload = build(keep, memory)
+            observed = _join_observations(blocks[cut:]) if cut else ""
+            payload = invoke_build(keep, memory, observed, history_values[0])
             demand = self._estimate_prompt_tokens(payload.get("messages") or []) + reserve
             if preflight(budget, demand, kind="root").ok:
                 self._observation_floor = cut
@@ -4067,6 +4231,41 @@ class Engine:
                     "usable_input_tokens": int(budget.usable_input_tokens),
                     "dropped_evidence": len(items) - len(keep),
                     "observation_floor": cut,
+                }
+            last = (payload, demand)
+
+        # If the complete chat history still cannot fit after re-derivable
+        # context has been shed, retain the most recent pair, then only the
+        # latest observation, before refusing.  This is deliberately after the
+        # normal evidence/memory ladder: a prior assistant turn and its latest
+        # tool result are more decision-relevant than a durable checkpoint.
+        for history_index, hist in enumerate(history_values[1:], start=1):
+            payload = invoke_build([], None, "", hist)
+            demand = self._estimate_prompt_tokens(payload.get("messages") or []) + reserve
+            if preflight(budget, demand, kind="root").ok:
+                self._observation_floor = 0
+                kept = len(hist or [])
+                compacted_history = bool(
+                    hist
+                    and any(
+                        isinstance(item, dict)
+                        and isinstance(item.get("content"), str)
+                        and "history content truncated from " in item["content"]
+                        for item in hist
+                    )
+                )
+                return payload, {
+                    "reduced_to": (
+                        f"compact history {kept}/{len(history or [])}"
+                        if compacted_history
+                        else f"history {kept}/{len(history or [])}"
+                    ),
+                    "prompt_tokens_est": demand,
+                    "usable_input_tokens": int(budget.usable_input_tokens),
+                    "dropped_evidence": len(items),
+                    "dropped_history": len(history or []) - kept,
+                    "history_compacted": compacted_history,
+                    "observation_floor": 0,
                 }
             last = (payload, demand)
 
@@ -4107,6 +4306,7 @@ class Engine:
         enable_thinking: Optional[bool] = None,
         response_schema: Optional[bool] = None,
         trailing: str = "",
+        history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         # Mission worker packets are already the compiled, bounded control
         # context. Wrapping one in the legacy ``GOAL:\n`` envelope would make
@@ -4143,18 +4343,36 @@ class Engine:
         # after it would be re-prefilled every round for no reason. The stable
         # blocks used to sit here: mean reusable prefix 0.544 against 0.924 with
         # the growth at the end.
-        if trailing:
+        if trailing and not history:
             user += "\n\n" + trailing
+        system_prompt = (
+            _AGENTIC_SYSTEM_PROMPT
+            if getattr(self, "_agentic_execution", False)
+            else _SYSTEM_PROMPT
+        )
         messages = [
             {
                 "role": "system",
-                "content": _SYSTEM_PROMPT,
+                "content": system_prompt,
             },
             {
                 "role": "user",
                 "content": user,
             },
         ]
+        if history:
+            # Keep the original user turn (including the schema instruction)
+            # as the stable prefix. The resident's previous assistant JSON and
+            # tool observations are appended as real chat turns, so the next
+            # rendered prompt begins with the exact resident context instead
+            # of diverging at the old user-turn terminator.
+            messages.extend(
+                dict(item)
+                for item in history
+                if isinstance(item, dict)
+            )
+            if trailing:
+                messages.append({"role": "user", "content": trailing})
         thinking = self._resolve_enable_thinking(enable_thinking)
         use_schema = self._resolve_response_schema(response_schema)
         prompt_tokens_est = self._estimate_prompt_tokens(messages)
@@ -4168,6 +4386,10 @@ class Engine:
                 "enable_thinking": bool(thinking),
             },
         }
+        if history:
+            # StructuredOutputContract.apply() must inject its schema into the
+            # stable base user turn, never into the mutable observation turn.
+            payload["_schema_instruction_user_index"] = 1
         if use_schema:
             payload["response_format"] = {
                 "type": "json_schema",
@@ -4258,7 +4480,12 @@ class Engine:
             for key in (
                 "prefix_reused_tokens",
                 "prefill_tokens_stepped",
+                "prefill_step_count",
                 "prefix_source",
+                "resident_context_tokens_before",
+                "shared_prefix_tokens",
+                "checkpoint_missed",
+                "checkpoint_restored_tokens",
                 "prefix_checkpoint_taken_at",
                 # Whether the resident's JSON mask actually ran. Without it a
                 # malformed reply cannot be diagnosed: "the reply is NOT valid
@@ -4371,7 +4598,9 @@ class Engine:
         response_schema: Optional[bool] = None,
         plain_text: bool = False,
         trailing: str = "",
+        history: Optional[List[Dict[str, Any]]] = None,
     ) -> Any:
+        agentic = bool(getattr(self, "_agentic_execution", False))
         if self.model_client is not None:
             call = getattr(
                 self.model_client,
@@ -4409,6 +4638,7 @@ class Engine:
                     enable_thinking=enable_thinking,
                     response_schema=response_schema,
                     trailing=trailing,
+                    history=history,
                 )
                 est = (self._last_call_plan or {}).get("prompt_tokens_est")
                 with self._model_call_scope(est):
@@ -4466,7 +4696,13 @@ class Engine:
             # the caller explicitly overrode enable_thinking on this call.
             thinking_arg = False
 
-        def _build(ev: Any, cm: Any, tr: str = trailing) -> Dict[str, Any]:
+        def _build(
+            ev: Any,
+            cm: Any,
+            tr: str = trailing,
+            *,
+            history: Optional[List[Dict[str, Any]]] = history,
+        ) -> Dict[str, Any]:
             return self._build_model_payload(
                 prompt,
                 ev,
@@ -4475,6 +4711,7 @@ class Engine:
                 enable_thinking=thinking_arg,
                 response_schema=(False if degrade else response_schema),
                 trailing=tr,
+                history=history,
             )
 
         # Build the contract BEFORE fitting. `contract.apply` injects the schema
@@ -4486,11 +4723,30 @@ class Engine:
         contract: Optional[StructuredOutputContract] = None
         reserve = 0
         if degrade:
-            contract = self._schema_contract(backend)
+            contract = self._schema_contract(
+                backend,
+                schema=(
+                    HCLI_COMPACT_RESULT_SCHEMA
+                    if history is not None
+                    else HCLI_RESULT_SCHEMA
+                ),
+            )
+            # Contract factories may clone the schema, so identity is not a
+            # reliable indication that this is the compact worker contract.
+            # `history is not None` is the call-site distinction: agentic
+            # worker turns always pass a history list, while direct/root calls
+            # retain the full result contract.
+            if agentic and history is not None:
+                contract.instruction = _AGENTIC_SCHEMA_INSTRUCTION
             reserve = len(str(contract.instruction or "")) // _CHARS_PER_TOKEN
 
         payload, reduction = self._fit_payload_to_budget(
-            _build, evidence, context_memory, trailing=trailing, reserve=reserve
+            _build,
+            evidence,
+            context_memory,
+            trailing=trailing,
+            reserve=reserve,
+            history=history,
         )
         if reduction:
             self._emit("context_reduced", reduction)
@@ -4518,6 +4774,20 @@ class Engine:
         )
         if not pf.ok:
             raise ContextPreflightError(pf)
+
+        _boundary_trace(
+            "model_payload_ready",
+            goal_id=self._active_goal_id,
+            history_messages=len(history or []),
+            message_roles=[
+                str((message or {}).get("role") or "")
+                for message in (payload.get("messages") or [])
+                if isinstance(message, dict)
+            ],
+            prompt_sha256=hashlib.sha256(
+                (self._last_rendered_prompt or "").encode("utf-8")
+            ).hexdigest()[:16],
+        )
 
         endpoint, provenance = self._runtime_endpoint()
         thinking_on = bool(
@@ -6091,6 +6361,12 @@ class Engine:
         # raised JSONDecodeError on read -- and this file is the PROOF OF
         # ACCEPTANCE. An unreadable receipt makes verified work indistinguishable
         # from work that never ran.
+        _boundary_trace(
+            "receipt_write_begin",
+            goal_id=goal_id,
+            receipt_path=str(path),
+            status=receipt.get("status"),
+        )
         _atomic_write_text(
             path,
             json.dumps(
@@ -6100,6 +6376,12 @@ class Engine:
                 indent=2,
                 sort_keys=True,
             ),
+        )
+        _boundary_trace(
+            "receipt_write_end",
+            goal_id=goal_id,
+            receipt_path=str(path),
+            bytes=path.stat().st_size if path.exists() else None,
         )
 
         return str(path)

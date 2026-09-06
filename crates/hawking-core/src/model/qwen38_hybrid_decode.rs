@@ -1928,8 +1928,27 @@ mod device {
     };
     use crate::metal::{CommandBufferTiming, MetalContext, PinnedBuffer, TokenCommandBuffer};
     use std::cell::Cell;
+    use std::fs::OpenOptions;
+    use std::io::Write;
     use std::thread;
-    use std::time::Instant;
+    use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
+    fn boundary_trace(event: &str, detail: &str) {
+        let Ok(path) = std::env::var("HCLI_BOUNDARY_TRACE") else {
+            return;
+        };
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|value| value.as_nanos())
+            .unwrap_or(0);
+        let line = format!(
+            "{{\"component\":\"resident.native\",\"event\":\"{event}\",\"pid\":{},\"wall_ns\":{now},\"detail\":\"{detail}\"}}\n",
+            std::process::id()
+        );
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+            let _ = file.write_all(line.as_bytes());
+        }
+    }
 
     fn zero_buffer(buffer: &PinnedBuffer) {
         let len = buffer.length() as usize;
@@ -8741,6 +8760,7 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let mut next = 0u32;
         let prefill = Instant::now();
         let mut first_step_wall_ns = 0u64;
+        let prefill_step_count = prompt.len().saturating_sub(reuse);
         for (i, &token) in prompt.iter().enumerate().skip(reuse) {
             let step_wall = Instant::now();
             let (sampled, timing) = session.step(token)?;
@@ -8795,6 +8815,7 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             stop_reason: "",
             tokens,
             prompt_len: prompt.len(),
+            prefill_step_count,
             wall_ns: wall.elapsed().as_nanos() as u64,
             gpu_ns,
             wait_ns,
@@ -8860,26 +8881,104 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let mut wall_ns_per_step = Vec::with_capacity(step_capacity);
         let wall = Instant::now();
         let prefill = Instant::now();
+        boundary_trace("prefill_begin", &format!("prompt_tokens={}", prompt.len()));
         let mut first_step_wall_ns = 0u64;
-        for (i, &token) in prompt.iter().enumerate().skip(reuse) {
-            let step_wall = Instant::now();
-            let (_, timing) = session.step(token)?;
-            let step_ns = step_wall.elapsed().as_nanos() as u64;
-            if i == reuse {
-                first_step_wall_ns = step_ns;
+        let mut prefill_step_count = 0usize;
+        let requested_chunk = std::env::var("HAWKING_QWEN38_PREFILL_CHUNK")
+            .ok()
+            .and_then(|value| value.parse::<usize>().ok())
+            .unwrap_or(1)
+            .clamp(1, 4);
+        if requested_chunk > 1 {
+            if session.mlp_fusion != Qwen38MlpFusion::GateUpSwiglu {
+                return Err(Error::Model(format!(
+                    "HAWKING_QWEN38_PREFILL_CHUNK needs GateUpSwiglu; this session is {:?}",
+                    session.mlp_fusion
+                )));
             }
-            wall_ns_per_step.push(step_ns);
-            gpu_ns.push(timing.gpu_ns);
-            wait_ns.push(timing.wait_ns);
-            encode_ns.push(timing.encode_ns);
-            submit_ns.push(timing.submit_ns);
-            dispatches.push(timing.dispatches);
-            active_weight_bytes.push(session.last_active_weight_bytes());
-            if snapshot.is_none() && snapshot_at == Some(i + 1) {
-                snapshot = Some(session.prefix_checkpoint()?);
+            let mut cursor = reuse;
+            while cursor < prompt.len() {
+                let mut end = (cursor + requested_chunk).min(prompt.len());
+                // A recurrent prefix checkpoint is exact only at the requested
+                // boundary. Split one chunk around it instead of silently
+                // losing the reusable state that later O003 turns depend on.
+                if let Some(boundary) = snapshot_at {
+                    if boundary > cursor && boundary < end {
+                        end = boundary;
+                    }
+                }
+                if end - cursor == requested_chunk {
+                    let chunk_t0 = Instant::now();
+                    let (_, timing) = session.prefill_chunk(&prompt[cursor..end], 4)?;
+                    let chunk_wall_ns = chunk_t0.elapsed().as_nanos() as u64;
+                    if first_step_wall_ns == 0 {
+                        first_step_wall_ns = chunk_wall_ns;
+                    }
+                    wall_ns_per_step.push(chunk_wall_ns);
+                    gpu_ns.push(timing.gpu_ns);
+                    wait_ns.push(timing.wait_ns);
+                    encode_ns.push(timing.encode_ns);
+                    submit_ns.push(timing.submit_ns);
+                    dispatches.push(timing.dispatches);
+                    active_weight_bytes.push(session.last_active_weight_bytes());
+                    prefill_step_count += 1;
+                } else {
+                    // The current fused kernel family is instantiated only at
+                    // k4. Checkpoint-aligned tails (for example k3 before the
+                    // 895-token checkpoint) stay sequential rather than
+                    // inventing an unsupported k3 kernel or losing the exact
+                    // recurrent boundary.
+                    for (offset, &token) in prompt[cursor..end].iter().enumerate() {
+                        let step_wall = Instant::now();
+                        let (_, timing) = session.step(token)?;
+                        let step_ns = step_wall.elapsed().as_nanos() as u64;
+                        if first_step_wall_ns == 0 {
+                            first_step_wall_ns = step_ns;
+                        }
+                        wall_ns_per_step.push(step_ns);
+                        gpu_ns.push(timing.gpu_ns);
+                        wait_ns.push(timing.wait_ns);
+                        encode_ns.push(timing.encode_ns);
+                        submit_ns.push(timing.submit_ns);
+                        dispatches.push(timing.dispatches);
+                        active_weight_bytes.push(session.last_active_weight_bytes());
+                        prefill_step_count += 1;
+                        if snapshot.is_none() && snapshot_at == Some(cursor + offset + 1) {
+                            snapshot = Some(session.prefix_checkpoint()?);
+                        }
+                    }
+                }
+                cursor = end;
+                if snapshot.is_none() && snapshot_at == Some(cursor) {
+                    snapshot = Some(session.prefix_checkpoint()?);
+                }
+            }
+        } else {
+            for (i, &token) in prompt.iter().enumerate().skip(reuse) {
+                let step_wall = Instant::now();
+                let (_, timing) = session.step(token)?;
+                let step_ns = step_wall.elapsed().as_nanos() as u64;
+                if i == reuse {
+                    first_step_wall_ns = step_ns;
+                }
+                wall_ns_per_step.push(step_ns);
+                gpu_ns.push(timing.gpu_ns);
+                wait_ns.push(timing.wait_ns);
+                encode_ns.push(timing.encode_ns);
+                submit_ns.push(timing.submit_ns);
+                dispatches.push(timing.dispatches);
+                active_weight_bytes.push(session.last_active_weight_bytes());
+                prefill_step_count += 1;
+                if snapshot.is_none() && snapshot_at == Some(i + 1) {
+                    snapshot = Some(session.prefix_checkpoint()?);
+                }
             }
         }
         let prefill_wall_ns = prefill.elapsed().as_nanos() as u64;
+        boundary_trace(
+            "prefill_end",
+            &format!("prompt_tokens={} wall_ns={prefill_wall_ns}", prompt.len()),
+        );
         // Last prefill step already dispatched GPU argmax; discard it and pick
         // the first generated id on the host so the JSON mask applies.
         let mut logits = session.read_f32_workspace("logits", QWEN38_VOCAB)?;
@@ -8896,6 +8995,10 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         let mut next = argmax_f32_metal_tiebreak(&logits);
         tokens.push(next);
         constraint.advance(&tokenizer.decode_one(next).unwrap_or_default());
+        boundary_trace(
+            "first_decode_token",
+            &format!("token_index={} token_id={next}", tokens.len() - prompt.len() - 1),
+        );
         let decode = Instant::now();
         let ignore_eos = std::env::var("HAWKING_QWEN38_IGNORE_EOS")
             .map(|v| v != "0")
@@ -8941,10 +9044,19 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
         }
         let decode_wall_ns = decode.elapsed().as_nanos() as u64;
         let decode_steps = tokens.len().saturating_sub(prompt.len()).saturating_sub(1);
+        boundary_trace(
+            "last_decode_token",
+            &format!("generated_tokens={} decode_steps={decode_steps}", tokens.len() - prompt.len()),
+        );
+        boundary_trace(
+            "generation_termination",
+            &format!("stop_reason={stop_reason} generated_tokens={}", tokens.len() - prompt.len()),
+        );
         Ok((Qwen38GenerateResult {
             stop_reason,
             tokens,
             prompt_len: prompt.len(),
+            prefill_step_count,
             wall_ns: wall.elapsed().as_nanos() as u64,
             gpu_ns,
             wait_ns,
@@ -9011,6 +9123,7 @@ mlp_gate_up and mlp_gate_up_swiglu are wired"
             stop_reason: "",
             tokens,
             prompt_len: prompt.len(),
+            prefill_step_count: prompt.len(),
             wall_ns: wall.elapsed().as_nanos() as u64,
             gpu_ns: Vec::new(),
             wait_ns: Vec::new(),
@@ -9382,6 +9495,11 @@ pub struct Qwen38GenerateResult {
     pub stop_reason: &'static str,
     pub tokens: Vec<u32>,
     pub prompt_len: usize,
+    /// Number of physical command-buffer steps used for prefill. This can be
+    /// less than prompt_len when production batching is enabled; keep it
+    /// separate so phase attribution does not mistake chunk timing for token
+    /// timing.
+    pub prefill_step_count: usize,
     pub wall_ns: u64,
     pub gpu_ns: Vec<Option<u64>>,
     pub wait_ns: Vec<u64>,

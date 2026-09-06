@@ -626,6 +626,70 @@ def _repay_completion_budget(payload: Dict[str, Any], added: str) -> None:
 
 _CHARS_PER_TOKEN_ESTIMATE = 4
 _MIN_COMPLETION_AFTER_RETRY = 256
+_STRUCTURED_REPAIR_REPLY_CHARS = 2400
+_STRUCTURED_REPAIR_MAX_TOKENS = 1024
+
+
+def _repair_fragment(text: Optional[str]) -> str:
+    """Keep the useful edges of a rejected reply without replaying it all."""
+    value = str(text or "")
+    if len(value) <= _STRUCTURED_REPAIR_REPLY_CHARS:
+        return value
+    head = _STRUCTURED_REPAIR_REPLY_CHARS // 2
+    tail = _STRUCTURED_REPAIR_REPLY_CHARS - head
+    return (
+        value[:head]
+        + "\n...[rejected reply elided by local repair]...\n"
+        + value[-tail:]
+    )
+
+
+def _compact_structured_repair_payload(
+    payload: Dict[str, Any],
+    instruction: str,
+    prior: str,
+    rejected: Optional[str],
+) -> Dict[str, Any]:
+    """Build a local shape/syntax repair request.
+
+    The original goal/evidence remains authoritative on disk and in the
+    failed call's receipt. Replaying it here made a syntax repair pay the
+    entire cold prefill again, and could leave less room for the repair than
+    the original request had. Keep stable system/developer messages, replace
+    the mutable user turn with the schema, exact violation, and bounded reply
+    fragment, and cap the repair's own completion budget.
+    """
+    repaired = deepcopy(payload)
+    repair = (
+        "STRUCTURED OUTPUT LOCAL REPAIR. Return exactly one compact JSON object "
+        "and nothing else. Do not restate the investigation, evidence, or rationale.\n\n"
+        "Required contract:\n"
+        f"{instruction}\n\n"
+        "Exact rejection from the previous reply:\n"
+        f"{str(prior)[:4000]}\n\n"
+        "Rejected reply fragment (head and tail only):\n"
+        f"{_repair_fragment(rejected)}\n\n"
+        "Repair only the JSON syntax/shape. Use empty arrays and short strings "
+        "where the contract permits them. Stop after the final closing brace."
+    )
+    messages = repaired.get("messages")
+    if isinstance(messages, list) and messages:
+        # Preserve the stable system/developer prefix but replace the complete
+        # mutable goal turn. This is deliberately not append_user_text():
+        # appending is the full-context repair path this helper replaces.
+        if isinstance(messages[-1], dict) and messages[-1].get("role") == "user":
+            messages[-1] = {"role": "user", "content": repair}
+        else:
+            messages.append({"role": "user", "content": repair})
+    elif isinstance(repaired.get("prompt"), str):
+        repaired["prompt"] = repair
+    else:
+        repaired["messages"] = [{"role": "user", "content": repair}]
+
+    budget = repaired.get("max_tokens")
+    if isinstance(budget, int) and budget > _STRUCTURED_REPAIR_MAX_TOKENS:
+        repaired["max_tokens"] = _STRUCTURED_REPAIR_MAX_TOKENS
+    return repaired
 
 
 def append_user_text(
@@ -649,6 +713,16 @@ def append_user_text(
 
 
 def inject_schema_instruction(payload: Dict[str, Any], instruction: str) -> None:
+    messages = payload.get("messages")
+    target = payload.pop("_schema_instruction_user_index", None)
+    if isinstance(messages, list) and isinstance(target, int):
+        if 0 <= target < len(messages):
+            item = messages[target]
+            if isinstance(item, dict) and isinstance(item.get("content"), str):
+                if "MUST satisfy this JSON Schema" not in item["content"]:
+                    item["content"] = item["content"] + instruction
+                    _repay_completion_budget(payload, instruction)
+                return
     append_user_text(payload, instruction, skip_if="MUST satisfy this JSON Schema")
 
 
@@ -1219,8 +1293,10 @@ class StructuredOutputContract:
         for attempt in range(1, attempts + 1):
             to_send = working
             if attempt > 1:
-                to_send = deepcopy(working)
                 prior = errors[-1] if errors else "invalid structured output"
+                to_send = _compact_structured_repair_payload(
+                    working, self.instruction, prior, last_text
+                )
                 if _is_decode_violation(prior):
                     # The reply broke JSON syntax, not the schema shape --
                     # repeating "satisfy the schema" back at a model that
@@ -1232,10 +1308,11 @@ class StructuredOutputContract:
                         f" Write every required field ({', '.join(required)}) "
                         "and stop immediately after the final closing brace."
                         if required
-                        else " Close every object and array you open."
+                    else " Close every object and array you open."
                     )
                     note = (
-                        f"\nAttempt {attempt - 1} was rejected: {prior}. "
+                        f"\nAttempt {attempt - 1} was rejected for the exact "
+                        "violation stated above. "
                         "That reply broke JSON syntax, not the schema. "
                         'Escape every quote and newline inside a string '
                         'value (\\" and \\n) and keep string values short '
@@ -1243,10 +1320,15 @@ class StructuredOutputContract:
                     )
                 else:
                     note = (
-                        f"\nAttempt {attempt - 1} was rejected: {prior}. "
+                        f"\nAttempt {attempt - 1} was rejected for the exact "
+                        "violation stated above. "
                         "Return exactly one JSON object that satisfies the "
                         "schema and nothing else."
                     )
+                # The local repair envelope already carries the exact error
+                # and rejected fragment. Keep the actionable syntax guidance,
+                # but append it to the small repair turn rather than to the
+                # original Odyssey prompt.
                 append_user_text(to_send, note)
             try:
                 # complete_fn is inside the try on purpose: a caller that can

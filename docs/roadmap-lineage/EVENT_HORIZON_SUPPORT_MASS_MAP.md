@@ -1,7 +1,7 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` after the orphan Qwen3.8 genesis-manager
-retirement wave. This is the support
+Measured on `refactor/event-horizon` after the duplicate Noetic negative-science
+producer retirement wave. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 494,733 | 1,425 |
-| active total | 992,745 | 2,060 |
+| support | 492,526 | 1,424 |
+| active total | 990,538 | 2,059 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -34,7 +34,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 4,695 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
-| 6 | `tools/headless` | 26,450 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
+| 6 | `tools/headless` | 24,243 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 18,569 | CURRENT_CORE_SUPPORT |
 | 9 | `hcli/tests` | 19,832 | CURRENT_VERIFICATION |

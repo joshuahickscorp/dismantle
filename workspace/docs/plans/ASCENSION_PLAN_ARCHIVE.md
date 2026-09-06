@@ -217,6 +217,11 @@ retired. The active Q80 `capture_index` remains the source of truth for capture
 identity and the current activation-weighted path retains its own quality
 controls; no capture data or qualified artifact was removed.
 
+The duplicate test-only `tools/headless/hcli_grokbridge_test.py` was also
+retired. The live Grok bridge contract and its negative assertions remain in
+`hcli/tests/test_grok_bridge.py`; no bridge implementation or acceptance
+boundary was removed.
+
 ## Retired HCLI product-suite scaffold
 
 The non-live `tools/condense/hcli_product_test_harness.py` scaffold and its

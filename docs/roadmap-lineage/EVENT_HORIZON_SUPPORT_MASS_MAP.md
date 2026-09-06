@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 498,506 | 1,429 |
-| active total | 996,518 | 2,064 |
+| support | 497,963 | 1,428 |
+| active total | 995,975 | 2,063 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -185,6 +185,8 @@ also included in the total and must not become an UNKNOWN bucket.
 - `tools/condense`: the non-live HCLI product-suite scaffold and its dedicated
   test were retired; current HCLI acceptance and DeepSeek suite evidence remain
   authoritative.
+- `tools/headless`: the duplicate test-only GrokBridge harness was retired;
+  `hcli/tests/test_grok_bridge.py` remains the live contract test owner.
 - `research/lab/tests`: tests for already-deleted Ascension supervisors and
   absent JSON contract fixtures were removed; current manager-protocol and
   Qwen30 physical tests remain. The uncalled manager-tournament readiness /

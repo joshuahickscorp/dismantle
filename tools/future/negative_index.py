@@ -56,7 +56,7 @@ SEED_SOURCES: tuple[str, ...] = (
     "workspace/campaign/odyssey/NEGATIVE_SCIENCE.json",
     "workspace/campaign/records/ascension-sandbox/knowledge-plane/ASCENSION_NEGATIVE_SCIENCE.jsonl",
     "workspace/campaign/evidence/research/doctor/DOCTOR_NEGATIVE_TRANSFER_ATLAS.json",
-    "research/hawking-experiments/superwave/g1/g1-arch-negative.md",
+    "research/hawking-experiments/superwave/g1/G1_ARCHIVE_LEDGER.md",
     "workspace/campaign/evidence/systems/hawking/HAWKING_EXPERT_WAVE_NEGATIVE.json",
     "workspace/campaign/evidence/systems/hawking/HAWKING_RESIDENT_STATE_NEGATIVE.json",
     "workspace/campaign/records/ascension-sandbox/physical/qwen-family/dual-gravity/ASCENSION_NEGATIVE_SCIENCE.jsonl",

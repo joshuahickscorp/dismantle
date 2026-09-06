@@ -1945,7 +1945,7 @@ def sweep_negative_stores() -> dict:
             "HCLI tactic-cycle fingerprints, not representation science. "
             "Recorded so a later reader does not re-sweep it expecting codec closures."
         )
-    rel = "research/hawking-experiments/superwave/g1/g1-arch-negative.md"
+    rel = "research/hawking-experiments/superwave/g1/G1_ARCHIVE_LEDGER.md"
     text = read_text(rel)
     if text is not None:
         found["g1_arch_negative_rows"] = (

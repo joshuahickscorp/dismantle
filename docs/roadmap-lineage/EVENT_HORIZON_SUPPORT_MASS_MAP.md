@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 565,841 | 1,602 |
-| active total | 1,063,853 | 2,237 |
+| support | 563,770 | 1,599 |
+| active total | 1,061,782 | 2,234 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -34,7 +34,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 2 | `crates/hawking-core` | 79,221 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
-| 5 | `research/hawking-experiments` | 6,770 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
+| 5 | `research/hawking-experiments` | 4,695 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
 | 6 | `tools/headless` | 28,801 | CURRENT_VERIFICATION / MIGRATE_INTO_OWNER |
 | 7 | `tools/condense` | 25,925 | CURRENT_CORE_SUPPORT / MIGRATE_INTO_OWNER |
 | 8 | `tools/odyssey` | 18,569 | CURRENT_CORE_SUPPORT |
@@ -88,6 +88,10 @@ also included in the total and must not become an UNKNOWN bucket.
   Ascension contract/workflow modules were reduced to
   `ASCENSION_ORPHANED_CONTRACTS_ARCHIVE.md`; 41 concluded G1 reports were
   reduced to the complete `G1_ARCHIVE_LEDGER.md` decision record.
+  The three former live G1 architecture/Tabula reports were then folded into
+  that same ledger and removed as parallel machine-readable authorities; the
+  ledger now carries the exact doctrine and closure markers consumed by the
+  current readers.
   The duplicate Frankenstein `condense/` wrapper and test tree was then
   retired; live tooling remains in `tools/condense/`, operators remain under
   `frankenstein/operators/`, and all Frankenstein data/evidence is preserved.

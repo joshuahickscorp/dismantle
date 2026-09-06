@@ -1,10 +1,10 @@
 # G1 archive ledger
 
 This ledger is the compact active-HEAD record for the superseded G1 reports
-retired by Event Horizon. The full reports remain recoverable in Git history;
-current negative science and live Tabula inputs remain as separate files in
-this directory. This file keeps the decision-bearing signal: scope, verdict,
-measured result, and the condition under which a result may be reopened.
+retired by Event Horizon. The full reports remain recoverable in Git history.
+This file is also the canonical machine-readable negative-science and Tabula
+doctrine input. It keeps the decision-bearing signal: scope, verdict, measured
+result, and the condition under which a result may be reopened.
 
 | retired report | retained signal | disposition |
 |---|---|---|
@@ -30,6 +30,17 @@ measured result, and the condition under which a result may be reopened.
 | `g1-deltanet-geometry.md` | DeltaNet used 6,144 threadgroups per layer with serial scratch reduction and idle lanes; the 264,830,976-FLOP count was derived, not a measured token wall. | geometry analysis |
 | `g1-gqa-and-attention-geometry.md` | The 2.443 ms GQA row was not correctly attributable to a simple bandwidth floor; it combined mixer remainder and attention/cache work, so component arithmetic did not become a token claim. | attribution correction |
 | `g1-promotion-packet.md` | Mixed-q3mlp was implementation-ready but not accepted: its seated kernel was 3.78× slower than live G0 and the projected ~31 TPS was explicitly not a complete-token measurement. | promotion refusal |
+
+## Canonical Tabula and negative-science contract
+
+These short rows replace the three former live report inputs. They are
+deliberately explicit because current readers consume this ledger directly.
+
+| source family | retained contract |
+|---|---|
+| Tabula baseline | Behavioral freedom and external authority are different systems. Lower refusal rate is not Tabula success. |
+| Tabula genome | Tabula and Gravity remain separate sealed, content-hashed documents; a recovery inventory is not a promotion. |
+| architecture negative science | `| CLOSED` is the canonical closure marker; the G1 architecture lane is closed for the tested claim and may reopen only with named evidence. |
 
 The retained ledger is not a substitute for executable reproducers. None of
 these reports had a live caller or current verifier; current code and current
@@ -87,7 +98,6 @@ to a complete-token result.
 | `g1-traffic-anatomy.md` | Qwen3.8 is dense and its active weight stream is near the listed payload; stored sibling copies and load-time copies are not per-token traffic. |
 | `g1-worker-concurrency.md` | Four concurrent in-process streams reduced aggregate throughput versus the single stream; the KV footprint was already paid and concurrency was not a win. |
 
-These entries are archival summaries, not new authority. The surviving
-`g1-arch-negative.md` remains the machine-readable negative-science input, and
-the two surviving Tabula reports remain the live doctrine sources consumed by
+These entries are archival summaries, not new authority. This ledger is the
+single machine-readable negative-science input and doctrine source consumed by
 the current tooling. Git retains the retired prose for forensic recovery.

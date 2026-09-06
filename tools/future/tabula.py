@@ -200,13 +200,9 @@ RECOVERY_CANDIDATES: tuple[tuple[str, str], ...] = (
         "container.tabula.variant is required behavioural identity; empty variant fails",
     ),
     (
-        "research/hawking-experiments/superwave/g1/g1-tabula-baseline.md",
-        "G1 doctrine: lower refusal rate is not Tabula success; behavioral "
-        "freedom and external authority are different systems",
-    ),
-    (
-        "research/hawking-experiments/superwave/g1/g1-tabula-genome.md",
-        "G1 genome: Tabula/Gravity must be separate sealed content-hashed documents",
+        "research/hawking-experiments/superwave/g1/G1_ARCHIVE_LEDGER.md",
+        "G1 compact contract: doctrine, separate Tabula/Gravity identity, and "
+        "architecture negative-science closure",
     ),
     (
         "receipts/ascent-2026-08-16/G123_TABULA_DRIFT.json",
@@ -233,7 +229,7 @@ RECOVERY_CANDIDATES: tuple[tuple[str, str], ...] = (
 
 TEACHER_CORPUS_REL = "receipts/future/TEACHER_CORPUS_CONTRACT.json"
 FRONTIER_REL = "receipts/future/CLAUDE_GLOBAL_FRONTIER.json"
-G1_BASELINE_REL = "research/hawking-experiments/superwave/g1/g1-tabula-baseline.md"
+G1_BASELINE_REL = "research/hawking-experiments/superwave/g1/G1_ARCHIVE_LEDGER.md"
 
 DOCTRINE = (
     "Gravity finds the cheapest faithful physical realization. Tabula finds "

@@ -184,3 +184,8 @@ own tests and a stale capability-inventory listing; no current HCLI/AgentOS or
 protected qualification path invoked them. The current Rust paired-cognition,
 Doctor, and acceptance authorities remain. The deleted scaffold schemas and
 tests are recoverable from Git history; no sealed result depended on them.
+
+The separate Qwen80 multi-layer completion-assessor example and its adversarial
+harness were also retired: they had no current acceptance caller or registry
+owner and only exercised that obsolete standalone example. Current Qwen80
+runtime tests and receipt-backed assessment boundaries remain.

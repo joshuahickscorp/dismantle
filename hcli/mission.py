@@ -102,6 +102,178 @@ def _as_workspace(workspace: Any) -> Path:
     return Path(os.fspath(workspace))
 
 
+# Envelope fields the model can fill. Verdict/claim/facts are claims and are
+# never a pass condition. Acceptance may rest only on independently
+# confirmable disk paths and a recorded run-and-rejected negative control.
+_ENVELOPE_ACCEPTANCE_SOURCE = "envelope_receipts"
+
+_CONTROL_RAN_KEYS = ("ran", "run", "executed")
+_CONTROL_REJECTED_VERDICTS = frozenset(
+    {"rejected", "reject", "failed", "fail", "false", "refuted"}
+)
+
+
+def _resolved_workspace_root(workspace: Any) -> Path:
+    return Path(os.fspath(workspace)).expanduser().resolve()
+
+
+def _confirm_envelope_path(
+    root: Path,
+    raw_path: Any,
+    *,
+    nonempty: bool,
+) -> Optional[str]:
+    """Return a rejection reason, or None if the path is independently confirmed.
+
+    Containment is on the resolved path so a symlink or `..` cannot walk out
+    of the workspace. Absolute paths are allowed only when they resolve
+    inside it (engine receipts are absolute-inside-root).
+    """
+    if raw_path is None:
+        return "ENVELOPE_PATH_MISSING"
+    text = str(raw_path).strip()
+    if not text or "\x00" in text:
+        return "ENVELOPE_PATH_MISSING"
+    try:
+        candidate = Path(text).expanduser()
+    except (TypeError, ValueError):
+        return "ENVELOPE_PATH_MISSING"
+    joined = candidate if candidate.is_absolute() else (root / candidate)
+    try:
+        resolved = joined.resolve()
+    except (OSError, RuntimeError):
+        return "ENVELOPE_PATH_ESCAPE"
+    try:
+        rel = resolved.relative_to(root)
+    except ValueError:
+        return "ENVELOPE_PATH_ESCAPE"
+    if not rel.parts or rel == Path(".") or any(part == ".." for part in rel.parts):
+        return "ENVELOPE_PATH_ESCAPE"
+    if not resolved.exists():
+        return "ENVELOPE_PATH_MISSING"
+    if nonempty:
+        if not resolved.is_file():
+            return "ENVELOPE_PATH_MISSING"
+        try:
+            if resolved.stat().st_size <= 0:
+                return "ENVELOPE_PATH_EMPTY"
+        except OSError:
+            return "ENVELOPE_PATH_MISSING"
+    return None
+
+
+def _control_was_run(ctrl: Mapping[str, Any]) -> bool:
+    if any(ctrl.get(key) is True for key in _CONTROL_RAN_KEYS):
+        return True
+    if ctrl.get("exit_code") is not None:
+        return True
+    status = str(ctrl.get("status") or "").strip().lower()
+    return status in {"ran", "run", "executed", "completed"}
+
+
+def _control_was_rejected(ctrl: Mapping[str, Any]) -> bool:
+    if ctrl.get("rejected") is True:
+        return True
+    if ctrl.get("ok") is False or ctrl.get("passed") is False:
+        return True
+    verdict = str(ctrl.get("verdict") or ctrl.get("result") or "").strip().lower()
+    return verdict in _CONTROL_REJECTED_VERDICTS
+
+
+def _envelope_negative_controls_reason(controls: Any) -> Optional[str]:
+    """None iff at least one control was run-and-rejected and none that ran passed.
+
+    A control that ran and was not rejected is the opposite of adequacy: the
+    verifier could not reject a false world. Missing/malformed controls are
+    not a pass.
+    """
+    if not isinstance(controls, list) or not controls:
+        return "ENVELOPE_NO_REJECTED_CONTROL"
+    saw_rejected = False
+    for item in controls:
+        if not isinstance(item, Mapping):
+            continue
+        ran = _control_was_run(item)
+        rejected = _control_was_rejected(item)
+        if ran and rejected:
+            saw_rejected = True
+        elif ran:
+            return "ENVELOPE_CONTROL_PASSED"
+    if not saw_rejected:
+        return "ENVELOPE_NO_REJECTED_CONTROL"
+    return None
+
+
+def _cited_envelope_paths(envelope: Mapping[str, Any], field: str) -> List[Any]:
+    raw = envelope.get(field)
+    if field == "receipt_paths":
+        return list(raw) if isinstance(raw, list) else []
+    if not isinstance(raw, list):
+        return []
+    cited: List[Any] = []
+    for item in raw:
+        if isinstance(item, Mapping) and "path" in item:
+            cited.append(item.get("path"))
+        elif isinstance(item, (str, Path)):
+            cited.append(item)
+    return cited
+
+
+def _envelope_result(
+    ok: bool,
+    reason: str,
+    checks: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    result: Dict[str, Any] = {
+        "ok": ok,
+        "reason": reason,
+        "checks": list(checks or []),
+        "acceptance_source": _ENVELOPE_ACCEPTANCE_SOURCE,
+    }
+    return result
+
+
+def _judge_envelope_receipts(workspace: Any, envelope: Mapping[str, Any]) -> Dict[str, Any]:
+    """Deterministic envelope acceptance. Verdict is never read as authority."""
+    root = _resolved_workspace_root(workspace)
+    checks: List[Dict[str, Any]] = []
+
+    receipt_paths = _cited_envelope_paths(envelope, "receipt_paths")
+    artifact_paths = _cited_envelope_paths(envelope, "artifacts")
+    evidence_paths = _cited_envelope_paths(envelope, "evidence")
+    checkable = receipt_paths + artifact_paths
+    if not checkable:
+        return _envelope_result(False, "ENVELOPE_NO_CHECKABLE_ARTIFACT", checks)
+
+    # Every cited receipt/artifact must be a non-empty file inside the workspace.
+    for kind, raw_path, nonempty in (
+        [("receipt_path", p, True) for p in receipt_paths]
+        + [("artifact_path", p, True) for p in artifact_paths]
+        + [("evidence_path", p, False) for p in evidence_paths]
+    ):
+        reason = _confirm_envelope_path(root, raw_path, nonempty=nonempty)
+        checks.append(
+            {
+                "kind": kind,
+                "path": None if raw_path is None else str(raw_path),
+                "ok": reason is None,
+                "reason": reason,
+            }
+        )
+        if reason is not None:
+            return _envelope_result(False, reason, checks)
+
+    # At least one control was run and rejected; a run control that passed is not adequacy.
+    control_reason = _envelope_negative_controls_reason(
+        envelope.get("negative_controls")
+    )
+    if control_reason is not None:
+        checks.append({"kind": "negative_control", "ok": False, "reason": control_reason})
+        return _envelope_result(False, control_reason, checks)
+    checks.append({"kind": "negative_control", "ok": True})
+    return _envelope_result(True, "ENVELOPE_RECEIPTS_CONFIRMED", checks)
+
+
 def _is_grok_unit(wu: WorkUnit) -> bool:
     backend = str(
         getattr(wu, "assigned_backend", None)
@@ -1134,6 +1306,14 @@ class Mission:
                 val.setdefault("acceptance_source", "workunit_verifier")
                 return val
             return {"ok": False, "reason": "NO_DETERMINISTIC_VALIDATION"}
+
+        # After the unit's own verifier (a real gate always wins) and before
+        # model-supplied tests. Envelope fields are claims; only disk paths
+        # and a run-and-rejected negative control can accept. Verdict is not
+        # read. Missing/empty/malformed envelopes fall through (fail closed).
+        envelope = raw.get("result_envelope")
+        if isinstance(envelope, dict) and envelope:
+            return _judge_envelope_receipts(self.workspace, envelope)
 
         if isinstance(raw.get("validation"), dict):
             return raw["validation"]

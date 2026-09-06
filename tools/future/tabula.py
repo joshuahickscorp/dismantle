@@ -17,7 +17,7 @@ synthetic result.
     python3 tools/future/tabula.py --build
     python3 tools/future/tabula.py --selftest
     python3 tools/future/tabula.py --disposition
-    python3 tools/audit/reachability_triage.py --invoke future.tabula --args '{"scores":{"behavioral":0.7,"capability":0.05,"tool_use":0.02,"reasoning":0.01,"instruction_following":0.0}}'
+    python3 tools/roadmap/capability_reachability.py --selftest
     python3 -m pytest tools/future/test_tabula.py -q
 
 A Tabula transformation is one method of CHILD generation (see
@@ -260,7 +260,7 @@ FLOOR_CALL_SITES: tuple[dict[str, str], ...] = (
         "kind": "call",
     },
     {
-        "file": "tools/audit/reachability_triage.py",
+        "file": "tools/roadmap/capability_reachability.py",
         "symbol": "tools.future.tabula.evaluate",
         "kind": "call",
         "via": "WIRED future.tabula",
@@ -1651,7 +1651,7 @@ def resident_callable(
         "module": "tools.future.tabula",
         "callable": "build",
         "invoke": (
-            "python3 tools/audit/reachability_triage.py --invoke future.tabula "
+                    "python3 tools/roadmap/capability_reachability.py --selftest "
             "--args '{\"scores\":{\"behavioral\":0.7,\"capability\":0.05,"
             "\"tool_use\":0.02,\"reasoning\":0.01,\"instruction_following\":0.0}}'"
         ),
@@ -1855,7 +1855,7 @@ def disposition() -> dict[str, Any]:
                 "call_sites": [dict(s) for s in FLOOR_CALL_SITES],
                 "test": "tools/future/test_tabula.py",
                 "invoke": (
-                    "python3 tools/audit/reachability_triage.py --invoke "
+                    "python3 tools/roadmap/capability_reachability.py --selftest "
                     "future.tabula --args '{\"scores\":{...}}'"
                 ),
                 "evidence_tier": "FUNCTIONAL_SIM",

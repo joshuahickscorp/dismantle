@@ -961,7 +961,7 @@ _DECLARATION_SWEEP: dict[str, tuple[tuple[str, str], ...]] = {
     # each returning one fixed 8-field envelope. Different capability, same count.
     #
     # tools/acceptance/vmcp/gates.py:1690 exercises hcli.agentos.vmcp.disposition.compact_surface,
-    # and tools/audit/reachability_triage.py:2097 calls it from production. That is
+    # and the retired reachability-triage adapter once called it from production. That is
     # the symbol the acceptance is about AND the symbol something really calls, so
     # wiring and acceptance now describe the same artifact.
     "VMCP_COMPACT_SURFACE": (

@@ -26,7 +26,7 @@ WEB / SPATIAL / visual-proof / LABORATORY stay PARKED with explicit blockers.
 
     python3 hcli/agentos/vmcp/disposition.py --build
     python3 hcli/agentos/vmcp/disposition.py --selftest
-    python3 tools/audit/reachability_triage.py --invoke future.vmcp --args '{"act":"see","path":"..."}'
+    python3 hcli/agentos/vmcp/disposition.py --build
     python3 -m pytest hcli/agentos/vmcp/test_behavior_lab.py hcli/agentos/vmcp/test_file_eye.py -q -o addopts=""
 """
 from __future__ import annotations
@@ -232,7 +232,7 @@ def _wake(
             },
             {
                 "channel": "adapter",
-                "where": "tools/audit/reachability_triage.py",
+                "where": "receipts/future/REACHABILITY_TRIAGE.json",
                 "required_kind": WAKE_REQUIRED_KIND,
                 "required_symbol": required_symbol,
                 "how": (
@@ -392,7 +392,7 @@ def _organ_table(located: Mapping[str, Any]) -> list[dict[str, Any]]:
                     "via": "see()",
                 },
                 {
-                    "file": "tools/audit/reachability_triage.py",
+                "file": "receipts/future/REACHABILITY_TRIAGE.json",
                     "symbol": "hcli.agentos.vmcp.disposition.compact_surface",
                     "kind": "call",
                     "via": "WIRED vmcp.disposition (compatibility capability id)",
@@ -976,7 +976,7 @@ def build() -> Path:
         "resident_callable": {
             "entry_point": "python3 hcli/agentos/vmcp/disposition.py --build",
             "invoke": (
-                "python3 tools/audit/reachability_triage.py --invoke future.vmcp "
+                "python3 hcli/agentos/vmcp/disposition.py --build "
                 "--args '{\"act\":\"see\",\"path\":\"...\"}'"
             ),
             "symbol": "hcli.agentos.vmcp.disposition.compact_surface",
@@ -1031,7 +1031,7 @@ def build() -> Path:
             "file_eye": {
                 "command": f"python3 hcli/agentos/vmcp/disposition.py --act see --path {echo_path}",
                 "invoke": (
-                    "python3 tools/audit/reachability_triage.py --invoke future.vmcp "
+                "python3 hcli/agentos/vmcp/disposition.py --build "
                     f"--args '{{\"act\":\"see\",\"path\":\"{echo_path}\"}}'"
                 ),
                 "kind": file_run.get("kind"),
@@ -1048,7 +1048,7 @@ def build() -> Path:
                     "--args '{\"argv\":[\"/bin/echo\",\"perception-depth\"]}'"
                 ),
                 "invoke": (
-                    "python3 tools/audit/reachability_triage.py --invoke future.vmcp "
+                "python3 hcli/agentos/vmcp/disposition.py --build "
                     "--args '{\"act\":\"check\",\"organ\":\"tool_doctor\","
                     "\"argv\":[\"/bin/echo\",\"perception-depth\"]}'"
                 ),
@@ -1064,7 +1064,7 @@ def build() -> Path:
                     "--args '{\"fixtures\":[\"BHV-02\",\"BHV-09\",\"BHV-21\"]}'"
                 ),
                 "invoke": (
-                    "python3 tools/audit/reachability_triage.py --invoke future.vmcp "
+                "python3 hcli/agentos/vmcp/disposition.py --build "
                     "--args '{\"act\":\"prove\",\"organ\":\"behavior_lab\","
                     "\"fixtures\":[\"BHV-02\",\"BHV-09\",\"BHV-21\"]}'"
                 ),

@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 504,933 | 1,456 |
-| active total | 1,002,945 | 2,091 |
+| support | 504,510 | 1,454 |
+| active total | 1,002,522 | 2,089 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -151,6 +151,9 @@ also included in the total and must not become an UNKNOWN bucket.
   The uncalled Odyssey transfer-rehearsal producer and its producer-only tests
   were retired; QWEN/FLASH transfer receipts remain as historical evidence and
   the current Odyssey II harness remains separate.
+  The uncalled Odyssey resident-seal generator and its self-contained mutation
+  tests were retired; the sealed resident receipt and current HCLI/AgentOS
+  resident verification remain authoritative.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

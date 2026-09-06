@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 489,475 | 1,420 |
-| active total | 987,487 | 2,055 |
+| support | 489,266 | 1,419 |
+| active total | 987,278 | 2,054 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -76,6 +76,8 @@ also included in the total and must not become an UNKNOWN bucket.
   The uncalled Flash NX completeness producer was then retired; its sealed
   audit receipt remains the live causality source.
   The uncalled fidelity-hierarchy producer was then retired; its sealed
+  receipt remains archival evidence.
+  The uncalled MAXX resource-pipeline producer was then retired; its sealed
   receipt remains archival evidence.
   The parallel future WorkGraph runtime was then sublated into a bounded
   arrival-payload builder; HCLI `scheduler`/`dag_store` now own scheduling.

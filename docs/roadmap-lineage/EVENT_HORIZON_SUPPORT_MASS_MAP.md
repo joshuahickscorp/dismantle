@@ -1,8 +1,7 @@
 # Event Horizon support mass map
 
-Measured on `refactor/event-horizon` after the Qwen30 future-oracle, N051
-one-shot analysis, CUDA hypothesis, WorkGraph, frontier-runtime, and legacy
-Ascension-supervisor retirement waves. This is the support
+Measured on `refactor/event-horizon` after the orphan Qwen3.8 genesis-manager
+retirement wave. This is the support
 baseline for the family-reduction campaign; product LOC is frozen unless a
 support consolidation requires an ownership correction.
 
@@ -17,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 518,518 | 1,477 |
-| active total | 1,016,530 | 2,112 |
+| support | 518,104 | 1,475 |
+| active total | 1,016,116 | 2,110 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -141,6 +140,9 @@ also included in the total and must not become an UNKNOWN bucket.
   while the operator-owned current roadmap remains the only resolver authority.
   The unreferenced per-lane ascent runbooks were then collapsed to the compact
   planning archive; shared density/common references and sealed findings remain.
+  The uncalled Python Qwen3.8 genesis-child manager and its CLI shim were then
+  deleted as an orphan execution pair; the Rust `ascension_qwen38_shared_sessions`
+  example remains the executable authority for that capability.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

@@ -49,7 +49,6 @@ import worker_gate  # noqa: E402
 import odyssey_candgen as candgen  # noqa: E402
 import odyssey_costmodel as costmodel  # noqa: E402
 import odyssey_memgate as memgate  # noqa: E402
-import odyssey_novelty as novelty  # noqa: E402
 
 ODYSSEY = REPO / "workspace" / "campaign" / "odyssey"
 STATE = ODYSSEY / "ODYSSEY_STATE.json"
@@ -108,7 +107,7 @@ PHASES = (
 )
 PHASE_INDEX = {name: i for i, name in enumerate(PHASES)}
 TRANSFER_REF = {"O006": "O005"}
-NOVELTY_TEMPLATES = tuple(f"novelty-{lane}" for lane in novelty.LANES)
+NOVELTY_TEMPLATES: tuple[str, ...] = ()
 TEMPLATES = (
     "external-science-moe",
     "external-science-dense",
@@ -263,7 +262,6 @@ RECEIPT_PATTERN = {
     "transfer-control": "{oxx}_TRANSFER.json",
     **GRAVITY_RECEIPT,
     **NX_RECEIPT,
-    **{f"novelty-{lane}": "{oxx}_NOVELTY_" + lane + ".json" for lane in novelty.LANES},
     "patient-sealed": "{oxx}_PATIENT_SEAL.json",
 }
 # Bounded required set per class (steer S002 — do not over-deepen).
@@ -1136,8 +1134,6 @@ def write_scope(ob: dict) -> dict:
     writes: list[str] = []
     if template in RUNNER_WRITE_TEMPLATES or template in CODE_EDIT_TEMPLATES:
         writes = [RUNNER_REL, packet, rec]
-    elif template.startswith("novelty-"):
-        writes = [rec] if rec else []
     elif template == "transfer-control":
         writes = [
             packet,
@@ -1442,9 +1438,7 @@ def parse_science_task(name: str) -> tuple[str, str] | None:
         r"sensitivity-map|transfer-control|"
         r"gravity-aggressive-moe|gravity-aggressive-dense|gravity-aggressive-hybrid|"
         r"gravity-moe|gravity-dense|gravity-hybrid|"
-        r"nx-gather-moe|nx-state-hybrid|nx-dense|"
-        r"novelty-representation|novelty-numerical|novelty-arch|novelty-kernel|"
-        r"novelty-adversarial-falsifier|novelty-compression"
+        r"nx-gather-moe|nx-state-hybrid|nx-dense"
         r")(?:-\d{8}-\d{6})?$",
         name or "",
         re.I,
@@ -3224,58 +3218,10 @@ def _patient_target_delta(oxx: str, pkt: dict | None):
 def should_novelty_escalate(oxx: str, pkt: dict | None,
                             entries: list | None,
                             state: dict | None = None) -> bool:
-    if not aggressive_probe_attempted(oxx, entries):
-        return False
-    tried = _families_tried(oxx, pkt, entries)
-    xfer_done = science_is_done(oxx, "transfer-control", entries) or not reference_sibling(
-        oxx, state
-    )
-    patient = {
-        "oxx": oxx,
-        "deterministic_search": True,
-        "deterministic_exhausted": True,
-        "rule_transfer": xfer_done,
-        "stages_completed": ["deterministic_search"] + (
-            ["rule_transfer"] if xfer_done else []
-        ),
-    }
-    return novelty.should_escalate(
-        patient,
-        _patient_best_class(oxx, pkt, entries),
-        _patient_target_delta(oxx, pkt),
-        tried,
-        load_odyssey_policy(),
-    )
-
-
-def _frontier_novelty_packet(oxx: str) -> dict:
-    pkt = load_packet(oxx) or {}
-    recs: list = []
-    if RECEIPT_DIR.is_dir():
-        for path in sorted(RECEIPT_DIR.glob(f"{oxx}_*.json")):
-            try:
-                recs.append(read_json(path))
-            except (OSError, json.JSONDecodeError):
-                continue
-    xfer_done = science_is_done(oxx, "transfer-control") or not reference_sibling(oxx)
-    patient = {
-        "oxx": oxx,
-        "kind": arch_kind(oxx, pkt, load_census(oxx)),
-        "deterministic_search": True,
-        "rule_transfer": xfer_done,
-        "stages_completed": ["deterministic_search"] + (
-            ["rule_transfer"] if xfer_done else []
-        ),
-    }
-    return novelty.build_packet(
-        patient,
-        pkt,
-        recs,
-        RULEBASE if RULEBASE.is_file() else {},
-        TRANSFER if TRANSFER.is_file() else {},
-        NEGATIVE if NEGATIVE.is_file() else {},
-        load_odyssey_policy(),
-    )
+    # The former Grok novelty lane was optional scaffolding, not a current
+    # HCLI/AgentOS authority. Keep the predicate as a stable false boundary so
+    # old state cannot silently schedule an unowned external lane.
+    return False
 
 
 def _ob_record(work: dict, template: str, *, source: str) -> dict:
@@ -3442,11 +3388,6 @@ def synthesize_for_patient(oxx: str, meta: dict, pkt: dict | None,
             rec["write_set"] = scope["write_set"]
             rec["exclusive_resources"] = scope["exclusive_resources"]
             out.append(rec)
-    if should_novelty_escalate(oxx, pkt, entries):
-        for lane in novelty.LANES:
-            add(f"novelty-{lane}", 9, 1, 0,
-                f"frontier novelty / {lane} (Grok; nonconventional)",
-                "novelty")
     return out
 
 
@@ -4067,23 +4008,6 @@ RENDERERS = {
     "nx-dense": lambda f, ob: render_nx(f, "nx-dense"),
 }
 
-
-def render_novelty_lane(f: dict, ob: dict) -> str:
-    oxx = f["oxx"]
-    lane = (ob.get("template") or "").removeprefix("novelty-")
-    packet = _frontier_novelty_packet(oxx)
-    dest_dir = f.get("_auto_dir")
-    novelty.render_lane_contracts(packet, auto_dir=dest_dir)
-    path = Path(dest_dir or AUTO_DIR) / f"{oxx.lower()}_novelty-{lane}.md"
-    if path.is_file():
-        return path.read_text()
-    return novelty._lane_contract_text(packet, lane)  # noqa: SLF001 — module API
-
-
-for _nov in NOVELTY_TEMPLATES:
-    RENDERERS[_nov] = lambda f, ob, _t=_nov: render_novelty_lane(f, ob)
-
-
 def render_contract(ob: dict, auto_dir: Path | None = None) -> Path:
     template = ob["template"]
     if template not in RENDERERS:
@@ -4137,7 +4061,7 @@ def odyssey_running_ids(
     now_epoch: float | None = None,
     pid_alive_fn=None,
 ) -> set[str]:
-    """Concurrent science lanes: live subprocess PIDs + live grok-novelty.
+    """Concurrent science lanes: live deterministic subprocess PIDs.
 
     Age-capped. Dead subprocess PIDs do not consume --max-lanes.
     The controller itself may run as odyssey-autonomous-loop-*; that is not a
@@ -7795,7 +7719,6 @@ def _self_check() -> int:
         ("external-science-dense", "O001"),
         ("route-map", "O003"),
         ("transfer-control", "O006"),
-        ("novelty-representation", "O005"),
     ):
         ws = write_scope({"oxx": oxx, "template": tmpl})
         assert RUNNER_REL not in ws["write_set"], (tmpl, ws)
@@ -7830,7 +7753,6 @@ def _self_check() -> int:
     assert is_deterministic_obligation({
         "template": "external-science-dense", "oxx": "O001",
     })
-    assert not is_deterministic_obligation("novelty-arch")
     assert not is_deterministic_obligation({
         "template": "gravity-moe", "code_building": True,
     })
@@ -8004,12 +7926,6 @@ def _self_check() -> int:
                     "template": "nx-gather-moe", "oxx": "O003", "task": "pid:999003",
                 },
                 {
-                    "status": "RUNNING", "kind": "grok",
-                    "task": "odyssey-o005-novelty-arch", "id": "d",
-                    "template": "novelty-arch", "oxx": "O005",
-                    "started_epoch": 50, "timeout_s": 100,
-                },
-                {
                     "status": "RUNNING", "kind": "subprocess", "pid": 999004,
                     "started_epoch": 0, "timeout_s": 10, "id": "e",
                     "template": "sensitivity-map", "oxx": "O006",
@@ -8026,14 +7942,13 @@ def _self_check() -> int:
             )
         finally:
             mod.live_odyssey_lanes = _orig_live2
-        # live PIDs 999001/999002 + live grok novelty; dead 999003 and
-        # over-timeout 999004 (even if we marked it live) excluded.
+        # live PIDs 999001/999002; dead 999003 and over-timeout 999004
+        # (even if we marked it live) are excluded.
         assert "pid:999001" in ids_cap, ids_cap
         assert "pid:999002" in ids_cap, ids_cap
         assert "pid:999003" not in ids_cap, ids_cap
         assert "pid:999004" not in ids_cap, ids_cap
-        assert "odyssey-o005-novelty-arch" in ids_cap, ids_cap
-        assert len(ids_cap) == 3, ids_cap
+        assert len(ids_cap) == 2, ids_cap
 
     print("self-check ok")
     return 0

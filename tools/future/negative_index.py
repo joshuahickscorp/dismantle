@@ -1410,7 +1410,7 @@ def gaps_closed() -> list[str]:
 
 def negative_findings() -> list[str]:
     return [
-        "tools/headless/negative_science.py QWEN entries are not in the v1 NOETIC receipt; they are extracted from the Python catalog so they are not lost. Rebuilding the Codex receipt was out of scope.",
+            "tools/headless/negative_science.py QWEN entries are retained in the v2 receipt; the index extracts them from the canonical generator catalog so they are not lost.",
         ".hcli-legacy/bootstrap-director-v6/negative-science.jsonl is not in git HEAD; cited by noetic as HCLI tactic fingerprints, not representation science.",
         "The dual-gravity JSONL duplicates many qwen80/evolution JSONL records (same record_id). Both sources are kept; they are not merged.",
         "No FAMILY or GENERAL_PHYSICAL promotion was performed. Counts of distinct parents per family are visible in coverage.by_model but are not a promotion.",

@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 522,897 | 1,479 |
-| active total | 1,020,909 | 2,114 |
+| support | 510,866 | 1,478 |
+| active total | 1,008,878 | 2,113 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -110,6 +110,8 @@ also included in the total and must not become an UNKNOWN bucket.
   campaign-engine and HCLI verification tests remain.
   Two orphan research-registry/source-verifier helpers and their dedicated
   tests were then retired; current Gravity/Doctor capture authorities remain.
+  The optional Grok novelty engine was then retired as disabled-by-default
+  external scaffolding; deterministic Odyssey/HCLI lanes remain authoritative.
 - `research/lab/operators`: the blocked Qwen scientific optimizer watcher had
   no live caller or material physical state; its implementation, launcher, and
   dedicated fixture were deleted while its blocked-runtime claim boundary was

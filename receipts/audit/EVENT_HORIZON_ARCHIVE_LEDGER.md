@@ -30,6 +30,7 @@ claims belong to the live roadmap, receipts, HCLI/AgentOS contracts, and
 | Odyssey-I readiness generator | no live caller and only emitted an untracked readiness file; current capability reachability owns the live audit surface | `tools/roadmap/capability_reachability.py` |
 | Reachability triage analyzer | duplicate analyzer/test family superseded by `tools/roadmap/capability_reachability.py`; its sealed JSON receipt remains the historical inventory and Rust `hawking-index` owns the query path | `receipts/future/REACHABILITY_TRIAGE.json` |
 | Python reachability artifact index | uncalled duplicate query/index implementation; the Rust `hawking-index` artifact owner remains the live sidecar authority and the JSON receipt remains immutable evidence | `crates/hawking-index/src/artifact.rs` |
+| Odyssey manifest-backfill and read-budget utilities | zero current callers or tests; ModelLake manifest ownership and specimen-open budget gates remain authoritative | `tools/odyssey/modellake_index.py`, `tools/odyssey/specimen_open.py` |
 | nomenclature lexicon | a noun earns a live owner only when it has a caller, verifier, or current receipt; aliases and dead namespace labels are not capability | HCLI nomenclature and catalogs |
 
 ## Sub-1 evidence packet disposition

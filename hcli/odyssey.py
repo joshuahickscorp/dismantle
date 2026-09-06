@@ -72,12 +72,28 @@ def _run(args: list[str], timeout_s: float = 60.0) -> dict[str, Any]:
         text=True,
         timeout=timeout_s,
     )
+    stdout = proc.stdout
+    if (
+        args[:1] == ["acquire-next"]
+        and "--dry-run" in args
+        and proc.returncode == 1
+        and proc.stdout.startswith("REFUSE")
+    ):
+        stdout += "DRY-RUN: admission refusal; no download launched.\n"
     return {
         "schema": "hcli.odyssey.ctl.v1",
         "argv": args,
         "exit_code": proc.returncode,
-        "ok": proc.returncode == 0,
-        "stdout": proc.stdout,
+        # A dry-run acquisition can safely conclude REFUSE (disk/memory
+        # admission) and still completed its requested planning operation.
+        # Preserve the refusal in stdout/exit_code; ``ok`` describes the
+        # read-only HCLI call, not whether admission was granted.
+        "ok": proc.returncode == 0 or (
+            args[:1] == ["acquire-next"]
+            and "--dry-run" in args
+            and proc.stdout.startswith("REFUSE")
+        ),
+        "stdout": stdout,
         "stderr": proc.stderr,
     }
 

@@ -107,7 +107,6 @@ PHASES = (
 )
 PHASE_INDEX = {name: i for i, name in enumerate(PHASES)}
 TRANSFER_REF = {"O006": "O005"}
-NOVELTY_TEMPLATES: tuple[str, ...] = ()
 TEMPLATES = (
     "external-science-moe",
     "external-science-dense",
@@ -123,7 +122,7 @@ TEMPLATES = (
     "nx-gather-moe",
     "nx-state-hybrid",
     "nx-dense",
-) + NOVELTY_TEMPLATES
+)
 # Known runner invocations. No novelty, no code change — the orchestrator
 # execs tools/odyssey_patient_runner.py itself (S004 §52/§55).
 DETERMINISTIC_TEMPLATES = frozenset({
@@ -172,7 +171,6 @@ TEMPLATE_MECHANISM = {
     "nx-gather-moe": "nx-gather-moe",
     "nx-state-hybrid": "nx-state-hybrid",
     "nx-dense": "nx-dense",
-    **{t: t for t in NOVELTY_TEMPLATES},
 }
 # Agreed runner flags (parallel lane owns the runner; these names are the contract).
 GRAVITY_SPEC = {

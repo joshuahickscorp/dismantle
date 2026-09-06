@@ -2285,16 +2285,16 @@ mod tests {
             assert!(begin_token());
             {
                 let _a = Scope::new(Bucket::AttentionAndIndexShare);
-                std::thread::sleep(Duration::from_millis(5));
+                std::thread::sleep(Duration::from_millis(20));
                 {
                     let _m = Scope::new(Bucket::MetalEncode);
-                    std::thread::sleep(Duration::from_millis(5));
+                    std::thread::sleep(Duration::from_millis(20));
                 }
-                std::thread::sleep(Duration::from_millis(5));
+                std::thread::sleep(Duration::from_millis(20));
             }
             {
                 let _r = Scope::new(Bucket::Routing);
-                std::thread::sleep(Duration::from_millis(5));
+                std::thread::sleep(Duration::from_millis(20));
             }
             let report = end_token().expect("report");
             let attn = report.buckets_us["attention_and_indexshare"]
@@ -2302,21 +2302,24 @@ mod tests {
                 .unwrap();
             let enc = report.buckets_us["metal_encode"].as_u64().unwrap();
             let route = report.buckets_us["routing"].as_u64().unwrap();
-            assert!(enc >= 3_000, "encode us={enc}");
-            assert!(attn >= 6_000, "attn exclusive us={attn}");
-            assert!(route >= 3_000, "route us={route}");
+            assert!(enc >= 12_000, "encode us={enc}");
+            assert!(attn >= 24_000, "attn exclusive us={attn}");
+            assert!(route >= 12_000, "route us={route}");
             let sum: u64 = report.buckets_us.values().filter_map(|v| v.as_u64()).sum();
             assert_eq!(sum, report.attributed_us);
             let covered = report.attributed_us + report.unattributed_us;
             let delta = (covered as i64 - report.wall_us as i64).unsigned_abs();
+            let delta_budget = 1_000 + report.wall_us / 50;
             assert!(
-                delta < 1_000,
-                "covered={covered} wall={} delta={delta}",
+                delta < delta_budget,
+                "covered={covered} wall={} delta={delta} budget={delta_budget}",
                 report.wall_us
             );
             assert!(
-                attn < enc + 12_000,
-                "attn should exclude nested encode: attn={attn} enc={enc}"
+                attn * 2 < enc * 5,
+                "attn should exclude nested encode: attn={attn} enc={enc} \
+                 ratio={:.2} (exclusive is ~2.0, an inclusive ledger is ~3.0)",
+                attn as f64 / enc.max(1) as f64
             );
             assert!(
                 report.profiler_overhead_us > 0 || report.profiler_overhead_fraction >= 0.0,

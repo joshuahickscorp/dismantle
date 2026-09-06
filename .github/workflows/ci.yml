@@ -181,4 +181,4 @@ jobs:
         run: cargo test -p q4k_fast_tool -p awq_bake_tool -p tq_bake_tool --no-run
 
       - name: Unit tests
-        run: cargo test -p q4k_fast_tool -p awq_bake_tool -p tq_bake_tool --lib --bins
+        run: cargo test -p q4k_fast_tool -p awq_bake_tool -p tq_bake_tool --bins

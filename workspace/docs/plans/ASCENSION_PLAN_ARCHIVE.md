@@ -211,3 +211,8 @@ QKV/RoPE append, batched MMA/predecode, pair/SwiGLU, KV scatter, int8
 quantization, byte-cut, sidecar, and multisequence tail probes. These were
 standalone historical probes with no current production or acceptance caller;
 model-specific and census-linked verification remains.
+
+The uncalled Q80 capture-coverage auditor and its dedicated test were also
+retired. The active Q80 `capture_index` remains the source of truth for capture
+identity and the current activation-weighted path retains its own quality
+controls; no capture data or qualified artifact was removed.

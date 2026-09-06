@@ -47,8 +47,7 @@ PAUSABLE_IO = ("hf download",)
 # COMMAND LINE regardless of cpu%, which is the only signal that actually sees them.
 OUR_WORKLOADS = ("capability_suite.py", "composition_isolation.py",
                  "whole_model_native.py", "ascension_qwen38_hybrid_greedy",
-                 "clean_rebuild.py", "capture_moe_x.py", "cold_vs_transfer.py",
-                 "matched_bits_probe.py", "expert_family_genome.py")
+                 "clean_rebuild.py", "cold_vs_transfer.py", "expert_family_genome.py")
 
 
 def quiesce_check():

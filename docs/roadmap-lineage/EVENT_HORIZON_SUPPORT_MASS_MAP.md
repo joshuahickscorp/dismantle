@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 504,235 | 1,452 |
-| active total | 1,002,247 | 2,087 |
+| support | 503,841 | 1,450 |
+| active total | 1,001,853 | 2,085 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -156,6 +156,9 @@ also included in the total and must not become an UNKNOWN bucket.
   resident verification remain authoritative.
   The superseded Odyssey G037 state-gravity producer and its coupled test were
   removed; the current headless N048 state-gravity authority remains.
+  Two uncalled Odyssey worker scripts were also retired, and their stale process
+  needles were removed from qualification; the matched-bits and teacher-capture
+  receipts remain archival.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

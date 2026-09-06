@@ -12,9 +12,7 @@ use super::qwen80_complete_runtime::{
     QWEN80_EXPERTS, QWEN80_HIDDEN, QWEN80_LAYERS, QWEN80_MOE_INTERMEDIATE, QWEN80_TOP_K,
     QWEN80_VOCAB,
 };
-use super::qwen80_mixed_hybrid_decode::{
-    MixedExclusiveSnap, MixedTokenSample,
-};
+use super::qwen80_mixed_hybrid_decode::{MixedExclusiveSnap, MixedTokenSample};
 use serde::Serialize;
 
 pub const QWEN80_MIXED_TOKEN_NS_LEDGER_SCHEMA: &str =
@@ -241,10 +239,9 @@ pub fn seal_components(
         let r = residual.cloned().unwrap_or(b.clone());
         let h = hgravs.cloned().unwrap_or(b.clone());
         let addr = (b.addr_frac_of_full + r.addr_frac_of_full + 2.0 * h.addr_frac_of_full) / 4.0;
-        let dec = (b.decode_minus_addr_frac
-            + r.decode_minus_addr_frac
-            + 2.0 * h.decode_minus_addr_frac)
-            / 4.0;
+        let dec =
+            (b.decode_minus_addr_frac + r.decode_minus_addr_frac + 2.0 * h.decode_minus_addr_frac)
+                / 4.0;
         ProbeSplit {
             class: "routed".into(),
             full_median_gpu_ns: snap.gpu_organ.moe_routed,
@@ -561,5 +558,8 @@ pub fn occupancy_note(rows: u64, kernel: &str) -> String {
     } else {
         rows.div_ceil(8)
     };
-    format!("{kernel}: {tgs} TGs, {:.2} TG/core on 60-core M3 Ultra", tgs as f64 / 60.0)
+    format!(
+        "{kernel}: {tgs} TGs, {:.2} TG/core on 60-core M3 Ultra",
+        tgs as f64 / 60.0
+    )
 }

@@ -1,5 +1,3 @@
-/// Shared code-index handle consumed by grounding / context compile / connectors.
-
 // --- Durable Goal + Checkpoint records (bible sec 14, sec 15.4, sec 78.1 #3) ---
 
 /// The lifecycle of a durable [`GoalRecord`] (bible sec 14): a persisted

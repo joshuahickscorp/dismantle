@@ -1849,9 +1849,7 @@ mod imp {
             "deepseek_v4_fp8_gate_up_swiglu_bf16_fused" => {
                 "deepseek_v4_fp8_gate_up_swiglu_bf16_fused"
             }
-            "deepseek_v4_fp8_down_bf16_combine_fused" => {
-                "deepseek_v4_fp8_down_bf16_combine_fused"
-            }
+            "deepseek_v4_fp8_down_bf16_combine_fused" => "deepseek_v4_fp8_down_bf16_combine_fused",
             "deepseek_v4_fp8_act_quant_e4m3fn_e8m0_matvec_simdgroup_v4_splitk_candidate" => {
                 "deepseek_v4_fp8_act_quant_e4m3fn_e8m0_matvec_simdgroup_v4_splitk_candidate"
             }
@@ -2304,9 +2302,7 @@ mod imp {
             "qwen38_prefill_q4_g64_gemm_mma_n64" => "qwen38_prefill_q4_g64_gemm_mma_n64",
             "qwen38_prefill_rmsnorm_f32" => "qwen38_prefill_rmsnorm_f32",
             "qwen38_prefill_add_residual_f32" => "qwen38_prefill_add_residual_f32",
-            "qwen38_prefill_add_residual_rmsnorm_f32" => {
-                "qwen38_prefill_add_residual_rmsnorm_f32"
-            }
+            "qwen38_prefill_add_residual_rmsnorm_f32" => "qwen38_prefill_add_residual_rmsnorm_f32",
             "qwen38_prefill_swiglu_f32" => "qwen38_prefill_swiglu_f32",
             "qwen38_prefill_q4_embed" => "qwen38_prefill_q4_embed",
             "qwen38_prefill_copy_row" => "qwen38_prefill_copy_row",
@@ -2808,12 +2804,10 @@ mod imp {
             // fallback diagnostics, but no current shader defines them. The
             // runtime must therefore use the per-tensor path instead of
             // advertising an impossible pipeline.
-            assert!(!SHADER_Q80_MIXED_DECODE.contains(
-                "kernel void qwen_q2f_group64_matvec_qkv_geo_tpr64_tg128("
-            ));
-            assert!(!SHADER_Q80_MIXED_DECODE.contains(
-                "kernel void qwen_q2f_group64_matvec_pair_geo_tpr64_tg128("
-            ));
+            assert!(!SHADER_Q80_MIXED_DECODE
+                .contains("kernel void qwen_q2f_group64_matvec_qkv_geo_tpr64_tg128("));
+            assert!(!SHADER_Q80_MIXED_DECODE
+                .contains("kernel void qwen_q2f_group64_matvec_pair_geo_tpr64_tg128("));
             for kernel in [
                 "qwen_q2f_group64_matvec_pipe_tpr64_tg128",
                 "qwen_q2f_group64_matvec_splitk4_tg256",

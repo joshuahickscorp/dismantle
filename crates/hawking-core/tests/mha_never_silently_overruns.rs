@@ -57,7 +57,11 @@ fn run(ctx: &MetalContext, seq: usize, flash: bool) -> Vec<f32> {
 }
 
 fn max_rel(a: &[f32], b: &[f32]) -> f64 {
-    let scale = b.iter().map(|x| x.abs() as f64).fold(0.0f64, f64::max).max(1e-6);
+    let scale = b
+        .iter()
+        .map(|x| x.abs() as f64)
+        .fold(0.0f64, f64::max)
+        .max(1e-6);
     a.iter()
         .zip(b)
         .map(|(x, y)| ((*x as f64) - (*y as f64)).abs() / scale)
@@ -98,6 +102,9 @@ fn under_budget_sequences_still_use_the_original_kernel_and_agree() {
         let plain = run(&ctx, seq, false);
         let flash = run(&ctx, seq, true);
         let rel = max_rel(&plain, &flash);
-        assert!(rel < 1e-3, "seq {seq}: kernels disagree below the limit by {rel:.3e}");
+        assert!(
+            rel < 1e-3,
+            "seq {seq}: kernels disagree below the limit by {rel:.3e}"
+        );
     }
 }

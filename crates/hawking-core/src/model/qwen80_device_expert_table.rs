@@ -771,7 +771,9 @@ pub fn write_top10_address_table(
     table: Option<crate::metal::PinnedBuffer>,
 ) -> Result<Qwen80DeviceExpertTableLease> {
     if selected.len() != QWEN80_EXPERT_TABLE_TOP_K {
-        return Err(table_error("top-10 address table requires exactly 10 experts"));
+        return Err(table_error(
+            "top-10 address table requires exactly 10 experts",
+        ));
     }
     let generation = u32::try_from(layer.saturating_add(1))
         .map_err(|_| table_error("layer generation overflows u32"))?;

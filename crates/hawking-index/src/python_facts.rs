@@ -1257,7 +1257,11 @@ mod tests {
 
     fn init_git_repo(dir: &Path) {
         let out = git_in(dir, &["init", "-b", "main"]);
-        assert!(out.status.success(), "git init: {}", String::from_utf8_lossy(&out.stderr));
+        assert!(
+            out.status.success(),
+            "git init: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
         for (k, v) in [
             ("user.email", "r5@test"),
             ("user.name", "r5"),
@@ -1270,7 +1274,11 @@ mod tests {
 
     fn commit_all(dir: &Path, message: &str) {
         let add = git_in(dir, &["add", "-A"]);
-        assert!(add.status.success(), "git add: {}", String::from_utf8_lossy(&add.stderr));
+        assert!(
+            add.status.success(),
+            "git add: {}",
+            String::from_utf8_lossy(&add.stderr)
+        );
         let commit = git_in(dir, &["commit", "-m", message]);
         assert!(
             commit.status.success(),

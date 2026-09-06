@@ -1425,7 +1425,9 @@ impl SourceBf16Index {
             .ok_or_else(|| model_err(format!("shard offset overflow for tensor {name}")))?;
         slice.nbytes = len;
         let mut buf = Vec::with_capacity(len);
-        unsafe { buf.set_len(len); }
+        unsafe {
+            buf.set_len(len);
+        }
         self.read_raw_into(&slice, name, &mut buf)?;
         Ok(buf)
     }

@@ -155,9 +155,7 @@ pub fn qwen38_accept_config(config: &Value) -> Result<Qwen38AcceptedConfig> {
             )));
         }
         _ => {
-            return Err(Error::Model(
-                "qwen38 config is missing model_type".into(),
-            ));
+            return Err(Error::Model("qwen38 config is missing model_type".into()));
         }
     }
     let text = config.get("text_config").unwrap_or(config);

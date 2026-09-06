@@ -1,5 +1,3 @@
-/// Shared code-index handle consumed by grounding / context compile / connectors.
-
 // --- Multi-repo workspace graph (bible sec 35, sec 78.1 #14) -----------------
 
 /// Whether a repo in the workspace graph has been TRUSTED (bible sec 35: the

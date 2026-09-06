@@ -66,14 +66,14 @@ pub mod plan_domain;
 pub mod planning_diagnostic;
 pub mod policy;
 pub mod process;
+/// Canonical Rust owner for host-wide HCLI process observation and safe startup reaping.
+pub mod process_inspector;
 pub mod program;
 pub mod replay;
 pub mod rewind;
 pub mod rpc;
 pub mod security;
 pub mod services;
-/// Canonical Rust owner for host-wide HCLI process observation and safe startup reaping.
-pub mod process_inspector;
 /// Speculation safety: host durable sinks accept only target-verified tokens.
 pub mod speculation_safety;
 pub mod supervisor;
@@ -117,8 +117,7 @@ pub use policy::{
 pub use process::{ProcessState, ProcessStatus, ProcessSupervisor, StartSpec};
 pub use process_inspector::{
     inspect as inspect_host_processes, orphaned as orphaned_host_processes,
-    reap_orphaned as reap_host_processes, HostProcess, HostProcessReport, ReapFailure,
-    ReapReport,
+    reap_orphaned as reap_host_processes, HostProcess, HostProcessReport, ReapFailure, ReapReport,
 };
 pub use program::{default_program_limits, HostProgramHandles, ProgramRunError, ProgramRunResult};
 pub use replay::{BackendReplayService, TranscriptHit, TranscriptQuery};

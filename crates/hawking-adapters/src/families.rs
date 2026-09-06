@@ -370,7 +370,8 @@ const DEEPSEEK_ABI: FamilyAbi = FamilyAbi {
 const KIMI_EVIDENCE: &[Evidence] = &[
     Evidence {
         path: "workspace/campaign/odyssey/watch-manifests/moonshotai--Kimi-K3@9f62e4e9fffb.json",
-        claim: "Kimi source registry entry; adapter twin remains synthetic and not serve-registered",
+        claim:
+            "Kimi source registry entry; adapter twin remains synthetic and not serve-registered",
         kind: EvidenceKind::SyntheticParity,
     },
     Evidence {

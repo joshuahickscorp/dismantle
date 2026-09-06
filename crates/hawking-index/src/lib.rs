@@ -38,14 +38,17 @@ pub use query::{
     SearchResultSource, SqliteCodeIndex, Q,
 };
 
+pub use artifact::{
+    capability_id as artifact_capability_id, content_hash_hex as artifact_content_hash_hex,
+    ArtifactIndex, ArtifactMeta, EntityRef, SCHEMA_VERSION as ARTIFACT_SCHEMA_VERSION,
+};
 pub use graph::{CodeGraph, EdgeKind, Occurrence, RepoMap, RepoMapRequest, Symbol};
 pub use merkle::{Blake3MerkleScanner, ChangeSet, MerkleKind, MerkleNode, MerkleScanner};
 pub use parse::{parse_source, scip_symbol_id, LangId, ParseOutput, SymKind};
 pub use python_facts::{
     dump_python_facts_at_commit, dump_python_facts_from_overlay, dump_python_facts_git_head,
-    extract_python_facts_many, read_overlay_ndjson, CallFact, DefFact,
-    ImportFact, ImportedName, NameUseFact, PythonFactsDump, PythonFileFacts,
-    SubprocessLitFact, PYTHON_FACTS_SCHEMA,
+    extract_python_facts_many, read_overlay_ndjson, CallFact, DefFact, ImportFact, ImportedName,
+    NameUseFact, PythonFactsDump, PythonFileFacts, SubprocessLitFact, PYTHON_FACTS_SCHEMA,
 };
 pub use reachability::{
     collect_reachability_facts, extract_python_facts, CollectOptions, FileFacts, ReachabilityDump,
@@ -55,7 +58,3 @@ pub use semantic::{
     HttpEmbeddingClient, HybridRetrievalWeights, HybridRetriever, StubEmbeddingClient,
 };
 pub use store::SqliteStore;
-pub use artifact::{
-    capability_id as artifact_capability_id, content_hash_hex as artifact_content_hash_hex,
-    ArtifactIndex, ArtifactMeta, EntityRef, SCHEMA_VERSION as ARTIFACT_SCHEMA_VERSION,
-};

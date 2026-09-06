@@ -30,7 +30,9 @@ fn fusion_env() {
 }
 
 fn artifact_present() -> bool {
-    std::path::Path::new(ARTIFACT).join("catalog.hq38m20").is_file()
+    std::path::Path::new(ARTIFACT)
+        .join("catalog.hq38m20")
+        .is_file()
         && std::path::Path::new(TOKENIZER).is_file()
 }
 
@@ -105,7 +107,10 @@ fn batched_prefill_flag_is_load_bearing() {
     // assertions of the sibling test, not just the token compare.
     assert!(
         hawking_core::model::qwen38_hybrid_decode::qwen38_batched_prefill_enabled()
-            || std::env::var("HAWKING_QWEN38_BATCH_PREFILL").ok().as_deref() == Some("0"),
+            || std::env::var("HAWKING_QWEN38_BATCH_PREFILL")
+                .ok()
+                .as_deref()
+                == Some("0"),
         "default must be on unless the operator set =0"
     );
     let saved = std::env::var("HAWKING_QWEN38_BATCH_PREFILL").ok();

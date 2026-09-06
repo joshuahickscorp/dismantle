@@ -1,5 +1,3 @@
-/// Shared code-index handle consumed by grounding / context compile / connectors.
-
 /// The session registry — open-or-create stable sessions (bible ch.07).
 ///
 /// The scaffold's `session()` minted a *fresh* `SessionId` on every call, so two

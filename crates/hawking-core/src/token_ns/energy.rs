@@ -354,10 +354,17 @@ mod ioreport {
         if ok == 0 {
             return None;
         }
-        unsafe { CStr::from_ptr(buf.as_ptr()).to_str().ok().map(|s| s.to_owned()) }
+        unsafe {
+            CStr::from_ptr(buf.as_ptr())
+                .to_str()
+                .ok()
+                .map(|s| s.to_owned())
+        }
     }
 
-    fn with_samples<T>(f: impl FnOnce(&Lib, *mut c_void) -> Result<T, String>) -> Result<T, String> {
+    fn with_samples<T>(
+        f: impl FnOnce(&Lib, *mut c_void) -> Result<T, String>,
+    ) -> Result<T, String> {
         let lib = load()?;
         unsafe {
             let g = cfstr("Energy Model");
@@ -454,6 +461,9 @@ mod tests {
     #[test]
     fn ioreport_gpu_energy_is_readable_without_root() {
         let v = read_gpu_energy_nj().expect("GPU Energy readable without root");
-        assert!(v > 0, "lifetime GPU Energy should be nonzero on this machine");
+        assert!(
+            v > 0,
+            "lifetime GPU Energy should be nonzero on this machine"
+        );
     }
 }

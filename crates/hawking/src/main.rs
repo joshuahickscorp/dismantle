@@ -1,7 +1,7 @@
 // Benchmark suites live under the canonical hawking CLI package so one binary
 // owns dispatch, runtime, and benchmark lifecycle.
-mod capture;
 mod bench;
+mod capture;
 // `studio` (quant-campaign orchestration) extracted to the hawking-lab pack (Architecture B).
 
 use anyhow::Result;

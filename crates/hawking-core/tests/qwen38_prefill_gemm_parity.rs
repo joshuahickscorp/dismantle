@@ -28,11 +28,7 @@ fn metal_or_skip() -> Option<MetalContext> {
 }
 
 fn gemm_grid(rows: u32) -> (u32, u32, u32) {
-    (
-        rows.div_ceil(ROWS_PER_TG).saturating_mul(TG).max(TG),
-        1,
-        1,
-    )
+    (rows.div_ceil(ROWS_PER_TG).saturating_mul(TG).max(TG), 1, 1)
 }
 
 fn pack_q4(rows: usize, cols: usize, seed: u32) -> (Vec<u8>, Vec<u16>, Vec<f32>) {

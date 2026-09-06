@@ -2301,7 +2301,8 @@ mod tests {
     fn capability_identity_uses_gravity_as_the_public_identity_and_condense_as_engine() {
         let identity = hcli_model_optimization_identity();
         let taxonomy: Value =
-            serde_json::from_str(include_str!("../../../research/lab/semantic_taxonomy.json")).unwrap();
+            serde_json::from_str(include_str!("../../../research/lab/semantic_taxonomy.json"))
+                .unwrap();
         assert_eq!(identity.schema, HCLI_MODEL_OPTIMIZATION_IDENTITY_SCHEMA);
         assert_eq!(identity.taxonomy_schema, "hawking.semantic_taxonomy.v1");
         assert_eq!(identity.canonical_identity, "gravity");

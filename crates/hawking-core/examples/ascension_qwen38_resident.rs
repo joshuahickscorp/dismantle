@@ -31,9 +31,7 @@ use hawking_core::json_constrain::{JsonConstraint, JsonVocabIndex};
 #[cfg(target_os = "macos")]
 use hawking_core::model::qwen38_hybrid_decode::{
     generate_constrained, generate_greedy_reusing_snapshot, load_qwen38_tokenizer,
-    Qwen38HybridDecodeSession,
-    Qwen38HybridWeights,
-    Qwen38PrefixCheckpoint,
+    Qwen38HybridDecodeSession, Qwen38HybridWeights, Qwen38PrefixCheckpoint,
 };
 
 const PROTOCOL: &str = "hawking.qwen38.resident.v1";
@@ -379,10 +377,7 @@ fn serve_request(
     // when the prompt is an exact proper prefix. The constrained path used to
     // reset internally; that restriction was removed in qwen38_hybrid_decode,
     // but this dispatcher guard remained and made every grammar request cold.
-    let reuse = if reuse == resident_context.len()
-        && reuse > 0
-        && reuse < prompt_ids.len()
-    {
+    let reuse = if reuse == resident_context.len() && reuse > 0 && reuse < prompt_ids.len() {
         reuse
     } else {
         0
@@ -444,7 +439,10 @@ fn serve_request(
     // happened to agree with it again. Measured on one goal: four consecutive
     // calls cold on the same prefix key -- 2092, 5157, 3218 and 4769 tokens all
     // stepped from scratch -- then a single hit that reused 2623 of 5262.
-    let held = prefix_checkpoint.as_ref().map(|(t, _)| t.len()).unwrap_or(0);
+    let held = prefix_checkpoint
+        .as_ref()
+        .map(|(t, _)| t.len())
+        .unwrap_or(0);
     let snapshot_at = snapshot_boundary(
         restored_from_checkpoint,
         checkpoint_missed,
@@ -477,14 +475,14 @@ fn serve_request(
             result
         })
     } else {
-        generate_greedy_reusing_snapshot(session, &prompt_ids, max_new, reuse, snapshot_at)
-            .map(|(result, snapshot)| {
+        generate_greedy_reusing_snapshot(session, &prompt_ids, max_new, reuse, snapshot_at).map(
+            |(result, snapshot)| {
                 if let Some(cp) = snapshot {
-                    *prefix_checkpoint =
-                        Some((prompt_ids[..cp.position].to_vec(), cp));
+                    *prefix_checkpoint = Some((prompt_ids[..cp.position].to_vec(), cp));
                 }
                 result
-            })
+            },
+        )
     }
     .map_err(|e| format!("native generation: {e}"))?;
     let wall_ns = started.elapsed().as_nanos() as u64;
@@ -737,7 +735,11 @@ mod prefix_reuse_tests {
         // nothing downstream could detect it.
         let resident = [1u32, 2, 3, 4];
         assert_eq!(reuse_for(&resident, &[1, 2, 3, 5, 6]), 0, "late divergence");
-        assert_eq!(reuse_for(&resident, &[9, 2, 3, 4, 5]), 0, "first token differs");
+        assert_eq!(
+            reuse_for(&resident, &[9, 2, 3, 4, 5]),
+            0,
+            "first token differs"
+        );
     }
 
     #[test]
@@ -792,7 +794,11 @@ mod prefix_reuse_tests {
         let stored = [1u32, 2, 3, 4, 5];
         assert_eq!(checkpoint_reuse(&stored, &[1, 2, 99, 4, 5, 6]), 0);
         assert_eq!(checkpoint_reuse(&stored, &[1, 2, 3]), 0, "shorter prompt");
-        assert_eq!(checkpoint_reuse(&stored, &[1, 2, 3, 4, 5]), 0, "nothing to step");
+        assert_eq!(
+            checkpoint_reuse(&stored, &[1, 2, 3, 4, 5]),
+            0,
+            "nothing to step"
+        );
         assert_eq!(checkpoint_reuse(&[], &[1, 2, 3]), 0, "no checkpoint");
     }
 
@@ -808,7 +814,12 @@ mod prefix_reuse_tests {
 #[cfg(test)]
 mod checkpoint_growth_tests {
     /// The snapshot decision, exactly as `serve_request` makes it.
-    fn snapshot_at(held: usize, agreed: usize, prompt_len: usize, restored: usize) -> Option<usize> {
+    fn snapshot_at(
+        held: usize,
+        agreed: usize,
+        prompt_len: usize,
+        restored: usize,
+    ) -> Option<usize> {
         if restored == 0 && agreed > held.max(16) && agreed < prompt_len {
             Some(agreed)
         } else {

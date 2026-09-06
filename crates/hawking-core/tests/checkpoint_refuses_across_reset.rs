@@ -22,10 +22,13 @@ fn artifact() -> Option<PathBuf> {
     let p = std::env::var("HAWKING_TEST_ARTIFACT")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
-            PathBuf::from(std::env::var("HOME").unwrap_or_default())
-                .join("noetic/NOETIC_PARENT_A")
+            PathBuf::from(std::env::var("HOME").unwrap_or_default()).join("noetic/NOETIC_PARENT_A")
         });
-    if p.join("MIX_REPORT.json").is_file() { Some(p) } else { None }
+    if p.join("MIX_REPORT.json").is_file() {
+        Some(p)
+    } else {
+        None
+    }
 }
 
 #[test]

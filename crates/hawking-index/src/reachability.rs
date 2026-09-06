@@ -734,7 +734,7 @@ pub fn collect_reachability_facts(opts: &CollectOptions) -> Result<ReachabilityD
             }
         });
         if let Some(facts) = cache_hit {
-            if !merkle_dirty || contents.get(rel).is_none() {
+            if !merkle_dirty || !contents.contains_key(rel) {
                 per_file.insert(rel.clone(), facts);
                 reused += 1;
                 continue;

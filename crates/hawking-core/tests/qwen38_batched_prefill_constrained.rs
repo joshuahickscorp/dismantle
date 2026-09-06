@@ -170,7 +170,11 @@ fn batched_prefill_rate_by_prompt_length() {
 
         assert!(!seq.batched_prefill, "arm 0 was not sequential");
         assert!(bat.batched_prefill, "arm 1 was not batched");
-        assert_eq!(seq.new_tokens(), bat.new_tokens(), "token identity broke at {n} tokens");
+        assert_eq!(
+            seq.new_tokens(),
+            bat.new_tokens(),
+            "token identity broke at {n} tokens"
+        );
 
         let seq_tps = n as f64 / (seq.prefill_wall_ns as f64 / 1e9);
         let bat_tps = n as f64 / (bat.prefill_wall_ns as f64 / 1e9);

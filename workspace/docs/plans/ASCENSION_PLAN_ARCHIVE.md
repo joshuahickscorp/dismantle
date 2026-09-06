@@ -63,3 +63,19 @@ Frankenstein program data.
 The unregistered scaffold-only `ascension_tg_gauntlet` and the Proto-era
 `sandbox_ready_preflight` operator/test/wrapper family were also removed. Their
 boundary is historical; the live `lab.execution_sandbox` policy remains.
+
+## Retired ascent-lane notes
+
+The per-lane files under `workspace/ops/ascent-lanes/` were redundant execution
+instructions: they shared the same lock/build boilerplate, had no live code
+consumer, and were not evidence authorities. The shared `_COMMON.md`,
+`_Q80_DENSITY_COMMON.md`, and `_ARTIFACT_INDEPENDENT.md` references remain for
+the negative-science reader. The retired lane names are preserved here:
+
+`cross-adversarial`, `dsv-admission-identity`, `dsv-cb-collapse`,
+`dsv-expert-cache`, `dsv-expert`, `dsv-host-wall`, `dsv-integrate-graph`,
+`dsv-mla`, `dsv-resident-gravity`, `q80-capture-coverage`,
+`q80-coherence-probe`, `q80-decode-kernels`, `q80-decode-throughput`,
+`q80-deltanet-gqa2`, `q80-lowrank-algebra`, and `q80-runtime-residency`.
+Their detailed prose remains recoverable in Git history; current findings live
+in sealed receipts and the canonical HCLI/AgentOS research surfaces.

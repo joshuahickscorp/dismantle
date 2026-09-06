@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 610,826 | 1,756 |
-| active total | 1,108,838 | 2,391 |
+| support | 608,567 | 1,740 |
+| active total | 1,106,579 | 2,375 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -48,7 +48,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | 16 | `tools/acceptance` | 9,017 | CURRENT_VERIFICATION |
 | 17 | `tools/odyssey_ctl.py` | 8,132 | CURRENT_CORE_SUPPORT |
 | 18 | `crates/hide-backend` | 7,571 | CURRENT_CORE_SUPPORT |
-| 19 | `workspace/ops` | 5,392 | CURRENT_CORE_SUPPORT / IMPORTANT_ARCHIVE |
+| 19 | `workspace/ops` | 3,102 | CURRENT_CORE_SUPPORT / IMPORTANT_ARCHIVE |
 | 20 | `tools/ascent` | 4,972 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 21 | `tools/odyssey_patient_runner.py` | 4,604 | CURRENT_CORE_SUPPORT |
 | 22 | `tools/audit` | 4,466 | CURRENT_VERIFICATION |
@@ -117,6 +117,8 @@ also included in the total and must not become an UNKNOWN bucket.
   The superseded H-ROADMAP copy was then removed from active HEAD; its digest,
   provenance, and recoverability through Git history remain in PRESERVATION.md,
   while the operator-owned current roadmap remains the only resolver authority.
+  The unreferenced per-lane ascent runbooks were then collapsed to the compact
+  planning archive; shared density/common references and sealed findings remain.
 - `tools/headless`: three uncalled Noetic/bandwidth producer runtimes were
   retired; their sealed findings remain under `receipts/headless/`, and the
   remaining adversary evidence is receipt-backed after its broken

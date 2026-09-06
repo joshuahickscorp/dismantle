@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 472,470 | 1,384 |
-| active total | 970,482 | 2,019 |
+| support | 471,610 | 1,386 |
+| active total | 969,622 | 2,021 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -75,6 +75,8 @@ also included in the total and must not become an UNKNOWN bucket.
   schema vocabulary needed to read those hypotheses.
   The uncalled Flash NX completeness producer was then retired; its sealed
   audit receipt remains the live causality source.
+  The uncalled Q30 null-first reporter was retired; the current activation
+  probe/repack and its independent tests remain.
   The uncalled fidelity-hierarchy producer was then retired; its sealed
   receipt remains archival evidence.
   The uncalled MAXX resource-pipeline producer was then retired; its sealed

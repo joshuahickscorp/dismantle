@@ -150,7 +150,6 @@ struct ShaderParam {
     type_s: String,
     space: String,
     index: Option<i64>,
-    attr: String,
     kind: String,
 }
 
@@ -193,7 +192,6 @@ struct LayoutRow {
     type_s: String,
     offset: i64,
     size: i64,
-    align: i64,
 }
 
 #[derive(Clone, Debug)]
@@ -628,7 +626,6 @@ fn layout_fields(
             type_s: ty.clone(),
             offset: off,
             size: sz,
-            align: al,
         });
         off += sz;
         max_a = max_a.max(al);
@@ -715,18 +712,12 @@ fn parse_metal(src: &str, path: &str) -> (Vec<MetalKernel>, Vec<StructDef>) {
             } else {
                 (String::new(), before.to_string())
             };
-            let (space, kind, index, head) = classify_shader_param(&type_s, attr);
-            let attr_out = if space == "builtin" {
-                head
-            } else {
-                attr.to_string()
-            };
+            let (space, kind, index, _head) = classify_shader_param(&type_s, attr);
             params.push(ShaderParam {
                 name: pname,
                 type_s,
                 space,
                 index,
-                attr: attr_out,
                 kind,
             });
         }

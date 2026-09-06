@@ -170,7 +170,7 @@ class TestAcceptanceIntegrity(unittest.TestCase):
 
     def test_empty_tests_receipt_records_no_evidence_but_keeps_mutation(self):
         self._write("a.py", "x = 1\n")
-        self.engine._call_model = lambda prompt, evidence, compiled: {
+        self.engine._call_model = lambda prompt, evidence, compiled, **kwargs: {
             "kind": "mutation",
             "content": "change x",
             "operations": [
@@ -208,7 +208,7 @@ class TestAcceptanceIntegrity(unittest.TestCase):
     def test_snapshot_restore_still_rolls_back_failed_test(self):
         self._write("calc.py", WRONG_ADD)
         self._write("test_calc.py", TEST_ADD)
-        self.engine._call_model = lambda prompt, evidence, compiled: {
+        self.engine._call_model = lambda prompt, evidence, compiled, **kwargs: {
             "kind": "mutation",
             "content": "wrong fix",
             "operations": [

@@ -74,12 +74,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The 20 hide-* crates are workspace members but not default-members, so they
-      # get their own job instead of taxing every inference change. Same gates as the
-      # main job, scoped to the HIDE product surface.
+      # HCLI backend/core/protocol crates are workspace members but not
+      # default-members, so they get their own job instead of taxing every
+      # inference change.
       - name: Clippy
         run: |
-          cargo clippy -p hide-serve -p hide-backend -p hide-acp -p hide-fleet -- \
+          cargo clippy -p hide-backend -p hide-fleet -- \
             -D warnings \
             -A unexpected_cfgs \
             -A unused_assignments \
@@ -88,54 +88,12 @@ jobs:
             -A clippy::perf
 
       - name: Build
-        run: cargo build -p hide-serve -p hide-acp -p hide-fleet
+        run: cargo build -p hide-backend -p hide-fleet
 
-      # `--workspace` here is deliberate: this job is where the full member set,
-      # hawking and hide alike, still gets compiled and unit-tested.
+      # `--workspace` here is deliberate: this job compiles and tests the full
+      # remaining member set, Hawking and HCLI backend alike.
       - name: Compile all tests
         run: cargo test --workspace --no-run
 
       - name: Unit tests
         run: cargo test --workspace --lib --bins
-
-  frontend:
-    name: typecheck · test · build (frontend)
-    runs-on: macos-14
-    defaults:
-      run:
-        working-directory: app
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Test (includes the voice / banned-character gate)
-        run: pnpm test
-
-      # Build with the PRODUCTION transport so the shipped bundle binds the real engine, never the mock.
-      - name: Build (live transport)
-        run: VITE_HIDE_TRANSPORT=live pnpm build
-
-      # Tripwire: the mock must tree-shake out of a production build. If any mock identifier survives,
-      # the DMG could ship demo-ware; fail loudly.
-      - name: No mock in the production bundle
-        run: |
-          if grep -rlE "MockTransport|MOCK_SESSION" dist/assets/*.js; then
-            echo "mock transport leaked into the production bundle"
-            exit 1
-          fi
-          echo "clean: no mock in the production bundle"

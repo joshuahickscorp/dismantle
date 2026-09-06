@@ -101,6 +101,7 @@ def test_reduction_prefers_evidence_over_the_checkpoint(tmp_path):
         lambda ev, cm: eng._build_model_payload("g", ev, None, context_memory=cm),
         _evidence(tmp_path, 8, 3000),
         None,
+        reserve=2000,
     )
     assert reduction is not None
     assert "evidence" in reduction["reduced_to"]
@@ -120,6 +121,7 @@ def test_reduction_is_gradual_not_all_or_nothing(tmp_path):
         lambda e, cm: eng._build_model_payload("g", e, None, context_memory=cm),
         ev,
         None,
+        reserve=2000,
     )
     assert reduction is not None, "this fixture must overflow to be meaningful"
     assert reduction["dropped_evidence"] < len(ev), (
@@ -252,3 +254,70 @@ def test_tool_history_is_truncated_before_it_is_dropped(tmp_path):
     assert reduction["history_compacted"] is True
     assert [m["role"] for m in payload["messages"][-2:]] == ["assistant", "user"]
     assert "history content truncated from" in payload["messages"][-1]["content"]
+def test_closed_tools_keep_evidence_and_newest_observation(tmp_path):
+    """The final no-tools turn keeps causal evidence without growing forever."""
+    eng = _engine(tmp_path)
+    evidence = _evidence(tmp_path, 1, 200)
+    trailing = eng._observations_block([
+        {"tool": "fs.read", "ok": False, "text": "missing path"},
+        {"tool": "fs.list", "ok": True, "text": "a very large listing" * 500},
+    ], final=True)
+    eng._tools_closed_for_round = True
+    try:
+        payload, reduction = eng._fit_payload_to_budget(
+            lambda ev, cm, tr=trailing: eng._build_model_payload(
+                "create the requested file",
+                ev,
+                None,
+                context_memory=cm,
+                trailing=tr,
+            ),
+            evidence,
+            None,
+            trailing=trailing,
+        )
+    finally:
+        eng._tools_closed_for_round = False
+    user = [m["content"] for m in payload["messages"] if m["role"] == "user"][0]
+    assert "f0.txt" in user
+    assert "OBSERVATIONS" in user
+    assert "missing path" in user or "a very large listing" in user
+
+
+def test_closed_turn_can_drop_evidence_and_old_observations_together(tmp_path):
+    """The structured-output reserve must not make a fitting closed turn refuse."""
+    eng = _engine(tmp_path)
+    evidence_path = Path(tmp_path) / "frontier.md"
+    evidence_path.write_text("measured frontier\n" + ("x" * 1500))
+    evidence = [{"path": "frontier.md", "content": evidence_path.read_text()}]
+    goal = "\n".join([
+        "PHASE: running",
+        "WORKUNIT: implement.repair",
+        "ROLE: implementation",
+        "OBJECTIVE: repair the measured implementation boundary",
+        "FAILURE_CONTEXT: " + ("context refusal details " * 35),
+        "ACCEPTANCE: an existing proving test must pass",
+    ])
+    trailing = eng._observations_block(eng._compact_closed_observations([
+        {"tool": "fs.read", "ok": True, "text": "first result " + ("a" * 3000)},
+        {"tool": "fs.read", "ok": True, "text": "second result " + ("b" * 3000)},
+        {"tool": "fs.list", "ok": True, "text": "newest result " + ("c" * 3000)},
+    ]), final=True)
+    eng._tools_closed_for_round = True
+    try:
+        payload, reduction = eng._fit_payload_to_budget(
+            lambda ev, cm, tr=trailing: eng._build_model_payload(
+                goal, ev, None, context_memory=cm, trailing=tr
+            ),
+            evidence,
+            None,
+            trailing=trailing,
+            reserve=2400,
+        )
+    finally:
+        eng._tools_closed_for_round = False
+    assert reduction is not None
+    assert "evidence 0 + observations" in reduction["reduced_to"]
+    user = [m["content"] for m in payload["messages"] if m["role"] == "user"][0]
+    assert "OBSERVATIONS" in user
+    assert "newest result" in user

@@ -156,6 +156,22 @@ def _round_up(n: int, pad: int = LLAMA_KV_PAD) -> int:
     return ((n + pad - 1) // pad) * pad
 
 
+def _spendable_ceiling() -> Optional[int]:
+    """The largest completion the engine will ever request, or None if unknown.
+
+    Imported lazily and guarded: the budget must not fail to resolve because a
+    consumer module could not be imported. Unknown means no clamp, never a
+    guessed one.
+    """
+    try:
+        from .engine import _MAX_TOKENS_CEILING
+
+        value = int(_MAX_TOKENS_CEILING)
+    except Exception:
+        return None
+    return value if value > 0 else None
+
+
 def _generation_reserve(explicit: Optional[int]) -> int:
     if explicit is not None:
         try:
@@ -175,6 +191,25 @@ def _generation_reserve(explicit: Optional[int]) -> int:
             if value >= 0:
                 return value
     return DEFAULT_GENERATION_RESERVE
+
+
+def _clamp_generation_reserve(reserve: int) -> int:
+    """Never withhold window for completions the engine cannot request.
+
+    THE DEFECT: the budget withheld DEFAULT_GENERATION_RESERVE (4096) while
+    `engine._MAX_TOKENS_CEILING` caps every request at 2048. On an 8192-token
+    resident that stranded 2048 tokens -- a quarter of the whole window -- and
+    with the 512 framing reserve left usable_input 3584 against a measured
+    packet floor of 6501. Nothing could be admitted.
+
+    Reserving headroom the requester is structurally incapable of spending is
+    not safety. A caller asking for LESS is still honoured; only the excess
+    above what can ever be spent is returned to input.
+    """
+    ceiling = _spendable_ceiling()
+    if ceiling is None:
+        return reserve
+    return min(int(reserve), ceiling)
 
 
 def _profile_genome_path() -> Path:
@@ -540,7 +575,7 @@ def resolve(
     )
     if generation_reserve is None and native_ceiling and native_new_tokens:
         generation_reserve = native_new_tokens
-    generation_reserve = _generation_reserve(generation_reserve)
+    generation_reserve = _clamp_generation_reserve(_generation_reserve(generation_reserve))
 
     override_val: Optional[int] = None
     override_source: Optional[str] = None

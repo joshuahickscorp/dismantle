@@ -1057,8 +1057,8 @@ class MachineGenome:
     clobber the operator-qualified genome. The default path stays under
     ``HCLI_HOME`` so the two files cannot alias.
 
-    Verified caller: ``tools/headless/hcli_persistence_audit.py`` (crash
-    demo of save). Admission must not import this class.
+    Persistence is covered by sealed ``receipts/headless/HCLI_PERSISTENCE_AUDIT.json``;
+    admission must not import a one-shot audit runner.
     """
 
     path: Path

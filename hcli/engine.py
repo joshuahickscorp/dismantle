@@ -60,7 +60,7 @@ _REASONING_KEYS = {
     "thinking",
 }
 
-# Matches tools/headless/structured_output_probe.py::RESULT_SCHEMA. Do not
+# Matches tools/bench/structured_output_probe.py::RESULT_SCHEMA. Do not
 # diverge: constrained decoding is only a guarantee if the schema is the same
 # contract the system prompt already describes.
 HCLI_RESULT_SCHEMA: Dict[str, Any] = {
@@ -144,7 +144,13 @@ HCLI_RESULT_SCHEMA: Dict[str, Any] = {
             },
         },
     },
-    "required": ["kind", "content", "operations", "tests", "tool_calls"],
+    # Only the discriminant and the short human-readable result are universal.
+    # The three payload arrays are mode-specific: requiring all of them made a
+    # read/tool reply spend tokens spelling empty arrays, and made a truncated
+    # answer look like a schema failure instead of a small answer. The executor
+    # still defaults omitted arrays to [] and applies the mutation evidence gate
+    # to `tests` before accepting any edit.
+    "required": ["kind", "content"],
     "additionalProperties": False,
 }
 
@@ -188,74 +194,80 @@ TOOLS KNOW.
 DISK STATE IS AUTHORITY.
 CONTEXT IS A CACHE.
 
-Return exactly one JSON object and nothing else.
+Return exactly one JSON object and nothing else. Keep `content` under 200
+characters. Omit mode-specific empty arrays.
 
-For a read-only request:
-{
-  "kind": "answer",
-  "content": "concise final answer",
-  "operations": [],
-  "tests": [],
-  "tool_calls": []
-}
+For a read-only answer, emit only:
+{"kind":"answer","content":"concise final answer"}
 
-For a requested code/file change:
-{
-  "kind": "mutation",
-  "content": "concise description of what changed",
-  "operations": [
-    {
-      "op": "replace",
-      "path": "workspace/relative/path",
-      "old_lines": ["exact anchor lines, copied verbatim, occurring once"],
-      "new_lines": ["the replacement", "one entry per line, no trailing newline"]
-    }
-  ],
-  "tests": ["hcli/tests/test_the_thing_you_changed.py"],
-  "tool_calls": []
-}
+For a requested code/file change, emit:
+{"kind":"mutation","content":"what changed",
+ "operations":[{"op":"replace","path":"workspace/relative/path",
+ "old_lines":["exact existing line"],"new_lines":["replacement line"]}],
+ "tests":["hcli/test_engine_tool_loop.py"]}
 
-USE old_lines/new_lines, NOT old_text/new_text, for anything with more than one
-line. One entry per line, no trailing "\n" of your own. A JSON string has to
-escape every newline and you get that wrong: a reply that sent "\\n" where "\n"
-belonged produced "unexpected character after line continuation character" and
-lost three attempts and four calls. A list of plain lines has nothing to escape.
-old_text/new_text remain valid for a short single-line anchor.
-
-A MUTATION WITH AN EMPTY "tests" LIST CANNOT BE ACCEPTED. The verifier records
-it UNVERIFIED -- reason NO_EVIDENCE -- which is terminal, so the work is thrown
-away no matter how good the change was. Name a test that fails before your
-change and passes after it. If none exists, write one as part of the same
-mutation. Deterministic evidence is the only thing that can accept work here.
-
-To LOOK at something before answering (read a file, search, run a read-only
-command, inspect git):
-{
-  "kind": "tool_use",
-  "content": "why these calls",
-  "operations": [],
-  "tests": [],
-  "tool_calls": [
-    {"tool": "fs.read", "arguments": [{"name": "path", "value": "hcli/engine.py"}]}
-  ]
-}
+For a read-only inspection, emit:
+{"kind":"tool_use","content":"why these calls",
+ "tool_calls":[{"tool":"fs.search","arguments":[{"name":"pattern",
+ "value":"fn qwen38_batched_prefill_allowed"},{"name":"path",
+ "value":"crates/hawking-core/src/model/qwen38_hybrid_decode.rs"}]},
+ {"tool":"fs.read","arguments":[{"name":"path",
+ "value":"crates/hawking-core/src/model/qwen38_hybrid_decode.rs"},
+ {"name":"start_line","value":"280"},{"name":"end_line","value":"300"}]}]}
 Results come back as OBSERVATIONS and you are asked again.
 
-ASK FOR EVERYTHING YOU NEED IN ONE REPLY. A tool call costs about a
-millisecond. Being asked again costs minutes, and you get at most 6 rounds. Two
-files and a search in one reply is one round; asking for them one at a time is
-three rounds and roughly two hundred times the wall clock for the same answer.
-List up to 16 calls at once. Do not pace yourself.
+An fs.read with no window is truncated at ~4,000 chars ("truncated": true) and
+real files here are 100x that. SEARCH FIRST, then read that region. Never edit a
+region you have not read.
+
+USE old_lines/new_lines, NOT old_text/new_text, for anything with more than one
+line: one entry per line, no trailing "\n" of your own, nothing to escape.
+Escaping newlines by hand has cost whole rounds. old_text/new_text remain valid
+for a short single-line anchor.
+
+A MUTATION WITH AN EMPTY or omitted "tests" LIST CANNOT BE ACCEPTED. The
+verifier records it UNVERIFIED -- reason NO_EVIDENCE -- which is terminal, so
+the work is thrown away no matter how good the change was. Name a test that
+fails before your change and passes after it. If none exists, write one as part
+of the same mutation. Deterministic evidence is the only thing that can accept
+work here.
+
+For an implementation mutation, emit exactly one operation and keep the
+combined old/new replacement text under 900 UTF-8 bytes. Make the smallest
+executable change justified by the supplied evidence; do not serialize a whole
+file, a test rewrite, or a plan.
+
+
+ASK FOR EVERYTHING YOU NEED IN ONE REPLY. ONE REPLY may contain at most 16
+tool calls. A tool call costs about a
+millisecond, while another model round costs minutes. Request only real paths
+needed for this goal, in one bundle, and keep the bundle small. If a tool says
+a path is missing, change the path or answer from the observation; never repeat
+the identical failed call. Do not invent `hcli/tests/test_engine.py` or
+`hcli/tests/__init__.py`: the production module is `hcli/engine.py`, and the
+tool error's directory listing/suggestion is authoritative.
+
+PROOF MUST NAME AN EXISTING FILE. For this self-repair loop,
+`hcli/test_engine_tool_loop.py` is an admitted proving test; use that exact
+path unless the observations name a more specific existing test. Never invent
+anything under `hcli/tests/`. A mutation must change executable behavior or
+add/repair a test; comment-only, marker-only, whitespace-only, and no-op edits
+are invalid and will be rolled back.
+
+`hcli/engine.py` already exists. To change it, use `replace` with an exact
+existing anchor; never use `create` for that path. `create` is only for a file
+the observations prove does not exist.
 
 Never list the SAME call twice. Duplicates are discarded, not executed, and a
-reply that repeats one call sixteen times has asked for one thing. Fill the
-budget with DIFFERENT questions or ask for fewer.
+reply that repeats one call has asked for one thing. Ask for fewer calls rather
+than filling the bundle with guesses.
 
 Prefer looking over guessing: an answer that says evidence is missing when a
 tool could have fetched it is a wrong answer.
 
 Rules:
-- every example above is a literal you may copy; every key shown is required
+- kind and content are required; operations/tests/tool_calls are required only
+  for the mode that uses them and otherwise may be omitted
 - op is exactly one of: replace, create, replace_file, insert_before,
   insert_after, append
 - tool_calls is [] unless kind is "tool_use"
@@ -318,13 +330,13 @@ _CTX_ESTIMATE_MARGIN = 96
 #: shortens a reply.
 _CTX_ESTIMATE_ERROR = 0.30
 _MAX_TOKENS_FLOOR = 512
-# A valid mutation reply is 800 to 1500 tokens. Granting 5,874 cost nothing
-# while an unclosed object could stop early; now that EOS is masked until the
-# object closes, a model that will not close it runs the WHOLE budget instead.
-# Measured: one call 576s and still generating. Bound the damage -- a
-# well-formed reply never approaches this, and stop_reason "budget" names what
-# happened when one does.
-_MAX_TOKENS_CEILING = 2048
+# A valid mutation reply is usually 800 to 1500 tokens, but a create operation
+# can legitimately carry a small new module and its verifier in one structured
+# object. The previous 2048 ceiling exhausted those replies before JSON closed
+# (the live repair receipt recorded 2048, then 1709, then 1378-token attempts).
+# 4096 still fits the resident's 9728-token position window while giving the
+# contract retries room to shorten the reply instead of truncating every try.
+_MAX_TOKENS_CEILING = 4096
 _CHARS_PER_TOKEN = 3
 #: The estimator divides characters by a single constant, but the constant is
 #: not one number. Measured on the live resident: markdown prose runs near 3,
@@ -477,14 +489,24 @@ def _degraded_structured_record(
         **fields,
     )
     record["degraded_features"] = list(contract.degraded_features)
-    record["constrained_decoding"] = "unavailable"
-    record["constrained_decoding_reason"] = (
-        "backend.supports() reports "
-        + ", ".join(f"{name}=False" for name in contract.degraded_features)
-        + "; the field is withheld rather than sent-and-ignored, so an "
-        "unclosed JSON object is prevented by prompt+validate+bounded retry, "
-        "not structurally"
-    )
+    if contract.grammar_supported:
+        record["constrained_decoding"] = "grammar_syntax"
+        record["grammar_requested"] = "json"
+        record["constrained_decoding_reason"] = (
+            "native grammar='json' was sent and enforces JSON syntax only; "
+            "schema shape remains prompt+validate+bounded retry"
+        )
+    else:
+        record["constrained_decoding"] = "unavailable"
+        record["constrained_decoding_reason"] = (
+            "backend.supports() reports "
+            + ", ".join(f"{name}=False" for name in contract.degraded_features)
+            + "; the field is withheld rather than sent-and-ignored, so an "
+            "unclosed JSON object is prevented by prompt+validate+bounded retry, "
+            "not structurally"
+        )
+    if contract.attempt_budgets:
+        record["structured_attempt_budgets"] = list(contract.attempt_budgets)
     if contract.repairs:
         record["structured_repairs"] = list(contract.repairs)
     if contract.value_repairs:
@@ -552,21 +574,6 @@ _PYTHON_INVOKER_RE = re.compile(r"^python3(\.\d+)?$")
 _PROTECTED_PATH_PREFIXES = frozenset({".git", ".hcli"})
 _TEST_ENV_KEYS = ("PATH", "HOME", "LANG", "TMPDIR")
 
-# These spellings stay registered because existing missions and callers may
-# emit them.  The model-facing catalog can treat them as one capability.  A
-# slash-bearing alias is intentionally kept out of the canonical spelling: it
-# is legal in the registry, but it is a poor token boundary for a model.
-_TOOL_ALIAS_GROUPS = (
-    ("fs.read", "filesystem.read"),
-    ("fs.search", "filesystem.search"),
-    ("fs.list", "filesystem.list"),
-    ("git.checkout-safe", "git.revert-safe", "git.checkout/revert-safe"),
-    ("receipt.read", "receipt.inspect", "benchmark.inspect"),
-    ("huggingface.resolve", "huggingface.manifest"),
-    ("roadmap.read", "roadmap.inspect"),
-)
-
-
 def _sha256_bytes(data: Optional[bytes]) -> Optional[str]:
     if data is None:
         return None
@@ -602,6 +609,12 @@ def _if_is_main_guard(node: ast.If) -> bool:
     return (is_name(left) and is_main(right)) or (
         is_main(left) and is_name(right)
     )
+
+
+def _looks_like_a_test_filename(path: Path) -> bool:
+    """`test_*.py` / `*_test.py`. A file that calls itself a test is one."""
+    name = path.name
+    return name.endswith(".py") and (name.startswith("test_") or name.endswith("_test.py"))
 
 
 def _ast_is_pytest_idiom(tree: ast.AST) -> bool:
@@ -921,14 +934,19 @@ def _anchor_violation(path: str, anchor: str, current: str, hits: int) -> str:
     if at < 0:
         return (
             f"your old_text for {path} matches nothing in the file -- not one "
-            f"line of it. Read the file again and copy the real bytes."
+            f"line of it. Re-copy the exact bytes from the supplied evidence; "
+            f"do not add trailing spaces or a literal backslash-n."
         )
-    start = max(0, current.rfind("\n", 0, at) + 1)
-    actual = current[start:start + max(len(anchor), 240)]
+    # The source snapshot is already in the evidence packet. Returning a full
+    # actual/sent excerpt here made the retry spend its completion reserve
+    # repeating bytes the model could already see; one such repair fell from
+    # 1536 to 867 tokens and exhausted all three structured attempts. Keep the
+    # diagnosis actionable and bounded, especially for one trailing-space byte.
     return (
-        f"your old_text for {path} does not appear in the file. It actually "
-        f"reads:\n{actual!r}\nyou sent:\n{anchor!r}\nCopy those bytes exactly. "
-        f"A newline written as a literal backslash-n will not match."
+        f"your old_text for {path} does not appear in the file. Re-copy the "
+        f"exact bytes from the supplied evidence, including newlines but no "
+        f"trailing spaces or literal backslash-n escapes. Keep the operation "
+        f"short."
     )
 
 
@@ -1236,6 +1254,60 @@ def _python_syntax_violation(content: str) -> Optional[str]:
     return None
 
 
+_UNCHECKABLE_SOURCE_SUFFIXES = frozenset(
+    {".metal", ".c", ".cc", ".cpp", ".h", ".hpp", ".m", ".mm", ".swift", ".go"}
+)
+
+
+def _owning_cargo_package(path: Path, root: Path) -> Optional[str]:
+    """The Cargo package that owns `path`, from the nearest Cargo.toml ancestor."""
+    here = path.parent if path.is_file() or path.suffix else path
+    while True:
+        manifest = here / "Cargo.toml"
+        if manifest.is_file():
+            try:
+                text = manifest.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                return None
+            in_package = False
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("["):
+                    in_package = stripped == "[package]"
+                    continue
+                if in_package and stripped.startswith("name"):
+                    _, _, value = stripped.partition("=")
+                    return value.strip().strip('"').strip("'") or None
+            return None
+        if here == root or here.parent == here:
+            return None
+        here = here.parent
+
+
+def check_rust_file(path: Path, root: Path) -> Dict[str, Any]:
+    """`cargo check` the package owning `path`. Absent cargo is NOT a pass."""
+    package = _owning_cargo_package(path, root)
+    argv = ["cargo", "check", "--offline"]
+    if package:
+        argv += ["-p", package]
+    try:
+        proc = subprocess.run(
+            argv, cwd=str(root), capture_output=True, text=True, timeout=900
+        )
+        return {
+            "package": package,
+            "exit_code": proc.returncode,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+        }
+    except FileNotFoundError:
+        return {"package": package, "exit_code": 127, "stdout": "",
+                "stderr": "cargo not found; a Rust mutation cannot be verified here"}
+    except subprocess.TimeoutExpired:
+        return {"package": package, "exit_code": 124, "stdout": "",
+                "stderr": "cargo check timed out"}
+
+
 class Engine:
     """Native HCLI execution boundary.
 
@@ -1262,6 +1334,15 @@ class Engine:
     MAX_EVIDENCE_CHARS_PER_FILE = 24000
     MAX_TOTAL_EVIDENCE_CHARS = 120000
     MAX_OPERATIONS = 20
+    # A closed tool turn must leave room for the structured mutation itself.
+    # The resident's usable window is larger, but allowing a 6K observation
+    # transcript here made a second retrieval call consume the whole turn and
+    # left no dependable path to an HCLI-authored operation.
+    CLOSED_TURN_TARGET_TOKENS = 3900
+    # A closed turn also reserves the structured-output instruction. Keep one
+    # newest observation small enough that evidence can be abandoned only when
+    # necessary and the mutation still has room to decode.
+    CLOSED_OBSERVATION_CHARS = 500
 
     def __init__(
         self,
@@ -1860,13 +1941,10 @@ class Engine:
 
         used = set()
         alias_lines: List[str] = []
-        for group in _TOOL_ALIAS_GROUPS:
-            present = [name for name in group if name in specs]
-            if not any(name.split(".", 1)[0] in selected_prefixes for name in present):
+        for name, spec in sorted(specs.items()):
+            if name.split(".", 1)[0] not in selected_prefixes:
                 continue
-            if not present:
-                continue
-            if group[0].startswith("git.checkout") and not any(
+            if name.startswith("git.checkout-safe") and not any(
                 word in focus_text
                 for word in ("checkout", "revert", "restore", "reset", "discard")
             ):
@@ -1874,10 +1952,12 @@ class Engine:
                 # read rounds. It re-enters only when the goal explicitly asks
                 # about rollback semantics, and even then no mutation is done.
                 continue
-            advertised = [name for name in present if "/" not in name]
-            if advertised:
-                alias_lines.append("|".join(advertised) + signature(specs[present[0]]))
-            used.update(present)
+            aliases = spec.get("aliases", [])
+            advertised = [name]
+            advertised.extend(alias for alias in aliases if "/" not in alias)
+            if aliases:
+                alias_lines.append("|".join(advertised) + signature(spec))
+                used.add(name)
 
         by_prefix: Dict[str, List[str]] = {}
         for name in sorted(specs):
@@ -1953,6 +2033,7 @@ class Engine:
         *,
         final: bool = False,
         compact_catalog: bool = False,
+        tools_allowed: bool = True,
     ) -> str:
         """Tool output rides beside the goal, NOT inside `evidence`.
 
@@ -1971,10 +2052,33 @@ class Engine:
         #
         # Saying "do not use tools" while advertising them is not scoping. This
         # is. Off by default; the caller opts in per unit.
-        if os.environ.get("HCLI_NO_TOOLS") == "1":
+        if os.environ.get("HCLI_NO_TOOLS") == "1" or not tools_allowed:
             self._tool_catalog_chars = 0
             self._tool_catalog_mode = "none"
-            parts = [prompt]
+            parts = [
+                prompt,
+                "TOOL ACCESS IS CLOSED FOR THIS ROUND. Do not emit tool_calls. "
+                "Use the observations already present and return the shortest "
+                "valid answer or mutation now.",
+            ]
+            if (
+                "ROLE: implementation" in str(prompt)
+                or "OBJECTIVE: repair" in str(prompt)
+            ):
+                parts.append(
+                    "IMPLEMENTATION CLOSE: This is an implementation/repair "
+                    "WorkUnit. Do not answer with measurements, a plan, or a "
+                    "status summary. Emit kind=mutation now with the smallest "
+                    "justified executable-behavior operation. Emit exactly one "
+                    "operation and keep its combined old/new replacement text "
+                    "under 900 UTF-8 bytes. Use the existing "
+                    "hcli/test_engine_tool_loop.py proving test. Never emit a "
+                    "comment-only or invented-test mutation. `hcli/engine.py` "
+                    "already exists: never use `create` for it; use `replace` "
+                    "with an exact anchor. Old_text is byte-exact: include "
+                    "real newlines, never a literal backslash-n, and never "
+                    "trailing spaces after the final newline."
+                )
             if observations:
                 parts.append(self._observations_block(observations, final=True))
             return "\n\n".join(part for part in parts if part)
@@ -2078,6 +2182,26 @@ class Engine:
                 "Do not request more tools."
             )
         return "\n\n".join(parts)
+
+    def _compact_closed_observations(
+        self,
+        observations: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Bound already-paid tool evidence before the mutation turn."""
+        limit = int(self.CLOSED_OBSERVATION_CHARS)
+        compacted: List[Dict[str, Any]] = []
+        for observation in observations:
+            item = dict(observation)
+            text = str(item.get("text") or "")
+            if len(text) > limit:
+                marker = "\n[... closed-turn observation elided ...]\n"
+                room = max(0, limit - len(marker))
+                head = room // 2
+                tail = room - head
+                text = text[:head] + marker + (text[-tail:] if tail else "")
+            item["text"] = text
+            compacted.append(item)
+        return compacted
 
     def execute(
         self,
@@ -2193,23 +2317,44 @@ class Engine:
             observations: List[Dict[str, Any]] = []
             conversation_history: List[Dict[str, Any]] = []
             self._agentic_execution = True
+            # An evidence-complete resident lane must enter the closed-turn budget
+            # path on its FIRST call. HCLI_NO_TOOLS used to suppress the catalog
+            # text but left the reducer flag false, so the initial call could
+            # consume the whole worker packet before the reducer was allowed to
+            # protect the source snapshot.
+            tools_closed = os.environ.get("HCLI_NO_TOOLS") == "1"
+            # Built ONCE, outside the loop: observations travel as conversation
+            # history rather than as a rebuilt prompt body, so every stable byte
+            # stays prefix-reusable between rounds.
             cognition_prompt = self._prompt_with_observations(
                 prompt,
                 [],
                 compact_catalog=True,
+                tools_allowed=not tools_closed,
             )
             for round_index in range(self.MAX_TOOL_ROUNDS):
                 # Observations go LAST in the payload, not into the prompt
                 # body: they are the only part that grows between rounds, and
                 # every stable byte after them is re-prefilled for nothing.
-                raw = self._call_model(
-                    cognition_prompt,
-                    evidence,
-                    compiled,
-                    context_memory=context_memory,
-                    history=conversation_history,
-                )
+                self._tools_closed_for_round = tools_closed
+                try:
+                    raw = self._call_model(
+                        cognition_prompt,
+                        evidence,
+                        compiled,
+                        context_memory=context_memory,
+                        history=conversation_history,
+                    )
+                finally:
+                    self._tools_closed_for_round = False
                 result = self._sanitize_result(raw)
+                if tools_closed:
+                    # There is no executable retrieval path in this lane. A
+                    # tool_use reply is therefore an answer failure, not a
+                    # reason to reopen the catalog or spend another round.
+                    if result.get("kind") == "tool_use":
+                        result["kind"] = "answer"
+                    break
                 if result.get("kind") != "tool_use":
                     break
                 calls = result.get("tool_calls") or []
@@ -2225,33 +2370,122 @@ class Engine:
                     conversation_history.append(
                         {"role": "assistant", "content": assistant_text}
                     )
-                observations.extend(self._run_tool_calls(calls, goal_id))
+                round_observations = self._run_tool_calls(calls, goal_id)
+                observations.extend(round_observations)
                 conversation_history.append(
                     {
                         "role": "user",
                         "content": self._observations_block(observations),
                     }
                 )
+                # A round containing a failed call has already identified a
+                # path/tool mismatch; continuing to decode beside one lucky
+                # success only replays the same confused plan. Close the catalog
+                # before the next model call so a local resident cannot spend
+                # several minutes on a mixed success/failure loop. The post-loop
+                # block below still gives it one final no-tools call, so this
+                # break does not discard its remaining chance to act.
+                if round_observations and (
+                    any(not item.get("ok") for item in round_observations)
+                    or all(
+                        item.get("repeat") or not item.get("ok")
+                        for item in round_observations
+                    )
+                    or len(observations) >= 1
+                ):
+                    self._emit(
+                        "tool_loop_closed",
+                        {
+                            "goal_id": goal_id,
+                            "reason": (
+                                "failed_call"
+                                if any(not item.get("ok") for item in round_observations)
+                                else (
+                                    "bounded_observation_round"
+                                    if len(observations) >= 1
+                                    else "repeated_or_failed"
+                                )
+                            ),
+                            "observation_count": len(round_observations),
+                            "successful": sum(
+                                bool(item.get("ok")) for item in round_observations
+                            ),
+                        },
+                    )
+                    tools_closed = True
+                    break
             else:
                 # Budget exhausted still asking to look. Answer from what was
-                # actually observed rather than reporting nothing.
-                result = self._sanitize_result(
-                    self._call_model(
-                        cognition_prompt,
-                        evidence,
-                        compiled,
-                        context_memory=context_memory,
-                        history=conversation_history
-                        + [
-                            {
-                                "role": "user",
-                                "content": self._observations_block(
-                                    observations, final=True
-                                ),
-                            }
-                        ],
+                # actually observed rather than reporting nothing. The prompt is
+                # the SAME stable cognition_prompt, so the closing call still
+                # reuses the prefix; only the history tail differs.
+                self._tools_closed_for_round = True
+                try:
+                    result = self._sanitize_result(
+                        self._call_model(
+                            cognition_prompt,
+                            evidence,
+                            compiled,
+                            context_memory=context_memory,
+                            history=conversation_history
+                            + [
+                                {
+                                    "role": "user",
+                                    "content": self._observations_block(
+                                        self._compact_closed_observations(
+                                            observations
+                                        ),
+                                        final=True,
+                                    ),
+                                }
+                            ],
+                        )
                     )
-                )
+                finally:
+                    self._tools_closed_for_round = False
+                if result.get("kind") == "tool_use":
+                    result["kind"] = "answer"
+
+            if tools_closed and result.get("kind") == "tool_use":
+                # The loop breaker above intentionally does not discard the
+                # model's one remaining chance to act. Remove the catalog and
+                # make the no-tools instruction explicit so this call cannot
+                # start another expensive duplicate round.
+                self._tools_closed_for_round = True
+                try:
+                    final_prompt = self._prompt_with_observations(
+                        prompt,
+                        [],
+                        compact_catalog=False,
+                        tools_allowed=False,
+                    )
+                    self._emit(
+                        "final_turn_prepared",
+                        {
+                            "goal_id": goal_id,
+                            "prompt_chars": len(final_prompt),
+                            "observations_replayed": len(observations),
+                            "tools_allowed": False,
+                        },
+                    )
+                    final_trailing = self._observations_block(
+                        self._compact_closed_observations(observations),
+                        final=True,
+                    )
+                    result = self._sanitize_result(
+                        self._call_model(
+                            final_prompt,
+                            evidence,
+                            compiled,
+                            # Preserve the bounded observations that caused
+                            # closure; the fit ladder sheds older blocks when
+                            # the mutation contract needs more room.
+                            trailing=final_trailing,
+                            context_memory=context_memory,
+                        )
+                    )
+                finally:
+                    self._tools_closed_for_round = False
                 if result.get("kind") == "tool_use":
                     result["kind"] = "answer"
 
@@ -2832,6 +3066,11 @@ class Engine:
         self._evidence_reread_ran = False
         self._evidence_reread_bytes = 0
         self._context_efficiency: Dict[str, Any] = {}
+        # The observation cut is monotone within one goal so the resident can
+        # reuse its KV prefix. It must start fresh for the next goal: carrying
+        # a prior goal's cut forward can skip every shedding rung and refuse a
+        # closed turn that would fit after dropping the oldest observation.
+        self._observation_floor = 0
 
     def _read_evidence_text(self, path: Path) -> str:
         return path.read_text(
@@ -4107,9 +4346,18 @@ class Engine:
         # not in the file.
         #
         # So keep the first evidence item and let the rungs below shrink the
-        # rest. Something must still give when the budget is short; it must not
-        # be the only thing the model cannot re-derive.
-        keep_floor = 1 if (os.environ.get("HCLI_NO_TOOLS") == "1" and items) else 0
+        # rest. Tool catalogs and observations are re-derivable; the explicit
+        # task evidence is the authority the model must not lose merely because
+        # it asked for one extra read. Something must still give when the
+        # budget is short, but it must not be the only source of truth.
+        tools_closed = bool(getattr(self, "_tools_closed_for_round", False))
+        keep_floor = 1 if items else 0
+        # The final no-tools turn is a decision turn, not another retrieval
+        # turn. It still needs the bounded result that caused closure: dropping
+        # that result made the resident answer read-only from the disk snapshot
+        # even though the failed path was the evidence that should have driven
+        # the mutation. Keep the newest useful block if the full tail will not
+        # fit; the ladder below sheds older blocks monotonically.
         blocks = _observation_blocks(trailing)
         # Where the kept observations START, as an ABSOLUTE index that only ever
         # moves forward. Keeping "the last N" instead re-cut the block at a
@@ -4136,7 +4384,7 @@ class Engine:
         # Last resorts: drop the durable checkpoint too, then shed observations
         # oldest-first. Observations go last because a tool call has already
         # been paid for, while a file snapshot can be re-read for free.
-        attempts.append((items[:keep_floor], None, "evidence 0 + no checkpoint", floor))
+        attempts.append((items[:keep_floor], None, f"evidence {keep_floor} + no checkpoint", floor))
         if len(blocks) > 1:
             for keep_n in (len(blocks) * 3 // 4, len(blocks) // 2, len(blocks) // 4, 1):
                 if keep_n < 1 or keep_n >= len(blocks):
@@ -4160,6 +4408,18 @@ class Engine:
         # per-request ctx", which is strictly worse than a degraded prompt.
         if keep_floor:
             attempts.append(([], None, "evidence 0 (floor abandoned to fit)", floor))
+            if len(blocks) > 1:
+                for keep_n in (len(blocks) * 3 // 4, len(blocks) // 2, len(blocks) // 4, 1):
+                    if keep_n < 1 or keep_n >= len(blocks):
+                        continue
+                    advanced = len(blocks) - keep_n
+                    if advanced <= floor:
+                        continue
+                    attempts.append((
+                        [], None,
+                        f"evidence 0 + observations {keep_n}/{len(blocks)}",
+                        advanced,
+                    ))
 
         # Real tool rounds use chat history, not the legacy ``trailing`` field.
         # Keep the immediate assistant/tool-result pair when possible, but make
@@ -4228,7 +4488,10 @@ class Engine:
             observed = _join_observations(blocks[cut:]) if cut else ""
             payload = invoke_build(keep, memory, observed, history_values[0])
             demand = self._estimate_prompt_tokens(payload.get("messages") or []) + reserve
-            if preflight(budget, demand, kind="root").ok:
+            fits = preflight(budget, demand, kind="root").ok
+            if tools_closed and demand > self.CLOSED_TURN_TARGET_TOKENS:
+                fits = False
+            if fits:
                 self._observation_floor = cut
                 if label == "full" and not cut:
                     return payload, None
@@ -4315,7 +4578,16 @@ class Engine:
         trailing: str = "",
         history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
-        goal_block = self._goal_block(prompt, compiled)
+        # Mission worker packets are already the compiled, bounded control
+        # context. Wrapping one in the legacy ``GOAL:\n`` envelope would make
+        # the worker seam look like a root-goal call again and defeats the
+        # packet compiler's no-parent-dump invariant. Keep ordinary/root calls
+        # on the established goal-block path.
+        is_worker_packet = (
+            str(prompt or "").lstrip().startswith("PHASE:")
+            and "\nWORKUNIT:" in str(prompt)
+        )
+        goal_block = prompt if is_worker_packet else self._goal_block(prompt, compiled)
         evidence = self._assert_evidence_fresh(evidence)
         evidence_text = "\n\n".join(
             (
@@ -4765,6 +5037,17 @@ class Engine:
                 mode="enforced"
             )
         self._last_call_plan = plan
+        if getattr(self, "_tools_closed_for_round", False):
+            self._emit(
+                "closed_model_payload_prepared",
+                {
+                    "goal_id": self._active_goal_id,
+                    "prompt_tokens": int(plan.get("prompt_tokens_est") or 0),
+                    "prompt_chars": len(self._last_rendered_prompt),
+                    "evidence_items": len(evidence or []),
+                    "max_tokens": int(plan.get("max_tokens") or 0),
+                },
+            )
         pf = preflight(
             self._context_budget(),
             int(plan.get("prompt_tokens_est") or 1),
@@ -5497,6 +5780,35 @@ class Engine:
             raise NoOpMutation(
                 files=files,
             )
+        # Bytes changing is not enough for a Python mutation: a model can add
+        # a marker/comment or whitespace, pass py_compile and still claim
+        # executable progress. Reject that at the transaction boundary and
+        # restore the snapshot so direct callers get the same atomic result as
+        # the execute() rollback path.
+        for raw_path, before_bytes in before.items():
+            path = Path(raw_path)
+            if before_bytes is None or path.suffix.lower() != ".py":
+                continue
+            try:
+                before_tree = ast.parse(
+                    before_bytes.decode("utf-8"),
+                    filename=str(path),
+                )
+                after_tree = ast.parse(
+                    path.read_text(encoding="utf-8"),
+                    filename=str(path),
+                )
+            except (UnicodeDecodeError, SyntaxError):
+                continue
+            if ast.dump(before_tree, include_attributes=False) == ast.dump(
+                after_tree,
+                include_attributes=False,
+            ):
+                self._restore(before)
+                raise NoOpMutation(
+                    "Python mutation changes no executable syntax",
+                    files=files,
+                )
 
         return {
             "files": files,
@@ -5760,7 +6072,25 @@ class Engine:
                 "argv": None,
             }
 
-        use_pytest = wants_pytest or self._file_is_pytest_idiom(path)
+        # A file that NAMES ITSELF a test is scored as a test, always.
+        #
+        # _file_is_pytest_idiom inspects CONTENT, so a file with no test
+        # functions is not "pytest idiom" and used to fall through to the
+        # `script` runner -- plain `python file.py`, scored on exit code alone.
+        # Measured 2026-09-05: HCLI named tools/sovereign/test_g002_attribution.py
+        # as its proving test, wrote a file containing only a docstring, and the
+        # mutation was ACCEPTED on runner=script exit 0 with collected=None.
+        # Its two previous attempts wrote real tests and were correctly rejected
+        # (runner=pytest, collected 1, passed 0, TEST_FAILED) -- so the heuristic
+        # routed the EMPTY file to the one runner that cannot notice it is empty.
+        #
+        # Under pytest an empty test file returns rc 5, which _pytest_evidence
+        # already scores as NO_EVIDENCE. Forcing pytest by NAME closes the hole.
+        use_pytest = (
+            wants_pytest
+            or _looks_like_a_test_filename(path)
+            or self._file_is_pytest_idiom(path)
+        )
         if use_pytest:
             if not self._pytest_importable():
                 return {
@@ -5942,13 +6272,44 @@ class Engine:
             except ValueError:
                 rel = str(path)
 
-            if path.suffix != ".py":
+            if path.suffix == ".rs":
+                # A Rust mutation used to record `no_checker_available` and pass,
+                # so acceptance rested entirely on whatever test the reply named
+                # -- and a Python test passes no matter what the Rust says.
+                # Measured: a mutation that deleted the correctness guard in
+                # qwen38_batched_prefill_allowed (reuse == 0 && snapshot_at
+                # .is_none()) was ACCEPTED on `test hcli/test_engine_tool_loop.py
+                # exit 0`. That change compiles and produces a faster wall with a
+                # different answer, which is the one outcome the guard exists to
+                # prevent. `cargo check` on the owning crate costs 13.5 s.
+                checked = check_rust_file(path, self.root)
                 checks.append(
                     {
-                        "kind": "no_checker_available",
+                        "kind": "cargo_check",
                         "path": rel,
+                        "package": checked.get("package"),
+                        "exit_code": checked["exit_code"],
+                        "stdout": checked["stdout"][-4000:],
+                        "stderr": checked["stderr"][-4000:],
                     }
                 )
+                if checked["exit_code"] != 0:
+                    ok = False
+                continue
+
+            if path.suffix != ".py":
+                record = {"kind": "no_checker_available", "path": rel}
+                if path.suffix.lower() in _UNCHECKABLE_SOURCE_SUFFIXES:
+                    # Source the verifier cannot check must not be accepted on
+                    # unrelated evidence. Silence here is not a passing check.
+                    record["fatal"] = True
+                    record["reason"] = (
+                        f"{path.suffix} is source and this verifier has no checker "
+                        "for it; a mutation to it cannot be accepted on a test in "
+                        "another language"
+                    )
+                    ok = False
+                checks.append(record)
                 continue
 
             compiled = compile_python_file(path)
@@ -6383,3 +6744,37 @@ class Engine:
         )
 
         return str(path)
+class FrontierEngine:
+    def ranked_candidate(self, frontier_input):
+        if not isinstance(frontier_input, dict):
+            raise TypeError("frontier input must be a dict")
+        candidates = frontier_input.get("candidates", [])
+        if not isinstance(candidates, list):
+            raise TypeError("candidates must be a list")
+        ranked = sorted(candidates, key=lambda c: (c.get("score", 0), str(c.get("id", ""))), reverse=True)
+        return {"ranked": ranked, "count": len(ranked)}
+
+    def bounded_result(self, frontier_input):
+        if not isinstance(frontier_input, dict):
+            raise TypeError("frontier input must be a dict")
+        return {
+            "kind": "answer",
+            "content": "frontier",
+            "operations": [],
+            "tests": [],
+            "status": "completed",
+            "bounded": True,
+        }
+
+    def run(self, frontier_input=None):
+        result = {
+            "kind": "answer",
+            "content": "frontier",
+            "operations": [],
+            "tests": [],
+            "status": "completed",
+        }
+        if frontier_input is not None:
+            result.update(self.ranked_candidate(fronter_input))
+            result.update(self.bounded_result(frontier_input))
+        return result

@@ -10553,6 +10553,21 @@ mod metal_dispatch {
     ///   k_cache (seq_len, n_kv_heads, head_dim) f32 -- after applying k_off_bytes
     ///   v_cache (seq_len, n_kv_heads, head_dim) f32 -- after applying v_off_bytes
     ///   out     (n_heads, head_dim) f32
+    /// The device's threadgroup-memory ceiling, queried once.
+    ///
+    /// Returns 0 if it cannot be determined, and callers treat 0 as "no known
+    /// limit" and proceed -- an unknown ceiling must not silently reroute every
+    /// dispatch, which would hide the very behaviour this is here to catch.
+    fn device_max_threadgroup_memory() -> u64 {
+        use std::sync::OnceLock;
+        static LIMIT: OnceLock<u64> = OnceLock::new();
+        *LIMIT.get_or_init(|| {
+            metal::Device::system_default()
+                .map(|d| d.max_threadgroup_memory_length())
+                .unwrap_or(0)
+        })
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn mha_decode_f32_tcb(
         tcb: &mut TokenCommandBuffer<'_>,
@@ -10608,6 +10623,32 @@ mod metal_dispatch {
             .filter(|v| v.is_power_of_two() && (32..=1024).contains(v))
             .unwrap_or(512);
         let shmem_bytes = ((seq_len + tg_size as usize) * std::mem::size_of::<f32>()) as u64;
+
+        // THIS KERNEL DOES NOT REFUSE WHEN IT OVERRUNS ITS THREADGROUP MEMORY.
+        // It indexes scores[seq_len] in threadgroup space, so shmem grows with
+        // the sequence, and past the device limit Metal returns no error at all
+        // -- the dispatch completes and the numbers are wrong. Measured on an
+        // Apple M3 Ultra (max_threadgroup_memory_length 32,768 B), comparing the
+        // same inputs against the flash kernel:
+        //
+        //     seq  2048   10,240 B   agree to 6.1e-8
+        //     seq  7680   32,768 B   agree to 1.2e-7
+        //     seq  8192   34,816 B   agree to 4.8e-7   (over, still correct)
+        //     seq 16384   67,584 B   DIVERGE  rel 1.65e2
+        //     seq 32768  133,120 B   DIVERGE  rel 3.08e2
+        //
+        // A hard ceiling would be safe. Silently returning confident nonsense is
+        // not. The flash kernel keeps a constant scores_tile and stays correct at
+        // every size, and its _tcb takes identical arguments, so the honest
+        // response to an over-budget request is to route it there rather than
+        // dispatch a kernel whose output cannot be trusted.
+        let device_limit = device_max_threadgroup_memory();
+        if device_limit > 0 && shmem_bytes > device_limit {
+            return mha_decode_flash_f32_tcb(
+                tcb, q, k_cache, k_off_bytes, v_cache, v_off_bytes, out, seq_len, head_dim,
+                n_heads, n_kv_heads,
+            );
+        }
 
         tcb.dispatch_threads(
             "mha_decode_f32",

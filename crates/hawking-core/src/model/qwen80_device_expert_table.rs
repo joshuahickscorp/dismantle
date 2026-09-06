@@ -1260,7 +1260,7 @@ mod tests {
         assert_eq!(QWEN80_EXPERT_SCALE_BYTES, 32_768);
         assert_eq!(QWEN80_EXPERT_TRIPLET_PAYLOAD_BYTES, 1_671_168);
         assert_eq!(qwen80_q4_address_geometry().table_bytes(), 3_145_728);
-        assert_eq!(QWEN80_EXPERT_TABLE_KERNELS.len(), 5);
+        assert_eq!(QWEN80_EXPERT_TABLE_KERNELS.len(), 6);
     }
 
     #[test]

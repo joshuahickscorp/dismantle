@@ -18,7 +18,7 @@ support.
 |---|---:|---:|
 | product | 498,012 | 635 |
 | support | 510,866 | 1,478 |
-| active total | 1,008,878 | 2,113 |
+| active total | 1,018,878 | 2,113 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 

@@ -21,6 +21,7 @@ claims belong to the live roadmap, receipts, HCLI/AgentOS contracts, and
 | function-merge / schema-surface audits | merge exact duplicates and parameterize shared plumbing, but retain distinct authorities where evidence, lifecycle, or language boundaries differ | canonical source owners |
 | file/directory compression audit | future and support trees are historical accretion candidates; whole-family disposition is preferred to cosmetic renaming | Event Horizon support mass map |
 | harness-consolidation audit | use existing test/receipt owners; migrate only when an active caller exists; do not preserve a test-only parallel runner as a product surface | canonical test owners |
+| retired-controller shell test harness | former controller cases had no live implementation or receipt owner; the campaign engine and HCLI verification paths remain | current campaign-engine/HCLI tests |
 | nomenclature lexicon | a noun earns a live owner only when it has a caller, verifier, or current receipt; aliases and dead namespace labels are not capability | HCLI nomenclature and catalogs |
 
 ## Sub-1 evidence packet disposition

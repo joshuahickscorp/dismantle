@@ -830,8 +830,8 @@ def compact_surface(
 ) -> dict[str, Any]:
     """E.14 compact VMCP surface. CONNECTED acts run; PARKED acts wake.
 
-    The WIRED symbol in tools/audit/reachability_triage.py. An import of this
-    module is not a call of compact_surface.
+    The former reachability-triage adapter recorded this symbol; current VMCP
+    execution is owned directly by this compact surface.
     """
     name = str(act or "").strip().lower()
     args = arguments or {}

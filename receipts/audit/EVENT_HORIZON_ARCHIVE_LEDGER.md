@@ -28,6 +28,8 @@ claims belong to the live roadmap, receipts, HCLI/AgentOS contracts, and
 | Qwen3.8 Python genesis-child manager | uncalled process wrapper had no live caller beyond its CLI shim; the Rust `ascension_qwen38_shared_sessions` example remains the executable authority | current Rust Qwen3.8 example |
 | TG32 DeepSeek Flash-MLA GPU trace | 4,383 dispatch samples were archival forensic detail, not a live input; the exact trace is gzip-retained and its hash-bound result is active in the compact summary | `workspace/campaign/evidence/runtime/tg/archive/TG32_DEEPSEEK_V2_LITE_FLASH_MLA_GPU_TRACE_SUMMARY.json` |
 | Odyssey-I readiness generator | no live caller and only emitted an untracked readiness file; current capability reachability owns the live audit surface | `tools/roadmap/capability_reachability.py` |
+| Reachability triage analyzer | duplicate analyzer/test family superseded by `tools/roadmap/capability_reachability.py`; its sealed JSON receipt remains the historical inventory and Rust `hawking-index` owns the query path | `receipts/future/REACHABILITY_TRIAGE.json` |
+| Python reachability artifact index | uncalled duplicate query/index implementation; the Rust `hawking-index` artifact owner remains the live sidecar authority and the JSON receipt remains immutable evidence | `crates/hawking-index/src/artifact.rs` |
 | nomenclature lexicon | a noun earns a live owner only when it has a caller, verifier, or current receipt; aliases and dead namespace labels are not capability | HCLI nomenclature and catalogs |
 
 ## Sub-1 evidence packet disposition

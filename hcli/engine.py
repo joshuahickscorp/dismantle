@@ -2589,28 +2589,6 @@ class Engine:
             apply_result: Optional[Dict[str, Any]] = None
 
             try:
-                if tests:
-                    existing = [
-                        p
-                        for p in paths
-                        if p.exists() and p.is_file()
-                    ]
-                    try:
-                        pre_validation = self._validate(
-                            existing,
-                            tests,
-                        )
-                    except Exception as exc:
-                        pre_validation = {
-                            "ok": False,
-                            "reason": (
-                                "pre_mutation_exception:"
-                                f"{type(exc).__name__}"
-                            ),
-                            "error": str(exc),
-                            "checks": [],
-                        }
-
                 apply_result = self._apply_operations(
                     operations
                 )
@@ -2637,6 +2615,26 @@ class Engine:
                         "goal_id": goal_id,
                     },
                 )
+
+                if tests:
+                    try:
+                        pre_validation = (
+                            self._run_proving_tests_against_pre_mutation_producers(
+                                snapshot,
+                                paths,
+                                tests,
+                            )
+                        )
+                    except Exception as exc:
+                        pre_validation = {
+                            "ok": False,
+                            "reason": (
+                                "pre_mutation_exception:"
+                                f"{type(exc).__name__}"
+                            ),
+                            "error": str(exc),
+                            "checks": [],
+                        }
 
                 validation = self._validate(
                     paths,
@@ -6201,6 +6199,19 @@ class Engine:
         pre_mutation: Optional[Dict[str, Any]],
         post: Dict[str, Any],
     ) -> Tuple[Optional[bool], Optional[str]]:
+        # What this CAN establish:
+        #   False -- every pre-mutation proving test passed (already green)
+        #   True  -- post tests passed AND pre tests were not green: an
+        #            admitted failure, or an admitted run that did not pass
+        #            (collection/import error scored NO_EVIDENCE). A proving
+        #            test that cannot even collect against the pre-mutation
+        #            producer is not green.
+        # What this CANNOT establish (caller must fail closed, not accept):
+        #   pre_mutation is None              -- pre_mutation_pass_not_run
+        #   no post test records              -- no post-mutation test records
+        #   no pre test records               -- pre_mutation_tests_did_not_run
+        #   pre tests not admitted / mixed    -- could_not_establish
+        #   pre not-green but post not green  -- post_mutation_tests_did_not_pass
         if pre_mutation is None:
             return None, "pre_mutation_pass_not_run"
 
@@ -6234,10 +6245,19 @@ class Engine:
 
         if pre_all_pass:
             return False, None
-        if pre_any_fail and post_all_pass:
+        if not post_all_pass:
+            if pre_any_fail:
+                return None, "post_mutation_tests_did_not_pass"
+            return None, "could_not_establish"
+        if pre_any_fail:
             return True, None
-        if pre_any_fail and not post_all_pass:
-            return None, "post_mutation_tests_did_not_pass"
+        pre_admitted = [
+            c for c in pre_tests if c.get("admitted") is True
+        ]
+        if pre_admitted and all(
+            not self._test_record_passed(c) for c in pre_admitted
+        ):
+            return True, None
         return None, "could_not_establish"
 
     def _safe_test_argv(
@@ -6251,6 +6271,139 @@ class Engine:
         if not argv:
             return None
         return list(argv)
+
+    def _path_token_from_test_request(
+        self,
+        raw: str,
+    ) -> Optional[Path]:
+        text = str(raw or "").strip()
+        if not text:
+            return None
+        token: Optional[str] = None
+        if text.endswith(".py") and " " not in text:
+            token = text
+        else:
+            try:
+                parts = shlex.split(text)
+            except Exception:
+                parts = text.split()
+            for tok in reversed(parts):
+                if tok.endswith(".py") and not tok.startswith("-"):
+                    token = tok
+                    break
+        if not token:
+            return None
+        try:
+            return self._safe_path(
+                token,
+                allow_missing=True,
+            )
+        except EngineError:
+            return None
+
+    def _named_proving_test_paths(
+        self,
+        tests: List[str],
+    ) -> List[Path]:
+        found: List[Path] = []
+        seen = set()
+        for raw in tests:
+            admitted = self._admit_test(raw)
+            got = admitted.get("path")
+            path: Optional[Path]
+            if got is not None:
+                path = Path(got)
+            else:
+                path = self._path_token_from_test_request(raw)
+            if path is None:
+                continue
+            key = str(path)
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append(path)
+        return found
+
+    def _snapshot_key_is_proving_test(
+        self,
+        raw: str,
+        test_keys: set,
+    ) -> bool:
+        if raw in test_keys:
+            return True
+        try:
+            return str(Path(raw).resolve()) in test_keys
+        except Exception:
+            return False
+
+    def _run_proving_tests_against_pre_mutation_producers(
+        self,
+        snapshot: Dict[str, Optional[bytes]],
+        paths: List[Path],
+        tests: List[str],
+    ) -> Dict[str, Any]:
+        """Run the named proving tests against the pre-mutation producer.
+
+        After apply, test files may be new or rewritten. Red-before-green
+        asks whether THOSE tests pass without the producer changes. Running
+        the old test files (if any) before apply cannot see a newly written
+        proving test, which is how an import-smoke file was accepted as
+        evidence of a producer change that never happened.
+
+        A proving-test path is left at its post-mutation bytes; every other
+        snapshot path is restored for the duration of this run.
+        """
+        test_keys = {
+            str(p)
+            for p in self._named_proving_test_paths(tests)
+        }
+        extra = set()
+        for key in test_keys:
+            try:
+                extra.add(str(Path(key).resolve()))
+            except Exception:
+                pass
+        test_keys |= extra
+
+        producer_snapshot: Dict[str, Optional[bytes]] = {}
+        for raw, original in snapshot.items():
+            if self._snapshot_key_is_proving_test(raw, test_keys):
+                continue
+            producer_snapshot[raw] = original
+
+        post_producer: Dict[str, Optional[bytes]] = {}
+        for raw in producer_snapshot:
+            path = Path(raw)
+            if path.exists() and path.is_file():
+                post_producer[raw] = path.read_bytes()
+            else:
+                post_producer[raw] = None
+
+        try:
+            if producer_snapshot:
+                self._restore(producer_snapshot)
+            existing = [
+                p
+                for p in paths
+                if p.exists() and p.is_file()
+            ]
+            return self._validate(
+                existing,
+                tests,
+            )
+        except Exception as exc:
+            return {
+                "ok": False,
+                "reason": (
+                    "pre_mutation_exception:"
+                    f"{type(exc).__name__}"
+                ),
+                "error": str(exc),
+                "checks": [],
+            }
+        finally:
+            if post_producer:
+                self._restore(post_producer)
 
     def _validate(
         self,
@@ -6423,9 +6576,24 @@ class Engine:
             result,
         )
         result["red_before_green"] = rbg
+        # Continuity: receipts still carry this flag. It is NOT the
+        # acceptance decision. A proving test that was already green
+        # (red_before_green is False) or whose before-state cannot be
+        # established (None) is refused below when this is a post-mutation
+        # pass (pre_mutation provided). Direct _validate probes, including
+        # the pre-mutation run itself, pass pre_mutation=None and are not
+        # refused here.
         result["red_before_green_advisory"] = True
         if rbg is None and rbg_reason:
             result["red_before_green_reason"] = rbg_reason
+
+        if result.get("ok") and pre_mutation is not None:
+            if rbg is False:
+                result["ok"] = False
+                result["reason"] = "NOT_RED_BEFORE"
+            elif rbg is None:
+                result["ok"] = False
+                result["reason"] = "RED_BEFORE_UNESTABLISHED"
 
         if pre_mutation is not None:
             result["pre_mutation"] = {

@@ -222,6 +222,12 @@ retired. The live Grok bridge contract and its negative assertions remain in
 `hcli/tests/test_grok_bridge.py`; no bridge implementation or acceptance
 boundary was removed.
 
+The concluded G11 NumPy Matryoshka demonstration, `tools/matryoshka_pack.py`,
+was retired as an uncalled producer with no runtime consumer or dedicated
+verifier. Its measured base-plus-residual result and explicit non-promotion
+boundary remain in `receipts/ascent-2026-08-18/ARCHIVE_LEDGER.md`; current
+representation and runtime owners were not changed.
+
 ## Retired HCLI product-suite scaffold
 
 The non-live `tools/condense/hcli_product_test_harness.py` scaffold and its

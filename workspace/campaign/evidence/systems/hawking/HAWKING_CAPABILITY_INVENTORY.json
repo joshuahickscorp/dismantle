@@ -527,7 +527,6 @@
     "tools/loc/hawking_loc.py",
     "tools/loc/hawking_topology.py",
     "tools/machine_graph.py",
-    "tools/matryoshka_pack.py",
     "tools/merge_guard.py",
     "tools/mixtral_q4k_gravity_pack.py",
     "tools/nos_pipeline.py",

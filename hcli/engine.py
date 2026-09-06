@@ -167,13 +167,22 @@ HCLI_COMPACT_RESULT_SCHEMA: Dict[str, Any] = {
 # consumed ~6K characters in the measured O003 prompt. Keep the validator and
 # executor contract unchanged, but send the resident the smaller operational
 # envelope it needs for this one decision.
+# The compaction above removed the pretty-printed schema but the validator kept
+# enforcing it, so the resident was asked for a shape nobody described and its
+# replies were rejected for not having it. Measured against a live 4B resident on
+# the real captured prompt, same seeds and temperature: WITHOUT a shape line 0/8
+# conformant (every reply stringified the action into `content`); WITH it 8/8.
+# One line restores the contract at ~200 characters instead of the ~6K block.
 _AGENTIC_SYSTEM_PROMPT = """HCLI worker for one bounded WorkUnit. Disk state and deterministic evidence are authority.
 Return one JSON object with kind=answer|mutation|tool_use and concise content/action.
-Mutation includes operations/tests; tool_use includes flat name/value tool_calls. Omit empty arrays.
+Mutation: {"kind":"mutation","content":"what changed","operations":[{"op":"create","path":"dir/file.txt","new_lines":["line one","line two"]}],"tests":["cmd"]}
+operations is an ARRAY of 1..20 objects; op is one of replace|create|replace_file|insert_before|insert_after|append; op and path are REQUIRED; path is relative to the workspace ROOT and must NOT begin with "workspace/"; use old_lines/new_lines (arrays of plain lines, no escaping); no other keys are allowed.
+tool_use includes flat name/value tool_calls. Omit empty arrays.
 No reasoning, markdown, or essay. Paths are workspace-relative; never modify .git. HCLI supplies receipts."""
 
 _AGENTIC_SCHEMA_INSTRUCTION = """
-JSON only: kind=answer|mutation|tool_use; content is short. Mutations include operations/tests;
+JSON only: kind=answer|mutation|tool_use; content is short.
+Mutation: operations is an ARRAY of 1..20 objects, each requiring "op" (replace|create|replace_file|insert_before|insert_after|append) and "path", with old_lines/new_lines arrays; no other keys. tests is an array of commands.
 tool_use includes tool_calls with flat name/value arguments. Omit empty arrays and rationale."""
 
 _AGENTIC_TOOL_CATALOG = (

@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 474,165 | 1,385 |
-| active total | 972,177 | 2,020 |
+| support | 474,164 | 1,385 |
+| active total | 972,176 | 2,020 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 

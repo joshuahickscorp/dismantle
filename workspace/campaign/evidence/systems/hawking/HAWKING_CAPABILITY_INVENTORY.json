@@ -259,7 +259,6 @@
     "tools/accelerator/ane_micrograph_author.py",
     "tools/accelerator/architecture_atlas.py",
     "tools/accelerator/bytes_atlas.py",
-    "tools/accelerator/c2m_t3_census.py",
     "tools/accelerator/ccl.py",
     "tools/accelerator/device_ascension.py",
     "tools/accelerator/fusion_bridge.py",

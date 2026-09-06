@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from hcli.engine import Engine, HCLI_RESULT_SCHEMA
+from hcli.backends import StructuredOutputContract, schema_instruction
 from hcli.tool_registry import default_tool_registry
 from hcli.workspace import Workspace
 
@@ -225,6 +226,38 @@ def test_tool_output_never_enters_the_evidence_list():
     assert "TOOL BUDGET EXHAUSTED" not in text
     final = engine._prompt_with_observations("the goal", [], final=True)
     assert "TOOL BUDGET EXHAUSTED" in final
+
+
+def test_observation_round_keeps_the_tool_catalog_prefix_stable():
+    engine = Engine.__new__(Engine)
+    engine._tools_cached = _registry()
+    before = engine._prompt_with_observations("the goal", [])
+    after = engine._prompt_with_observations(
+        "the goal",
+        [{"tool": "fs.read", "ok": True, "text": "new observation"}],
+    )
+    before_catalog = before.split("OBSERVATIONS", 1)[0].rstrip()
+    after_catalog = after.split("OBSERVATIONS", 1)[0].rstrip()
+    assert before_catalog == after_catalog
+
+
+def test_tool_round_history_keeps_schema_in_the_stable_user_turn(tmp_path):
+    engine = Engine(Workspace(str(tmp_path)))
+    payload = engine._build_model_payload(
+        "the goal",
+        [],
+        None,
+        history=[
+            {"role": "assistant", "content": '{"kind":"tool_use"}'},
+            {"role": "user", "content": "OBSERVATIONS (tool results):\nresult"},
+        ],
+    )
+    prepared = StructuredOutputContract(
+        HCLI_RESULT_SCHEMA, schema_instruction(HCLI_RESULT_SCHEMA)
+    ).apply(payload)
+    assert prepared["messages"][1]["role"] == "user"
+    assert "MUST satisfy this JSON Schema" in prepared["messages"][1]["content"]
+    assert "MUST satisfy this JSON Schema" not in prepared["messages"][-1]["content"]
 
 
 def test_sanitizer_accepts_tool_use_and_drops_nameless_calls():

@@ -1329,6 +1329,9 @@ def _workunit_block(
         f"WORKUNIT: {wu.id}",
         f"ROLE: {wu.role}",
         f"OBJECTIVE: {_sanitize_goal_header(description, root_goal)}",
+        "NEXT ACTION CONTRACT: advance one useful verifiable action; keep content concise;",
+        "if using tools, emit at most four distinct calls needed for that action and no duplicates;",
+        "do not restate the evidence history or write a complete research essay.",
     ]
     if failure_context:
         try:

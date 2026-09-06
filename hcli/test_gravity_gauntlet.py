@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from hcli.gravity_gauntlet import (
+    BUDGET_EXHAUSTED,
+    PROVEN_UNABLE,
+    TARGET_HIT,
+    GravityGauntlet,
+    candidate_space,
+)
+
+
+def measured(*, complete: float, verdict: str = "CANDIDATE_PASS", full: bool = False, **extra):
+    d = {
+        "complete_bpw": complete,
+        "accounting": {"complete_bpw": complete, "complete_bytes": 1000},
+        "labels": {"complete_bpw": "MEASURED"},
+        "_evidence": "MEASURED (complete executable accounting)",
+        "verdict": verdict,
+        "wall_s": 0.25,
+        "utilization": {"validated_fields": ["prefill_wall_s", "decode_wall_s"]},
+        "nr_release_verified": True,
+    }
+    if full:
+        d.update({"capability_ok": True, "execution_complete": True, "verifier_independent": True, "magnitude_ratio": 1.0})
+    d.update(extra)
+    return d
+
+
+def test_evidence_guides_second_candidate_and_budget_is_not_a_pass(tmp_path):
+    cs = candidate_space("O003", ["q3-g32-experts", "q2-g32-experts", "q2-g64-experts"])
+    seen = []
+
+    def evaluate(c):
+        seen.append(c.spec)
+        return measured(complete={"q3-g32-experts": 3.9, "q2-g32-experts": 3.1}[c.spec])
+
+    state = GravityGauntlet(tmp_path / "state.json", "O003", cs, budget=2).run(evaluate)
+    assert state["terminal"]["disposition"] == BUDGET_EXHAUSTED
+    assert seen == ["q3-g32-experts", "q2-g32-experts"]
+    assert state["iterations"][1]["candidate"]["parent_id"] == state["iterations"][0]["candidate"]["id"]
+    assert state["terminal"]["best_complete_ebpw"] == 3.1
+    assert state["iterations"][0]["decision"]["next_candidate_id"] == state["iterations"][1]["candidate"]["id"]
+
+
+def test_target_hit_requires_independent_complete_execution(tmp_path):
+    cs = candidate_space("O003", ["q2-g32-experts"])
+    state = GravityGauntlet(tmp_path / "state.json", "O003", cs, budget=1).run(
+        lambda _c: measured(complete=0.8, full=True)
+    )
+    assert state["terminal"]["disposition"] == TARGET_HIT
+
+    state2 = GravityGauntlet(tmp_path / "state2.json", "O003", cs, budget=1).run(
+        lambda _c: measured(complete=0.8, full=False)
+    )
+    assert state2["terminal"]["disposition"] == BUDGET_EXHAUSTED
+
+
+def test_magnitude_destroyed_negative_control_fails_even_with_direction(tmp_path):
+    cs = candidate_space("O003", ["negative-control-0.01W"])
+    state = GravityGauntlet(tmp_path / "state.json", "O003", cs, budget=1).run(
+        lambda _c: measured(complete=0.01, full=True, magnitude_ratio=0.01, direction_similarity=0.999)
+    )
+    obs = state["iterations"][0]["observation"]
+    assert obs["magnitude_adequacy"]["verdict"] == "REJECTED_MAGNITUDE_DESTROYED"
+    assert state["terminal"]["disposition"] == BUDGET_EXHAUSTED
+
+
+def test_resume_preserves_history_and_does_not_repeat(tmp_path):
+    path = tmp_path / "state.json"
+    cs = candidate_space("O003", ["q3-g32-experts", "q2-g32-experts"])
+    first = GravityGauntlet(path, "O003", cs, budget=2).run(lambda _c: measured(complete=3.0), max_steps=1)
+    assert first["terminal"] is None
+    seen = []
+    resumed = GravityGauntlet(path, "O003", cs, budget=2).run(lambda c: seen.append(c.spec) or measured(complete=2.0))
+    assert seen == ["q2-g32-experts"]
+    assert len(resumed["iterations"]) == 2
+    json.loads(path.read_text())
+
+
+def test_proven_unable_requires_a_real_bound(tmp_path):
+    cs = candidate_space("O003", ["q3-g32-experts"])
+    engine = GravityGauntlet(tmp_path / "state.json", "O003", cs, budget=1)
+    try:
+        engine.finalize_proven_unable({"proven": True})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("missing bound fields must refuse PROVEN_UNABLE")
+    state = engine.finalize_proven_unable({
+        "proven": True,
+        "upper_bound_complete_ebpw": 2.0,
+        "limiting_mechanism": "measured persistent routing metadata floor",
+        "measured_evidence": ["receipt-a"],
+        "assumptions": ["candidate family is closed"],
+        "search_region": "q2-q4 group32/64",
+        "reopen_condition": "new executable family or lower metadata floor",
+    })
+    assert state["terminal"]["disposition"] == PROVEN_UNABLE
+
+
+def test_hcli_wrapper_is_the_mutation_boundary(tmp_path):
+    from hcli import odyssey
+
+    with pytest.raises(PermissionError):
+        odyssey.gravity_gauntlet("O003", ["q3-g32-experts"], state_path=str(tmp_path / "no.json"), receipt_dir="receipts/odyssey-i")
+    state = odyssey.gravity_gauntlet(
+        "O003",
+        ["q3-g32-experts", "q2-g32-experts"],
+        budget=2,
+        state_path=str(tmp_path / "state.json"),
+        receipt_dir="receipts/odyssey-i",
+        confirm=True,
+    )
+    assert state["terminal"]["disposition"] == BUDGET_EXHAUSTED

@@ -17,8 +17,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 539,468 | 1,549 |
-| active total | 1,037,480 | 2,184 |
+| support | 536,680 | 1,531 |
+| active total | 1,034,692 | 2,166 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -31,7 +31,7 @@ also included in the total and must not become an UNKNOWN bucket.
 | rank | subtree | LOC | primary disposition |
 |---:|---|---:|---|
 | 1 | `research/lab` | 93,616 | ACTIVE_RESEARCH / MIGRATE_INTO_OWNER |
-| 2 | `crates/hawking-core` | 58,328 | CURRENT_VERIFICATION |
+| 2 | `crates/hawking-core` | 55,529 | CURRENT_VERIFICATION |
 | 3 | `tools/future` | 54,797 | ACTIVE_RESEARCH / SUPERSEDED audit required |
 | 4 | `tools/accelerator` | 39,624 | CURRENT_VERIFICATION / ACTIVE_RESEARCH |
 | 5 | `research/hawking-experiments` | 4,695 | ACTIVE_RESEARCH / IMPORTANT_ARCHIVE |
@@ -143,7 +143,9 @@ also included in the total and must not become an UNKNOWN bucket.
   them.
 - `crates/hawking-core/tests`: the versioned v030–v2s / Phase-2 / draft /
   prototype parity generation was retired as superseded standalone scaffolding;
-  current named verification tests remain.
+  current named verification tests remain. The unreferenced low-level
+  predecode/Q4K/RoPE/fusion micro-test generation was then retired; the two
+  MHA tests named by the active prefill-KV census remain.
 - `crates/hawking-core`, `tools/verify`, `tools/acceptance`, `tools/audit`, and
   `hcli/tests`: current verification is a valid survival reason; consolidate
   duplicated plumbing only when proof independence remains intact.

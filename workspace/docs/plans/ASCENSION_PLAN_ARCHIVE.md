@@ -200,3 +200,8 @@ Phase-2, draft, vocabulary-prune, and W4A8 prototype tests) was also retired
 as superseded standalone verification scaffolding. It had no current
 production or acceptance caller; current named Gravity/Qwen/Flash tests remain
 the active proof boundary. Git retains the historical tests.
+
+Within the low-level kernel-test family, 18 unreferenced predecode, Q4K,
+RoPE, output-projection, SwiGLU, and pair-accumulation tests were also retired.
+The two MHA tests named by the active prefill-KV census remain; the deleted
+micro-tests had no external caller or current acceptance role.

@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 471,612 | 1,386 |
-| active total | 969,624 | 2,021 |
+| support | 470,415 | 1,385 |
+| active total | 968,443 | 2,020 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -77,6 +77,8 @@ also included in the total and must not become an UNKNOWN bucket.
   audit receipt remains the live causality source.
   The uncalled Q30 null-first reporter was retired; the current activation
   probe/repack and its independent tests remain.
+  The uncalled GLM teacher-forced shard merger and producer-only test were
+  retired; retained GLM/Frankenstein receipts preserve the prior evidence.
   The uncalled fidelity-hierarchy producer was then retired; its sealed
   receipt remains archival evidence.
   The uncalled MAXX resource-pipeline producer was then retired; its sealed

@@ -238,7 +238,6 @@
     "research/lab/operators/kimi_k3_source_admission.py",
     "research/lab/operators/mixed_precision_alloc.py",
     "research/lab/operators/q30_activation_aware_family_probe.py",
-    "research/lab/operators/q30_activation_null_first_report.py",
     "research/lab/operators/q80_activation_capture_readiness.py",
     "research/lab/operators/q80_activation_null_first_report.py",
     "research/lab/operators/q80_capture_coverage.py",

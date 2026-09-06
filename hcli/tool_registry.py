@@ -1819,11 +1819,15 @@ def _acquisition_propose(context: ToolContext, args: Dict[str, Any]) -> Dict[str
     return acquisition.propose()
 
 
-def _odyssey_read_verb(name: str):
+def _odyssey_read_verb(name: str, required: Sequence[str] = ()):
+    """Read-only Odyssey verbs. ``required`` names the positional arguments the
+    connector declares; a verb that takes one and is wired without it raises
+    TypeError on first call, so the names are forwarded rather than dropped."""
+
     def handler(context: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
         from . import odyssey
 
-        return getattr(odyssey, name)()
+        return getattr(odyssey, name)(*(str(args[key]) for key in required))
 
     return handler
 
@@ -2273,6 +2277,39 @@ def default_tool_registry(
         {"type": "object", "additionalProperties": False, "properties": {}},
         handler=_odyssey_read_verb("ingest"),
     ))
+    # The other three read-only connectors. Same reason as the block above: a
+    # verb absent from this registry is absent from the resident's only call
+    # path, so it did not exist. `completions` is registered without its
+    # `rebuild` flag and `harvest` without its apply flag -- both of those
+    # write, and both are already what odyssey.cycle does on confirm.
+    for verb, required, description in (
+        ("completions", (), "List recorded Odyssey completions. Read-only; the --rebuild backfill stays on the CLI."),
+        ("patient", ("oxx",), "Read one Odyssey patient packet already on disk. Never writes one."),
+        ("harvest", (), "Dry-run harvest: which finished lanes would be applied. Applying is odyssey.cycle."),
+    ):
+        registry.register(ToolSpec(
+            "odyssey." + verb, description,
+            {"type": "object", "additionalProperties": False,
+             "required": list(required),
+             "properties": {key: {"type": "string"} for key in required}},
+            deterministic=False,
+            handler=_odyssey_read_verb(verb, required),
+        ))
+    # Targeted per-specimen driver mutations, gated like odyssey.cycle. Neither
+    # is reachable through cycle: cycle retires whatever it selects itself and
+    # never writes a packet for a named oxx.
+    for verb, description in (
+        ("retire", "Retire one named Odyssey patient. Writes the driver's own state; requires confirm=True."),
+        ("write_packet", "Write the patient packet for one named Odyssey oxx. Requires confirm=True."),
+    ):
+        registry.register(ToolSpec(
+            "odyssey." + verb, description,
+            {"type": "object", "additionalProperties": False,
+             "required": ["confirm", "oxx"],
+             "properties": {"confirm": {"type": "boolean"}, "oxx": {"type": "string"}}},
+            mutation=COSTLY, deterministic=False,
+            handler=_odyssey_mutating(verb, ("oxx",)),
+        ))
     for verb, required in (
         ("add_to_eligibility", ("oxx",)),
         ("park_specimen", ("oxx",)),

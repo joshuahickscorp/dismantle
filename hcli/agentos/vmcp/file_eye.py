@@ -9,6 +9,8 @@ treat an absent target as an empty success.
 """
 from __future__ import annotations
 
+import re
+
 import io
 import json
 import os
@@ -191,10 +193,121 @@ def _png(data: bytes) -> dict[str, Any] | None:
     return info
 
 
+# SOF markers that carry frame geometry. DHT/DAC/DRI and the RST range are NOT
+# frame headers and must not be read as one; SOF4 (0xC4) is DHT and SOF12 (0xCC)
+# is DAC, which is why the set is enumerated rather than expressed as a range.
+_JPEG_SOF = frozenset(
+    {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}
+)
+
+
+def _jpeg_geometry(data: bytes) -> tuple[int, int] | None:
+    """Width/height from the first SOF frame header, or None.
+
+    Walks the marker chain rather than scanning for a byte pattern: a scan can
+    match compressed entropy data and report a confident wrong answer.
+    """
+    i = 2  # past SOI
+    n = len(data)
+    while i + 3 < n:
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker == 0xFF:
+            i += 1
+            continue
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        if marker == 0xDA or marker == 0xD9:  # start of scan / end of image
+            return None
+        seg_len = int.from_bytes(data[i + 2 : i + 4], "big")
+        if seg_len < 2 or i + 2 + seg_len > n:
+            return None
+        if marker in _JPEG_SOF:
+            if i + 9 > n:
+                return None
+            height = int.from_bytes(data[i + 5 : i + 7], "big")
+            width = int.from_bytes(data[i + 7 : i + 9], "big")
+            if width > 0 and height > 0:
+                return width, height
+            return None
+        i += 2 + seg_len
+    return None
+
+
 def _jpeg(data: bytes) -> dict[str, Any] | None:
     if not data.startswith(b"\xff\xd8\xff"):
         return None
-    return {"kind": "jpeg", "container": "jpeg"}
+    info: dict[str, Any] = {"kind": "jpeg", "container": "jpeg"}
+    geom = _jpeg_geometry(data)
+    if geom is not None:
+        info["width"], info["height"] = geom
+    return info
+
+
+def verify_image_geometry(path: str | Path, *, timeout: float = 20.0) -> dict[str, Any]:
+    """Cross-check this eye's image geometry against an INDEPENDENT local tool.
+
+    The directive's VMCP priority is "exact tool-grounded verification". Parsing
+    a header and believing yourself is not verification; agreeing with a second
+    implementation that read the same bytes is.
+
+    Ground truth here is `sips`, which is native and not derived from this code.
+    Disagreement is reported as DISAGREE and the geometry is NOT claimed --
+    a confident wrong answer about what is on screen is the failure mode this
+    whole subsystem exists to avoid.
+    """
+    import subprocess
+
+    target = Path(path)
+    out: dict[str, Any] = {
+        "path": str(target),
+        "eye": None,
+        "ground_truth": None,
+        "ground_truth_tool": "sips",
+        "agree": None,
+        "verdict": "UNKNOWN",
+    }
+    if not target.is_file():
+        out["verdict"] = "NO_TARGET"
+        return out
+
+    data = target.read_bytes()
+    classified = _jpeg(data) or _png(data)
+    if classified is None:
+        out["verdict"] = "NOT_AN_IMAGE_BY_MAGIC"
+        return out
+    if "width" not in classified or "height" not in classified:
+        out["eye"] = classified
+        out["verdict"] = "EYE_HAS_NO_GEOMETRY"
+        return out
+    out["eye"] = {"kind": classified["kind"],
+                  "width": classified["width"], "height": classified["height"]}
+
+    try:
+        proc = subprocess.run(
+            ["sips", "-g", "pixelWidth", "-g", "pixelHeight", str(target)],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        out["verdict"] = "GROUND_TRUTH_UNAVAILABLE"
+        out["ground_truth_error"] = f"{type(exc).__name__}: {exc}"
+        return out
+
+    w = re.search(r"pixelWidth:\s*(\d+)", proc.stdout or "")
+    h = re.search(r"pixelHeight:\s*(\d+)", proc.stdout or "")
+    if not (w and h):
+        out["verdict"] = "GROUND_TRUTH_UNAVAILABLE"
+        return out
+
+    truth = {"width": int(w.group(1)), "height": int(h.group(1))}
+    out["ground_truth"] = truth
+    out["agree"] = (truth["width"] == classified["width"]
+                    and truth["height"] == classified["height"])
+    out["verdict"] = "AGREE" if out["agree"] else "DISAGREE"
+    return out
 
 
 def _gif(data: bytes) -> dict[str, Any] | None:

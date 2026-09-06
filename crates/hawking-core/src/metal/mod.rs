@@ -375,6 +375,10 @@ pub const SHADER_QWEN80_DEVICE_ACTIVATIONS: &str =
 /// Does not change the Q80-locked kernels above.
 pub const SHADER_QWEN38_DEVICE_ACTIVATIONS: &str =
     include_str!("../../shaders/qwen38_device_activations.metal");
+/// Batched prefill GEMM + chunkwise mixer for the Qwen3.8 hybrid resident.
+/// Concatenated after the Q38 activation file so it can call
+/// `qwen38_causal_conv_update_f32` / `qwen38_ba_decay_beta_f32`.
+pub const SHADER_QWEN38_PREFILL: &str = include_str!("../../shaders/qwen38_prefill.metal");
 /// Exact packed uniform-Q4 + FP16 group-scale Qwen component matvec. The
 /// fixed group-64 layout is a bounded operator primitive, not a complete
 /// decoder or model TPS surface.
@@ -459,6 +463,7 @@ pub fn all_shader_sources() -> String {
     srcs.push(SHADER_DSV4F_NATIVE_TOKEN_GRAPH);
     srcs.push(SHADER_DSV4F_ACTIVATION_X_BATCH);
     srcs.push(SHADER_QWEN38_DEVICE_ACTIVATIONS);
+    srcs.push(SHADER_QWEN38_PREFILL);
     // The TQ bitslice family is feature-gated: only compiled into the library
     // when `tq` is on.
     #[cfg(feature = "tq")]
@@ -2293,6 +2298,24 @@ mod imp {
             "rwkv7_sigmoid_bias_multiseq" => "rwkv7_sigmoid_bias_multiseq",
             "rwkv7_value_residual_mix_multiseq" => "rwkv7_value_residual_mix_multiseq",
             "rwkv7_add_into_flat" => "rwkv7_add_into_flat",
+            "qwen38_prefill_affine_q2_g64_gemm_mma_n64" => {
+                "qwen38_prefill_affine_q2_g64_gemm_mma_n64"
+            }
+            "qwen38_prefill_q4_g64_gemm_mma_n64" => "qwen38_prefill_q4_g64_gemm_mma_n64",
+            "qwen38_prefill_rmsnorm_f32" => "qwen38_prefill_rmsnorm_f32",
+            "qwen38_prefill_add_residual_f32" => "qwen38_prefill_add_residual_f32",
+            "qwen38_prefill_add_residual_rmsnorm_f32" => {
+                "qwen38_prefill_add_residual_rmsnorm_f32"
+            }
+            "qwen38_prefill_swiglu_f32" => "qwen38_prefill_swiglu_f32",
+            "qwen38_prefill_q4_embed" => "qwen38_prefill_q4_embed",
+            "qwen38_prefill_copy_row" => "qwen38_prefill_copy_row",
+            "qwen38_prefill_qkvz_rearrange_conv" => "qwen38_prefill_qkvz_rearrange_conv",
+            "qwen38_prefill_gated_delta_ba_f4" => "qwen38_prefill_gated_delta_ba_f4",
+            "qwen38_prefill_gated_rmsnorm" => "qwen38_prefill_gated_rmsnorm",
+            "qwen38_prefill_gqa_rope_cache" => "qwen38_prefill_gqa_rope_cache",
+            "qwen38_prefill_gqa_attn" => "qwen38_prefill_gqa_attn",
+            "qwen38_prefill_sigmoid_gate" => "qwen38_prefill_sigmoid_gate",
             _ => "other",
         }
     }
@@ -2809,6 +2832,34 @@ mod imp {
                 assert!(
                     SHADER_QWEN38_DEVICE_ACTIVATIONS.contains(&format!("kernel void {kernel}(")),
                     "{kernel} must compile from qwen38_device_activations.metal"
+                );
+            }
+        }
+
+        #[test]
+        fn qwen38_prefill_kernels_are_trace_named_and_compiled() {
+            use crate::metal::SHADER_QWEN38_PREFILL;
+            const KERNELS: &[&str] = &[
+                "qwen38_prefill_affine_q2_g64_gemm_mma_n64",
+                "qwen38_prefill_q4_g64_gemm_mma_n64",
+                "qwen38_prefill_rmsnorm_f32",
+                "qwen38_prefill_add_residual_f32",
+                "qwen38_prefill_add_residual_rmsnorm_f32",
+                "qwen38_prefill_swiglu_f32",
+                "qwen38_prefill_q4_embed",
+                "qwen38_prefill_copy_row",
+                "qwen38_prefill_qkvz_rearrange_conv",
+                "qwen38_prefill_gated_delta_ba_f4",
+                "qwen38_prefill_gated_rmsnorm",
+                "qwen38_prefill_gqa_rope_cache",
+                "qwen38_prefill_gqa_attn",
+                "qwen38_prefill_sigmoid_gate",
+            ];
+            for &kernel in KERNELS {
+                assert_eq!(static_kernel_name(kernel), kernel);
+                assert!(
+                    SHADER_QWEN38_PREFILL.contains(&format!("kernel void {kernel}(")),
+                    "{kernel} must compile from qwen38_prefill.metal"
                 );
             }
         }

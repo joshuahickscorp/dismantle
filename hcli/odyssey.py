@@ -10,11 +10,13 @@ curriculum and encodes none of it.
 Two capability classes:
 
 * **inspect** -- ``status``, ``queue``, ``value``, ``economics``,
-  ``completions()``, ``patient()``, ``admit_check()``. Read-only, run
-  unconditionally, never write anything or spend a resource. ``admit_check``
-  is named after the CLI's ``admit`` verb but that verb only prints a
-  memgate/worker_gate/disk decision -- it never touches queue state -- so it
-  is read-only despite the name.
+  ``completions()``, ``patient()``. Read-only, run unconditionally, never
+  write anything or spend a resource. ``admit_check`` was listed here on the
+  ground that the CLI's ``admit`` verb only prints a memgate/worker_gate/disk
+  decision. It does not: ``cmd_admit`` calls ``reclaim_if_tight()``, which
+  runs ``tools/reclaim_safe.sh`` below ``DISK_WARN_GIB``, so it can delete
+  build caches and finished lane directories. It is not registered, and the
+  reason is recorded at its definition.
 
 * **continue** -- ``harvest``, ``write_packet``, ``run``, ``cycle``,
   ``retire``, ``acquire_next``, ``completions(rebuild=True)``,
@@ -151,8 +153,11 @@ def patient(oxx: str) -> dict:
     }
 
 
+# cli-only: NOT read-only despite the name -- odyssey_ctl's cmd_admit ends in reclaim_if_tight(), which shells out to tools/reclaim_safe.sh (rm -rf build caches, finished lane dirs, dead worktrees) whenever free disk is under DISK_WARN_GIB, so registering it as an inspect verb would advertise a lie.
 def admit_check(slug: str, est_gib: float) -> dict:
-    """Memgate/worker_gate/disk-floor GO-or-REFUSE check. Prints only; writes nothing."""
+    """Memgate/worker_gate/disk-floor GO-or-REFUSE check. Never touches queue
+    state, but a REFUSE on the disk floor triggers a reclaim sweep on the way
+    out -- see the cli-only note above."""
     return _run(["admit", slug, str(est_gib)])
 
 
@@ -172,6 +177,7 @@ def write_packet(oxx: str, confirm: bool = False) -> dict:
     return _run(["packet", oxx])
 
 
+# cli-only: odyssey_ctl's cycle_tick() already calls run_loop() with the same lane caps, and odyssey.cycle is registered, so a second registered lane-spawner is duplicate COSTLY surface with no reachable behaviour of its own.
 def run(confirm: bool = False, dry_run: bool = True, max_lanes: int = 2, grok_lanes: int = 0) -> dict:
     args = ["run", "--max-lanes", str(max_lanes), "--grok-lanes", str(grok_lanes)]
     if dry_run:
@@ -202,6 +208,7 @@ def retire(oxx: str, confirm: bool = False) -> dict:
     return _run(["retire", oxx])
 
 
+# cli-only: --go starts a multi-hundred-GiB Hugging Face download; cycle_tick() already acquires when no obligation is ready, and acquisition.propose covers the read side, so nothing needs a bare registered download starter.
 def acquire_next(confirm: bool = False, dry_run: bool = True) -> dict:
     if dry_run:
         return _run(["acquire-next", "--dry-run"])

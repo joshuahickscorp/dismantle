@@ -455,7 +455,9 @@ def memory_decision(
 
 # A mission that has stopped for good. `no_progress` is included: the mission
 # raised NO_PROGRESS against its own threshold, which is a give-up, not a pause.
-TERMINAL_MISSION_PHASES = frozenset({"completed", "failed", "cancelled", "no_progress"})
+# Defined in hcli.mission (it is a property of Mission.phase) and re-exported
+# here so this module stays the name every existing caller imports it from.
+from hcli.mission import TERMINAL_MISSION_PHASES  # noqa: E402
 
 # ...of which these need a human before anything else can run. `completed` does
 # not: a completed mission is re-run harmlessly and is how a queued bank goal

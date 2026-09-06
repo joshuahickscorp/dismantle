@@ -76,6 +76,9 @@ HAWKING_REPO = Path("/Users/scammermike/Downloads/hawking")
 PREFERRED_PY = "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3"
 HF_BIN = Path("/Library/Frameworks/Python.framework/Versions/3.12/bin/hf")
 HF_HUB = Path.home() / ".cache" / "huggingface" / "hub"
+# The ModelLake volume. The one named place the lake lives; every other lake
+# path in this module is derived from it.
+MODELLAKE_ROOT = Path("/Volumes/corpdrive/hawking-modellake")
 
 DISK_FLOOR_GIB = 15.0
 DISK_WARN_GIB = 40.0
@@ -3967,7 +3970,10 @@ def _started_epoch(w: dict) -> float | None:
 
 def resolve_patient_weights(oxx: str, pkt: dict | None = None,
                             census: dict | None = None) -> str:
-    """HF snapshot / census model_dir for --weights. Empty if unknown."""
+    """Weights dir for --weights, in order: an existing census model_dir /
+    packet on_disk, the HF hub cache snapshot, the ModelLake specimen for the
+    same revision, packet on_disk. Empty (or the recorded-but-absent path) if
+    nothing resolves."""
     census_d = census if census is not None else load_census(oxx)
     pkt_d = pkt if pkt is not None else load_packet(oxx)
     w = weights_dir(oxx, pkt_d, census_d)
@@ -3977,10 +3983,16 @@ def resolve_patient_weights(oxx: str, pkt: dict | None = None,
             return str(p)
     man = manifest_entry(oxx)
     src = (man.get("canonical_source") or "") if man else ""
+    ident = (pkt_d or {}).get("identity") or {}
     snap = hf_cache_snapshot(src)
     if snap is not None:
         return str(snap)
-    ident = (pkt_d or {}).get("identity") or {}
+    lake = modellake_snapshot(
+        src or str(ident.get("source_repo") or ""),
+        (man.get("canonical_revision") if man else None) or ident.get("revision"),
+    )
+    if lake is not None:
+        return str(lake)
     on_disk = ident.get("on_disk")
     if on_disk:
         p = Path(os.path.expanduser(str(on_disk)))
@@ -5415,9 +5427,42 @@ def hf_cache_snapshot(repo: str) -> Path | None:
     return None
 
 
+def modellake_snapshot(repo: str, revision: str | None = None) -> Path | None:
+    """Same body on the ModelLake volume, when the HF hub cache does not have it.
+
+    Sealed specimens live at ``specimens/<org>--<repo>@<rev12>`` in exactly the
+    flat layout a hub snapshot dir has (config.json beside the shards), so the
+    runner takes one without knowing the difference. This box's hub cache is
+    ~37 MB -- every model_dir a census recorded points into it and none of them
+    exist -- while the lake holds the same revisions.
+
+    A revision, when known, must match: a lake dir for a DIFFERENT revision is
+    not this patient's weights, and returning it silently would run the wrong
+    body. Only when no revision is known anywhere does an unambiguous
+    single-directory match stand in.
+    """
+    if not repo or "/" not in repo:
+        return None
+    specimens = MODELLAKE_ROOT / "specimens"
+    rev = str(revision or "").strip()
+    slug = repo.replace("/", "--")
+    if rev:
+        cands = [specimens / f"{slug}@{rev[:12]}"]
+    else:
+        cands = sorted(p for p in specimens.glob(f"{slug}@*") if p.is_dir())
+        if len(cands) != 1:
+            return None
+    for cand in cands:
+        if not (cand / "config.json").is_file():
+            continue
+        if list(cand.glob("*.safetensors")) or list(cand.glob("*.bin")):
+            return cand
+    return None
+
+
 # Where the watcher's --local-dir actually points. Kept beside the resolver so
 # the two cannot drift apart silently.
-MODELLAKE_PARTIAL_ROOT = Path("/Volumes/corpdrive/hawking-modellake/partial")
+MODELLAKE_PARTIAL_ROOT = MODELLAKE_ROOT / "partial"
 
 
 def modellake_destination() -> Path:

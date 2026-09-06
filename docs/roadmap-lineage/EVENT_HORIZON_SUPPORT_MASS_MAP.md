@@ -16,8 +16,8 @@ support.
 | measure | LOC | files |
 |---|---:|---:|
 | product | 498,012 | 635 |
-| support | 496,920 | 1,427 |
-| active total | 994,932 | 2,062 |
+| support | 494,733 | 1,425 |
+| active total | 992,745 | 2,060 |
 
 The authoritative headline is the value reported by `tools/loc/hawking_loc.py`.
 
@@ -190,6 +190,9 @@ also included in the total and must not become an UNKNOWN bucket.
 - `tools`: the uncalled G11 Matryoshka NumPy demonstration was retired; its
   measured result remains in the ascent archive and no runtime owner changed
   (1,043 counted LOC removed).
+- `tools`: the superseded Qwen3.8 activation-capture-v2 producer and dedicated
+  test were retired; sealed capture findings and current Qwen30/Q80 capture
+  authorities remain (2,187 counted LOC removed).
 - `research/lab/tests`: tests for already-deleted Ascension supervisors and
   absent JSON contract fixtures were removed; current manager-protocol and
   Qwen30 physical tests remain. The uncalled manager-tournament readiness /

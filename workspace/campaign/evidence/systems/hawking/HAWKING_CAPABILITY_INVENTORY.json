@@ -595,7 +595,6 @@
     "tools/pipeline_dryrun.py",
     "tools/product/cli.py",
     "tools/provenance_chain.py",
-    "tools/qwen38_capture_v2.py",
     "tools/qwen38_genesis_children.py",
     "tools/qwen38_sub15_pack.py",
     "tools/qwen_q4k_gravity_stream_pack.py",

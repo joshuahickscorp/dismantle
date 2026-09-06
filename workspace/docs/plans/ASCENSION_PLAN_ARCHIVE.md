@@ -228,6 +228,12 @@ verifier. Its measured base-plus-residual result and explicit non-promotion
 boundary remain in `receipts/ascent-2026-08-18/ARCHIVE_LEDGER.md`; current
 representation and runtime owners were not changed.
 
+The superseded Qwen3.8 activation-capture-v2 producer and its dedicated test
+were retired as an uncalled historical family. The captured dataset's lineage,
+activation findings, and negative boundaries remain in the sealed ascent and
+headless receipts; current Qwen30/Q80 capture-index authorities remain active.
+No captured evidence or qualified runtime artifact was removed.
+
 ## Retired HCLI product-suite scaffold
 
 The non-live `tools/condense/hcli_product_test_harness.py` scaffold and its
